@@ -12,8 +12,8 @@ local lib = raylib.lib
 local Color3 = require("@Color3")
 
 -- components
-local window = require("./aereon/window")
-local rect = require("./aereon/rect")
+local window = require("./Aereon/window")
+local rect = require("./Aereon/rect")
 
 -- config Data
 local config = {}
