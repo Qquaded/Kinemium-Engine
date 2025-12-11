@@ -33,6 +33,8 @@ return function(renderer)
 		if type(v) == "table" then
 			if v.type then
 				return v.type
+			elseif v.ClassName then
+				return "Instance"
 			else
 				return "table"
 			end
@@ -99,13 +101,23 @@ return function(renderer)
 
 	data.import = function(v)
 		local callerEnv = getfenv(2)
-		print(callerEnv.SecurityCapabilities)
 		--print(callerEnv)
 		if callerEnv.SecurityCapabilities ~= EnumMap.SecurityCapabilities.Internals then
 			print("Security capabilities not equal to level 2")
 			return {}
 		end
 		return require(v)
+	end
+
+	data.include = function(object: Instance)
+		local callerEnv = getfenv(2)
+		local result = data.require(object)
+		if result then
+			for p, v in pairs(result) do
+				callerEnv[p] = v
+			end
+			print("Successfully included header " .. object.Name)
+		end
 	end
 
 	return data

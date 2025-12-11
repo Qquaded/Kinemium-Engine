@@ -28,6 +28,7 @@ local windowRegistry = {}
 
 local aereon = import("@Kinemium.Aereon")
 local window = aereon.window(game)
+local aRect = aereon.rect()
 
 local blacklisted = {
 	"Children",
@@ -60,10 +61,10 @@ local function create_window_back(screenGui, title, AnchorPoint, size)
 end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "Output"
+screenGui.Name = "Toolbar"
 screenGui.Parent = LocalPlayer.PlayerGui
 
-local propback = create_window_back(screenGui, "Output", Vector2.new(0.5, 1), UDim2.new(1, 0, 0.2, 0))
+local propback = create_window_back(screenGui, "Toolbar", Vector2.new(0, 0), UDim2.new(0.78, 0, 0.1, 0))
 
 local function Color3ToRaylib(c, transparency)
 	local r, g, b = c:ToRGB()
@@ -76,41 +77,36 @@ local function Color3ToRaylib(c, transparency)
 end
 
 window.stepped = function(windowData)
-	if windowData.title == "Output" then
+	if windowData.title == "Toolbar" then
 		local winX, winY = windowData.x, windowData.y + 30
 		local winWidth = windowData.width
-		local cellHeight = 25
-		local padding = 0
-		local mousePos = rl.GetMousePosition()
+		local cellWidth = 50
+		local cellHeight = 50
+		local paddingLeft = 15
+		local padding = 5
 
-		local logs = LogService.GetLogHistory()
-		for i, log in ipairs(logs) do
-			local cellY = winY + (i - 1) * (cellHeight + padding)
-			local rect = { x = winX + 5, y = cellY, width = winWidth - 10, height = cellHeight }
+		for i = 0, 9 do
+			local rectX = winX + paddingLeft + i * (cellWidth + padding)
+			local rectY = winY
+			local rectData = aRect.new(rectX, rectY, cellWidth, cellHeight)
+			local mousePos = rl.GetMousePosition()
 
-			-- alternating background color
-			local bgColor = (i % 2 == 0) and structs.Color:new({ r = 30, g = 30, b = 30, a = 255 })
-				or structs.Color:new({ r = 20, g = 20, b = 20, a = 255 })
-			rl.DrawRectangle(rect.x, rect.y, rect.width, rect.height, bgColor)
+			local transparency = 1
 
-			-- log type color
-			local logColor = KinemiumRaylib.const.WHITE
-			if log.type == "print" then
-				logColor = structs.Color:new({ r = 200, g = 200, b = 200, a = 255 })
-			elseif log.type == "warn" then
-				logColor = structs.Color:new({ r = 255, g = 200, b = 0, a = 255 })
-			elseif log.type == "error" then
-				logColor = structs.Color:new({ r = 255, g = 50, b = 50, a = 255 })
+			if aRect.MouseIsInRect(rectData) then
+				transparency = 0.5
 			end
 
-			local ts = os.date("%H:%M:%S", log.time)
-			local text = string.format("[%s] %s", ts, log.message)
+			aRect.Button(rectData, function()
+				print("hi")
+			end)
 
-			rl.DrawTextEx(vend, text, vector.create(rect.x + 8, rect.y + 4), 22, 1, logColor)
+			local bgColor = Color3ToRaylib(Color3.new(0.5, 0.5, 0.5), transparency)
+			rl.DrawRectangleRec(aRect:translate(rectData), bgColor)
 		end
 	end
 end
 
 renderer.Add2DStack(function(data)
-	--aereon.step()
+	aereon.step()
 end)

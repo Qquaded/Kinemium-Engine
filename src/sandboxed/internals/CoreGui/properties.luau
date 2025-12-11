@@ -18,8 +18,6 @@ end
 
 print("This is properties.")
 
-rl.GuiLoadStyle("./src/assets/studiothemes/style_dark.rgs")
-
 KinemiumIconLoader.new("Add", "./src/assets/images/icons/vanilla3/ui/16x/200/Add.png")
 
 local png = KinemiumIconLoader.Get("Add")
@@ -27,7 +25,8 @@ local addIcon = KinemiumIconLoader.ToTexture(png)
 
 local windowRegistry = {}
 
-local window = import("@Kinemium.rayguiwindow")(rl, structs)
+local aereon = import("@Kinemium.Aereon")
+local window = aereon.window(game)
 
 local blacklisted = {
 	"Children",
@@ -105,6 +104,7 @@ window.stepped = function(windowData)
 			i += 1
 			local cellY = winY + (i - 1) * (cellHeight + padding)
 			local rect = { x = winX + 5, y = cellY, width = winWidth - 25, height = cellHeight }
+			local transparency = 1
 
 			-- highlight on hover
 			local col
@@ -114,7 +114,6 @@ window.stepped = function(windowData)
 				col = Color3.new(0.13, 0.13, 0.13) -- black
 			end
 
-			-- highlight on hover
 			if
 				mousePos.x >= rect.x
 				and mousePos.x <= rect.x + rect.width
@@ -122,6 +121,7 @@ window.stepped = function(windowData)
 				and mousePos.y <= rect.y + rect.height
 			then
 				col = Color3.new(0.25, 0.25, 0.25) -- lighter gray on hover
+				transparency = 0.5
 			end
 
 			-- draw cell
@@ -134,7 +134,7 @@ window.stepped = function(windowData)
 				}),
 				0.2,
 				6,
-				Color3ToRaylib(col, 0)
+				Color3ToRaylib(col, transparency)
 			)
 
 			-- draw property name
@@ -163,7 +163,5 @@ window.stepped = function(windowData)
 end
 
 renderer.Add2DStack(function(data)
-	window.update()
-
-	window.draw()
+	--aereon.step()
 end)

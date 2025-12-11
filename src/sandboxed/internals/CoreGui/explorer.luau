@@ -7,15 +7,12 @@ local KinemiumFontService = game:GetService("KinemiumFontService")
 local Selection = game:GetService("Selection")
 
 local Smooth = import("@RayguiLerp")
-local Raylib = import("@raylib")
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local renderer = KinemiumRaylib.renderer
-local rl: typeof(Raylib.lib) = KinemiumRaylib.lib
+local rl = KinemiumRaylib.lib
 local structs = KinemiumRaylib.structs
-local const = KinemiumRaylib.const
-local KinemiumExplorer = {}
 local vend = KinemiumFontService.GetDefaultFont()
 local classes = Instance.getClasses()
 
@@ -79,16 +76,22 @@ local function getServicesInOrder()
 	return services
 end
 
-rl.GuiLoadStyle("./src/assets/studiothemes/style_dark.rgs")
-
 KinemiumIconLoader.new("Add", "./src/assets/images/icons/vanilla3/ui/16x/200/Add.png")
+KinemiumIconLoader.new("ArrowRight", "./src/assets/images/icons/vanilla3/ui/16x/200/ArrowRight.png")
+KinemiumIconLoader.new("ArrowDown", "./src/assets/images/icons/vanilla3/ui/16x/200/ArrowDown.png")
 
 local png = KinemiumIconLoader.Get("Add")
+
+local ArrowRight, ArrowDown =
+	KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("ArrowRight")),
+	KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("ArrowDown"))
+
 local addIcon = KinemiumIconLoader.ToTexture(png)
 
 local windowRegistry = {}
 
-local window = import("@Kinemium.rayguiwindow")(rl, structs)
+local aereon = import("@Kinemium.Aereon")
+local window = aereon.window(game)
 
 local function create_window(title, frame)
 	repeat
@@ -300,7 +303,7 @@ local function DrawTree(instance, indent, winX, winY, winWidth)
 	end
 	local icon = loadedIcon[instance.ClassName]
 
-	local btnX = winX + winWidth - nodeWidth - padding - (indent * -12)
+	local btnX = winX + 25 + winWidth - nodeWidth - padding - (indent * -12)
 	local btnY = winY + 10 + yOffset
 	local rectData = {
 		x = btnX,
@@ -340,16 +343,16 @@ local function DrawTree(instance, indent, winX, winY, winWidth)
 
 	if DisplayAddIcon then
 		local iconSize = nodeHeight - 4 -- scale icon to fit the button height
-		local data = { x = toggleX - 27, y = winY + 10 + yOffset, width = iconSize, height = iconSize }
+		local data = { x = toggleX - 50, y = winY + 10 + yOffset, width = iconSize, height = iconSize }
 		rl.DrawTexturePro(
 			addIcon.texture,
-			structs.Rectangle:new({ x = 0, y = 0, width = icon.x, height = icon.y }), -- source rect
+			structs.Rectangle:new({ x = 0, y = 0, width = addIcon.x, height = addIcon.y }), -- source rect
 			structs.Rectangle:new(data), -- destination
 			vector.create(0, 0),
 			0,
 			KinemiumRaylib.const.WHITE
 		)
-		if isMouseInRect(data, mousePos) and rl.IsMouseButtonPressed(0) == 1 then
+		if isMouseInRect(data, mousePos) and rl.IsMouseButtonReleased(0) == 1 then
 			addMenuOpen[instance] = not addMenuOpen[instance]
 		end
 	end
@@ -379,23 +382,35 @@ local function DrawTree(instance, indent, winX, winY, winWidth)
 	end
 
 	if hasChildren then
-		local toggle = rl.GuiButton(
-			structs.Rectangle:new({
-				x = toggleX,
-				y = winY + 10 + yOffset,
-				width = 20,
-				height = nodeHeight,
-			}),
-			isExpanded and "::" or "<"
+		-- place the toggle button on the left side
+		local toggleSize = 20
+
+		local toggleTexture = expanded[instance] and ArrowDown or ArrowRight
+		local buttonData = { x = rectData.x - 25, y = rectData.y, width = toggleSize, height = toggleSize }
+		local toggleSourceRect =
+			structs.Rectangle:new({ x = 0, y = 0, width = toggleTexture.x, height = toggleTexture.y })
+		local toggleDestRect = structs.Rectangle:new(buttonData)
+
+		rl.DrawTexturePro(
+			toggleTexture.texture,
+			toggleSourceRect,
+			toggleDestRect,
+			vector.create(0, 0),
+			0,
+			KinemiumRaylib.const.WHITE
 		)
-		if toggle == 1 then
-			expanded[instance] = not isExpanded
+
+		if isMouseInRect(buttonData, rl.GetMousePosition()) and rl.IsMouseButtonReleased(0) == 1 then
+			expanded[instance] = not expanded[instance]
 		end
+
+		-- shift icon and text right to account for toggle button
+		btnX = btnX + toggleSize + 5
 	end
 
 	yOffset = yOffset + nodeHeight + 2
 
-	if isExpanded then
+	if expanded[instance] then
 		for _, child in ipairs(children) do
 			DrawTree(child, indent + 1, winX, winY, winWidth)
 		end
@@ -412,9 +427,7 @@ window.stepped = function(windowData)
 	end
 end
 
-renderer.Add2DStack(function(data)
+RunService.RenderStepped:Connect(function(a0: number)
 	Smooth.Step()
-	window.update()
-
-	window.draw()
+	--aereon.step()
 end)

@@ -176,7 +176,6 @@ lib.SetWindowState(const.ConfigFlags.FLAG_WINDOW_RESIZABLE)
 lib.SetWindowState(const.ConfigFlags.FLAG_MSAA_4X_HINT)
 
 lib.SetTargetFPS(0)
---lib.GuiLoadStyle("./src/themes/Kinemium2.rgs")
 
 local engineIcon = lib.LoadImage("./src/assets/icon/icon.png")
 lib.SetWindowIcon(engineIcon)

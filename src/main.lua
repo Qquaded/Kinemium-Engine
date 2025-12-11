@@ -86,6 +86,8 @@ sandboxer.rblxrequire(luacss, function(code, path)
 end)
 --]]
 
+print(threads)
+
 renderer.Kinemium_camera.Parent = sandboxer.enviroment.workspace
 
 Kinemium:playtest()

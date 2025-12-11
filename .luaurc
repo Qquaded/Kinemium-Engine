@@ -29,7 +29,7 @@
         "PlayerGui": "./src/enviroment/game/runtime/PlayerGui",
         "Enum": "./src/enviroment/libraries/Enum",
         "sandboxer": "./src/modules/sandboxer",
-        "Kinemium.rayguiwindow": "./src/modules/rayguiwindow",
+        "Kinemium.Aereon": "./src/modules/Aereon",
         "raygui": "./src/external/raygui/wrapper",
         "raylib": "./src/external/raylib",
         "r3d": "./src/external/r3d",
