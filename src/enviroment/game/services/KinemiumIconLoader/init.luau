@@ -4,6 +4,7 @@ local signal = require("@Kinemium.signal")
 local fs = zune.fs
 
 local KinemiumIconLoader = Instance.new("KinemiumIconLoader")
+KinemiumIconLoader.ExplorerHidden = true
 
 local general = "./src/assets/images/icons/vanilla3/general/32x/200"
 local objects = "./src/assets/images/icons/vanilla3/instance/16x/200"

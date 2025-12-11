@@ -27,7 +27,7 @@ local addIcon = KinemiumIconLoader.ToTexture(png)
 local windowRegistry = {}
 
 local aereon = import("@Kinemium.Aereon")
-local window = aereon.window(game)
+local window = aereon.window(game, nil, 1)
 
 local blacklisted = {
 	"Children",
@@ -83,10 +83,12 @@ window.stepped = function(windowData)
 		local padding = 0
 		local mousePos = rl.GetMousePosition()
 
-		windowData.x = frame.AbsolutePosition.X
-		windowData.y = frame.AbsolutePosition.Y
-		windowData.width = frame.AbsoluteSize.X
-		windowData.height = frame.AbsoluteSize.Y
+		if not windowData.IsDragging then
+			windowData.x = frame.AbsolutePosition.X
+			windowData.y = frame.AbsolutePosition.Y
+			windowData.width = frame.AbsoluteSize.X
+			windowData.height = frame.AbsoluteSize.Y
+		end
 
 		local logs = LogService.GetLogHistory()
 		for i, log in ipairs(logs) do

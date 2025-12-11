@@ -51,10 +51,13 @@ function Aereon.rect()
 	return rect(raylib.lib)
 end
 
-function Aereon.window(game, theme)
+function Aereon.window(game, theme, priority)
 	local lib = window(raylib.lib, raylib.structs, game, themes[theme] or themes.default)
-	table.insert(stepcallbacks, lib.update)
-	table.insert(stepcallbacks, lib.draw)
+	priority = priority or 0
+
+	table.insert(stepcallbacks, { callback = lib.update, priority = priority })
+	table.insert(stepcallbacks, { callback = lib.draw, priority = priority })
+
 	return lib
 end
 
@@ -65,8 +68,12 @@ function Aereon.include(game)
 end
 
 function Aereon.step()
-	for _, v in pairs(stepcallbacks) do
-		v(game)
+	table.sort(stepcallbacks, function(a, b)
+		return a.priority > b.priority
+	end)
+
+	for _, v in ipairs(stepcallbacks) do
+		v.callback(game)
 	end
 end
 

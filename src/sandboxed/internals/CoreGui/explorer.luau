@@ -289,6 +289,10 @@ local function DrawTree(instance, indent, winX, winY, winWidth)
 		return
 	end
 
+	if instance.ExplorerHidden == true then
+		return
+	end
+
 	local children = instance:GetChildren()
 	local hasChildren = #children > 0
 	local isExpanded = expanded[instance]

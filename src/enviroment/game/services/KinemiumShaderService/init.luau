@@ -2,6 +2,7 @@ local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
 
 local KinemiumShaderService = Instance.new("KinemiumShaderService")
+KinemiumShaderService.ExplorerHidden = true
 
 local ShaderAdded = signal.new()
 local ShaderRemoved = signal.new()

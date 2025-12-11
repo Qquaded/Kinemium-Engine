@@ -195,6 +195,8 @@ return function(raylib, structs, game, theme)
 					1,
 					textColor
 				)
+
+				window.titleRect = { height = 28, width = window.width, x = window.x, y = window.y }
 			end
 
 			if window.IsDragging == true then

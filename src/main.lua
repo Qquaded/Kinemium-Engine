@@ -19,6 +19,8 @@ Kinemium_env = Kinemium_env(renderer)
 
 sandboxer.enviroment = Kinemium_env
 
+local game = Kinemium_env.game
+
 local function execute(path, entry, env)
 	if threads[path] then
 		return
@@ -90,5 +92,10 @@ print(threads)
 
 renderer.Kinemium_camera.Parent = sandboxer.enviroment.workspace
 
-Kinemium:playtest()
+game.EngineSignal:Connect(function(route)
+	if route == "playtest" then
+		Kinemium:playtest()
+	end
+end)
+
 renderer.Run()

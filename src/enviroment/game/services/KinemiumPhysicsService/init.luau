@@ -3,6 +3,8 @@ local engine = require("@Kinemium.physics")
 local Vector3 = require("@Vector3")
 
 local KinemiumPhysicsService = Instance.new("KinemiumPhysicsService")
+KinemiumPhysicsService.ExplorerHidden = true
+
 local bodiesMap = {}
 
 KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal)

@@ -14,6 +14,7 @@ export type KinemiumMod = {
 }
 
 local KinemiumModService = Instance.new("KinemiumModService")
+KinemiumModService.ExplorerHidden = true
 
 local ModAdded = signal.new()
 local ModRemoved = signal.new()

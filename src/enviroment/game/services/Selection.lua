@@ -3,6 +3,7 @@ local Color3 = require("@Color3")
 local Vector3 = require("@Vector3")
 
 local Selection = Instance.new("Selection")
+Selection.ExplorerHidden = true
 
 Selection.InitRenderer = function(renderer, renderer_signal)
 	local selected = {}

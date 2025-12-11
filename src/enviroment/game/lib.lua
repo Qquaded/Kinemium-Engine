@@ -1,5 +1,6 @@
 local Instance = require("@Instance")
 local Enum = require("@EnumMap")
+local signal = require("@Kinemium.signal")
 
 local DataModel = {}
 DataModel.__index = DataModel
@@ -13,6 +14,7 @@ function DataModel.new(RENDERER, ...)
 	self.Name = "game"
 	self.Dimension = Enum.Dimension["3D"]
 	self.Context = Enum.GameContext.Editor
+	self.EngineSignal = signal.new()
 
 	self.Services = {}
 

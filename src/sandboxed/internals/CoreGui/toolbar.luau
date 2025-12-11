@@ -13,22 +13,51 @@ local LogService = game:GetService("LogService")
 local structs = KinemiumRaylib.structs
 local vend = KinemiumFontService.GetDefaultFont()
 
+export type ButtonTitle = string
+
+export type RibbonBarCategory = {
+	title: string,
+	buttons: {
+		[ButtonTitle]: {
+			type: "ImageButton" | "TextButton" | "TextLabel" | "Custom",
+			callback: () -> (),
+			render: () -> (),
+
+			imagePath: string?,
+			text: string?,
+		},
+	},
+}
+
 if game.Context ~= Enum.GameContext.Editor then
 	return
 end
 
-print("This is output.")
+KinemiumIconLoader.new("Play", "src/assets/images/icons/vanilla3/general/32x/200/Play.png")
 
-KinemiumIconLoader.new("Add", "./src/assets/images/icons/vanilla3/ui/16x/200/Add.png")
+local png = KinemiumIconLoader.Get("Play")
+local PlayIcon = KinemiumIconLoader.ToTexture(png)
 
-local png = KinemiumIconLoader.Get("Add")
-local addIcon = KinemiumIconLoader.ToTexture(png)
-
-local windowRegistry = {}
+local categoryRegistry = {
+	Category = {
+		buttons = {
+			["skibidi"] = {
+				callback = function()
+					print("hello world")
+				end,
+				hoverTransparency = 0.5,
+				hoverColor = Color3.new(0, 0, 0),
+				roundness = 0.2,
+				texture = PlayIcon,
+			},
+		},
+	},
+}
 
 local aereon = import("@Kinemium.Aereon")
-local window = aereon.window(game)
+local window = aereon.window(game, nil, 1)
 local aRect = aereon.rect()
+local buttons = {}
 
 local blacklisted = {
 	"Children",
@@ -64,7 +93,7 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "Toolbar"
 screenGui.Parent = LocalPlayer.PlayerGui
 
-local propback, frame = create_window_back(screenGui, "Toolbar", Vector2.new(0, 0), UDim2.new(0.78, 0, 0.1, 0))
+local propback, frame = create_window_back(screenGui, "Toolbar", Vector2.new(0, 0), UDim2.new(1, 0, 0, 122))
 
 local function Color3ToRaylib(c, transparency)
 	local r, g, b = c:ToRGB()
@@ -76,38 +105,63 @@ local function Color3ToRaylib(c, transparency)
 	})
 end
 
+local function renderSubButton(i, button, windowData)
+	local winX, winY = windowData.x, windowData.y + 30
+	local winWidth = windowData.width
+	local cellWidth = button.width or 50
+	local cellHeight = button.height or 50
+	local paddingLeft = 15
+	local padding = button.padding or 5
+	local rectX = winX + paddingLeft + i * (cellWidth + padding)
+	local rectY = winY
+	local rectData = aRect.new(rectX, rectY, cellWidth, cellHeight)
+	local mousePos = rl.GetMousePosition()
+
+	local transparency = 1
+	local color = Color3.new(0.5, 0.5, 0.5)
+
+	if aRect.MouseIsInRect(rectData) then
+		color = button.hoverColor
+		transparency = button.hoverTransparency
+	end
+
+	aRect.Button(rectData, function()
+		button.callback(rectData)
+	end)
+
+	local bgColor = Color3ToRaylib(color, transparency)
+	rl.DrawRectangleRounded(aRect:translate(rectData), button.roundness, 8, bgColor)
+
+	if button.texture then
+		rl.DrawTexturePro(
+			button.texture.texture, -- wow
+			structs.Rectangle:new({ x = 0, y = 0, width = button.texture.x, height = button.texture.y }), -- source rect
+			aRect:translate(rectData), -- destination
+			vector.create(0, 0),
+			button.rotation or 0,
+			KinemiumRaylib.const.WHITE
+		)
+	end
+
+	if button.render then
+		button.render(aRect)
+	end
+end
+
 window.stepped = function(windowData)
 	if windowData.title == "Toolbar" then
-		local winX, winY = windowData.x, windowData.y + 30
-		local winWidth = windowData.width
-		local cellWidth = 50
-		local cellHeight = 50
-		local paddingLeft = 15
-		local padding = 5
-
 		windowData.x = frame.AbsolutePosition.X
 		windowData.y = frame.AbsolutePosition.Y
 		windowData.width = frame.AbsoluteSize.X
 		windowData.height = frame.AbsoluteSize.Y
 
-		for i = 0, 9 do
-			local rectX = winX + paddingLeft + i * (cellWidth + padding)
-			local rectY = winY
-			local rectData = aRect.new(rectX, rectY, cellWidth, cellHeight)
-			local mousePos = rl.GetMousePosition()
-
-			local transparency = 1
-
-			if aRect.MouseIsInRect(rectData) then
-				transparency = 0.5
+		local i = 0
+		for _, category in pairs(categoryRegistry) do
+			local buttons = category.buttons
+			for _, button in pairs(buttons) do
+				renderSubButton(i, button, windowData)
+				i += 1
 			end
-
-			aRect.Button(rectData, function()
-				print("hi")
-			end)
-
-			local bgColor = Color3ToRaylib(Color3.new(0.5, 0.5, 0.5), transparency)
-			rl.DrawRectangleRec(aRect:translate(rectData), bgColor)
 		end
 	end
 end

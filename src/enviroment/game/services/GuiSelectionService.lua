@@ -4,6 +4,7 @@ local Vector3 = require("@Vector3")
 
 local GuiSelectionService = Instance.new("GuiSelectionService")
 local raylib = require("@raylib")
+GuiSelectionService.ExplorerHidden = true
 
 local function isMouseInRect(rect, mousePos)
 	return mousePos.x >= rect.x

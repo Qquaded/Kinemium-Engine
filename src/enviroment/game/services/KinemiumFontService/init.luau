@@ -4,6 +4,7 @@ local fs = zune.fs
 local task = zune.task
 
 local KinemiumFontService = Instance.new("KinemiumFontService")
+KinemiumFontService.ExplorerHidden = true
 
 local FontRemoved = signal.new()
 local FontAdded = signal.new()
