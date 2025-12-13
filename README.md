@@ -83,6 +83,9 @@ There are a set of predefined scripts in there as examples, but you can change a
 Yes! there is a modding service called KinemiumModService (said up there)<br>
 This lets you add mods to your game, and you can set the enviroment of your said mods!
 
+# I want to get more updates about this project, is there a reliable source?
+You can join our [discord server](https://discord.gg/7byuxfYtAP) to get more updates.
+
 # Can I code in another code editor instead of the native code editor?
 Yes, there will be a menu where you can choose your preferred code editor, this will be added soon.
 
