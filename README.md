@@ -69,7 +69,11 @@ https://zune.sh/guides/install
 
 - Run the engine<br>
 ```zune run game```<br>
-*This tutorial works with Windows only. Linux support is coming soon.*
+*This tutorial works with both Linux and Windows, MacOS support is coming soon.*
+
+# Preview
+<img width="1919" height="1018" alt="image" src="https://github.com/user-attachments/assets/65e18ea9-eb2b-4ab8-8836-cce0ae00236f" />
+*yes that is 500 fps*
 
 # How do I add scripts?
 Once you clone the github repo, you will find a folder called ```sandboxed``` inside the engine *(src)*<br>
@@ -78,6 +82,12 @@ There are a set of predefined scripts in there as examples, but you can change a
 # Can I make my games have modding support?
 Yes! there is a modding service called KinemiumModService (said up there)<br>
 This lets you add mods to your game, and you can set the enviroment of your said mods!
+
+# Can I code in another code editor instead of the native code editor?
+Yes, there will be a menu where you can choose your preferred code editor, this will be added soon.
+
+# Are you gonna disappear like Lunar Engine's developer?
+No?
 
 # How do I spell Kinemium?
 Ki-nem-yum!!
