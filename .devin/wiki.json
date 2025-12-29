@@ -1,0 +1,302 @@
+{
+  "repo_notes": [
+    {
+      "content": "Do not mention roblox at all, so roblox doesnt sue me, Also documentate Kilang Supersets"
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "Introduce the Kinemium Engine, its purpose as a sandbox game engine built on Luau/Zune, its Roblox-like API, and high-level architecture overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Getting Started",
+      "purpose": "Guide users through installing, configuring, and running their first Kinemium Engine project",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Installation and Setup",
+      "purpose": "Explain how to install the Kinemium Engine using the updater script, install the Zune runtime, and configure the development environment",
+      "parent": "Getting Started",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Command Line Options",
+      "purpose": "Document the various command-line flags (--client, --server, --headless, --kilang) and their effects on engine execution",
+      "parent": "Getting Started",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Your First Script",
+      "purpose": "Walk through creating a simple script in the sandboxed folder, understanding the game environment, and basic object manipulation",
+      "parent": "Getting Started",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Core Architecture",
+      "purpose": "Explain the fundamental architectural patterns of the engine: service system, instance model, and module organization",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "DataModel and Service System",
+      "purpose": "Document the DataModel as service locator, how services are initialized, and the relationship between game object and services",
+      "parent": "Core Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Instance System and Class Registry",
+      "purpose": "Explain the Instance base class, the Registry system for dynamic class loading, property system, and signals",
+      "parent": "Core Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Module System and Aliases",
+      "purpose": "Document the .luaurc module alias system, how to import modules, and the require/import/include patterns",
+      "parent": "Core Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Rendering System",
+      "purpose": "Overview of the rendering architecture, signal-based pipeline, and integration with Raylib",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Renderer Core and Main Loop",
+      "purpose": "Detail the renderer initialization, main step loop, signal system, and frame lifecycle events",
+      "parent": "Rendering System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "3D Rendering Pipeline",
+      "purpose": "Explain the 3D rendering stack, Workspace integration, mesh rendering, camera system, and mouse raycasting",
+      "parent": "Rendering System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "2D and GUI Rendering",
+      "purpose": "Document the 2D rendering stack, GUI registry system, and how GUI objects are rendered each frame",
+      "parent": "Rendering System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Post-Processing and Shaders",
+      "purpose": "Explain the blur system, shader loading, and custom rendering effects",
+      "parent": "Rendering System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Lighting System",
+      "purpose": "Document the Lighting service, Kilights integration, volumetric clouds, SSAO, and skybox rendering",
+      "parent": "Rendering System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Raylib FFI Bindings",
+      "purpose": "Reference for the Raylib FFI function bindings, data structures, and how to use them",
+      "parent": "Rendering System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Physics System",
+      "purpose": "Overview of the dual physics engine architecture (Jolt for 3D, Box2D for 2D) and KinemiumPhysicsService",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "KinemiumPhysicsService",
+      "purpose": "Document the unified physics service API, how it abstracts Jolt and Box2D, and integration with Parts",
+      "parent": "Physics System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Jolt Physics Integration",
+      "purpose": "Explain Jolt 3D physics engine integration, initialization workflow, and world management",
+      "parent": "Physics System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Box2D Physics Integration",
+      "purpose": "Document Box2D 2D physics engine, its use in ScreenGuis, and FFI bindings",
+      "parent": "Physics System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Physics Bodies and Shapes",
+      "purpose": "Detail body creation, shape types, mass properties, and collision filtering for both engines",
+      "parent": "Physics System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Constraints and Joints",
+      "purpose": "Document the various constraint types (distance, hinge, slider, etc.) and motor systems",
+      "parent": "Physics System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "User Interface",
+      "purpose": "Overview of the UI system, Aereon framework, and editor components",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Aereon UI Framework",
+      "purpose": "Document the Aereon windowing system, window creation, theming, and step loop integration",
+      "parent": "User Interface",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "GUI Components",
+      "purpose": "Reference for GuiObject, Frame, TextLabel, TextButton, ImageLabel and their properties",
+      "parent": "User Interface",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Layout and Positioning",
+      "purpose": "Explain UDim2, position calculation, anchor points, and the recursive rendering system",
+      "parent": "User Interface",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Input and Events",
+      "purpose": "Document the signal system for GUI events, mouse interactions, and input handling",
+      "parent": "User Interface",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Editor Tools",
+      "purpose": "Document the built-in editor UI: Explorer, Toolbar, Output console, Properties panel, and Viewport",
+      "parent": "User Interface",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "UI Modifiers and Effects",
+      "purpose": "Document UIStroke, UICorner, UIGradient, BlurEffect and other visual modifier components",
+      "parent": "User Interface",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Scripting and Environment",
+      "purpose": "Overview of the Kilang scripting system, sandboxing, and script execution lifecycle",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}
