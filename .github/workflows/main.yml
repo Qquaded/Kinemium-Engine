@@ -18,28 +18,25 @@ jobs:
       - name: Checkout repository  
         uses: actions/checkout@v4  
         
-      - name: Install Rokit (Linux/macOS)  
-        if: runner.os != 'Windows'  
+      - name: Install Zig 0.15.1  
+        uses: goto-bus-stop/setup-zig@v2  
+        with:  
+          version: 0.15.1  
+        
+      - name: Clone Zune repository  
+        run: git clone https://github.com/Scythe-Technology/zune.git  
+        
+      - name: Build Zune  
         run: |  
-          curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash  
-          echo "$HOME/.rokit/bin" >> $GITHUB_PATH  
+          cd zune  
+          zig build -Doptimize=ReleaseFast  
         
-      - name: Install Rokit (Windows)  
-        if: runner.os == 'Windows'  
+      - name: Add Zune to PATH  
         run: |  
-          Invoke-RestMethod https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.ps1 | Invoke-Expression  
-          echo "$env:USERPROFILE\.rokit\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append  
+          echo "$(pwd)/zune/zig-out/bin" >> $GITHUB_PATH  
         
-      - name: Initialize Rokit project  
-        run: rokit init  
-        
-      - name: Install Zune via Rokit  
-        run: rokit add Scythe-Technology/zune  
-        
-      - name: Verify installations  
-        run: |  
-          rokit --version  
-          zune --version  
+      - name: Verify Zune installation  
+        run: zune --version  
         
       - name: Run headless tests  
         run: zune run game --headless
