@@ -1,4 +1,5 @@
 local Signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local propTable = {
 	SoundId = "./src/assets/sounds/bqqchickenalert.mp3",
@@ -10,6 +11,8 @@ local propTable = {
 	PlayOnRemove = false,
 	IsLoaded = false,
 	Name = "Sound",
+
+	AudioBackend = Enum.AudioBackend.Raudio,
 }
 
 return {

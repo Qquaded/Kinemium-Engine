@@ -19,7 +19,9 @@ ScriptRunnerService.InitEnviroment = function(enviroment, datamodel)
 			local outsideSuccess, outsideResult
 			local object = task.spawn(function()
 				enviroment.script = ScriptInstance
+
 				local thread, success, result = sandboxer.run(ScriptInstance.Source, ScriptInstance.Name, enviroment)
+
 				enviroment.script = nil
 				outsideSuccess = success
 				outsideResult = result
@@ -29,7 +31,9 @@ ScriptRunnerService.InitEnviroment = function(enviroment, datamodel)
 			else
 				LogService.CreateLog("error", outsideResult)
 			end
-			return object
+			print(outsideSuccess)
+			print(outsideResult)
+			return outsideResult
 		end,
 
 		RunPythonScript = function(ScriptInstance)

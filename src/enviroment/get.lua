@@ -26,9 +26,9 @@ return function(renderer)
 		wait = zune.task.wait,
 	}
 	data.game = mainDatamodel
-	data.Workspace = mainDatamodel:GetService("Workspace")
+	data.workspace = mainDatamodel:GetService("Workspace")
 	data.shared = shared
-	data._VERSION = "Kilang 1.0.1"
+	data._VERSION = "Kilang 1.0.5"
 	data.wait = zune.task.wait
 	data.typeof = function(v)
 		if type(v) == "table" then
@@ -89,6 +89,7 @@ return function(renderer)
 				data.script = Instance
 
 				local returned = ScriptRunnerService.RunScript(Instance)
+				log(returned)
 				if returned then
 					return returned
 				end

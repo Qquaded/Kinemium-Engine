@@ -14,7 +14,7 @@ return {
 	class = "WeldConstraint",
 
 	callback = function(instance, renderer, datamodel)
-		local KinemiumPhysicsService = datamodel:GetService("KinemiumPhysicsService")
+		local KinemiumPhysicsService = datamodel:GetService("PhysicsService")
 
 		local lib = KinemiumPhysicsService.jolt.lib
 		local structs = KinemiumPhysicsService.jolt.structs

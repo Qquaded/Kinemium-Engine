@@ -9,6 +9,7 @@ KinemiumIconLoader.ExplorerHidden = true
 local general = "./src/assets/images/icons/vanilla3/general/32x/200"
 local objects = "./src/assets/images/icons/vanilla3/instance/16x/200"
 local kinemiumIcons = "./src/assets/images/icons/vanilla3/kinemium"
+local lucide = "./src/assets/lucide/icons/"
 
 KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 	local registry = {}
@@ -28,6 +29,10 @@ KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 
 		for _, file in pairs(fs.entries(kinemiumIcons)) do
 			registry[file.name] = kinemiumIcons .. "/" .. file.name
+		end
+
+		for _, file in pairs(fs.entries(lucide)) do
+			registry[file.name] = lucide .. "/" .. file.name
 		end
 	end
 

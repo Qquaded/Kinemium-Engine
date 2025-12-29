@@ -255,8 +255,12 @@ def process_structs(content, constants):
 def process_header(header_file):
     """Process a single header file and return list of function definitions and structs."""
     try:
-        with open(header_file, "r", encoding="utf-8") as f:
-            content = f.read()
+        try:
+            with open(header_file, "r", encoding="utf-8") as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            with open(header_file, "r", encoding="latin-1") as f:
+                content = f.read()
     except FileNotFoundError:
         print(f"Warning: Could not find '{header_file}', skipping...")
         return [], []

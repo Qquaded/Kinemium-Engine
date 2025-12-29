@@ -569,9 +569,30 @@ enumTable.PhysicsMaterialCombine = {
 	Max = 3,
 }
 
+enumTable.RenderFidelity = {
+	Automatic = 0,
+	Precise = 1,
+	Performance = 2,
+}
+
+enumTable.CollisionFidelity = {
+	Default = 0,
+	Hull = 1,
+	Box = 2,
+	PreciseConvexDecomposition = 3,
+}
+
 enumTable.AudioBackend = {
 	Raudio = 0,
 	FMOD = 1,
+}
+
+enumTable.CameraType = {
+	Custom = 0,
+	Scriptable = 1,
+	Orbital = 2,
+	FirstPerson = 3,
+	ThirdPerson = 4,
 }
 
 enumTable.SecurityCapabilities = {

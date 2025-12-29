@@ -1,3 +1,5 @@
+local Players = game:GetService("Players")
+
 local RunService = game:GetService("RunService")
 local baseplate = Instance.new("Part")
 baseplate.CFrame = CFrame.new(0, 0, 0)
@@ -7,17 +9,17 @@ baseplate.Name = "Baseplate"
 baseplate.Anchored = true
 baseplate.Parent = game.Workspace
 
---[[
-task.wait(5)
+local part = Instance.new("Part")
 
-for i = 0, 1000 do
-	local part = Instance.new("Part")
-	part.CFrame = CFrame.new(math.random(1, 10), 50, math.random(1, 10))
-	part.Size = Vector3.new(math.random(), math.random(), math.random())
-	part.Color = Color3.new(math.random(), math.random(), math.random())
-	part.Name = "v"
-	part.Anchored = false
-	part.Parent = game.Workspace
-	task.wait(0.01)
-end
---]]
+task.wait(2)
+part.Anchored = false
+part.Parent = workspace
+
+local attach = Instance.new("Attachment")
+attach.Position = part
+attach.Parent = part
+
+local VectorForce = Instance.new("VectorForce")
+VectorForce.Force = Vector3.new(0, 5, 0)
+VectorForce.Attachment0 = attach
+VectorForce.Parent = attach

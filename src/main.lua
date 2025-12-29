@@ -31,9 +31,6 @@ _G.FlagExists = function(flag)
 	return false
 end
 
---require("@manifold")
-require("@fmod")
-
 local sandboxer = require("./modules/sandboxer")
 local Instance = require("@Instance")
 local filesystem = require("./modules/filesystem")
@@ -114,7 +111,15 @@ function Kinemium:playtest()
 		end
 
 		local code = filesystem.read(path)
+		local superset = "kilang"
+
+		log(entry.name)
+		if string.find(entry.name, ".cpp") then
+			log(`Found cpp file {entry.name}!`)
+			superset = "cpp"
+		end
 		kilang:execute(code, {
+			superset = superset,
 			SecurityCapabilities = Enum.SecurityCapabilities.UserScript,
 			StackId = path,
 		})

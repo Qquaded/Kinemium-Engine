@@ -127,6 +127,13 @@ window.stepped = function(windowData)
 			if type(propValue) == "function" then
 				continue
 			end
+			if type(propValue) == "table" and not propValue.Name then
+				continue
+			end
+			if string.find(propName, "_") then
+				continue
+			end
+
 			i += 1
 			local cellY = winY + (i - 1) * (cellHeight + padding)
 			local rect = { x = winX + 5, y = cellY, width = winWidth - 25, height = cellHeight }
@@ -171,19 +178,24 @@ window.stepped = function(windowData)
 				valueColor = KinemiumRaylib.const.GREEN
 			elseif propValue == false then
 				valueColor = KinemiumRaylib.const.RED
+			elseif tonumber(propValue) then
+				valueColor = KinemiumRaylib.const.YELLOW
 			else
 				valueColor = KinemiumRaylib.const.WHITE
 			end
 
 			local textboxX = rect.x + rect.width - 130
 			local textboxWidth = 120
+
+			local valueName = type(propValue) == "table" and propValue.Name or tostring(propValue)
+
 			rl.DrawRectangleRounded(
 				structs.Rectangle:new({ x = textboxX, y = rect.y + 2, width = textboxWidth, height = cellHeight - 4 }),
 				0.5,
 				4,
 				Color3ToRaylib(Color3.new(0.08, 0.08, 0.08), 1)
 			)
-			rl.DrawTextEx(vend, tostring(propValue), vector.create(rect.x + 200, rect.y + 4), 22, 1, valueColor)
+			rl.DrawTextEx(vend, valueName, vector.create(rect.x + 300, rect.y + 4), 22, 1, valueColor)
 		end
 	end
 end

@@ -40,8 +40,14 @@ local propTable = {
 return {
 	class = "Part",
 
-	callback = function(instance, renderer)
+	callback = function(instance, renderer, game)
 		propTable.render = function(part, camera, lib) end
+
+		local PhysicsService = game:GetService("PhysicsService")
+
+		propTable.ApplyImpulse = function(self, v)
+			PhysicsService.ApplyImpulse(instance, v)
+		end
 
 		instance:SetProperties(propTable)
 

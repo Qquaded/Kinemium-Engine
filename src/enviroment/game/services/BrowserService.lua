@@ -28,6 +28,9 @@ local function getCode(link)
 end
 
 BrowserService.InitRenderer = function(renderer, renderer_signal)
+	if IsHeadless then
+		return
+	end
 	local lib: typeof(raylib.lib) = renderer.lib
 	local vm = LuaVM.new()
 
@@ -43,7 +46,7 @@ BrowserService.InitRenderer = function(renderer, renderer_signal)
 		openURL = lib.OpenURL,
 		webview = {
 			openWindowURL = function(str)
-				vm:execute(getCode("https://github.com/Qquaded/Kinemium-Engine"))
+				vm:execute(getCode(str))
 			end,
 		},
 	})

@@ -61,9 +61,11 @@ end
 
 local function run()
 	local time = 0
-	while true do -- dummy loop
+	local dt = 1 / 120
+	while true do
 		step(time)
-		time += 0.016
+		time += dt
+		task.wait(dt)
 	end
 end
 

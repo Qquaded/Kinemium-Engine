@@ -59,13 +59,15 @@ Kinemium_camera.FieldOfView = FOV
 local cameraPos = vector.create(0.0, 5.0, 10.0)
 
 -- RAYLIB INIT
-lib.SetTraceLogLevel(const.TraceLogLevel.LOG_ERROR)
+--lib.SetTraceLogLevel(const.TraceLogLevel.LOG_ERROR)
 lib.SetConfigFlags(const.ConfigFlags.FLAG_MSAA_4X_HINT)
+lib.SetConfigFlags(const.ConfigFlags.FLAG_VSYNC_HINT)
+lib.SetConfigFlags(const.ConfigFlags.FLAG_WINDOW_RESIZABLE)
 
 lib.InitWindow(screenWidth, screenHeight, "Kinemium Engine")
+--lib.SetWindowState(const.ConfigFlags.FLAG_BORDERLESS_WINDOWED_MODE)
+
 lib.SetTargetFPS(0)
-lib.SetWindowState(const.ConfigFlags.FLAG_WINDOW_MAXIMIZED)
-lib.SetWindowState(const.ConfigFlags.FLAG_BORDERLESS_WINDOWED_MODE)
 --raylib.r3d.lib.R3D_Init(raylib.lib.GetRenderWidth(), raylib.lib.GetRenderHeight(), 0)
 -- R3D CMAKE
 --cmake .. -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -DCMAKE_BUILD_TYPE=Release -DR3D_RAYLIB_VENDORED=ON -DR3D_ASSIMP_VENDORED=ON -DR3D_BUILD_EXAMPLES=ON -DR3D_BUILD_DOCS=OFF
@@ -78,7 +80,7 @@ local guiBlur = blurmod.Init(lib.GetRenderWidth(), lib.GetRenderHeight())
 -- TEXTURES
 local UI_TEXTURE = raylib.lib.LoadRenderTexture(lib.GetRenderWidth(), lib.GetRenderHeight())
 
--- LOAD MATERIALS
+-- LOAD CAMERA
 local camera = structs.Camera3D:new({
 	position = cameraPos,
 	target = vector.create(0.0, 0.0, 0.0),
@@ -86,6 +88,8 @@ local camera = structs.Camera3D:new({
 	fovy = 70.0,
 	projection = const.CameraProjection.CAMERA_PERSPECTIVE,
 })
+
+local activeCamera = camera
 
 local function readRayCollision(collisionBuffer)
 	-- RayCollision struct layout:
@@ -353,7 +357,7 @@ local function step(time)
 
 	if game and game.Dimension == Enum.Dimension["3D"] then
 		guiBlur:BeginCapture()
-		lib.BeginMode3D(camera)
+		lib.BeginMode3D(activeCamera)
 		lib.ClearBackground(const.BLUE)
 		lib.rlEnableBackfaceCulling()
 		mainSignal:Fire("Begin3D")
@@ -438,6 +442,9 @@ return {
 		game = object
 	end,
 	Step = step,
+	get2DCount = function()
+		return #guiRegistry
+	end,
 	AddToGuiRenderingPool = function(object, renderFn)
 		table.insert(guiRegistry, {
 			render = renderFn,
@@ -503,6 +510,10 @@ return {
 
 	gbGet = function(property)
 		return global_registry[property]
+	end,
+
+	ChangeActiveCamera = function(camera)
+		activeCamera = camera
 	end,
 
 	-- Lighting

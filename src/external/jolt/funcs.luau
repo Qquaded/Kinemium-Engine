@@ -7,6 +7,10 @@ local funcs = {
 	JPH_SetAssertFailureHandler = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	JPH_CollideShapeResult_FreeMembers = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	JPH_CollisionEstimationResult_FreeMembers = { returns = ffi.types.void, args = { ffi.types.pointer } },
+	JPH_SphereShape_Create = {
+		returns = ffi.types.pointer,
+		args = { ffi.types.float }, -- radius
+	},
 	JPH_BroadPhaseLayerInterfaceMask_ConfigureLayer = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.u32, ffi.types.u32 },
@@ -15,6 +19,20 @@ local funcs = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.u32, ffi.types.u32 },
 	},
+	JPH_ConvexHullShapeSettings_Create = {
+		returns = ffi.types.pointer,
+		args = {
+			ffi.types.pointer, -- points (Vec3*)
+			ffi.types.u32, -- point count
+			ffi.types.float, -- convex radius
+		},
+	},
+
+	JPH_ConvexHullShapeSettings_CreateShape = {
+		returns = ffi.types.pointer,
+		args = { ffi.types.pointer },
+	},
+
 	JPH_Quat_GetAxisAngle = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },

@@ -1,44 +1,26 @@
-local lua = require("@luajit")
-local vm = lua.LuaVM.new()
-local platform = zune.platform.os
+local dll = "./src/external/steam/bin/"
+local ffi = zune.ffi
+local platform = zune.platform
 
-local scriptDir = debug.getinfo(1, "S").source:match("@?(.*[/\\])")
-local steamDir = scriptDir .. "steam"
+local fileFormat = ".dll"
 
-local LIB_NAME = ""
-if platform == "windows" then
-	LIB_NAME = "luasteam"
-elseif platform == "linux" then
-	LIB_NAME = "luasteamlinux"
+local bindings = require("./bindings")
+
+local libname
+if platform.os == "windows" then
+	libname = "steam_api.dll"
+	fileFormat = ".dll"
+elseif platform.os == "linux" then
+	libname = "steam_api.so"
+	fileFormat = ".so"
+elseif platform.os == "macos" then
+	libname = "steam_api.dylib"
+	fileFormat = ".dylib"
 end
 
-local success, lib, result = vm:execute(string.format(
-	[[
-    local steamDir = "%s"
-    local libName = "%s"
+local steam: typeof(bindings.funcs) = ffi.dlopen(dll .. libname, bindings.funcs)
 
-    package.cpath = package.cpath .. ";" .. steamDir .. "/?.dll;" .. steamDir .. "/" .. libName .. ".dll"
-    package.path = package.path .. ";" .. steamDir .. "/?.lua"
-
-    local main = require(libName)
-    _G.steam = main
-
-    -- initialize Steam
-    if main.init then
-        main.init()
-    end
-
-    return main
-]],
-	steamDir,
-	LIB_NAME
-))
-
-if not success then
-	error("Failed to load Steam binding in VM: " .. tostring(result))
-end
-
-local wrapper = {}
-wrapper.steam = lib
-
-return wrapper
+return {
+	lib = steam,
+	structs = bindings.structs,
+}

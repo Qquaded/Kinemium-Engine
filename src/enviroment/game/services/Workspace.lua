@@ -1,6 +1,7 @@
 local Instance = require("@Instance")
 local Vector3 = require("@Vector3")
 local Workspace = Instance.new("Workspace")
+local Color3 = require("@Color3")
 
 local pool = {}
 
@@ -10,6 +11,16 @@ local structs = raylib.structs
 
 local utils = require("@bufferutils")
 local default = lib.LoadMaterialDefault()
+
+local function Color3ToRaylib(c, transparency)
+	local r, g, b = c:ToRGB()
+	return structs.Color:new({
+		r = r,
+		g = g,
+		b = b,
+		a = math.floor(255 * (1 - transparency)),
+	})
+end
 
 local allowed_to_render = {
 	["Part"] = "Part",
@@ -34,6 +45,10 @@ Workspace:SetProperties({
 			end
 		end
 		return false
+	end,
+
+	GetPoolCount = function()
+		return #pool
 	end,
 })
 
@@ -121,15 +136,10 @@ Workspace.InitRenderer = function(renderer, signal, game)
 	--]]
 
 	local function drawPart(part)
-		local mesh
-		if part.ClassName == "MeshPart" then
-			mesh = meshlib.GetModelRegistry()[part.MeshId]
-		else
-			-- second value: Mesh
-			mesh = preloadedMeshes[part.Shape.Value][2]
-		end
+		local mesh = preloadedMeshes[part.Shape.Value][2]
+		local model = part._model
 
-		if not mesh then
+		if not mesh and not model then
 			return
 		end
 
@@ -140,7 +150,19 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 		--log(`{part.Name} : {part.CFrame}`)
 
-		raylib.lib.DrawMesh(mesh, data.material, matrix)
+		local cfvec = vector.create(part.CFrame.Position.X, part.CFrame.Position.Y, part.CFrame.Position.Z)
+		local sizevec = vector.create(part.Size.X, part.Size.Y, part.Size.Z)
+
+		if model then
+			raylib.lib.DrawModel(model, cfvec, part.MeshScale or 1, raylib.const.WHITE)
+		else
+			raylib.lib.DrawMesh(mesh, data.material, matrix)
+		end
+
+		if part._showhitbox == true then
+			raylib.lib.DrawCubeV(cfvec, sizevec, Color3ToRaylib(Color3.new(1, 0, 0), 0.5))
+		end
+
 		signal:Fire("Rendered", part)
 	end
 
@@ -178,7 +200,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				Kilights:End()
 			end
 
-			local KinemiumPhysicsService = game:GetService("KinemiumPhysicsService")
+			local KinemiumPhysicsService = game:GetService("PhysicsService")
 			KinemiumPhysicsService.setGravity(Workspace.Gravity, Workspace.GlobalWind)
 		end)
 	end

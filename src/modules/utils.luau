@@ -98,6 +98,12 @@ function bufferUtils.extract.box2d_body_position(object, mainstruct)
 	return pos
 end
 
+function bufferUtils.extract.mesh_from_model(object)
+	local meshes_ptr = zune.ffi.ptrFromAddress(zune.mem.slice(object, structs.Model:offset("meshes"), 8))
+	local mesh_0_buf = meshes_ptr:read(0, buffer.create(structs.Mesh:size()), 0, structs.Mesh:size())
+	return mesh_0_buf
+end
+
 function bufferUtils.extract.set(object, value, struct)
 	object:write(0, value, 0, struct:size())
 end

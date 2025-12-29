@@ -2,5 +2,8 @@
   "devDependencies": {
     "typescript": "^5.9.3",
     "typescript-to-lua": "^1.33.0"
+  },
+  "dependencies": {
+    "lucide-static": "^0.562.0"
   }
 }
