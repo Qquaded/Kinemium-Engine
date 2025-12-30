@@ -2,6 +2,8 @@
 
 [<img width="50" height="50" alt="image" src="https://github.com/user-attachments/assets/83c3a863-d290-487f-b073-fed9caa6832f" />
 ](https://discord.gg/7byuxfYtAP)
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Qquaded/Kinemium-Engine)
 ## Introduction
 Kinemium is a sandbox engine written in Luau (Zune Runtime). It includes a custom scripting language called Kilang, with Luau-style syntax and additional features.
 
