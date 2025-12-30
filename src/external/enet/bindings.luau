@@ -38,7 +38,7 @@ local ENetBuffer = ffi.struct({
 export type ENetBuffer = typeof(ENetBuffer:new({}))
 
 local ENetAddress = ffi.struct({
-	{ host = ffi.types.pointer },
+	{ host = ffi.types.u32 },
 	{ port = ffi.types.u16 },
 	{ sin6_scope_id = ffi.types.u16 },
 })
@@ -309,6 +309,15 @@ local funcs = {
 	enet_peer_send = { returns = ffi.types.i32, args = { ffi.types.pointer, ffi.types.u8, ffi.types.pointer } },
 	enet_peer_ping = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	enet_peer_ping_interval = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.u32 } },
+	enet_host_connect = {
+		returns = ffi.types.pointer, -- returns ENetPeer*
+		args = {
+			ffi.types.pointer, -- ENetHost*
+			ffi.types.pointer, -- ENetAddress*
+			ffi.types.u8,      -- channelCount
+			ffi.types.u32,     -- userData
+		},
+	},
 	enet_peer_timeout = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.u32, ffi.types.u32, ffi.types.u32 },

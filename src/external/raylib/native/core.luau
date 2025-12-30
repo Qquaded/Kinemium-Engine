@@ -22,6 +22,7 @@ type bool = number
 type float = number
 type long = buffer
 type double = number
+type FFIPointer = any
 type cstring = string | buffer | FFIPointer
 
 local Vector2 = structs.Vector2
@@ -355,7 +356,6 @@ return {
 		EnableEventWaiting = fn(void, {}),
 		-- void DisableEventWaiting(void);
 		DisableEventWaiting = fn(void, {}),
-
 		-- void ShowCursor(void);
 		ShowCursor = fn(void, {}),
 		-- void HideCursor(void);
@@ -368,7 +368,6 @@ return {
 		IsCursorHidden = fn(bool, {}),
 		-- bool IsCursorOnScreen(void);
 		IsCursorOnScreen = fn(bool, {}),
-
 		-- void ClearBackground(Color color);
 		ClearBackground = fn(void, { Color }),
 		-- void BeginDrawing(void);
@@ -403,12 +402,10 @@ return {
 		BeginVrStereoMode = fn(void, { VrStereoConfig }),
 		-- void EndVrStereoMode(void);
 		EndVrStereoMode = fn(void, {}),
-
 		-- VrStereoConfig LoadVrStereoConfig(VrDeviceInfo device);
 		LoadVrStereoConfig = fn(VrStereoConfig, { VrDeviceInfo }),
 		-- void UnloadVrStereoConfig(VrStereoConfig config);
 		UnloadVrStereoConfig = fn(void, { VrStereoConfig }),
-
 		-- Shader LoadShader(const char *vsFileName, const char *fsFileName);
 		LoadShader = fn(Shader, { cstring, cstring }),
 		-- Shader LoadShaderFromMemory(const char *vsCode, const char *fsCode);
@@ -429,7 +426,6 @@ return {
 		SetShaderValueTexture = fn(void, { Shader, int, Texture }),
 		-- void UnloadShader(Shader shader);
 		UnloadShader = fn(void, { Shader }),
-
 		-- Ray GetScreenToWorldRay(Vector2 position, Camera camera);
 		GetScreenToWorldRay = fn(Ray, { Vector2, Camera3D }),
 		-- Ray GetScreenToWorldRayEx(Vector2 position, Camera camera, int width, int height);
@@ -446,7 +442,6 @@ return {
 		GetCameraMatrix = fn(Matrix, { Camera3D }),
 		-- Matrix GetCameraMatrix2D(Camera2D camera);
 		GetCameraMatrix2D = fn(Matrix, { Camera2D }),
-
 		-- void SetTargetFPS(int fps);
 		SetTargetFPS = fn(void, { int }),
 		-- float GetFrameTime(void);
@@ -455,14 +450,12 @@ return {
 		GetTime = fn(ffi.types.double, {}),
 		-- int GetFPS(void);
 		GetFPS = fn(int, {}),
-
 		-- void SwapScreenBuffer(void);
 		SwapScreenBuffer = fn(void, {}),
 		-- void PollInputEvents(void);
 		PollInputEvents = fn(void, {}),
 		-- void WaitTime(double seconds);
 		WaitTime = fn(void, { ffi.types.double }),
-
 		-- void SetRandomSeed(unsigned int seed);
 		SetRandomSeed = fn(void, { uint }),
 		-- int GetRandomValue(int min, int max);
@@ -471,14 +464,12 @@ return {
 		LoadRandomSequence = fn(ffi.types.pointer, { uint, int, int }),
 		-- void UnloadRandomSequence(int *sequence);
 		UnloadRandomSequence = fn(void, { ffi.types.pointer }),
-
 		-- void TakeScreenshot(const char *fileName);
 		TakeScreenshot = fn(void, { cstring }),
 		-- void SetConfigFlags(unsigned int flags);
 		SetConfigFlags = fn(void, { uint }),
 		-- void OpenURL(const char *url);
 		OpenURL = fn(void, { cstring }),
-
 		-- void TraceLog(int logLevel, const char *text, ...);
 		TraceLog = fn(void, { int, cstring }),
 		-- void SetTraceLogLevel(int logLevel);
@@ -489,7 +480,6 @@ return {
 		MemRealloc = fn(ffi.types.pointer, { ffi.types.pointer, uint }),
 		-- void MemFree(void *ptr);
 		MemFree = fn(void, { ffi.types.pointer }),
-
 		-- void SetTraceLogCallback(TraceLogCallback callback);
 		SetTraceLogCallback = fn(void, { ffi.types.pointer }),
 		-- void SetLoadFileDataCallback(LoadFileDataCallback callback);
@@ -500,7 +490,6 @@ return {
 		SetLoadFileTextCallback = fn(void, { ffi.types.pointer }),
 		-- void SetSaveFileTextCallback(SaveFileTextCallback callback);
 		SetSaveFileTextCallback = fn(void, { ffi.types.pointer }),
-
 		-- unsigned char *LoadFileData(const char *fileName, int *dataSize);
 		LoadFileData = fn(ffi.types.pointer, { cstring, ffi.types.pointer }),
 		-- void UnloadFileData(unsigned char *data);
@@ -515,7 +504,6 @@ return {
 		UnloadFileText = fn(void, { cstring }),
 		-- bool SaveFileText(const char *fileName, char *text);
 		SaveFileText = fn(bool, { cstring, cstring }),
-
 		-- bool FileExists(const char *fileName);
 		FileExists = fn(bool, { cstring }),
 		-- bool DirectoryExists(const char *dirPath);
@@ -532,57 +520,20 @@ return {
 		GetFileNameWithoutExt = fn(cstring, { cstring }),
 		-- const char *GetDirectoryPath(const char *filePath);
 		GetDirectoryPath = fn(cstring, { cstring }),
-		-- const char *GetPrevDirectoryPath(const char *dirPath);
-		GetPrevDirectoryPath = fn(cstring, { cstring }),
 		-- const char *GetWorkingDirectory(void);
 		GetWorkingDirectory = fn(cstring, {}),
 		-- const char *GetApplicationDirectory(void);
 		GetApplicationDirectory = fn(cstring, {}),
-		-- int MakeDirectory(const char *dirPath);
-		MakeDirectory = fn(int, { cstring }),
 		-- bool ChangeDirectory(const char *dir);
 		ChangeDirectory = fn(bool, { cstring }),
 		-- bool IsPathFile(const char *path);
 		IsPathFile = fn(bool, { cstring }),
-		-- bool IsFileNameValid(const char *fileName);
-		IsFileNameValid = fn(bool, { cstring }),
 		-- FilePathList LoadDirectoryFiles(const char *dirPath);
 		LoadDirectoryFiles = fn(FilePathList, { cstring }),
-		-- FilePathList LoadDirectoryFilesEx(const char *basePath, const char *filter, bool scanSubdirs);
-		LoadDirectoryFilesEx = fn(FilePathList, { cstring, cstring, bool }),
 		-- void UnloadDirectoryFiles(FilePathList files);
 		UnloadDirectoryFiles = fn(void, { FilePathList }),
-		-- bool IsFileDropped(void);
-		IsFileDropped = fn(bool, {}),
-		-- FilePathList LoadDroppedFiles(void);
-		LoadDroppedFiles = fn(FilePathList, {}),
-		-- void UnloadDroppedFiles(FilePathList files);
-		UnloadDroppedFiles = fn(void, { FilePathList }),
 		-- long GetFileModTime(const char *fileName);
 		GetFileModTime = fn(long, { cstring }),
-
-		-- Matrix functions
-		MatrixIdentity = fn(Matrix, {}),
-		MatrixInvert = fn(Matrix, { Matrix }),
-		MatrixLookAt = fn(Matrix, { Vector3, Vector3, Vector3 }),
-		MatrixMultiply = fn(Matrix, { Matrix, Matrix }),
-		MatrixPerspective = fn(Matrix, { float, float, float, float }),
-		MatrixOrtho = fn(Matrix, { float, float, float, float, float, float }),
-		MatrixFrustum = fn(Matrix, { float, float, float, float, float, float }),
-		MatrixToFloatV = fn(ffi.types.pointer, { Matrix }), -- returns float* to use in shaders
-
-		rlActiveTextureSlot = fn(void, { int }),
-		rlEnableTexture = fn(void, { uint }),
-		rlDisableTexture = fn(void, {}),
-		rlSetUniform = fn(void, { int, ffi.types.pointer, int, int }),
-		rlPushMatrix = fn(void, {}),
-		rlLoadIdentity = fn(void, {}),
-		rlMatrixMode = fn(void, { uint }),
-		rlPopMatrix = fn(void, {}),
-		rlScalef = fn(void, { double, double, double }),
-		rlMultMatrixf = fn(void, { ffi.types.pointer }),
-		rlOrtho = fn(void, { double, double, double, double, double, double }),
-
 		-- unsigned char *CompressData(const unsigned char *data, int dataSize, int *compDataSize);
 		CompressData = fn(ffi.types.pointer, { ffi.types.pointer, int, ffi.types.pointer }),
 		-- unsigned char *DecompressData(const unsigned char *compData, int compDataSize, int *dataSize);
@@ -591,34 +542,8 @@ return {
 		EncodeDataBase64 = fn(cstring, { ffi.types.pointer, int, ffi.types.pointer }),
 		-- unsigned char *DecodeDataBase64(const unsigned char *data, int *outputSize);
 		DecodeDataBase64 = fn(ffi.types.pointer, { ffi.types.pointer, ffi.types.pointer }),
-		-- unsigned int ComputeCRC32(unsigned char *data, int dataSize);
-		ComputeCRC32 = fn(uint, { ffi.types.pointer, int }),
-		-- unsigned int *ComputeMD5(unsigned char *data, int dataSize);
-		ComputeMD5 = fn(ffi.types.pointer, { ffi.types.pointer, int }),
-		-- unsigned int *ComputeSHA1(unsigned char *data, int dataSize);
-		ComputeSHA1 = fn(ffi.types.pointer, { ffi.types.pointer, int }),
-
-		-- AutomationEventList LoadAutomationEventList(const char *fileName);
-		LoadAutomationEventList = fn(AutomationEventList, { cstring }),
-		-- void UnloadAutomationEventList(AutomationEventList list);
-		UnloadAutomationEventList = fn(void, { AutomationEventList }),
-		-- bool ExportAutomationEventList(AutomationEventList list, const char *fileName);
-		ExportAutomationEventList = fn(bool, { AutomationEventList, cstring }),
-		-- void SetAutomationEventList(AutomationEventList *list);
-		SetAutomationEventList = fn(void, { ffi.types.pointer }),
-		-- void SetAutomationEventBaseFrame(int frame);
-		SetAutomationEventBaseFrame = fn(void, { int }),
-		-- void StartAutomationEventRecording(void);
-		StartAutomationEventRecording = fn(void, {}),
-		-- void StopAutomationEventRecording(void);
-		StopAutomationEventRecording = fn(void, {}),
-		-- void PlayAutomationEvent(AutomationEvent event);
-		PlayAutomationEvent = fn(void, { AutomationEvent }),
-
 		-- bool IsKeyPressed(int key);
 		IsKeyPressed = fn(bool, { int }),
-		-- bool IsKeyPressedRepeat(int key);
-		IsKeyPressedRepeat = fn(bool, { int }),
 		-- bool IsKeyDown(int key);
 		IsKeyDown = fn(bool, { int }),
 		-- bool IsKeyReleased(int key);
@@ -631,7 +556,6 @@ return {
 		GetCharPressed = fn(int, {}),
 		-- void SetExitKey(int key);
 		SetExitKey = fn(void, { int }),
-
 		-- bool IsGamepadAvailable(int gamepad);
 		IsGamepadAvailable = fn(bool, { int }),
 		-- const char *GetGamepadName(int gamepad);
@@ -654,7 +578,6 @@ return {
 		SetGamepadMappings = fn(int, { cstring }),
 		-- void SetGamepadVibration(int gamepad, float leftMotor, float rightMotor, float duration);
 		SetGamepadVibration = fn(void, { int, float, float, float }),
-
 		-- bool IsMouseButtonPressed(int button);
 		IsMouseButtonPressed = fn(bool, { int }),
 		-- bool IsMouseButtonDown(int button);
@@ -683,25 +606,14 @@ return {
 		GetMouseWheelMoveV = fn(Vector2, {}),
 		-- void SetMouseCursor(int cursor);
 		SetMouseCursor = fn(void, { int }),
-
-		GetRayCollisionMesh = fn(structs.RayCollision, { Ray, structs.Mesh, Matrix }),
-
 		-- int GetTouchX(void);
 		GetTouchX = fn(int, {}),
 		-- int GetTouchY(void);
 		GetTouchY = fn(int, {}),
 		-- Vector2 GetTouchPosition(int index);
 		GetTouchPosition = fn(Vector2, { int }),
-		-- int GetTouchPointId(int index);
-		GetTouchPointId = fn(int, { int }),
 		-- int GetTouchPointCount(void);
 		GetTouchPointCount = fn(int, {}),
-
-		MatrixTranslate = fn(Matrix, { float, float, float }),
-		MatrixRotate = fn(Matrix, { Vector3, float }),
-		MatrixScale = fn(Matrix, { float, float, float }),
-		MatrixMultiply = fn(Matrix, { Matrix, Matrix }),
-
 		-- void SetGesturesEnabled(unsigned int flags);
 		SetGesturesEnabled = fn(void, { uint }),
 		-- bool IsGestureDetected(unsigned int gesture);
@@ -718,10 +630,9 @@ return {
 		GetGesturePinchVector = fn(Vector2, {}),
 		-- float GetGesturePinchAngle(void);
 		GetGesturePinchAngle = fn(float, {}),
-
 		-- void UpdateCamera(Camera *camera, int mode);
-		UpdateCamera = fn(void, { raylib.ptrs.Camera, int }),
+		UpdateCamera = fn(void, { ffi.types.pointer, int }),
 		-- void UpdateCameraPro(Camera *camera, Vector3 movement, Vector3 rotation, float zoom);
-		UpdateCameraPro = fn(void, { raylib.ptrs.Camera, Vector3, Vector3, float }),
+		UpdateCameraPro = fn(void, { ffi.types.pointer, Vector3, Vector3, float }),
 	},
 }

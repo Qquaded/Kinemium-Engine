@@ -59,7 +59,7 @@ Kinemium_camera.FieldOfView = FOV
 local cameraPos = vector.create(0.0, 5.0, 10.0)
 
 -- RAYLIB INIT
---lib.SetTraceLogLevel(const.TraceLogLevel.LOG_ERROR)
+lib.SetTraceLogLevel(const.TraceLogLevel.LOG_ERROR)
 lib.SetConfigFlags(const.ConfigFlags.FLAG_MSAA_4X_HINT)
 lib.SetConfigFlags(const.ConfigFlags.FLAG_VSYNC_HINT)
 lib.SetConfigFlags(const.ConfigFlags.FLAG_WINDOW_RESIZABLE)
@@ -321,7 +321,9 @@ local function step(time)
 		UI_TEXTURE = raylib.lib.LoadRenderTexture(lib.GetRenderWidth(), lib.GetRenderHeight())
 	end
 
-	local cameraPosition = freecam.Update(camera, delta, Kinemium_camera)
+	if game and not game.Stop3DInput then
+		freecam.Update(camera, delta, Kinemium_camera)
+	end
 
 	for name, keycode in pairs(const.KeyboardKey) do
 		if lib.IsKeyPressed(keycode) == 1 then

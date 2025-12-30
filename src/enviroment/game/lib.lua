@@ -17,6 +17,7 @@ function DataModel.new(RENDERER, ...)
 	self.Dimension = Enum.Dimension["3D"]
 	self.Context = Enum.GameContext.Editor
 	self.EngineSignal = signal.new()
+	self.Stop3DInput = false
 
 	self.Services = {}
 
@@ -38,7 +39,7 @@ function DataModel.new(RENDERER, ...)
 			end)
 
 			if success2 then
-				print("Added service: " .. name)
+				log("[ServiceRegistry] Added service: " .. name)
 			else
 				warn(
 					"Error initializing service '"

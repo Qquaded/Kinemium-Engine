@@ -6,6 +6,7 @@ function buffer.create()
 	return setmetatable({
 		lines = { "" },
 		cursor = { line = 1, col = 1 },
+		selection = { active = false, startLine = 1, startCol = 1, endLine = 1, endCol = 1 },
 	}, buffer)
 end
 
@@ -143,16 +144,73 @@ end
 
 function buffer:setCursor(line, col)
 	line = math.clamp(line, 1, #self.lines)
-	col = math.clamp(col, 1, #self.lines[line] + 1)
+	col = math.clamp(col, 1, #(self.lines[line] or "") + 1)
 
 	self.cursor.line = line
 	self.cursor.col = col
+end
+
+function buffer:getSelectionRange()
+	if not self.selection.active then
+		return nil
+	end
+
+	local sL, sC, eL, eC =
+		self.selection.startLine, self.selection.startCol, self.selection.endLine, self.selection.endCol
+
+	if sL > eL or (sL == eL and sC > eC) then
+		sL, sC, eL, eC = eL, eC, sL, sC
+	end
+
+	return sL, sC, eL, eC
+end
+
+function buffer:deleteSelection()
+	local sL, sC, eL, eC = self:getSelectionRange()
+	if not sL then
+		return
+	end
+
+	if sL == eL then
+		local line = self.lines[sL]
+		self.lines[sL] = line:sub(1, sC - 1) .. line:sub(eC)
+	else
+		local firstLine = self.lines[sL]:sub(1, sC - 1)
+		local lastLine = self.lines[eL]:sub(eC)
+		self.lines[sL] = firstLine .. lastLine
+		for i = eL, sL + 1, -1 do
+			table.remove(self.lines, i)
+		end
+	end
+
+	self:setCursor(sL, sC)
+	self.selection.active = false
+end
+
+function buffer:getSelectedText()
+	local sL, sC, eL, eC = self:getSelectionRange()
+	if not sL then
+		return ""
+	end
+
+	if sL == eL then
+		return self.lines[sL]:sub(sC, eC - 1)
+	end
+
+	local result = { self.lines[sL]:sub(sC) }
+	for i = sL + 1, eL - 1 do
+		table.insert(result, self.lines[i])
+	end
+	table.insert(result, self.lines[eL]:sub(1, eC - 1))
+
+	return table.concat(result, "\n")
 end
 
 function buffer:clear()
 	self.lines = { "" }
 	self.cursor.line = 1
 	self.cursor.col = 1
+	self.selection.active = false
 end
 
 return buffer

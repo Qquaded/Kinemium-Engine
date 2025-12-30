@@ -52,10 +52,10 @@ RunService.InitRenderer = function(renderer, renderer_signal)
 		PreGuiRender = PreGuiRender,
 
 		IsClient = function()
-			return status.IsClient
+			return IsClient
 		end,
 		IsServer = function()
-			return status.IsServer
+			return IsServer
 		end,
 		IsStudio = function()
 			return status.IsStudio

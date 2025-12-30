@@ -4,3 +4,8 @@ local UIPhysicsService = game:GetService("UIPhysicsService")
 local gui = Instance.new("ScreenGui")
 gui.Name = "ScreenGuiPhysics"
 gui.Parent = Players.LocalPlayer.PlayerGui
+
+--local frame = Instance.new("Frame")
+--frame.Parent = gui
+
+--UIPhysicsService.init(gui)

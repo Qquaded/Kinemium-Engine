@@ -71,8 +71,7 @@ return {
 				if attach and attach:IsA("Attachment") then
 					local parent = attach.Parent
 					if parent:IsA("Part") or parent:IsA("MeshPart") then
-						local forcePoint = parent.CFrame.Position + Vector3.new(0, parent.Size.Y / 2, 0)
-						PhysicsService.ApplyForce(parent, instance.Force, forcePoint)
+						PhysicsService.ApplyForce(parent, instance.Force, attach.CFrame.Position)
 					end
 				end
 			end

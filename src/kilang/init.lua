@@ -15,9 +15,6 @@ end
 
 function kilang:execute(code, opts)
 	code = preprocessor.runLang(code, opts.superset or "kilang")
-	if opts.superset and opts.superset ~= "kilang" then
-		print(code)
-	end
 
 	local SecurityCapabilities = opts.SecurityCapabilities
 	local id = opts.StackId

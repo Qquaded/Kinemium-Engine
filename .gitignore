@@ -2,8 +2,10 @@
 desktop.ini
 bindmaker.py
 joltc.h
-repos
-funcTransformer
+repos/
+funcTransformer/
 .github
 updater.luau
 build.luau
+output.txt
+output.log

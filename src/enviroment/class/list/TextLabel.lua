@@ -134,7 +134,6 @@ return {
 	class = "TextLabel",
 	render = propTable.render,
 	callback = function(instance)
-		print("New textlabel?")
 		instance:SetProperties(propTable)
 		return instance
 	end,

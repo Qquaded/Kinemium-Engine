@@ -123,7 +123,8 @@ local function createBody(object, worldId)
     --]]
 
 	print(5)
-	local bodyDef = box2d.structs.b2BodyDef:new({
+	local bodyDef = box2d.lib.b2DefaultBodyDef()
+	--[[local bodyDef = box2d.structs.b2BodyDef:new({
 		type = motionType,
 		position = toptr(body_pos),
 		rotation = toptr(body_rot),
@@ -140,6 +141,7 @@ local function createBody(object, worldId)
 		allowFastRotation = utils:u8(0),
 		internalValue = utils:i32(0x5A55A5A5), -- Box2D's secret cookie
 	})
+		--]]
 
 	print("created!!!!!!")
 
@@ -200,7 +202,8 @@ UIPhysicsService.InitRenderer = function(renderer, renderer_signal)
                     { internalValue = ffi.types.i32 },
                 })
                 export type b2WorldDef = typeof(b2WorldDef:new({}))
-            --]]
+				            --]]
+
 			local wdef = box2d.structs.b2WorldDef:new({
 				gravity = ptr,
 				restitutionThreshold = 1.0,
@@ -225,8 +228,6 @@ UIPhysicsService.InitRenderer = function(renderer, renderer_signal)
 				userData = zune.ffi.null,
 				internalValue = 0x5A55A5A5,
 			})
-
-			print(wdef)
 
 			print(4)
 			-- Create world with custom definition

@@ -3,40 +3,21 @@ local Color3 = require("@Color3")
 local Vector3 = require("@Vector3")
 local raylib = require("@raylib")
 local const = raylib.const
-local lib = raylib.lib
 local structs = raylib.structs
 local Lighting = Instance.new("Lighting")
 
 local volumetricClouds = require("./Lighting/volumetric_clouds")
-local ssao = require("./Lighting/ssao")
+local sunRenderer = require("./Lighting/sun_renderer")
+local _ssao = require("./Lighting/ssao")
+local Kilights = require("@Kilights")
 
-local sun = "./src/assets/sky/default/sun.png"
-
-Lighting:SetProperties({
-	Ambient = Color3.fromRGB(128, 128, 128), -- Now this will be 128/255 = 0.5
-	Brightness = 2.0, -- Increase brightness multiplier
-	ColorShift_Top = Color3.fromRGB(255, 255, 255),
-	ColorShift_Bottom = Color3.fromRGB(0, 0, 0),
-	OutdoorAmbient = Color3.fromRGB(128, 128, 128),
-	GlobalShadows = true,
-	ClockTime = 14.0,
-	GeographicLatitude = 0.0,
-	VolumetricCloudsEnabled = true,
-	CloudHeight = 1000.0,
-	CloudThickness = 200.0,
-	CloudDensity = 0.5,
-	CloudSpeed = 0.01,
-	CloudCoverage = 0.7,
-	SSAOEnabled = true,
-	SSAORadius = 0.5,
-	SSAOBias = 0.025,
-	SSAOIntensity = 1.0,
-})
+local default_shader
+local lightPool = {}
 
 function Lighting:GetSunDirection()
 	local time = self.ClockTime
 	local latitude = math.rad(self.GeographicLatitude)
-	local declination = math.rad(23.45 * math.sin(math.rad(360 * (284 + time * 15) / 365))) -- Approximate solar declination
+	local declination = math.rad(23.45 * math.sin(math.rad(360 * (284 + time * 15) / 365)))
 	local hourAngle = math.rad(15 * (time - 12))
 
 	local elevation = math.asin(
@@ -84,24 +65,95 @@ local function handleSky(skyObject, renderer)
 end
 
 Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
-	if IsHeadless then
+	if _G.IsHeadless then
 		return
 	end
-	local EngineSignal = datamodel.EngineSignal
 	renderer.skybox.Load()
 
-	local sunTexture = lib.LoadTexture(sun)
-	local sunPos = vector.create(0, 100, 0)
+	default_shader = Kilights.getDefaultShader()
 
-	local sunShader = lib.LoadShader("./src/assets/shaders/sun.vert", "./src/assets/shaders/sun.frag")
+	Lighting:SetProperties({
+		Ambient = Color3.fromRGB(128, 128, 128),
+		Brightness = 2.0,
+		ColorShift_Top = Color3.fromRGB(255, 255, 255),
+		ColorShift_Bottom = Color3.fromRGB(0, 0, 0),
+		OutdoorAmbient = Color3.fromRGB(128, 128, 128),
+		GlobalShadows = true,
+		ClockTime = 14.0,
+		GeographicLatitude = 0.0,
+		VolumetricCloudsEnabled = true,
+		CloudHeight = 1000.0,
+		CloudThickness = 200.0,
+		CloudDensity = 0.5,
+		CloudSpeed = 0.01,
+		CloudCoverage = 0.7,
+		SSAOEnabled = true,
+		SSAORadius = 0.5,
+		SSAOBias = 0.025,
+		SSAOIntensity = 1.0,
+
+		-- internals
+		kilight = Kilights,
+		AddLight = function(id, ...)
+			lightPool[id] = Kilights.CreateLight(...)
+			return id
+		end,
+
+		RemoveLight = function(id)
+			lightPool[id] = nil
+		end,
+
+		kilight_shader_def = default_shader,
+	})
 
 	volumetricClouds.Init()
+	sunRenderer.Init()
 	--ssao.Init()
 
+	Kilights.SetAmbientColor({
+		r = 0.5,
+		g = 0.5,
+		b = 0.5,
+		a = 1.0,
+	}, default_shader)
+
+	Lighting.AddLight(
+		"Sun",
+		Kilights.LIGHT_POINT,
+		vector.create(0.1, 5.0, 0.1),
+		vector.create(0, 0, 0),
+		{ r = 255, g = 255, b = 255, a = 255 },
+		default_shader
+	)
+
+	local applied = false
 	renderer_signal:Connect(function(route, dt)
 		if route == "RenderStepped" then
+			local workspace = datamodel.Workspace
+
+			if workspace and workspace.materials and not applied then
+				for _, data in pairs(workspace.materials) do
+					buffer.copy(
+						data.material,
+						structs.Material:offset("shader"),
+						default_shader,
+						0,
+						structs.Shader:size()
+					)
+				end
+				applied = true
+			end
+
 			local ambient = Lighting.Ambient
 			local brightness = Lighting.Brightness
+
+			Kilights.SetAmbientColor({
+				r = ambient.R / 255,
+				g = ambient.G / 255,
+				b = ambient.B / 255,
+				a = 1.0,
+			}, default_shader)
+
 			renderer.shader.SetShaderUniform(
 				"Kinemium",
 				"globalAmbient",
@@ -114,16 +166,23 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 			renderer.shader.SetShaderUniform("Kinemium", "sunDirection", { sunDir.X, sunDir.Y, sunDir.Z }, 3)
 
 			if Lighting.VolumetricCloudsEnabled then
-				local cameraPos = zune.mem.toVector3(renderer.camera, 0)
-				volumetricClouds.UpdateUniforms(renderer.camera, cameraPos, sunDir, Lighting)
+				--local _cameraPos = zune.mem.toVector3(renderer.camera, 0)
 			end
-
-			if Lighting.SSAOEnabled then
-				--ssao.UpdateUniforms(renderer.camera, Lighting)
+		elseif route == "WorkspaceStart" then
+			if not _G.IsHeadless then
+				Kilights:Begin(default_shader)
+				for _, light in pairs(lightPool) do
+					Kilights.UpdateLightValues(default_shader, light)
+				end
+				Kilights.SetCameraPos(default_shader, renderer.camera)
+			end
+		elseif route == "WorkspaceFinish" then
+			if not _G.IsHeadless then
+				Kilights:End()
 			end
 		elseif route == "RenderClouds" then
 			if Lighting.VolumetricCloudsEnabled then
-				volumetricClouds.Render()
+				--volumetricClouds.Render()
 			end
 		elseif route == "PreGuiRender" then
 			local blurEffect = Lighting:FindFirstChildOfClass("BlurEffect")
@@ -141,18 +200,8 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 	renderer.Add3DStack(function()
 		local camera = renderer.camera
-
 		renderer.skybox.Draw(camera, 50)
-
-		if Lighting.SSAOEnabled then
-			-- SSAO requires depth and normal textures from G-buffers
-			-- for now, placeholder; integrate with deferred renderer
-			-- ssao.Render(depthTex, normalTex)
-		end
-
-		if Lighting.VolumetricCloudsEnabled then
-			volumetricClouds.Render()
-		end
+		sunRenderer.Render(camera, Lighting:GetSunDirection())
 	end)
 end
 

@@ -26,8 +26,6 @@ PlaytestService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			ScriptRunnerService.Clear()
 		end,
 	})
-
-	print("hello world")
 end
 
 PlaytestService.GetToolbarCategory = function(renderer, renderer_signal, datamodel)

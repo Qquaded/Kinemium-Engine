@@ -2,7 +2,6 @@ local Vector3 = require("@Vector3")
 local Color3 = require("@Color3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")
-local raylib = require("@raylib")
 
 local propTable = {
 	Position = Vector3.new(0, 10, 0),
@@ -13,6 +12,7 @@ local propTable = {
 	Anchored = false,
 	CanCollide = true,
 	Velocity = Vector3.new(0, 0, 0),
+	MeshScale = 1,
 	Mass = 1,
 	Restitution = 0.5,
 	Elasticity = 0.5,

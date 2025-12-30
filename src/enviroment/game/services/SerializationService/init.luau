@@ -29,7 +29,7 @@ end
 
 local function serialize_value(value)
 	if type(value) == "table" then
-		if value["ToTable"] then
+	if value["ToTable"] then
 			return value:ToTable()
 		end
 	elseif table.find(blacklisted, typeof(value)) then

@@ -29,66 +29,36 @@ local allowed_to_render = {
 	["Model"] = "Model",
 }
 
-Workspace:SetProperties({
-	Gravity = -9.81,
-	GlobalWind = Vector3.new(0, 0, 0),
-	FallenPartsDestroyHeight = 90,
-	AirTurbulenceIntensity = 0,
-	AirDensity = 0,
-	StreamingEnabled = false,
-
-	-- debugging
-	IsInPool = function(part)
-		for i, v in pairs(pool) do
-			if v == part then
-				return true
-			end
-		end
-		return false
-	end,
-
-	GetPoolCount = function()
-		return #pool
-	end,
-})
-
 Workspace.InitRenderer = function(renderer, signal, game)
+	local proptable = {
+		Gravity = -9.81,
+		GlobalWind = Vector3.new(0, 0, 0),
+		FallenPartsDestroyHeight = 90,
+		AirTurbulenceIntensity = 0,
+		AirDensity = 0,
+		StreamingEnabled = false,
+
+		-- debugging
+		IsInPool = function(part)
+			for i, v in pairs(pool) do
+				if v == part then
+					return true
+				end
+			end
+			return false
+		end,
+
+		GetPoolCount = function()
+			return #pool
+		end,
+	}
+
 	local meshlib = renderer.meshlib
-	local runtimelib = renderer.runtimelib
-	local camera = renderer.camera
-	local shadowSystem = renderer.shadowSystem
 	local materialList = renderer.materialList
 	local loadedMaterials = {}
 
-	local descendants = {}
-
-	local Kilights = require("@Kilights")
-
-	local default_shadow_shader
-	local light
-
-	if not IsHeadless then
-		default_shadow_shader = Kilights.getDefaultShader()
-		Kilights.SetAmbientColor({
-			r = 0.5,
-			g = 0.5,
-			b = 0.5,
-			a = 1.0,
-		}, default_shadow_shader)
-
-		light = Kilights.CreateLight(
-			Kilights.LIGHT_POINT,
-			vector.create(0, 20, 0),
-			vector.create(0, -5, 0),
-			{ r = 255, g = 255, b = 255, a = 255 },
-			default_shadow_shader
-		)
-
-		light.attenuation = 0.001
-	end
-
 	local preloadedMeshes
-	if not IsHeadless then
+	if not isHeadless then
 		preloadedMeshes = meshlib.PreloadStandardMeshes()
 
 		local material_index = 0
@@ -96,9 +66,6 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			local texture = lib.LoadTexture(material_path)
 			local default = lib.LoadMaterialDefault()
 			lib.SetMaterialTexture(default, 0, texture)
-
-			local material_shader_buffer = utils.extract.material_shader(structs.Material, default)
-			buffer.copy(material_shader_buffer, 0, default_shadow_shader, 0, structs.Shader:size())
 
 			loadedMaterials[material_name] = {
 				index = material_index,
@@ -109,6 +76,10 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			print(`Loaded custom material: {material_name}`)
 		end
 	end
+
+	proptable.materials = loadedMaterials
+
+	Workspace:SetProperties(proptable)
 
 	signal:Connect(function(route, data) end)
 
@@ -121,7 +92,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		if isRenderable(v) then
 			signal:Fire("UpdatePart", v)
 		end
-		log(`Added {v.Name} to render pool!`)
+		print(`Added {v.Name} to render pool!`)
 	end)
 
 	--[[
@@ -173,13 +144,9 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		end
 	end
 
-	if not IsHeadless then
+	if not isHeadless then
 		renderer.Add3DStack(function()
-			if not IsHeadless then
-				Kilights:Begin(default_shadow_shader)
-				Kilights.UpdateLightValues(default_shadow_shader, light)
-				Kilights.SetCameraPos(default_shadow_shader, renderer.camera)
-			end
+			renderer.Signal:Fire("WorkspaceStart")
 
 			for i = 1, #pool do
 				local object = pool[i]
@@ -196,12 +163,9 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				end
 			end
 
-			if not IsHeadless then
-				Kilights:End()
-			end
-
 			local KinemiumPhysicsService = game:GetService("PhysicsService")
 			KinemiumPhysicsService.setGravity(Workspace.Gravity, Workspace.GlobalWind)
+			renderer.Signal:Fire("WorkspaceFinish")
 		end)
 	end
 end

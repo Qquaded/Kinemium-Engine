@@ -4,7 +4,6 @@
 
 local raylib = require("@raylib")
 
--- Type aliases
 type int = number
 type float = number
 
@@ -33,6 +32,10 @@ export type Light = {
 	attenuationLoc: int,
 }
 
+type Shader = raylib.Shader
+type Matrix = raylib.Matrix
+type RenderTexture = raylib.RenderTexture
+
 local lightsCount = 0
 
 local function UpdateLightValues(shader: Shader, light: Light)
@@ -54,15 +57,13 @@ local function UpdateLightValues(shader: Shader, light: Light)
 	local attenuationBuf = buffer.create(4)
 	buffer.writef32(attenuationBuf, 0, light.attenuation)
 
-	-- SHADER_UNIFORM_INT = 0
-	-- SHADER_UNIFORM_VEC3 = 3
-	-- SHADER_UNIFORM_VEC4 = 4
-	raylib.lib.SetShaderValue(shader, light.enabledLoc, enabledBuf, 0)
-	raylib.lib.SetShaderValue(shader, light.typeLoc, typeBuf, 0)
-	raylib.lib.SetShaderValue(shader, light.positionLoc, position, 3)
-	raylib.lib.SetShaderValue(shader, light.targetLoc, target, 3)
-	raylib.lib.SetShaderValue(shader, light.colorLoc, colorBuf, 4)
-	raylib.lib.SetShaderValue(shader, light.attenuationLoc, attenuationBuf, 0)
+	local shader_types = raylib.const.ShaderUniformDataType
+	raylib.lib.SetShaderValue(shader, light.enabledLoc, enabledBuf, shader_types.SHADER_UNIFORM_INT)
+	raylib.lib.SetShaderValue(shader, light.typeLoc, typeBuf, shader_types.SHADER_UNIFORM_INT)
+	raylib.lib.SetShaderValue(shader, light.positionLoc, position, shader_types.SHADER_UNIFORM_VEC3)
+	raylib.lib.SetShaderValue(shader, light.targetLoc, target, shader_types.SHADER_UNIFORM_VEC3)
+	raylib.lib.SetShaderValue(shader, light.colorLoc, colorBuf, shader_types.SHADER_UNIFORM_VEC4)
+	raylib.lib.SetShaderValue(shader, light.attenuationLoc, attenuationBuf, shader_types.SHADER_UNIFORM_FLOAT)
 end
 
 local function CreateLight(
@@ -89,20 +90,12 @@ local function CreateLight(
 
 	if lightsCount < MAX_LIGHTS then
 		light.enabled = true
-		light.type = lightType
 		light.enabledLoc = raylib.lib.GetShaderLocation(shader, `lightEnabled[{lightsCount}]`)
 		light.typeLoc = raylib.lib.GetShaderLocation(shader, `lightType[{lightsCount}]`)
 		light.positionLoc = raylib.lib.GetShaderLocation(shader, `lightPosition[{lightsCount}]`)
 		light.targetLoc = raylib.lib.GetShaderLocation(shader, `lightTarget[{lightsCount}]`)
 		light.colorLoc = raylib.lib.GetShaderLocation(shader, `lightColor[{lightsCount}]`)
 		light.attenuationLoc = raylib.lib.GetShaderLocation(shader, `lightAttenuation[{lightsCount}]`)
-
-		print(`Light {lightsCount} shader locations:`)
-		print(`  enabled: {light.enabledLoc}`)
-		print(`  type: {light.typeLoc}`)
-		print(`  position: {light.positionLoc}`)
-		print(`  color: {light.colorLoc}`)
-		print(`  attenuation: {light.attenuationLoc}`)
 
 		UpdateLightValues(shader, light)
 
@@ -135,7 +128,8 @@ end
 local function SetCameraPos(shader, camera)
 	local viewPosLoc = raylib.lib.GetShaderLocation(shader, "viewPos")
 	local camPos = zune.mem.toVector3(camera, 0)
-	raylib.lib.SetShaderValue(shader, viewPosLoc, camPos, 3)
+	local shader_types = raylib.const.ShaderUniformDataType
+	raylib.lib.SetShaderValue(shader, viewPosLoc, camPos, shader_types.SHADER_UNIFORM_VEC3)
 end
 
 local function SetAmbientColor(color, shader)
@@ -146,7 +140,7 @@ local function SetAmbientColor(color, shader)
 	buffer.writef32(ambientColor, 12, color.a) -- a
 
 	local ambientLoc = raylib.lib.GetShaderLocation(shader, "ambient")
-	raylib.lib.SetShaderValue(shader, ambientLoc, ambientColor, 4)
+	raylib.lib.SetShaderValue(shader, ambientLoc, ambientColor, raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4)
 end
 
 return {
@@ -155,6 +149,7 @@ return {
 	LIGHT_POINT = LIGHT_POINT,
 
 	getDefaultShader = getDefaultShader,
+
 	CreateLight = CreateLight,
 	UpdateLightValues = UpdateLightValues,
 	ResetLights = ResetLights,

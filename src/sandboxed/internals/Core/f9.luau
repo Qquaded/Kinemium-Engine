@@ -1,4 +1,9 @@
 local RunService = game:GetService("RunService")
+
+if not RunService:IsClient() then
+	return
+end
+
 local MainGui = Instance.new("ScreenGui")
 MainGui.Parent = game.Players.LocalPlayer.PlayerGui
 
@@ -8,7 +13,6 @@ local renderer = KinemiumRaylib.renderer
 local d, f = 0.64, 2.8
 
 local spring = require(game.CoreGui:WaitForChild("spring"))
-print(spring)
 
 local KinemiumPhysicsService = game:GetService("PhysicsService")
 

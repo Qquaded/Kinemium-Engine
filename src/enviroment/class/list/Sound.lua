@@ -1,5 +1,7 @@
 local Signal = require("@Kinemium.signal")
 local Enum = require("@EnumMap")
+local Vector3 = require("@Vector3")
+local fmod = require("@fmod")
 
 local propTable = {
 	SoundId = "./src/assets/sounds/bqqchickenalert.mp3",
@@ -11,8 +13,18 @@ local propTable = {
 	PlayOnRemove = false,
 	IsLoaded = false,
 	Name = "Sound",
-
 	AudioBackend = Enum.AudioBackend.Raudio,
+
+	Position = Vector3.new(0, 0, 0),
+	Velocity = Vector3.new(0, 0, 0),
+	Direction = Vector3.new(0, 0, -1),
+	Up = Vector3.new(0, 1, 0),
+	MinDistance = 1.0,
+	MaxDistance = 10000.0,
+	ConeInsideAngle = 360,
+	ConeOutsideAngle = 360,
+	ConeOutsideVolume = 1.0,
+	Is3D = false,
 }
 
 return {

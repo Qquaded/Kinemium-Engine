@@ -9,6 +9,7 @@ local Player = require("@Player")
 local Players = Instance.new("Players")
 
 Players.PlayerAdded = signal.new()
+Players.MaxPlayers = 20
 Players.PlayerRemoving = signal.new()
 
 local playerRegistry = {}
@@ -25,6 +26,10 @@ local function CreatePlayer(name, userId): Instance
 end
 
 function Players:AddPlayer(name, userId)
+	if #playerRegistry >= self.MaxPlayers then
+		log("Max players reached!")
+		return
+	end
 	local player = CreatePlayer(name, userId)
 	table.insert(playerRegistry, player)
 	self.PlayerAdded:Fire(player)
@@ -64,7 +69,6 @@ Players.SetupClient = true
 Players.InitRenderer = function(renderer, signal, starterGui)
 	local lib = renderer.lib
 	if Players.SetupClient == true then
-		-- create with default player name & id
 		Players.LocalPlayer = CreatePlayer("Player1", 1)
 
 		Players.LocalPlayer:SetProperties({

@@ -117,7 +117,6 @@ local function decodeValue(buf: buffer, offset: number): (any, number)
 	end
 end
 
--- Calculate size needed for encoding
 local function calculateSize(value: any): number
 	local t = typeof(value)
 
@@ -153,7 +152,6 @@ local function calculateSize(value: any): number
 	end
 end
 
--- Public API
 function TableEncoder.encode(value: any): buffer
 	local size = calculateSize(value)
 	local buf = buffer.create(size)

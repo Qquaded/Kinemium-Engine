@@ -10,7 +10,6 @@ local ssaoUniforms = {}
 local blurUniforms = {}
 
 function ssao.Init()
-	-- Load SSAO shader
 	ssaoShader = lib.LoadShader("./src/assets/shaders/screen.vert", "./src/assets/shaders/ssao.frag")
 	ssaoUniforms = {
 		texDepth = lib.GetShaderLocation(ssaoShader, "uTexDepth"),
@@ -24,7 +23,6 @@ function ssao.Init()
 		intensity = lib.GetShaderLocation(ssaoShader, "uIntensity"),
 	}
 
-	-- Load blur shader for SSAO
 	blurShader = lib.LoadShader("./src/assets/shaders/screen.vert", "./src/assets/shaders/ssao_blur.frag")
 	blurUniforms = {
 		texSSAO = lib.GetShaderLocation(blurShader, "uTexSSAO"),
@@ -60,10 +58,8 @@ function ssao.UpdateUniforms(camera, settings)
 end
 
 function ssao.Render(depthTex, normalTex)
-	-- Bind textures
 	lib.SetShaderValueTexture(ssaoShader, ssaoUniforms.texDepth, depthTex)
 	lib.SetShaderValueTexture(ssaoShader, ssaoUniforms.texNormal, normalTex)
-	-- Assume kernel and noise textures are set up elsewhere
 
 	lib.BeginShaderMode(ssaoShader)
 	local quad = lib.GenMeshPlane(2, 2, 1, 1)

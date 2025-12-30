@@ -52,7 +52,7 @@ elseif FlagExists("server") then
 	_G.IsServer = true
 	_G.IsClient = false
 
-	print("Running engine headless mode (Server).")
+	log("Running engine headless mode (Server).")
 end
 
 if FlagExists("headless") or FlagExists("cli") then

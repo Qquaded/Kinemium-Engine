@@ -1,6 +1,7 @@
 local enumtransformer = require("@Enum")
 
 local enumTable = {}
+local dump = require("./dump")
 
 enumTable.KeyCode = {
 	Backspace = 8,
@@ -599,5 +600,20 @@ enumTable.SecurityCapabilities = {
 	UserScript = 1,
 	Internals = 2,
 }
+
+for propName, values in pairs(dump) do
+	if enumTable[propName] then
+		for name, value in pairs(values) do
+			if enumTable[propName][name] then
+				log(`[ENUM] {propName}.{name} already exists, Skipping..`)
+				continue
+			end
+			enumTable[propName][name] = value
+		end
+	else
+		enumTable[propName] = values
+	end
+	log("[ENUM] Created platform enum " .. propName)
+end
 
 return enumtransformer.new(enumTable)

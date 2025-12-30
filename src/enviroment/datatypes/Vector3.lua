@@ -15,6 +15,31 @@ function Vector3:Magnitude()
 	return math.sqrt(x * x + y * y + z * z)
 end
 
+function Vector3.Slerp(a, b, t)
+	local v0 = a:Unit()
+	local v1 = b:Unit()
+
+	local dot = v0:Dot(v1)
+	if dot > 1 then
+		dot = 1
+	end
+	if dot < -1 then
+		dot = -1
+	end
+
+	local theta = math.acos(dot)
+
+	if theta < 1e-5 then
+		return v0:Lerp(v1, t):Unit()
+	end
+
+	local sinTheta = math.sin(theta)
+	local w0 = math.sin((1 - t) * theta) / sinTheta
+	local w1 = math.sin(t * theta) / sinTheta
+
+	return (v0 * w0 + v1 * w1):Unit()
+end
+
 function Vector3:Unit()
 	local mag = self:Magnitude()
 	if mag == 0 then

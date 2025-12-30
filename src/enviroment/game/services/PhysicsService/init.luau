@@ -142,6 +142,7 @@ local function createBody(bodyInterface, part, motionType)
 	local layer = part.Anchored and LAYER_NON_MOVING or LAYER_MOVING
 
 	local bodySettings = lib.JPH_BodyCreationSettings_Create3(shape, position, rotation, u8(motionType), u16(layer))
+	lib.JPH_BodyCreationSettings_SetAllowSleeping(bodySettings, 0)
 
 	local activation = (motionType == 2) and 1 or 0
 	local bodyID = lib.JPH_BodyInterface_CreateAndAddBody(bodyInterface, bodySettings, activation)
@@ -336,9 +337,12 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 		ApplyImpulse = function(part, impulse)
 			local bodyID = bodiesMap[part]
 			if not bodyID then
+				print("[Physics] ApplyImpulse: No body for part", part.Name)
 				return
 			end
 
+			lib.JPH_BodyInterface_ActivateBody(bodyInterface, bodyID)
+			local isActive = lib.JPH_BodyInterface_IsActive(bodyInterface, bodyID)
 			local jImpulse = structs.JPH_Vec3:new(ToJoltVec3(impulse * 10))
 			lib.JPH_BodyInterface_AddImpulse(bodyInterface, bodyID, jImpulse)
 		end,
@@ -349,10 +353,13 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 				return
 			end
 
+			lib.JPH_BodyInterface_ActivateBody(bodyInterface, bodyID)
 			local jForce = structs.JPH_Vec3:new(ToJoltVec3(force))
 			local jPoint = RVec3(applicationPoint.X, applicationPoint.Y, applicationPoint.Z)
 
-			lib.JPH_BodyInterface_AddForce2(bodyInterface, bodyID, jForce, jPoint)
+			local success, result = pcall(function(...)
+				lib.JPH_BodyInterface_AddForce2(bodyInterface, bodyID, jForce, jPoint)
+			end)
 		end,
 
 		SetVelocity = function(part, velocity)
