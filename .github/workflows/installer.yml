@@ -1,22 +1,22 @@
-name: Test Kinemium Engine  
-  
-on:  
-  push:  
-    branches: [ main, develop ]  
-  pull_request:  
-    branches: [ main, develop ]  
-  
-jobs:  
-  test:  
-    strategy:  
-      matrix:  
-        os: [ubuntu-latest, windows-latest, macos-latest]  
-      
-    runs-on: ${{ matrix.os }}  
-      
-    steps:  
-      - name: Checkout repository  
-        uses: actions/checkout@v4  
+name: Test Kinemium Engine
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Rokit (Linux / macOS)
         if: runner.os != 'Windows'
@@ -32,12 +32,10 @@ jobs:
           echo "$env:USERPROFILE\.rokit\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Rokit Init
-      - run: |
-            rokit init
+        run: rokit init
 
       - name: Install Zune
-      - run: |
-            rokit add Scythe-Technology/zune
-        
-      - name: Run headless tests  
+        run: rokit add Scythe-Technology/zune
+
+      - name: Run headless tests
         run: zune run game --headless
