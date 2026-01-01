@@ -19,6 +19,7 @@ function DataModel.new(RENDERER, ...)
 	self.Context = Enum.GameContext.Editor
 	self.EngineSignal = signal.new()
 	self.Stop3DInput = false
+	self.ShutdownCallbacks = {}
 
 	self.Services = {}
 

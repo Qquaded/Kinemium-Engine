@@ -422,6 +422,11 @@ local function run()
 	for shaderName, _ in pairs(activeShaders) do
 		shader.UnloadShader(shaderName)
 	end
+
+	for _, callback in pairs(game.ShutdownCallbacks) do
+		print("Running finishing callback")
+		callback()
+	end
 end
 
 return {

@@ -376,7 +376,7 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 			-- added this function for
 			-- Memory purposes........
 			for _, body in pairs(bodiesMap) do
-				lib.JPH_BodyInterface_RemoveAndDestroyBody(body)
+				lib.JPH_BodyInterface_RemoveAndDestroyBody(bodyInterface, body)
 			end
 			lib.JPH_JobSystem_Destroy(jobSystem)
 			lib.JPH_PhysicsSystem_Destroy(physicsSystem)
@@ -493,6 +493,7 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 		end
 	end)
 
+	table.insert(game.ShutdownCallbacks, propTable.Unload)
 	renderer_signal:Fire("PhysicsEngine", KinemiumPhysicsService)
 end
 

@@ -27,6 +27,7 @@ jobs:
       - name: Install Zune
         run: |
           rokit add Scythe-Technology/zune
+          rokit Install
 
       - name: Run headless tests
         run: zune run game --headless
