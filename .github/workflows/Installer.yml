@@ -26,7 +26,6 @@ jobs:
 
       - name: Install Zune
         run: |
-          rokit authenticate github --token "${{ secrets.ROKIT_GITHUB_TOKEN }}"
           rokit add Scythe-Technology/zune
 
       - name: Run headless tests
