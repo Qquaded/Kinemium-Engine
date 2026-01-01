@@ -102,6 +102,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 	editor.caretVisible = true
 	editor.caretTimer = 0
 	editor.caretBlinkRate = 0.5
+	editor.formatNotificationTimer = 0
 
 	editor.autocomplete = {
 		visible = false,
@@ -122,6 +123,18 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		startCol = 0,
 	}
 
+	editor.search = {
+		active = false,
+		query = "",
+		results = {},
+		currentIndex = 0,
+	}
+
+	editor.gotoLine = {
+		active = false,
+		query = "",
+	}
+
 	function editor:openTab(name, content)
 		local newBuf = ideBuffer.create()
 		if content then
@@ -135,6 +148,107 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		self.breakpoints = self.buffers[self.currentBufferIndex].breakpoints
 		self:updateBreakpoints()
 		self._highlightCache = {}
+	end
+
+	function editor:updateSearch()
+		self.search.results = {}
+		if #self.search.query == 0 then
+			self.search.currentIndex = 0
+			return
+		end
+
+		local query = self.search.query:lower()
+		for i, line in ipairs(self.text.lines) do
+			local startPos = 1
+			while true do
+				local s, e = line:lower():find(query, startPos, true)
+				if not s then
+					break
+				end
+				table.insert(self.search.results, { line = i, col = s, length = #query })
+				startPos = e + 1
+			end
+		end
+
+		if #self.search.results > 0 then
+			self.search.currentIndex = 1
+		else
+			self.search.currentIndex = 0
+		end
+	end
+
+	function editor:nextSearchResult(size, lineHeight)
+		if #self.search.results == 0 then
+			return
+		end
+		self.search.currentIndex = (self.search.currentIndex % #self.search.results) + 1
+		local res = self.search.results[self.search.currentIndex]
+		self.text:setCursor(res.line, res.col)
+		-- Center the view
+		if size and lineHeight then
+			local visibleLines = math.floor(size.y / lineHeight)
+			self.scrollY = math.max(0, (res.line - math.floor(visibleLines / 2)) * lineHeight)
+		end
+	end
+
+	function editor:doGotoLine(size, lineHeight)
+		local lineNum = tonumber(self.gotoLine.query)
+		if lineNum then
+			lineNum = math.clamp(math.floor(lineNum), 1, #self.text.lines)
+			self.text:setCursor(lineNum, 1)
+			-- Center the view
+			if size and lineHeight then
+				local visibleLines = math.floor(size.y / lineHeight)
+				self.scrollY = math.max(0, (lineNum - math.floor(visibleLines / 2)) * lineHeight)
+			end
+		end
+		self.gotoLine.active = false
+		self.gotoLine.query = ""
+	end
+
+	function editor:format()
+		local openers = { ["then"] = true, ["do"] = true, ["function"] = true, ["repeat"] = true, ["{"] = true }
+		local closers = { ["end"] = true, ["until"] = true, ["}"] = true }
+		local middle = { ["else"] = true, ["elseif"] = true }
+
+		local currentIndent = 0
+		local newLines = {}
+		
+		for i, line in ipairs(self.text.lines) do
+			local trimmed = line:gsub("^%s+", ""):gsub("%s+$", "")
+			if trimmed == "" then
+				table.insert(newLines, "")
+				continue
+			end
+
+			local firstWord = trimmed:match("^([%w_]+)") or trimmed:match("^([%{}])")
+			local shouldDedent = closers[firstWord] or middle[firstWord]
+			
+			if shouldDedent then
+				currentIndent = math.max(0, currentIndent - 1)
+			end
+
+			table.insert(newLines, string.rep("\t", currentIndent) .. trimmed)
+
+			local net = 0
+			for word in trimmed:gmatch("[%w_{}]+") do
+				if openers[word] then
+					net += 1
+				elseif closers[word] then
+					net -= 1
+				end
+			end
+			
+			if middle[firstWord] then
+				net += 1
+			end
+
+			currentIndent = math.max(0, currentIndent + net)
+		end
+
+		self.text.lines = newLines
+		self._highlightCache = {}
+		self.formatNotificationTimer = 2.0
 	end
 
 	function editor:closeTab(index)
@@ -190,8 +304,18 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			end
 		end
 
+		-- New Tab button
+		local plusX = x + #editor.buffers * tabWidth
+		local plusRect = { x = plusX, y = y, width = 30, height = tabHeight }
+		raylib.DrawRectangle(plusX, y, 30, tabHeight, theme_background)
+		raylib.DrawTextEx(vend, "+", vector.create(plusX + 10, y + 5), 18, 1, const.WHITE)
+		if raylib.IsMouseButtonPressed(0) == 1 and isMouseInRect(plusRect, raylib.GetMousePosition()) then
+			editor:openTab("untitled.lua")
+		end
+
+		local minimapWidth = 100
 		y = y + tabHeight
-		size = vector.create(size.x, size.y - tabHeight)
+		size = vector.create(size.x - minimapWidth, size.y - tabHeight)
 
 		local dt = raylib.GetFrameTime()
 		editor.caretTimer = (editor.caretTimer or 0) + dt
@@ -249,6 +373,23 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					local x2 = x + gutterwidth + padding + measureTextWidth(line:sub(1, endX - 1), fontSize, spacing)
 
 					raylib.DrawRectangle(x1, ly, x2 - x1, lineHeight, Color3ToRaylib(Color3.new(0, 0.4, 0.8), 0.5))
+				end
+			end
+
+			-- Highlight search results
+			if editor.search.active and #editor.search.results > 0 then
+				for idx, res in ipairs(editor.search.results) do
+					if res.line >= firstVisibleLine and res.line <= lastVisibleLine then
+						local ly = y + padding + (res.line - 1) * lineHeight - editor.scrollY
+						local line = editor.text.lines[res.line]
+						local x1 = x + gutterwidth + padding + measureTextWidth(line:sub(1, res.col - 1), fontSize, spacing)
+						local x2 = x + gutterwidth + padding
+							+ measureTextWidth(line:sub(1, res.col + res.length - 1), fontSize, spacing)
+
+						local isCurrent = (idx == editor.search.currentIndex)
+						local color = isCurrent and Color3.new(1, 0.5, 0) or Color3.new(1, 0.8, 0)
+						raylib.DrawRectangle(x1, ly, x2 - x1, lineHeight, Color3ToRaylib(color, 0.4))
+					end
 				end
 			end
 		end
@@ -318,22 +459,44 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 
 		if editor.isActive then
 			local byte = raylib.GetCharPressed()
-			if byte ~= 0 then
+			while byte ~= 0 do
 				local char = string.char(byte)
-				if editor.text.selection.active then
-					editor.text:deleteSelection()
+				if editor.search.active then
+					editor.search.query = editor.search.query .. char
+					editor:updateSearch()
+				elseif editor.gotoLine.active then
+					if char:match("%d") then
+						editor.gotoLine.query = editor.gotoLine.query .. char
+					end
+				else
+					if editor.text.selection.active then
+						editor.text:deleteSelection()
+					end
+
+					editor.text:insertChar(char)
+
+					-- Auto-dedent
+					local currentLine = editor.text.lines[editor.text.cursor.line]
+					local trimmed = currentLine:match("^[\t ]*(.*)$")
+					if trimmed == "end" or trimmed == "}" then
+						local indent = currentLine:match("^([\t ]*)")
+						if indent:sub(1, 1) == "\t" then
+							editor.text.lines[editor.text.cursor.line] = indent:sub(2) .. trimmed
+							editor.text.cursor.col = math.max(1, editor.text.cursor.col - 1)
+						end
+					end
+
+					local pairs = { ["("] = ")", ["["] = "]", ["{"] = "}", ['"'] = '"', ["'"] = "'" }
+					if pairs[char] then
+						editor.text:insertChar(pairs[char])
+						editor.text:moveLeft()
+					end
+
+					autocomplete.indexVariables(editor, game)
+					autocomplete.updateAutocomplete(editor, game)
+					editor._highlightCache = {}
 				end
-
-				editor.text:insertChar(char)
-
-				local pairs = { ["("] = ")", ["["] = "]", ["{"] = "}", ['"'] = '"', ["'"] = "'" }
-				if pairs[char] then
-					editor.text:insertChar(pairs[char])
-					editor.text:moveLeft()
-				end
-
-				autocomplete.updateAutocomplete(editor)
-				editor._highlightCache = {}
+				byte = raylib.GetCharPressed()
 			end
 		end
 
@@ -415,6 +578,114 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			end
 		end
 
+		-- Search/GoTo UI
+		if editor.search.active then
+			local boxW = 250
+			local boxH = 40
+			local boxX = x + size.x - boxW - 20
+			local boxY = y + 10
+			raylib.DrawRectangle(boxX, boxY, boxW, boxH, theme_secondary)
+			raylib.DrawRectangleLines(boxX, boxY, boxW, boxH, const.WHITE)
+			raylib.DrawTextEx(
+				vend,
+				"Find: " .. editor.search.query,
+				vector.create(boxX + 10, boxY + 12),
+				fontSize,
+				spacing,
+				const.WHITE
+			)
+			if #editor.search.results > 0 then
+				local resText = string.format("%d/%d", editor.search.currentIndex, #editor.search.results)
+				raylib.DrawTextEx(
+					vend,
+					resText,
+					vector.create(boxX + boxW - 60, boxY + 12),
+					fontSize,
+					spacing,
+					const.DARKGRAY
+				)
+			end
+		elseif editor.gotoLine.active then
+			local boxW = 200
+			local boxH = 40
+			local boxX = x + size.x - boxW - 20
+			local boxY = y + 10
+			raylib.DrawRectangle(boxX, boxY, boxW, boxH, theme_secondary)
+			raylib.DrawRectangleLines(boxX, boxY, boxW, boxH, const.WHITE)
+			raylib.DrawTextEx(
+				vend,
+				"Go to: " .. editor.gotoLine.query,
+				vector.create(boxX + 10, boxY + 12),
+				fontSize,
+				spacing,
+				const.WHITE
+			)
+		end
+
+		-- Minimap
+		local mmBackground = { x = x + size.x, y = y, width = minimapWidth, height = size.y }
+		raylib.DrawRectangle(mmBackground.x, mmBackground.y, mmBackground.width, mmBackground.height, theme_secondary)
+		
+		local lineCount = #editor.text.lines
+		local mmPadding = 5
+		local mmUsableHeight = size.y - (mmPadding * 2)
+		local mmLineHeight = math.min(2, mmUsableHeight / lineCount)
+		
+		for i = 1, lineCount do
+			local line = editor.text.lines[i]
+			if #line > 0 then
+				local ly = y + mmPadding + (i - 1) * mmLineHeight
+				local tokens = editor._highlightCache[i]
+				local lx = mmBackground.x + 5
+				
+				if tokens then
+					for _, tok in ipairs(tokens) do
+						local lw = math.min(minimapWidth - 10, #tok.text * 2)
+						raylib.DrawRectangle(lx, ly, lw, math.max(1, mmLineHeight - 0.5), tok.color)
+						lx += lw + 1
+						if lx > mmBackground.x + minimapWidth - 5 then break end
+					end
+				else
+					local trimmed = line:gsub("^%s+", "")
+					local lw = math.min(minimapWidth - 10, #trimmed * 2)
+					local indent = (line:match("^%s*") or ""):gsub("\t", "    ")
+					lx = mmBackground.x + 5 + (#indent * 0.5)
+					raylib.DrawRectangle(lx, ly, lw, math.max(1, mmLineHeight - 0.5), Color3ToRaylib(Color3.new(0.5, 0.5, 0.5), 0.5))
+				end
+			end
+		end
+
+		-- Minimap Lens
+		local lensHeight = (viewportHeight / contentHeight) * mmUsableHeight
+		local lensY = y + mmPadding + (editor.scrollY / contentHeight) * mmUsableHeight
+		raylib.DrawRectangle(mmBackground.x, lensY, minimapWidth, lensHeight, Color3ToRaylib(Color3.new(1, 1, 1), 0.8))
+
+		-- Minimap Interaction
+		local mousePos = raylib.GetMousePosition()
+		if raylib.IsMouseButtonDown(0) == 1 and isMouseInRect(mmBackground, mousePos) then
+			local relY = mousePos.y - (y + mmPadding)
+			local percent = math.clamp(relY / mmUsableHeight, 0, 1)
+			editor.scrollY = math.clamp(percent * contentHeight - (viewportHeight / 2), 0, editor.maxScroll)
+		end
+
+		if editor.formatNotificationTimer > 0 then
+			editor.formatNotificationTimer -= dt
+			local boxW = 150
+			local boxH = 30
+			local boxX = x + size.x - boxW - 20
+			local boxY = y + size.y - boxH - 20
+			raylib.DrawRectangle(boxX, boxY, boxW, boxH, theme_secondary)
+			raylib.DrawRectangleLines(boxX, boxY, boxW, boxH, const.WHITE)
+			raylib.DrawTextEx(
+				vend,
+				"Code Formatted",
+				vector.create(boxX + 15, boxY + 8),
+				fontSize - 2,
+				spacing,
+				const.GREEN
+			)
+		end
+
 		autocomplete.step(
 			editor,
 			x,
@@ -452,7 +723,12 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			end
 
 			if raylib.IsKeyPressed(const.KeyboardKey.KEY_ENTER) == 1 then
-				if editor.autocomplete.visible then
+				if editor.search.active then
+					editor:nextSearchResult(size, lineHeight)
+				elseif editor.gotoLine.active then
+					editor:doGotoLine(size, lineHeight)
+				elseif editor.autocomplete.visible then
+					autocomplete.indexVariables(editor, game)
 					autocomplete.completeWord(editor)
 					editor._highlightCache = {}
 				else
@@ -463,26 +739,51 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					local currentLine = editor.text.lines[editor.text.cursor.line]
 					local indent = currentLine:match("^[\t ]*")
 
+					-- Check for block start
+					local blockStarts = { "then", "do", "function", "repeat", "{" }
+					local isBlockStart = false
+					local trimmed = currentLine:gsub("%s*$", "")
+					for _, starter in ipairs(blockStarts) do
+						if trimmed:match("%s" .. starter .. "$") or trimmed == starter or (starter == "{" and trimmed:match("{$")) then
+							isBlockStart = true
+							break
+						end
+					end
+
 					editor.text:newline()
 					editor.text:insertString(indent)
+					if isBlockStart then
+						editor.text:insertString("\t")
+					end
 
+					autocomplete.indexVariables(editor, game)
 					editor._highlightCache = {}
 				end
 			end
 
 			if raylib.IsKeyPressed(const.KeyboardKey.KEY_ESCAPE) == 1 then
-				if editor.autocomplete.visible then
+				if editor.search.active then
+					editor.search.active = false
+				elseif editor.gotoLine.active then
+					editor.gotoLine.active = false
+				elseif editor.autocomplete.visible then
 					editor.autocomplete.visible = false
 				end
 			end
 
 			if raylib.IsKeyPressed(const.KeyboardKey.KEY_BACKSPACE) == 1 then
-				if editor.text.selection.active then
+				if editor.search.active then
+					editor.search.query = editor.search.query:sub(1, -2)
+					editor:updateSearch()
+				elseif editor.gotoLine.active then
+					editor.gotoLine.query = editor.gotoLine.query:sub(1, -2)
+				elseif editor.text.selection.active then
 					editor.text:deleteSelection()
 				else
 					editor.text:backspace()
 				end
-				autocomplete.updateAutocomplete(editor)
+				autocomplete.indexVariables(editor, game)
+				autocomplete.updateAutocomplete(editor, game)
 				editor._highlightCache = {}
 			end
 
@@ -515,22 +816,26 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				if raylib.IsKeyPressed(const.KeyboardKey.KEY_LEFT) == 1 then
 					editor.text:moveLeft()
 					updateSelection()
-					autocomplete.updateAutocomplete(editor)
+					autocomplete.indexVariables(editor, game)
+					autocomplete.updateAutocomplete(editor, game)
 				end
 				if raylib.IsKeyPressed(const.KeyboardKey.KEY_RIGHT) == 1 then
 					editor.text:moveRight()
 					updateSelection()
-					autocomplete.updateAutocomplete(editor)
+					autocomplete.indexVariables(editor, game)
+					autocomplete.updateAutocomplete(editor, game)
 				end
 				if raylib.IsKeyPressed(const.KeyboardKey.KEY_UP) == 1 then
 					editor.text:moveUp()
 					updateSelection()
-					autocomplete.updateAutocomplete(editor)
+					autocomplete.indexVariables(editor, game)
+					autocomplete.updateAutocomplete(editor, game)
 				end
 				if raylib.IsKeyPressed(const.KeyboardKey.KEY_DOWN) == 1 then
 					editor.text:moveDown()
 					updateSelection()
-					autocomplete.updateAutocomplete(editor)
+					autocomplete.indexVariables(editor, game)
+					autocomplete.updateAutocomplete(editor, game)
 				end
 			end
 
@@ -564,8 +869,24 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					data = string.gsub(data, "\r\n", "\n")
 					data = string.gsub(data, "\r", "\n")
 					editor.text:insertString(data)
-					autocomplete.updateAutocomplete(editor)
+					autocomplete.indexVariables(editor, game)
+					autocomplete.updateAutocomplete(editor, game)
 					editor._highlightCache = {}
+				elseif raylib.IsKeyReleased(const.KeyboardKey.KEY_S) == 1 then
+					editor:format()
+				elseif raylib.IsKeyReleased(const.KeyboardKey.KEY_F) == 1 then
+					editor.search.active = not editor.search.active
+					if editor.search.active then
+						editor.gotoLine.active = false
+						editor.search.query = editor.text:getSelectedText():gsub("\n", "")
+						editor:updateSearch()
+					end
+				elseif raylib.IsKeyReleased(const.KeyboardKey.KEY_G) == 1 then
+					editor.gotoLine.active = not editor.gotoLine.active
+					if editor.gotoLine.active then
+						editor.search.active = false
+						editor.gotoLine.query = ""
+					end
 				end
 			end
 		end

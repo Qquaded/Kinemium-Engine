@@ -19,6 +19,7 @@ local fontCount = 0
 KinemiumFontService.InitRenderer = function(renderer, renderer_signal)
 	local default_font = "./src/assets/fonts/Montserrat-Medium.ttf"
 	local code_font = "./src/assets/fonts/JetBrainsMono-Regular.ttf"
+
 	local font = renderer.LoadFont("DefaultEngineFont", default_font)
 	local loaded_cf = renderer.LoadFont("DefaultCodeEngineFont", code_font)
 

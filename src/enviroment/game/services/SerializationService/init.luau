@@ -15,21 +15,24 @@ local blacklisted = {
 	"function",
 	"userdata",
 	"FFIPointer",
+	"buffer",
 }
 
 local function compress(tbl)
-	local result = encoder.encode(tbl)
-	return zstd.compress(result)
+	local encoded = encoder.encode(tbl)
+	local compressed = zstd.compress(encoded)
+	return serde.base64.encode(compressed)
 end
 
-local function decompress(data)
-	local raw = zstd.decompress(data)
-	return encoder.decode(raw)
+local function decompress(str)
+	local compressed = serde.base64.decode(str)
+	local decoded = zstd.decompress(compressed)
+	return encoder.decode(decoded)
 end
 
 local function serialize_value(value)
 	if type(value) == "table" then
-	if value["ToTable"] then
+		if value["ToTable"] then
 			return value:ToTable()
 		end
 	elseif table.find(blacklisted, typeof(value)) then

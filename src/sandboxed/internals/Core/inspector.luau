@@ -12,6 +12,7 @@ local rl = KinemiumRaylib.lib
 local Selection = game:GetService("Selection")
 local structs = KinemiumRaylib.structs
 local vend = KinemiumFontService.GetDefaultFont()
+local EngineSignal = game.EngineSignal
 
 if game.Context ~= Enum.GameContext.Editor then
 	return
@@ -31,6 +32,7 @@ local addIcon = KinemiumIconLoader.ToTexture(png)
 local windowRegistry = {}
 
 local aereon = import("@Kinemium.Aereon")
+local gui = aereon.gui
 local window = aereon.window(game)
 
 local blacklisted = {
@@ -95,9 +97,12 @@ RunService.GuiRender:Connect(function()
 	)
 end)
 
+local createdGuiComponents = {}
+
 window.stepped = function(windowData)
 	if windowData.title == "Inspector" then
 		windowObject = windowData
+
 		local winX, winY = windowData.x, windowData.y + 30
 		local winWidth = windowData.width
 		local cellHeight = 25
@@ -118,6 +123,8 @@ window.stepped = function(windowData)
 		if not selected then
 			return
 		end
+
+		gui.clear()
 
 		local i = 0
 		for propName, propValue in pairs(selected._props) do
@@ -188,6 +195,26 @@ window.stepped = function(windowData)
 			local textboxWidth = 120
 
 			local valueName = type(propValue) == "table" and propValue.Name or tostring(propValue)
+
+			local pos = vector.create(rect.x + 300, rect.y + 4)
+
+			if type(propValue) == "string" or type(propValue) == "number" then
+				createdGuiComponents[propName] = aereon.gui.textInput({
+					x = pos.x,
+					y = pos.y,
+					width = textboxWidth,
+					height = cellHeight,
+					text = propValue,
+				})
+			elseif type(propValue) == "boolean" then
+				createdGuiComponents[propName] = aereon.gui.checkbox({
+					x = pos.x,
+					y = pos.y,
+					width = textboxWidth,
+					height = cellHeight,
+					value = propValue,
+				})
+			end
 
 			rl.DrawRectangleRounded(
 				structs.Rectangle:new({ x = textboxX, y = rect.y + 2, width = textboxWidth, height = cellHeight - 4 }),

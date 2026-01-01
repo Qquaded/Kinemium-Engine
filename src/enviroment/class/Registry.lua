@@ -2,6 +2,7 @@ local filesystem = require("../../modules/filesystem")
 local sandboxer = require("../../modules/sandboxer")
 local Instance = require("../class/Instance")
 local datatypes = require("../datatypes/getDatatypes")
+local zembed = require("@zembed")
 
 local registry = {}
 local listOfClasses = {}
@@ -9,11 +10,28 @@ local created = {}
 
 sandboxer.enviroment = datatypes
 
-filesystem.entryloop("./src/enviroment/class/list", function(entry)
-	local path = "./src/enviroment/class/list/" .. entry.name
-	local code = filesystem.read(path)
+local entries = {}
 
-	local returned, s, r = sandboxer.run(code, entry.name)
+if zembed.IsEmbedded() then
+	entries = zembed.GetScriptsThatHas([[class\list]])
+else
+	entries = zune.fs.entries("./src/enviroment/class/list")
+end
+
+print("Class entries", entries)
+
+for _, entry in pairs(entries) do
+	local code
+	local requirePath
+	if zembed.IsEmbedded() then
+		local name = zune.fs.path.basename(entry)
+		local full = "./list/" .. name
+		requirePath = string.gsub(full, ".lua", "")
+	else
+		requirePath = "./list/" .. string.gsub(entry.name, ".lua", "")
+	end
+
+	local returned, s, r = require(requirePath)
 	-- returned = { class = "Part", callback = function(Part) ... end }
 
 	if not returned then
@@ -23,8 +41,8 @@ filesystem.entryloop("./src/enviroment/class/list", function(entry)
 	end
 	listOfClasses[returned.class] = returned
 
-	log("CLASS: Successfully created class '" .. returned.class .. "' from file: " .. entry.name)
-end)
+	log("CLASS: Successfully created class '" .. returned.class .. "' from file: " .. requirePath)
+end
 
 function registry.createclass(data)
 	listOfClasses[data.class] = data

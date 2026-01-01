@@ -141,7 +141,6 @@ end
 
 local function renderButton(i, name, element, windowData)
 	local winX, winY = windowData.x, windowData.y + 80
-	local winWidth = windowData.width
 	local cellWidth = element.width or 50
 	local cellHeight = element.height or 50
 	local paddingLeft = 15
@@ -149,7 +148,6 @@ local function renderButton(i, name, element, windowData)
 	local rectX = winX + paddingLeft + i * (cellWidth + padding)
 	local rectY = winY
 	local rectData = aRect.new(rectX, rectY, cellWidth, cellHeight)
-	local mousePos = rl.GetMousePosition()
 
 	local transparency = 1
 	local color = Color3.new(0.5, 0.5, 0.5)
@@ -227,7 +225,6 @@ local function drawCategories(windowData)
 	local Categories = aRect.new(x, y, width, height)
 	rl.DrawRectangleRounded(aRect:translate(Categories), 0.5, 18, Color3ToRaylib(Color3.new(0.133, 0.133, 0.133), 0))
 
-	-- Draw buttons inside
 	local startX = x + extraPadding / 2
 	local i = 0
 	for name, category in pairs(categoryRegistry) do
@@ -290,6 +287,10 @@ window.stepped = function(windowData)
 					renderButton(i, element.text, element, windowData)
 				elseif element.type == "Separator" then
 					renderSeperator(i, windowData, element)
+				elseif element.type == "Custom" then
+					if element.render then
+						element.render(aRect)
+					end
 				end
 				i += 1
 			end

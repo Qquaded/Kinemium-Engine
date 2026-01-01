@@ -101,7 +101,6 @@ function Aereon.include(game)
 end
 
 function Aereon.step(dt)
-	Aereon.gui:step(dt)
 	table.sort(stepcallbacks, function(a, b)
 		return a.priority > b.priority
 	end)
@@ -109,6 +108,7 @@ function Aereon.step(dt)
 	for _, v in ipairs(stepcallbacks) do
 		v.callback(dt)
 	end
+	Aereon.gui:step(dt)
 end
 
 export type Aereon = typeof(Aereon)

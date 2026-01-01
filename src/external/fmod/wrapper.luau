@@ -2,6 +2,11 @@ local bin = "./src/external/fmod/bin/"
 local ffi = zune.ffi
 local platform = zune.platform
 
+local zembed = require("@zembed")
+if zembed.IsEmbedded() then
+	bin = "./"
+end
+
 local libname
 if platform.os == "windows" then
 	libname = ".dll"

@@ -79,22 +79,41 @@ EngineSignal:Connect(function(route, value, Script)
 	end
 end)
 
-renderer.Add2DStack(function(data)
+local window = aereon.window(game, nil, 1)
+
+local function calculate()
 	local screenWidth = rl.GetMonitorWidth(0)
 	local screenHeight = rl.GetMonitorHeight(0)
-	local toolbarHeight = 120
+	local toolbarHeight = 160
 	local viewportX = 0
 	local viewportY = toolbarHeight
 	local viewportWidth = screenWidth - 400
 	local viewportHeight = screenHeight - toolbarHeight - screenHeight * 0.2
+	return viewportX, viewportY, viewportWidth, viewportHeight
+end
 
-	aereon.step(rl.GetFrameTime())
+local x, y, width, height = calculate()
 
+local ideWindow = window.create({
+	title = "Kinemium IDE",
+	x = x,
+	y = y,
+	width = width,
+	height = height,
+	enabled = false,
+})
+
+ideWindow.stepped = function(data)
+	data.enabled = enableIDE
 	if enableIDE then
-		ide.draw(viewportX, viewportY, vector.create(viewportWidth, viewportHeight), 50)
+		ide.draw(ideWindow.x, ideWindow.y + 30, vector.create(ideWindow.width, ideWindow.height), 50)
 
 		if currentObject then
 			currentObject.Source = ide:getCode()
 		end
 	end
+end
+
+renderer.Add2DStack(function(data)
+	aereon.step(rl.GetFrameTime())
 end)

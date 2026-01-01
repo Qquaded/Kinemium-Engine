@@ -125,17 +125,86 @@ local completions = {
 }
 
 
+local dynamicVariables = {}
+
+local function getObjectMembers(obj)
+	local members = {}
+	if type(obj) ~= "table" and type(obj) ~= "userdata" then
+		return members
+	end
+
+	local seen = {}
+
+	local function addMembers(t)
+		for k, v in pairs(t) do
+			if type(k) == "string" and not seen[k] then
+				local memberType = type(v) == "function" and "method" or "variable"
+				local icon = memberType == "method" and "Method.png" or "Variable.png"
+				table.insert(members, { label = k, type = memberType, icon = icon })
+				seen[k] = true
+			end
+		end
+	end
+
+	addMembers(obj)
+	local mt = getmetatable(obj)
+	if mt and mt.__index then
+		if type(mt.__index) == "table" then
+			addMembers(mt.__index)
+		elseif type(mt.__index) == "function" then
+			-- Can't easily introspect a function __index without calling it
+		end
+	end
+
+	return members
+end
+
+local function indexVariables(editor, game)
+	dynamicVariables = {}
+	for _, line in ipairs(editor.text.lines) do
+		-- Match local X = game:GetService("Y")
+		local varName, serviceName = line:match("local%s+([%w_]+)%s*=%s*game:GetService%s*%(%s*[\"']([^\"']+)[\"']%s*%)")
+		if varName and serviceName then
+			local success, service = pcall(function()
+				return game:GetService(serviceName)
+			end)
+			if success and service then
+				dynamicVariables[varName] = {
+					type = "service",
+					name = serviceName,
+					members = getObjectMembers(service),
+				}
+			end
+		end
+
+		-- Match local X = require(path/instance)
+		local varName2, requirePath = line:match("local%s+([%w_]+)%s*=%s*require%s*%(%s*[\"']([^\"']+)[\"']%s*%)")
+		if varName2 and requirePath then
+			local success, lib = pcall(function()
+				return require(requirePath)
+			end)
+			if success and lib then
+				dynamicVariables[varName2] = {
+					type = "library",
+					name = requirePath,
+					members = getObjectMembers(lib),
+				}
+			end
+		end
+	end
+end
+
 local function getCurrentWord(editor)
 	local c = editor.text.cursor
 	local line = editor.text.lines[c.line] or ""
 	local beforeCursor = line:sub(1, c.col - 1)
-	
+
 	-- Check for member access (e.g., math.)
 	local library, memberPart = beforeCursor:match("([%w_]+)%.([%w_]*)$")
 	if library then
 		return memberPart, library, true
 	end
-	
+
 	return beforeCursor:match("([%w_]+)$") or "", nil, false
 end
 
@@ -153,14 +222,14 @@ local function getDynamicCompletions(editor)
 	return dynamic
 end
 
-local function updateAutocomplete(editor)
+local function updateAutocomplete(editor, game)
 	if editor.text.selection.active then
 		editor.autocomplete.visible = false
 		return
 	end
 
 	local word, libraryName, isMember = getCurrentWord(editor)
-	
+
 	if #word < 1 and not isMember then
 		editor.autocomplete.visible = false
 		return
@@ -187,13 +256,27 @@ local function updateAutocomplete(editor)
 				break
 			end
 		end
-		
+
 		if libraryItem and libraryItem.members then
 			addIfMatch(libraryItem.members)
+		elseif dynamicVariables[libraryName] then
+			addIfMatch(dynamicVariables[libraryName].members)
 		end
 	else
 		addIfMatch(completions)
 		addIfMatch(getDynamicCompletions(editor))
+
+		-- Add dynamic variables themselves to root completions
+		for varName, data in pairs(dynamicVariables) do
+			if varName:lower():sub(1, #word) == word:lower() and varName ~= word and not seen[varName] then
+				table.insert(items, {
+					label = varName,
+					type = data.type,
+					icon = data.type == "service" and "Service.png" or "Module.png",
+				})
+				seen[varName] = true
+			end
+		end
 	end
 
 	if #items > 0 then
@@ -301,6 +384,7 @@ return {
 	completions = completions,
 	getCurrentWord = getCurrentWord,
 	updateAutocomplete = updateAutocomplete,
+	indexVariables = indexVariables,
 	completeWord = completeWord,
 	cycleSnippet = cycleSnippet,
 	getIndentLevel = getIndentLevel,

@@ -1,14 +1,36 @@
 local fs = zune.fs
 local datatypes = {}
 
-for _, file in pairs(fs.entries("./src/enviroment/datatypes")) do
-	if file.name == "getDatatypes.lua" then
-		continue
-	end
-	local moduleName = file.name:gsub("%.lua$", "")
+local zembed = require("@zembed")
 
-	datatypes[moduleName] = require("./" .. moduleName)
-	datatypes[moduleName].type = moduleName
+local entries
+
+if zembed.IsEmbedded() then
+	entries = zembed.GetScriptsThatHas("datatypes")
+else
+	entries = fs.entries("./src/enviroment/datatypes")
+end
+
+for _, file in pairs(entries) do
+	local moduleName
+	if zembed.IsEmbedded() then
+		moduleName = fs.path.basename(file)
+		moduleName = moduleName:gsub("%.lua$", "")
+		if moduleName == "getDatatypes" then
+			continue
+		end
+
+		moduleName = "datatypes/" .. moduleName
+		datatypes[file] = require("../" .. moduleName)
+		datatypes[file].type = moduleName
+	else
+		if file.name == "getDatatypes.lua" then
+			continue
+		end
+		moduleName = file.name:gsub("%.lua$", "")
+		datatypes[moduleName] = require("./" .. moduleName)
+		datatypes[moduleName].type = moduleName
+	end
 end
 
 return datatypes

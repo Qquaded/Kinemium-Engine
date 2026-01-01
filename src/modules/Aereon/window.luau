@@ -72,6 +72,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 		y: number,
 		width: number,
 		height: number,
+		enabled: boolean?,
 	})
 		local window = {
 			title = data.title,
@@ -83,6 +84,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 			id = #windowRegistry + 1,
 			rounded = 0,
 			stepped = data.step,
+			enabled = data.enabled or true,
 			scrollOffset = vector.create(0, 0),
 		}
 		table.insert(windowRegistry, window)
@@ -211,119 +213,127 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 
 		local window_theme_config = theme().window
 
-		for _, window in pairs(windowRegistry) do
-			if window.Closed then
+		for _, windowData in pairs(windowRegistry) do
+			if windowData.Closed then
 				continue
 			end
-			local rect = structs.Rectangle:new({
-				x = window.x,
-				y = window.y,
-				width = window.width,
-				height = window.height,
-			})
-
-			local contentBounds = structs.Rectangle:new({
-				x = window.x,
-				y = window.y + 24,
-				width = window.width,
-				height = window.height - 24,
-			})
-
-			local contentRect = structs.Rectangle:new({
-				x = window.x,
-				y = window.y + 24,
-				width = window.width,
-				height = window.height * 4,
-			})
-
-			local viewRect = structs.Rectangle:new({
-				x = 0,
-				y = 0,
-				width = 0,
-				height = 0,
-			})
-
-			--DrawRectangleRec: (rec: Rectangle, color: Color) -> (),
-
-			if window_theme_config.ShadowsEnabled == true then
-				local shadowOffset = 6
-
-				local textureRect = structs.Rectangle:new({ x = 0, y = 0, width = size.x, height = size.y })
-				local destination = structs.Rectangle:new({
-					x = window.x - shadowOffset * 15,
-					y = window.y - shadowOffset * 15,
-					width = window.width + shadowOffset * 30,
-					height = window.height + shadowOffset * 30,
+			if windowData.enabled then
+				local rect = structs.Rectangle:new({
+					x = windowData.x,
+					y = windowData.y,
+					width = windowData.width,
+					height = windowData.height,
 				})
 
-				raylib.DrawTexturePro(
-					shadowTexture,
-					textureRect,
-					destination, -- destination rectangle
-					vector.create(0, 0), -- origin for rotation/scaling
-					0, -- rotation
-					Color3ToRaylib(window_theme_config.ShadowColor, 0.9)
-				)
-			end
-
-			raylib.DrawRectangleRounded(
-				rect,
-				window.rounded,
-				30,
-				Color3ToRaylib(
-					window_theme_config.BackgroundColor,
-					window.transparency or window_theme_config.BackgroundTransparency
-				)
-			)
-			module.backgroundDrawed(window)
-			raylib.DrawRectangleRoundedLinesEx(rect, window.rounded, 30, 1, Color3ToRaylib(Color3.new(1, 1, 1), 0.9))
-
-			-- title
-			if window.headerRender ~= false then
-				local titleRect = structs.Rectangle:new({
-					x = window.x,
-					y = window.y,
-					width = window.width,
-					height = 28,
+				local contentBounds = structs.Rectangle:new({
+					x = windowData.x,
+					y = windowData.y + 24,
+					width = windowData.width,
+					height = windowData.height - 24,
 				})
-				local titleColor = window.IsDragging and window_theme_config.DragColor
-					or window_theme_config.SecondaryBackgroundColor
-				raylib.DrawRectangleRec(
-					titleRect,
-					Color3ToRaylib(titleColor, window_theme_config.TitleBackgroundTransparency)
-				)
 
-				local textColor = Color3ToRaylib(window_theme_config.TitleColor, 0)
-				raylib.DrawTextEx(
-					vend,
-					window.title,
-					vector.create(window.x + 8, window.y + 6),
-					window_theme_config.TitleTextSize,
+				local contentRect = structs.Rectangle:new({
+					x = windowData.x,
+					y = windowData.y + 24,
+					width = windowData.width,
+					height = windowData.height * 4,
+				})
+
+				local viewRect = structs.Rectangle:new({
+					x = 0,
+					y = 0,
+					width = 0,
+					height = 0,
+				})
+
+				--DrawRectangleRec: (rec: Rectangle, color: Color) -> (),
+
+				if window_theme_config.ShadowsEnabled == true then
+					local shadowOffset = 6
+
+					local textureRect = structs.Rectangle:new({ x = 0, y = 0, width = size.x, height = size.y })
+					local destination = structs.Rectangle:new({
+						x = windowData.x - shadowOffset * 15,
+						y = windowData.y - shadowOffset * 15,
+						width = windowData.width + shadowOffset * 30,
+						height = windowData.height + shadowOffset * 30,
+					})
+
+					raylib.DrawTexturePro(
+						shadowTexture,
+						textureRect,
+						destination, -- destination rectangle
+						vector.create(0, 0), -- origin for rotation/scaling
+						0, -- rotation
+						Color3ToRaylib(window_theme_config.ShadowColor, 0.9)
+					)
+				end
+
+				raylib.DrawRectangleRounded(
+					rect,
+					windowData.rounded,
+					30,
+					Color3ToRaylib(
+						window_theme_config.BackgroundColor,
+						windowData.transparency or window_theme_config.BackgroundTransparency
+					)
+				)
+				module.backgroundDrawed(windowData)
+				raylib.DrawRectangleRoundedLinesEx(
+					rect,
+					windowData.rounded,
+					30,
 					1,
-					textColor
+					Color3ToRaylib(Color3.new(1, 1, 1), 0.9)
 				)
 
-				window.titleRect = { height = 28, width = window.width, x = window.x, y = window.y }
+				-- title
+				if windowData.headerRender ~= false then
+					local titleRect = structs.Rectangle:new({
+						x = windowData.x,
+						y = windowData.y,
+						width = windowData.width,
+						height = 28,
+					})
+					local titleColor = windowData.IsDragging and window_theme_config.DragColor
+						or window_theme_config.SecondaryBackgroundColor
+					raylib.DrawRectangleRec(
+						titleRect,
+						Color3ToRaylib(titleColor, window_theme_config.TitleBackgroundTransparency)
+					)
+
+					local textColor = Color3ToRaylib(window_theme_config.TitleColor, 0)
+					raylib.DrawTextEx(
+						vend,
+						windowData.title,
+						vector.create(windowData.x + 8, windowData.y + 6),
+						window_theme_config.TitleTextSize,
+						1,
+						textColor
+					)
+
+					windowData.titleRect = { height = 28, width = windowData.width, x = windowData.x, y = windowData.y }
+				end
+
+				if windowData.IsDragging == true then
+					local borderColor = window_theme_config.DragColor
+					raylib.DrawRectangleLines(
+						windowData.x,
+						windowData.y,
+						windowData.width,
+						windowData.height,
+						Color3ToRaylib(borderColor, window_theme_config.DragOutlineTransparency)
+					)
+				end
+
+				raylib.BeginScissorMode(windowData.x, windowData.y, windowData.width, windowData.height)
+
+				module.stepped(windowData)
+				raylib.EndScissorMode()
 			end
 
-			if window.IsDragging == true then
-				local borderColor = window_theme_config.DragColor
-				raylib.DrawRectangleLines(
-					window.x,
-					window.y,
-					window.width,
-					window.height,
-					Color3ToRaylib(borderColor, window_theme_config.DragOutlineTransparency)
-				)
-			end
-
-			raylib.BeginScissorMode(window.x, window.y, window.width, window.height)
-
-			module.stepped(window)
-			raylib.EndScissorMode()
-
-			if window["stepped"] then
-				window.stepped()
+			if windowData["stepped"] then
+				windowData.stepped(windowData)
 			end
 		end
 	end

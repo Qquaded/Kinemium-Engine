@@ -3,7 +3,6 @@ local Registry = require("@Kinemium.registry")
 local DataModel = require("@DataModel")
 local EnumMap = require("@EnumMap")
 local PlayerGui = require("@PlayerGui")
-local rules = require("@kilang.rules")
 
 return function(renderer)
 	local mainDatamodel = DataModel.new(renderer, { "StarterGui" })
@@ -120,12 +119,6 @@ return function(renderer)
 				callerEnv[p] = v
 			end
 			print("Successfully included header " .. object.Name)
-		end
-	end
-
-	for _, lib in pairs(rules) do
-		if lib.InitEnviroment then
-			lib.InitEnviroment(data)
 		end
 	end
 

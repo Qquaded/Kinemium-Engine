@@ -1,13 +1,7 @@
 local Vector3 = require("@Vector3")
-local Color3 = require("@Color3")
-local CFrame = require("@CFrame")
-local Part = require("./src/enviroment/class/list/Part")
+local Part = require("./Part")
 local raylib = require("@raylib")
-local utils = require("@bufferutils")
-local structs = raylib.structs
 local Enum = require("@EnumMap")
-local const = raylib.const
-local task = zune.task
 
 local propTable = {
 	MeshId = "./src/assets/meshes/cube.glb",

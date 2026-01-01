@@ -1,6 +1,7 @@
 local Instance = require("@Instance")
 local Enum = require("@EnumMap")
 local signal = require("@Kinemium.signal")
+local zembed = require("@zembed")
 
 local DataModel = {}
 DataModel.__index = DataModel
@@ -21,10 +22,23 @@ function DataModel.new(RENDERER, ...)
 
 	self.Services = {}
 
-	local services = fs.entries("./src/enviroment/game/services")
+	local services
+	if zembed.IsEmbedded() then
+		services = zembed.GetScriptsThatHas([[game\services]])
+	else
+		services = fs.entries("./src/enviroment/game/services")
+	end
 	for _, service in pairs(services) do
-		local name = service.name:gsub(".lua", "")
-		local path = "./services/" .. name
+		local name
+		local path
+		if zembed.IsEmbedded() then
+			name = fs.path.basename(service):gsub(".luau", "")
+			name = string.gsub(name, ".lua", "")
+			path = "./services/" .. name
+		else
+			name = service.name:gsub(".lua", "")
+			path = "./services/" .. name
+		end
 		local success, returnedData = pcall(require, path)
 
 		if success then

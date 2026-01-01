@@ -488,7 +488,11 @@ return {
 
 	-- Font
 	LoadFont = function(name, fontPath)
-		local buf = lib.LoadFontEx(fontPath, 100, nil, 0)
+		local buf = lib.LoadFontEx(fontPath, 300, nil, 0)
+
+		local texture = zune.mem.slice(buf, 16, structs.Texture2D:size())
+		raylib.lib.SetTextureFilter(texture, raylib.const.TextureFilter.TEXTURE_FILTER_BILINEAR)
+
 		fontRegistry[name] = buf
 		return buf
 	end,

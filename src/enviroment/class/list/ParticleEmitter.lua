@@ -1,28 +1,18 @@
 local Vector3 = require("@Vector3")
 local Color3 = require("@Color3")
 local CFrame = require("@CFrame")
+local NumberRange = require("@NumberSequence")
 local Enum = require("@EnumMap")
-local raylib = require("@raylib")
-local Part = require("./Part")
 
-local propTable = {
-	Name = "Union",
-}
-Part.inherit(propTable)
+local propTable = {}
 
 return {
-	class = "Union",
+	class = "ParticleEmitter",
 
-	callback = function(instance, renderer)
+	callback = function(instance, renderer, game)
 		propTable.render = function(part, camera, lib) end
 
 		instance:SetProperties(propTable)
-
-		instance.Changed:Connect(function(property)
-			if property == "Anchored" then
-				renderer.Signal:Fire("UpdatePart", instance)
-			end
-		end)
 
 		return instance
 	end,

@@ -31,6 +31,15 @@ _G.FlagExists = function(flag)
 	return false
 end
 
+_G.debugstep = function()
+	local callerEnv = getfenv(2)
+	if not callerEnv._cdebug then
+		callerEnv._cdebug = 0
+	end
+	callerEnv._cdebug = callerEnv._cdebug + 1
+	log(`Debug step {callerEnv._cdebug}`)
+end
+
 local sandboxer = require("./modules/sandboxer")
 local Instance = require("@Instance")
 local filesystem = require("./modules/filesystem")

@@ -63,13 +63,11 @@ end)
 
 local fileService = game:GetService("KineFileService")
 
--- Save your game world
 local success, result = pcall(function()
-	local savedGame = fileService.Save("./src/MyAwesomeGame.kine")
+	local savedGame = fileService.Save("MyAwesomeGame.kine")
 	if savedGame then
 		print("Game saved successfully!")
 
-		-- Build standalone executable
 		savedGame:ToExe()
 		print("Executable built as KinemiumRuntime.exe")
 	end
