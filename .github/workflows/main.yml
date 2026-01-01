@@ -21,9 +21,6 @@ jobs:
       - name: Setup Rokit
         uses: CompeyDev/setup-rokit@v0.1.2
 
-      - name: Rokit Init
-        run: rokit init
-
       - name: Install Tools
         run: |
           rokit install --no-trust-check
