@@ -21,12 +21,12 @@ jobs:
       - name: Setup Rokit
         uses: CompeyDev/setup-rokit@v0.1.2
 
-      - name: Rokit Init
-        run: rokit init
-
-      - name: Install Zune
+      - name: List
+        run: ls
+        
+      - name: Install Tools
         run: |
-          rokit add Scythe-Technology/zune
+          rokit install
 
       - name: Run headless tests
         run: zune run game --headless
