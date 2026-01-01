@@ -2,15 +2,11 @@ local Instance = require("@Instance")
 local Vector3 = require("@Vector3")
 local Workspace = Instance.new("Workspace")
 local Color3 = require("@Color3")
-
 local pool = {}
 
 local raylib = require("@raylib")
 local lib = raylib.lib
 local structs = raylib.structs
-
-local utils = require("@bufferutils")
-local default = lib.LoadMaterialDefault()
 
 local function Color3ToRaylib(c, transparency)
 	local r, g, b = c:ToRGB()
@@ -58,7 +54,9 @@ Workspace.InitRenderer = function(renderer, signal, game)
 	local loadedMaterials = {}
 
 	local preloadedMeshes
-	if not isHeadless then
+	if not IsHeadless then
+		print("Running in headless?")
+
 		preloadedMeshes = meshlib.PreloadStandardMeshes()
 
 		local material_index = 0
@@ -78,7 +76,6 @@ Workspace.InitRenderer = function(renderer, signal, game)
 	end
 
 	proptable.materials = loadedMaterials
-
 	Workspace:SetProperties(proptable)
 
 	signal:Connect(function(route, data) end)
@@ -144,7 +141,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		end
 	end
 
-	if not isHeadless then
+	if not IsHeadless then
 		renderer.Add3DStack(function()
 			renderer.Signal:Fire("WorkspaceStart")
 

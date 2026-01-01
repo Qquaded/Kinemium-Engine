@@ -5,6 +5,7 @@ local signal = require("@Kinemium.signal")
 local meshlib = require("./mesh")
 local shader = require("./shader")
 local skybox = require("./skybox")
+local task = zune.task
 
 local mainSignal = signal.new()
 local fontRegistry = {}
@@ -62,6 +63,7 @@ end
 local function run()
 	local time = 0
 	local dt = 1 / 120
+	print("Running at " .. 120 .. " FPS")
 	while true do
 		step(time)
 		time += dt
