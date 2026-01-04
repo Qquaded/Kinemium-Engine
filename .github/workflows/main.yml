@@ -28,4 +28,4 @@ jobs:
           rokit install --no-trust-check
 
       - name: Run headless tests
-        run: zune run game --headless --server
+        run: zune run game --cli
