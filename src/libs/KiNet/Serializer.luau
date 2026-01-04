@@ -129,6 +129,14 @@ local function writeValue(b, offset, value, depth, seen)
 		offset += 4
 		buffer.copy(b, offset, value, 0, len)
 		offset += len
+	elseif t == "buffer" then
+		buffer.writeu8(b, offset, TYPE_BUFFER)
+		offset += 1
+		local len = buffer.len(value)
+		buffer.writeu32(b, offset, len)
+		offset += 4
+		buffer.copy(b, offset, value, 0, len)
+		offset += len
 	else
 		error("Unsupported type: " .. t)
 	end
@@ -225,6 +233,8 @@ local function estimateSize(value, depth)
 			return size
 		end
 	elseif t == "userdata" then
+		return 5 + buffer.len(value)
+	elseif t == "buffer" then
 		return 5 + buffer.len(value)
 	else
 		return 1

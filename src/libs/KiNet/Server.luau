@@ -4,12 +4,17 @@ local Server = {}
 local Serializer = require("./Serializer")
 
 Server.ConnectedClients = {}
+local onRecieveCallbacks = {}
+
+local function clientKey(addr)
+	return addr.address .. ":" .. addr.port
+end
 
 function Server:Init(address, port)
 	-- create server socket
 	local socket = net.createSocket(
 		net.ADDRF.INET, -- IPv4
-		net.SOCKF.DGRAM, -- UDP
+		bit32.bor(net.SOCKF.DGRAM, net.SOCKF.NONBLOCK, net.SOCKF.CLOEXEC), -- UDP
 		net.IPPROTO.UDP -- UDP protocol
 	)
 
@@ -26,8 +31,8 @@ function Server:Init(address, port)
 	return socket
 end
 
-function Server:OnMessage(callback)
-	self._onMessage = callback
+function Server:OnRecieve(callback)
+	table.insert(onRecieveCallbacks, callback)
 end
 
 function Server:OnNewClient(callback)
@@ -38,28 +43,33 @@ function Server:OnClientRemoved(callback)
 	self._onClientRemoved = callback
 end
 
+function Server:SendAll(data)
+	for key, client in pairs(Server.ConnectedClients) do
+		--print("Sending data to client", key)
+		self:Send(client, data)
+	end
+end
+
 function Server:Shutdown()
 	log(`Shutting down server at {self.Address}:{self.Port}`)
-	for client in pairs(Server.ConnectedClients) do
-		self:Send(client, { type = "SHUTDOWN" })
-	end
+	Server:SendAll({ type = "SHUTDOWN" })
 	self.Socket:close()
 end
 
 function Server:Send(client, data)
-	assert(self.Socket, "Socket not created, call :Init() first")
-	assert(client, "Client not found")
-
 	local buf = Serializer.Serialize(data)
-
-	self.Socket:sendMsg(client.port, client.address, buf)
+	self.Socket:sendMsg(tonumber(client.port), client.address, buf)
 end
 
 function Server._middleware(v, addr)
 	if type(v) == "table" then
 		if v.type == "CONNECT" then
-			Server.ConnectedClients[addr] = true
-			log(`Client connected at {addr.address}`)
+			local key = clientKey(addr)
+			Server.ConnectedClients[key] = {
+				address = addr.address,
+				port = addr.port,
+			}
+			log(`Client ({key}) connected at {addr.address}`)
 
 			if Server._onNewClient then
 				Server._onNewClient(addr)
@@ -69,7 +79,7 @@ function Server._middleware(v, addr)
 		-- detect client removed
 		if v.type == "DISCONNECT" then
 			Server.ConnectedClients[addr] = nil
-			log(`Client disconnected at {addr.address}`)
+			log(`Client ({clientKey(addr)}) disconnected at {addr.address}`)
 
 			if Server._onClientRemoved then
 				Server._onClientRemoved(addr)
@@ -78,23 +88,27 @@ function Server._middleware(v, addr)
 	end
 end
 
-function Server:Service()
+function Server:Listen()
 	assert(self.Socket, "Socket not created, call :Init() first")
 
-	while true do
-		local addr, data = self.Socket:recvMsg()
-		if not data then
-			break
-		end
+	task.spawn(function()
+		while true do
+			local addr, data = self.Socket:recvMsg()
+			if not data then
+				return
+			end
 
-		if self._onMessage then
 			local decoded = Serializer.Deserialize(data)
 			if decoded then
 				Server._middleware(decoded, addr)
-				self._onMessage(addr, decoded)
+
+				for _, v in pairs(onRecieveCallbacks) do
+					v(addr, decoded)
+				end
 			end
+			task.wait()
 		end
-	end
+	end)
 end
 
 return Server

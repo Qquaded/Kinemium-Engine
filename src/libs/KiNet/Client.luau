@@ -3,14 +3,16 @@ local Client = {}
 
 local Serializer = require("./Serializer")
 
+local onRecieveConnections = {}
+
 function Client:Init(serverAddress, serverPort)
 	local socket = net.createSocket(
 		net.ADDRF.INET, -- IPv4
-		net.SOCKF.DGRAM, -- UDP
+		bit32.bor(net.SOCKF.DGRAM, net.SOCKF.NONBLOCK, net.SOCKF.CLOEXEC), -- UDP
 		net.IPPROTO.UDP -- UDP protocol
 	)
 
-	socket:bindIp("0.0.0.0", 0)
+	socket:bindIp("127.0.0.1", 0)
 
 	self.Socket = socket
 	self.ServerAddress = serverAddress or "0.0.0.0"
@@ -29,6 +31,10 @@ function Client:Connect()
 	Client:Send({
 		type = `CONNECT`,
 	})
+end
+
+function Client:OnRecieve(callback)
+	table.insert(onRecieveConnections, callback)
 end
 
 function Client:Disconnect()
@@ -59,15 +65,31 @@ function Client._middleware(v, addr)
 	end
 end
 
-function Client:Service(callback)
-	assert(self.Socket, "Socket not initialized, call :Init() first")
-	local addr, data = self.Socket:recvMsg()
-	if data and callback then
-		local decoded = Serializer.Deserialize(data)
-		if decoded then
-			callback(addr, decoded)
+function Client:Listen()
+	task.spawn(function()
+		while true do
+			local success, addr, data = pcall(function()
+				return self.Socket:recvMsg(100000)
+			end)
+
+			if not success then
+				task.wait()
+				continue
+			end
+
+			if data then
+				local decoded = Serializer.Deserialize(data)
+				if decoded then
+					Client._middleware(decoded, addr)
+
+					for _, v in pairs(onRecieveConnections) do
+						v(addr, decoded)
+					end
+				end
+			end
+			task.wait()
 		end
-	end
+	end)
 end
 
 return Client

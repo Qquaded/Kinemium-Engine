@@ -50,6 +50,12 @@ local function serialize_object(object)
 	}
 
 	for propname, propvalue in pairs(object._props) do
+		if type(propvalue) == "buffer" then
+			continue
+		end
+		if type(propname) == "buffer" then
+			continue
+		end
 		result.props[propname] = serialize_value(propvalue)
 	end
 

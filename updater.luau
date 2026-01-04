@@ -149,7 +149,9 @@ if isInstalled() then
 					if answer == "y" or answer == "yes" then
 						print("UPDATER: Removing corrupted installation...")
 						clearDir(ENGINE_DIR)
-						pcall(function() fs.deleteDir(ENGINE_DIR) end)
+						pcall(function()
+							fs.deleteDir(ENGINE_DIR)
+						end)
 						clone()
 						print("UPDATER: Re-Installation complete.")
 						return
@@ -213,7 +215,9 @@ if isInstalled() then
 			if answer == "y" or answer == "yes" then
 				print("UPDATER: Removing corrupted installation...")
 				clearDir(ENGINE_DIR)
-				pcall(function() fs.deleteDir(ENGINE_DIR) end)
+				pcall(function()
+					fs.deleteDir(ENGINE_DIR)
+				end)
 				clone()
 				print("UPDATER: Re-Installation complete.")
 			else
@@ -226,7 +230,7 @@ if isInstalled() then
 			print("UPDATER: Updated to commit: " .. newHash:sub(1, 8))
 			print("UPDATER: Update complete!")
 		end
-	else 
+	else
 		print("UPDATER: Installation is broken (not a valid git repository).")
 		io.stdout:write("UPDATER: Delete and reinstall? (y/n): ")
 		local answer = io.stdin:read():lower()
@@ -238,7 +242,9 @@ if isInstalled() then
 			return
 		end
 		clearDir(ENGINE_DIR)
-		pcall(function() fs.deleteDir(ENGINE_DIR) end)
+		pcall(function()
+			fs.deleteDir(ENGINE_DIR)
+		end)
 		clone()
 		print("UPDATER: Re-Installation complete.")
 	end

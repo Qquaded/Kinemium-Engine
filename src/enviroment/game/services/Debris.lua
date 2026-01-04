@@ -20,7 +20,7 @@ function DebrisService:RemoveItem(object)
 	trackedItems[object] = nil
 end
 
-DebrisService.InitRenderer = function(renderer, renderer_signal)
+DebrisService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	DebrisService:SetProperties({
 		AddItem = DebrisService.AddItem,
 		RemoveItem = DebrisService.RemoveItem,
