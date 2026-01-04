@@ -126,7 +126,7 @@ export type FMOD_STUDIO_MEMORY_USAGE = typeof(FMOD_STUDIO_MEMORY_USAGE:new({}))
 -- Function definitions
 local funcs = {
 	FMOD_Studio_ParseID = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
-	FMOD_Studio_System_Create = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.u32 } },
+	FMOD_Studio_System_Create = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	FMOD_Studio_System_IsValid = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	FMOD_Studio_System_SetAdvancedSettings = {
 		returns = ffi.types.pointer,
@@ -138,7 +138,7 @@ local funcs = {
 	},
 	FMOD_Studio_System_Initialize = {
 		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.i32, ffi.types.pointer, ffi.types.pointer },
+		args = { ffi.types.i32, ffi.types.i32, ffi.types.i32, ffi.types.i32 },
 	},
 	FMOD_Studio_System_Release = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	FMOD_Studio_System_Update = { returns = ffi.types.pointer, args = { ffi.types.pointer } },

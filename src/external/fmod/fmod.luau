@@ -503,7 +503,7 @@ local funcs = {
 	},
 	FMOD_System_Init = {
 		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.i32 },
 	},
 	FMOD_System_Close = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	FMOD_System_Update = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
@@ -579,7 +579,13 @@ local funcs = {
 	},
 	FMOD_System_CreateSound = {
 		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		args = {
+			ffi.types.pointer, -- system
+			ffi.types.pointer, -- name_or_data (file path as pointer to string)
+			ffi.types.u32, -- mode (flags)
+			ffi.types.pointer, -- exinfo
+			ffi.types.pointer, -- sound (output)
+		},
 	},
 	FMOD_System_CreateStream = {
 		returns = ffi.types.pointer,

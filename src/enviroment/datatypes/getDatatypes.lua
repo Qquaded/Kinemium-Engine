@@ -22,14 +22,14 @@ for _, file in pairs(entries) do
 
 		moduleName = "datatypes/" .. moduleName
 		datatypes[file] = require("../" .. moduleName)
-		datatypes[file].type = moduleName
+		datatypes[file].__type = moduleName
 	else
 		if file.name == "getDatatypes.lua" then
 			continue
 		end
 		moduleName = file.name:gsub("%.lua$", "")
 		datatypes[moduleName] = require("./" .. moduleName)
-		datatypes[moduleName].type = moduleName
+		datatypes[moduleName].__type = moduleName
 	end
 end
 

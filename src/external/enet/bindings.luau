@@ -34,13 +34,14 @@ export type ENetCompressor = typeof(ENetCompressor:new({}))
 
 local ENetBuffer = ffi.struct({
 	{ dataLength = ffi.types.u64 },
+	{ data = ffi.types.pointer },
 })
 export type ENetBuffer = typeof(ENetBuffer:new({}))
 
 local ENetAddress = ffi.struct({
-	{ host = ffi.types.u32 },
-	{ port = ffi.types.u16 },
-	{ sin6_scope_id = ffi.types.u16 },
+	{ host = ffi.types.u8:array(16) }, -- 16 bytes for IPv6 address
+	{ port = ffi.types.u16 }, -- 2 bytes
+	{ sin6_scope_id = ffi.types.u16 }, -- 2 bytes
 })
 export type ENetAddress = typeof(ENetAddress:new({}))
 
@@ -202,9 +203,14 @@ local ENetHost = ffi.struct({
 export type ENetHost = typeof(ENetHost:new({}))
 
 local ENetEvent = ffi.struct({
-	{ type = ffi.types.pointer },
-	{ channelID = ffi.types.u8 },
-	{ data = ffi.types.u32 },
+	{ type = ffi.types.u32 }, -- offset 0, size 4
+	{ _pad1 = ffi.types.u32 }, -- offset 4, size 4 (padding to align pointer to 8 bytes)
+	{ peer = ffi.types.pointer }, -- offset 8, size 8
+	{ channelID = ffi.types.u8 }, -- offset 16, size 1
+	{ _pad2 = ffi.types.u8 }, -- offset 17, size 1
+	{ _pad3 = ffi.types.u16 }, -- offset 18, size 2
+	{ data = ffi.types.u32 }, -- offset 20, size 4
+	{ packet = ffi.types.pointer }, -- offset 24, size 8
 })
 export type ENetEvent = typeof(ENetEvent:new({}))
 
@@ -214,7 +220,10 @@ local funcs = {
 	enet_deinitialize = { returns = ffi.types.void, args = {} },
 	enet_linked_version = { returns = ffi.types.pointer, args = {} },
 	enet_time_get = { returns = ffi.types.u32, args = {} },
-	enet_socket_create = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	enet_socket_create = {
+		returns = ffi.types.pointer,
+		args = { ffi.types.i32 }, -- ENetSocketType is int, not pointer!
+	},
 	enet_socket_bind = { returns = ffi.types.i32, args = { ffi.types.pointer, ffi.types.pointer } },
 	enet_socket_get_address = { returns = ffi.types.i32, args = { ffi.types.pointer, ffi.types.pointer } },
 	enet_socket_listen = { returns = ffi.types.i32, args = { ffi.types.pointer, ffi.types.i32 } },
@@ -228,9 +237,30 @@ local funcs = {
 		returns = ffi.types.i32,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.u64 },
 	},
-	enet_socket_wait = { returns = ffi.types.i32, args = { ffi.types.pointer, ffi.types.u32, ffi.types.u64 } },
-	enet_socket_set_option = { returns = ffi.types.i32, args = { ffi.types.pointer, ffi.types.pointer, ffi.types.i32 } },
-	enet_socket_get_option = { returns = ffi.types.i32, args = { ffi.types.pointer, ffi.types.pointer, ffi.types.i32 } },
+	enet_socket_wait = {
+		returns = ffi.types.i32,
+		args = {
+			ffi.types.pointer, -- ENetSocket
+			ffi.types.pointer, -- enet_uint32 * (pointer to condition)
+			ffi.types.u64, -- enet_uint64 timeout
+		},
+	},
+	enet_socket_set_option = {
+		returns = ffi.types.i32,
+		args = {
+			ffi.types.pointer, -- socket
+			ffi.types.i32, -- ENetSocketOption (should be i32, not pointer!)
+			ffi.types.i32, -- value
+		},
+	},
+	enet_socket_get_option = {
+		returns = ffi.types.i32,
+		args = {
+			ffi.types.pointer, -- socket
+			ffi.types.i32, -- ENetSocketOption
+			ffi.types.pointer, -- int *value
+		},
+	},
 	enet_socket_shutdown = { returns = ffi.types.i32, args = { ffi.types.pointer, ffi.types.pointer } },
 	enet_socket_destroy = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	enet_socketset_select = {
@@ -285,7 +315,7 @@ local funcs = {
 	enet_host_create = {
 		returns = ffi.types.pointer, -- ENetHost*
 		args = {
-			ffi.types.pointer, -- ENetAddress*
+			ffi.types.pointer, -- Pass the struct type, not ffi.types.pointer
 			ffi.types.u64, -- peerCount
 			ffi.types.u64, -- channelLimit
 			ffi.types.u32, -- incomingBandwidth
@@ -314,8 +344,8 @@ local funcs = {
 		args = {
 			ffi.types.pointer, -- ENetHost*
 			ffi.types.pointer, -- ENetAddress*
-			ffi.types.u8,      -- channelCount
-			ffi.types.u32,     -- userData
+			ffi.types.u8, -- channelCount
+			ffi.types.u32, -- userData
 		},
 	},
 	enet_peer_timeout = {

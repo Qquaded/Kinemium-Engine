@@ -3,10 +3,7 @@ local signal = require("@Kinemium.signal")
 local encoder = require("./SerializationService/encoder")
 
 local serde = zune.serde
-local lz4 = serde.lz4
 local zstd = serde.zstd
-local json = serde.json
-local zlib = serde.zlib
 
 local SerializationService = Instance.new("SerializationService")
 SerializationService.ExplorerHidden = true
@@ -63,6 +60,27 @@ local function serialize_object(object)
 	return result
 end
 
+local function deserialize_object(tbl)
+	local obj = Instance.new(tbl.class)
+	obj.Name = tbl.name
+
+	for k, v in pairs(tbl.props) do
+		obj._props[k] = v
+	end
+
+	for _, childTbl in pairs(tbl.children) do
+		local child = deserialize_object(childTbl)
+		child.Parent = obj
+	end
+
+	obj.tags = tbl.tags or {}
+	for k, v in pairs(tbl.attr or {}) do
+		obj:SetAttribute(k, v)
+	end
+
+	return obj
+end
+
 SerializationService.InitRenderer = function(renderer, renderer_signal)
 	SerializationService:SetProperties({
 		SerializeInstancesAsync = function(m)
@@ -75,6 +93,14 @@ SerializationService.InitRenderer = function(renderer, renderer_signal)
 
 			local compressed = compress(objects)
 			return compressed
+		end,
+		Deserialize = function(str)
+			local tbl = decompress(str)
+			local instances = {}
+			for _, objTbl in pairs(tbl) do
+				table.insert(instances, deserialize_object(objTbl))
+			end
+			return instances
 		end,
 	})
 end

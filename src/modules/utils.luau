@@ -75,6 +75,30 @@ end
 --Textures
 bufferUtils.extract = {}
 
+function bufferUtils:readi32(ptr)
+	return ptr:readi32(0)
+end
+
+function bufferUtils:readhexa(ptr)
+	local v = tostring(ptr)
+
+	local hex = v:match("0x[%da-fA-F]+")
+	if not hex then
+		return nil
+	end
+
+	return tonumber(hex, 16)
+end
+
+function bufferUtils:fcall(func, expected)
+	local result = func()
+	local read = bufferUtils:readhexa(result)
+	if read ~= expected then
+		error("Expected " .. expected .. " but got " .. read .. " in FFI call\nOriginal string " .. tostring(result))
+	end
+	return result
+end
+
 function bufferUtils.extract.texture(v)
 	local texture = zune.mem.slice(v, structs.RenderTexture:offset("texture"), structs.Texture:size())
 	return texture

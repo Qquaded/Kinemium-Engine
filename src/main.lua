@@ -4,6 +4,7 @@ local c = ffi.c
 local pointer = ffi.types.pointer
 local void = ffi.types.void
 local float = ffi.types.float
+local httpServerViewer = require("@httpServerViewer")
 
 _G.warn = function(...)
 	print("[\x1b[33mWARN\x1b[0m]", ...)
@@ -12,6 +13,8 @@ end
 _G.log = function(...)
 	print("[\x1b[94mLOG\x1b[0m]", ...)
 end
+
+_G.task = zune.task
 
 _G.debugPart = function(data)
 	_G.log(`Created body to part {data.Name}`)
@@ -29,6 +32,16 @@ _G.FlagExists = function(flag)
 		end
 	end
 	return false
+end
+
+_G.GetFlagValue = function(flag)
+	local args = zune.process.args
+	for i, v in ipairs(args) do
+		if v == "--" .. flag then
+			return args[i + 1] -- may be nil if no value is provided
+		end
+	end
+	return nil
 end
 
 _G.debugstep = function()
@@ -56,17 +69,29 @@ if FlagExists("client") then
 	_G.IsClient = true
 	_G.IsServer = false
 elseif FlagExists("server") then
-	kilang.renderer = dummy
-
 	_G.IsServer = true
 	_G.IsClient = false
+	_G.IsHeadless = true
 
 	log("Running engine headless mode (Server).")
 end
 
-if FlagExists("headless") or FlagExists("cli") then
-	kilang.renderer = dummy
+if FlagExists("headless") then
 	_G.IsHeadless = true
+end
+
+if FlagExists("cli") then
+	_G.IsHeadless = true
+
+	task.spawn(function()
+		task.wait(10)
+		print("Ran CLI successfully")
+		zune.process.exit(0)
+	end)
+end
+
+if IsHeadless then
+	kilang.renderer = dummy
 else
 	kilang.renderer = require("@Kinemium.3d")
 end
@@ -122,9 +147,7 @@ function Kinemium:playtest()
 		local code = filesystem.read(path)
 		local superset = "kilang"
 
-		log(entry.name)
 		if string.find(entry.name, ".cpp") then
-			log(`Found cpp file {entry.name}!`)
 			superset = "cpp"
 		end
 		kilang:execute(code, {
@@ -155,6 +178,7 @@ if FlagExists("kilang") then
 	end)
 end
 
+httpServerViewer:Init()
 Kinemium:playtest()
 
 kilang.renderer.Run()
