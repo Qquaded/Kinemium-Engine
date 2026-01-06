@@ -357,26 +357,31 @@ local b2WorldDef = ffi.struct({
 export type b2WorldDef = typeof(b2WorldDef:new({}))
 
 local b2BodyDef = ffi.struct({
-	{ type = ffi.types.u8 },
-	{ position = ffi.types.pointer },
-	{ rotation = ffi.types.pointer },
-	{ linearVelocity = ffi.types.pointer },
+	{ type = ffi.types.i32 },
+
+	{ position = b2Vec2 },
+	{ rotation = ffi.types.float },
+	{ linearVelocity = b2Vec2 },
+
 	{ angularVelocity = ffi.types.float },
 	{ linearDamping = ffi.types.float },
 	{ angularDamping = ffi.types.float },
 	{ gravityScale = ffi.types.float },
 	{ sleepThreshold = ffi.types.float },
-	{ name = ffi.types.pointer },
+
 	{ userData = ffi.types.pointer },
-	{ motionLocks = ffi.types.pointer },
+	{ motionLocks = b2MotionLocks },
+
 	{ enableSleep = ffi.types.u8 },
 	{ isAwake = ffi.types.u8 },
 	{ fixedRotation = ffi.types.u8 },
 	{ isBullet = ffi.types.u8 },
 	{ isEnabled = ffi.types.u8 },
 	{ allowFastRotation = ffi.types.u8 },
+
 	{ internalValue = ffi.types.i32 },
 })
+
 export type b2BodyDef = typeof(b2BodyDef:new({}))
 
 local b2Filter = ffi.struct({
@@ -724,10 +729,10 @@ local funcs = {
 	b2GetMillisecondsAndReset = { returns = ffi.types.float, args = { ffi.types.pointer } },
 	b2Yield = { returns = ffi.types.void, args = {} },
 	b2Hash = { returns = ffi.types.u32, args = { ffi.types.u32, ffi.types.pointer, ffi.types.i32 } },
-	b2CreateWorld = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
-	b2DestroyWorld = { returns = ffi.types.void, args = { ffi.types.pointer } },
-	b2World_IsValid = { returns = ffi.types.u8, args = { ffi.types.pointer } },
-	b2World_Step = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.float, ffi.types.i32 } },
+	b2CreateWorld = { returns = b2WorldId, args = { ffi.types.pointer } },
+	b2DestroyWorld = { returns = ffi.types.void, args = { b2WorldId } },
+	b2World_IsValid = { returns = ffi.types.u8, args = { b2WorldId } },
+	b2World_Step = { returns = ffi.types.void, args = { b2WorldId, ffi.types.float, ffi.types.i32 } },
 	b2World_Draw = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
 	b2World_GetBodyEvents = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	b2World_GetSensorEvents = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
@@ -811,7 +816,7 @@ local funcs = {
 	b2World_DumpMemoryStats = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	b2World_RebuildStaticTree = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	b2World_EnableSpeculative = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.u8 } },
-	b2CreateBody = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
+	b2CreateBody = { returns = b2BodyId, args = { b2WorldId, ffi.types.pointer } },
 	b2DestroyBody = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	b2Body_IsValid = { returns = ffi.types.u8, args = { ffi.types.pointer } },
 	b2Body_GetType = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
@@ -820,8 +825,8 @@ local funcs = {
 	b2Body_GetName = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	b2Body_SetUserData = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
 	b2Body_GetUserData = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
-	b2Body_GetPosition = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
-	b2Body_GetRotation = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	b2Body_GetPosition = { returns = b2Vec2, args = { b2BodyId } },
+	b2Body_GetRotation = { returns = b2Rot, args = { b2BodyId } },
 	b2Body_GetTransform = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	b2Body_SetTransform = {
 		returns = ffi.types.void,
@@ -911,8 +916,8 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
 	},
 	b2CreatePolygonShape = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		returns = b2ShapeId,
+		args = { b2BodyId, ffi.types.pointer, ffi.types.pointer },
 	},
 	b2DestroyShape = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.u8 } },
 	b2Shape_IsValid = { returns = ffi.types.u8, args = { ffi.types.pointer } },
@@ -1146,7 +1151,7 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.float },
 	},
 	b2MakeSquare = { returns = ffi.types.pointer, args = { ffi.types.float } },
-	b2MakeBox = { returns = ffi.types.pointer, args = { ffi.types.float, ffi.types.float } },
+	b2MakeBox = { returns = b2Polygon, args = { ffi.types.float, ffi.types.float } },
 	b2MakeRoundedBox = { returns = ffi.types.pointer, args = { ffi.types.float, ffi.types.float, ffi.types.float } },
 
 	b2MakeOffsetBox = {
@@ -1299,23 +1304,23 @@ local funcs = {
 	},
 	b2SetLengthUnitsPerMeter = { returns = ffi.types.void, args = { ffi.types.float } },
 	b2GetLengthUnitsPerMeter = { returns = ffi.types.float, args = {} },
-	b2DefaultWorldDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultBodyDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultFilter = { returns = ffi.types.pointer, args = {} },
-	b2DefaultQueryFilter = { returns = ffi.types.pointer, args = {} },
-	b2DefaultSurfaceMaterial = { returns = ffi.types.pointer, args = {} },
-	b2DefaultShapeDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultChainDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultDistanceJointDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultMotorJointDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultMouseJointDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultFilterJointDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultPrismaticJointDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultRevoluteJointDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultWeldJointDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultWheelJointDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultExplosionDef = { returns = ffi.types.pointer, args = {} },
-	b2DefaultDebugDraw = { returns = ffi.types.pointer, args = {} },
+	b2DefaultWorldDef = { returns = b2WorldDef, args = {} },
+	b2DefaultBodyDef = { returns = b2BodyDef, args = {} },
+	b2DefaultFilter = { returns = b2Filter, args = {} },
+	b2DefaultQueryFilter = { returns = b2QueryFilter, args = {} },
+	b2DefaultSurfaceMaterial = { returns = b2SurfaceMaterial, args = {} },
+	b2DefaultShapeDef = { returns = b2ShapeDef, args = {} },
+	b2DefaultChainDef = { returns = b2ChainDef, args = {} },
+	b2DefaultDistanceJointDef = { returns = b2DistanceJointDef, args = {} },
+	b2DefaultMotorJointDef = { returns = b2MotorJointDef, args = {} },
+	b2DefaultMouseJointDef = { returns = b2MouseJointDef, args = {} },
+	b2DefaultFilterJointDef = { returns = b2FilterJointDef, args = {} },
+	b2DefaultPrismaticJointDef = { returns = b2PrismaticJointDef, args = {} },
+	b2DefaultRevoluteJointDef = { returns = b2RevoluteJointDef, args = {} },
+	b2DefaultWeldJointDef = { returns = b2WeldJointDef, args = {} },
+	b2DefaultWheelJointDef = { returns = b2WheelJointDef, args = {} },
+	b2DefaultExplosionDef = { returns = b2ExplosionDef, args = {} },
+	b2DefaultDebugDraw = { returns = b2DebugDraw, args = {} },
 }
 
 local structs = {

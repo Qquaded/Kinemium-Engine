@@ -6,6 +6,7 @@ local pool = {}
 
 local raylib = require("@raylib")
 local lib = raylib.lib
+local r3d = raylib.r3d
 local structs = raylib.structs
 
 local function Color3ToRaylib(c, transparency)
@@ -55,8 +56,6 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 	local preloadedMeshes
 	if not IsHeadless then
-		print("Running in headless?")
-
 		preloadedMeshes = meshlib.PreloadStandardMeshes()
 
 		local material_index = 0
@@ -104,31 +103,27 @@ Workspace.InitRenderer = function(renderer, signal, game)
 	--]]
 
 	local function drawPart(part)
-		local mesh = preloadedMeshes[part.Shape.Value][2]
+		local preloadedData = preloadedMeshes[part.Shape.Value]
+		local mesh = preloadedData and preloadedData[2]
 		local model = part._model
 
 		if not mesh and not model then
 			return
 		end
 
-		part._mesh = mesh
-
 		local data = loadedMaterials[part.Material.Value]
 		local matrix = part.CFrame:ToRaylibMatrixScale(part.Size, raylib.structs)
-
-		--log(`{part.Name} : {part.CFrame}`)
 
 		local cfvec = vector.create(part.CFrame.Position.X, part.CFrame.Position.Y, part.CFrame.Position.Z)
 		local sizevec = vector.create(part.Size.X, part.Size.Y, part.Size.Z)
 
 		if model then
 			raylib.lib.DrawModel(model, cfvec, part.MeshScale or 1, raylib.const.WHITE)
-		else
+		elseif mesh and data then
+			--r3d.lib.R3D_DrawMesh(mesh, defaultMaterial, matrix)
 			raylib.lib.DrawMesh(mesh, data.material, matrix)
-		end
-
-		if part._showhitbox == true then
-			raylib.lib.DrawCubeV(cfvec, sizevec, Color3ToRaylib(Color3.new(1, 0, 0), 0.5))
+		else
+			print(`  ERROR: Cannot draw - mesh={mesh}, data={data}`)
 		end
 
 		signal:Fire("Rendered", part)

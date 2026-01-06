@@ -1,5 +1,6 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
+local UDim2 = require("@UDim2")
 local task = zune.task
 
 local UIPhysicsService = Instance.new("UIPhysicsService")
@@ -7,57 +8,9 @@ UIPhysicsService.ExplorerHidden = true
 
 local box2d = require("@box2d")
 local utils = require("@bufferutils")
-local toptr = zune.ffi.ptrFromAddress
 
-local function b2Rot_new(angle)
-	local cosVal = math.cos(angle)
-	local sinVal = math.sin(angle)
-	return box2d.structs.b2Rot:new({ c = utils:float(cosVal), s = utils:float(sinVal) })
-end
-
-local function getResults(ptr, size)
-	-- ptr = ffi pointer
-	-- size = number of bytes to inspect (optional)
-
-	size = size or 32
-
-	print("FFI ptr:", ptr)
-
-	for i = 0, 16 do
-		local offset = i
-		print(string.format("f64[%d] @ %d = %.6f", i, offset, ptr:readf64(offset)))
-	end
-
-	for i = 0, 20 do
-		local offset = i
-		print(string.format("u32[%d] @ %d = %.6f", i, offset, ptr:readu32(offset)))
-	end
-
-	for i = 0, 22 do
-		local offset = i
-		print(string.format("u16[%d] @ %d = %.6f", i, offset, ptr:readu16(offset)))
-	end
-
-	for i = 0, 20 do
-		local offset = i
-		print(string.format("i32[%d] @ %d = %.6f", i, offset, ptr:readi32(offset)))
-	end
-
-	for i = 0, 22 do
-		local offset = i
-		print(string.format("i16[%d] @ %d = %.6f", i, offset, ptr:readi16(offset)))
-	end
-
-	for i = 0, 23 do
-		local offset = i
-		print(string.format("i8[%d] @ %d = %.6f", i, offset, ptr:readi8(offset)))
-	end
-
-	print("\nRaw bytes:")
-	for i = 0, size - 1 do
-		print(string.format("%02d: %02X", i, ptr:readu8(i)))
-	end
-end
+local bodies = {}
+local worlds = {}
 
 --[[
     /// The body simulation type.
@@ -80,81 +33,33 @@ end
 --]]
 
 local function createBody(object, worldId)
-	print(1)
 	if not object.AbsoluteSize then
 		return
 	end
 	local x = object.AbsoluteSize.X
 	local y = object.AbsoluteSize.Y
 
-	local rotation = object.Rotation
-	print(2)
-	local body_pos = box2d.structs.b2Vec2:new({
-		x = x,
-		y = y,
-	})
+	print(x, y)
 
-	local body_rot = b2Rot_new(object.Rotation)
+	local motionType = object.Anchored == false and 2 or 0
 
-	local motionType = object.Anchored == true and 2 or 0
-	print(4)
-	--[[
-        local b2BodyDef = ffi.struct({
-            { type = ffi.types.pointer },
-            { position = ffi.types.pointer },
-            { rotation = ffi.types.pointer },
-            { linearVelocity = ffi.types.pointer },
-            { angularVelocity = ffi.types.float },
-            { linearDamping = ffi.types.float },
-            { angularDamping = ffi.types.float },
-            { gravityScale = ffi.types.float },
-            { sleepThreshold = ffi.types.float },
-            { name = ffi.types.pointer },
-            { userData = ffi.types.pointer },
-            { enableSleep = ffi.types.u8 },
-            { isAwake = ffi.types.u8 },
-            { fixedRotation = ffi.types.u8 },
-            { isBullet = ffi.types.u8 },
-            { isEnabled = ffi.types.u8 },
-            { allowFastRotation = ffi.types.u8 },
-            { internalValue = ffi.types.i32 },
-        })
-        export type b2BodyDef = typeof(b2BodyDef:new({}))
-    --]]
+	local position = box2d.structs.b2Vec2:new({ x = utils:float(x / 2), y = utils:float(y / 2) })
 
-	print(5)
 	local bodyDef = box2d.lib.b2DefaultBodyDef()
-	--[[local bodyDef = box2d.structs.b2BodyDef:new({
-		type = motionType,
-		position = toptr(body_pos),
-		rotation = toptr(body_rot),
-		angularVelocity = utils:float(0),
-		linearDamping = utils:float(0),
-		angularDamping = utils:float(0),
-		gravityScale = utils:float(1),
-		sleepThreshold = utils:float(0.05),
-		enableSleep = utils:u8(0),
-		isAwake = utils:u8(1),
-		fixedRotation = utils:u8(0),
-		isBullet = utils:u8(0),
-		isEnabled = utils:u8(1),
-		allowFastRotation = utils:u8(0),
-		internalValue = utils:i32(0x5A55A5A5), -- Box2D's secret cookie
-	})
-		--]]
+	buffer.copy(bodyDef, box2d.structs.b2BodyDef:offset("position"), position, 0, box2d.structs.b2Vec2:size())
+	buffer.writei32(bodyDef, box2d.structs.b2BodyDef:offset("type"), motionType)
 
-	print("created!!!!!!")
-
-	print(7)
-	print(worldId, bodyDef)
 	local bodyID = box2d.lib.b2CreateBody(worldId, bodyDef)
-	print(8)
 	local box = box2d.lib.b2MakeBox(x / 2, y / 2)
-	print(9)
 
-	print(10)
 	local groundShapeDef = box2d.lib.b2DefaultShapeDef()
 	box2d.lib.b2CreatePolygonShape(bodyID, groundShapeDef, box)
+
+	log(
+		`Created body ${object.Name} with stats \nBodyID: ${bodyID} \nMotionType: ${motionType} \nPosition: ${position}\nBox: ${box}\nGroundShapeDef: ${groundShapeDef}`
+	)
+	object.BodyID = bodyID
+	table.insert(bodies, { bodyID = bodyID, box = box, bodyDef = bodyDef, motionType = motionType, object = object })
 end
 
 UIPhysicsService.InitRenderer = function(renderer, renderer_signal)
@@ -163,46 +68,13 @@ UIPhysicsService.InitRenderer = function(renderer, renderer_signal)
 		const = renderer.const,
 		structs = renderer.structs,
 		init = function(ScreenGui)
-			print("Physics is Enabled!")
-			print(1)
-			ScreenGui.bodies = {}
-
 			local box2d = require("@box2d")
 
-			print(2)
-			-- Create gravity vector
 			local grav = box2d.structs.b2Vec2:new({
 				x = ScreenGui.GravityX or 0,
 				y = ScreenGui.GravityY or -9.81,
 			})
 			local ptr = zune.ffi.ptrFromAddress(grav)
-
-			print(3)
-			local ffi = zune.ffi
-
-			print(4)
-			--[[
-                local b2WorldDef = ffi.struct({
-                    { gravity = ffi.types.pointer },
-                    { restitutionThreshold = ffi.types.float },
-                    { hitEventThreshold = ffi.types.float },
-                    { contactHertz = ffi.types.float },
-                    { contactDampingRatio = ffi.types.float },
-                    { maxContactPushSpeed = ffi.types.float },
-                    { maximumLinearSpeed = ffi.types.float },
-                    { frictionCallback = ffi.types.pointer },
-                    { restitutionCallback = ffi.types.pointer },
-                    { enableSleep = ffi.types.u8 },
-                    { enableContinuous = ffi.types.u8 },
-                    { workerCount = ffi.types.i32 },
-                    { enqueueTask = ffi.types.pointer },
-                    { finishTask = ffi.types.pointer },
-                    { userTaskContext = ffi.types.pointer },
-                    { userData = ffi.types.pointer },
-                    { internalValue = ffi.types.i32 },
-                })
-                export type b2WorldDef = typeof(b2WorldDef:new({}))
-				            --]]
 
 			local wdef = box2d.structs.b2WorldDef:new({
 				gravity = ptr,
@@ -229,8 +101,6 @@ UIPhysicsService.InitRenderer = function(renderer, renderer_signal)
 				internalValue = 0x5A55A5A5,
 			})
 
-			print(4)
-			-- Create world with custom definition
 			local worldId = box2d.lib.b2CreateWorld(wdef)
 			print("World created:", worldId ~= zune.ffi.null)
 			print("World pointer:", worldId)
@@ -239,19 +109,34 @@ UIPhysicsService.InitRenderer = function(renderer, renderer_signal)
 				error("Failed to create Box2D world")
 			end
 
-			print(5)
-			print(worldId)
-
 			task.wait(2)
 			for _, object in pairs(ScreenGui:GetChildren()) do
-				print(6)
-				print("swing round")
 				createBody(object, worldId)
 			end
+
+			table.insert(worlds, worldId)
 
 			return worldId
 		end,
 	})
+
+	renderer_signal:Connect(function(route, dt)
+		if route == "RenderStepped" then
+			for _, world in pairs(worlds) do
+				print("Updating world")
+				box2d.lib.b2World_Step(world, dt, 4)
+
+				for _, body in pairs(bodies) do
+					local position = box2d.lib.b2Body_GetPosition(body.bodyID)
+
+					local x = buffer.readf32(position, 0)
+					local y = buffer.readf32(position, 4)
+					print(x, y)
+					body.object.Position = UDim2.new(body.object.Position.X.Scale, x, body.object.Position.Y.Scale, y)
+				end
+			end
+		end
+	end)
 end
 
 return UIPhysicsService

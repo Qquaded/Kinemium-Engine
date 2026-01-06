@@ -1,9 +1,25 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
 local encoder = require("./SerializationService/encoder")
+local Registry = require("@InstanceRegistry")
 
 local serde = zune.serde
 local zstd = serde.zstd
+
+local Vector3 = require("@Vector3")
+local CFrame = require("@CFrame")
+local Color3 = require("@Color3")
+local Color4 = require("@Color4")
+local UDim = require("@UDim")
+local UDim2 = require("@UDim2")
+local Ray = require("@Ray")
+local NumberSequence = require("@NumberSequence")
+local NumberSequenceKeypoint = require("@NumberSequenceKeypoint")
+local ColorSequence = require("@ColorSequence")
+local ColorSequenceKeypoint = require("@ColorSequenceKeypoint")
+local BrickColorMap = require("@BrickColorMap")
+local CustomPhysicalProperties = require("@CustomPhysicalProperties")
+local BoundingBox = require("@BoundingBox")
 
 local SerializationService = Instance.new("SerializationService")
 SerializationService.ExplorerHidden = true
@@ -47,6 +63,7 @@ local function serialize_object(object)
 		children = {},
 		attr = {},
 		tags = object.tags,
+		parent = object.UniqueId,
 	}
 
 	for propname, propvalue in pairs(object._props) do
@@ -66,28 +83,63 @@ local function serialize_object(object)
 	return result
 end
 
-local function deserialize_object(tbl)
-	local obj = Instance.new(tbl.class)
-	obj.Name = tbl.name
+SerializationService.InitRenderer = function(renderer, renderer_signal, datamodel)
+	local function deserialize_object(tbl)
+		local obj = Registry.new(tbl.class, renderer, datamodel)
+		obj.Name = tbl.name
 
-	for k, v in pairs(tbl.props) do
-		obj._props[k] = v
+		for k, v in pairs(tbl.props) do
+			if type(v) == "table" then
+				if v.type then
+					if v.type == "Vector3" then
+						obj._props[k] = Vector3.FromTable(v)
+					elseif v.type == "CFrame" then
+						obj._props[k] = CFrame.FromTable(v)
+					elseif v.type == "Color3" then
+						obj._props[k] = Color3.FromTable(v)
+					elseif v.type == "Color4" then
+						obj._props[k] = Color4.FromTable(v)
+					elseif v.type == "UDim" then
+						obj._props[k] = UDim.FromTable(v)
+					elseif v.type == "UDim2" then
+						obj._props[k] = UDim2.FromTable(v)
+					elseif v.type == "Ray" then
+						obj._props[k] = Ray.FromTable(v)
+					elseif v.type == "NumberSequence" then
+						obj._props[k] = NumberSequence.FromTable(v)
+					elseif v.type == "NumberSequenceKeypoint" then
+						obj._props[k] = NumberSequenceKeypoint.FromTable(v)
+					elseif v.type == "ColorSequence" then
+						obj._props[k] = ColorSequence.FromTable(v)
+					elseif v.type == "ColorSequenceKeypoint" then
+						obj._props[k] = ColorSequenceKeypoint.FromTable(v)
+					elseif v.type == "BrickColorMap" then
+						obj._props[k] = BrickColorMap.FromTable(v)
+					elseif v.type == "CustomPhysicalProperties" then
+						obj._props[k] = CustomPhysicalProperties.FromTable(v)
+					elseif v.type == "BoundingBox" then
+						obj._props[k] = BoundingBox.FromTable(v)
+					end
+				end
+			else
+				obj._props[k] = v
+			end
+		end
+
+		for _, childTbl in pairs(tbl.children) do
+			local child = deserialize_object(childTbl)
+			child.Parent = obj
+		end
+
+		obj.tags = tbl.tags or {}
+
+		for k, v in pairs(tbl.attr or {}) do
+			obj:SetAttribute(k, v)
+		end
+
+		return obj
 	end
 
-	for _, childTbl in pairs(tbl.children) do
-		local child = deserialize_object(childTbl)
-		child.Parent = obj
-	end
-
-	obj.tags = tbl.tags or {}
-	for k, v in pairs(tbl.attr or {}) do
-		obj:SetAttribute(k, v)
-	end
-
-	return obj
-end
-
-SerializationService.InitRenderer = function(renderer, renderer_signal)
 	SerializationService:SetProperties({
 		SerializeInstancesAsync = function(m)
 			local objects = {}

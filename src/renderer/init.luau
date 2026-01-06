@@ -527,15 +527,10 @@ return {
 		activeCamera = camera
 	end,
 
-	-- Lighting
-	SetLightingService = function(service)
-		lighting = service
-	end,
 	Viewport = viewport,
 	mouseOverVector3 = mouseOverVector3,
 	meshlib = meshlib,
 	skybox = skybox,
-	shadowSystem = shadowSystem,
 	readRayCollision = readRayCollision,
 
 	-- Mouse

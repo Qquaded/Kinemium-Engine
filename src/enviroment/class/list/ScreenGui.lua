@@ -16,7 +16,7 @@ return {
 		instance:SetProperties({
 			Name = "ScreenGui",
 			Enabled = true,
-			GravityY = -9.81,
+			GravityY = -50,
 			GravityX = 0,
 			PhysicsEnabled = false,
 			ZIndexBehavior = "Sibling",

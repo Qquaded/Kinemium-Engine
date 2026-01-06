@@ -20,29 +20,31 @@ end
 
 print("Class entries", entries)
 
-for _, entry in pairs(entries) do
-	local code
-	local requirePath
-	if zembed.IsEmbedded() then
-		local name = zune.fs.path.basename(entry)
-		local full = "./list/" .. name
-		requirePath = string.gsub(full, ".lua", "")
-	else
-		requirePath = "./list/" .. string.gsub(entry.name, ".lua", "")
+task.spawn(function()
+	for _, entry in pairs(entries) do
+		local code
+		local requirePath
+		if zembed.IsEmbedded() then
+			local name = zune.fs.path.basename(entry)
+			local full = "./list/" .. name
+			requirePath = string.gsub(full, ".lua", "")
+		else
+			requirePath = "./list/" .. string.gsub(entry.name, ".lua", "")
+		end
+
+		local returned, s, r = require(requirePath)
+		-- returned = { class = "Part", callback = function(Part) ... end }
+
+		if not returned then
+			warn(`CLASS: Failed to load {entry.name}: {s} {r}`)
+
+			return
+		end
+		listOfClasses[returned.class] = returned
+
+		log("CLASS: Successfully created class '" .. returned.class .. "' from file: " .. requirePath)
 	end
-
-	local returned, s, r = require(requirePath)
-	-- returned = { class = "Part", callback = function(Part) ... end }
-
-	if not returned then
-		warn(`CLASS: Failed to load {entry.name}: {s} {r}`)
-
-		return
-	end
-	listOfClasses[returned.class] = returned
-
-	log("CLASS: Successfully created class '" .. returned.class .. "' from file: " .. requirePath)
-end
+end)
 
 function registry.createclass(data)
 	listOfClasses[data.class] = data

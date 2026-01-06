@@ -48,8 +48,11 @@ local lib = native.lib
 local const = native.const
 local structs = const.structs
 
+local r3d = require("./raylib/r3dwrapper")
+
 return {
 	lib = lib,
 	const = const,
 	structs = structs,
+	r3d = r3d,
 }

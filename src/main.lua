@@ -53,6 +53,21 @@ _G.debugstep = function()
 	log(`Debug step {callerEnv._cdebug}`)
 end
 
+-- primitives
+_G.float = function(value)
+	local buf = buffer.create(4)
+	buffer.writef32(buf, 0, value or 0)
+	return buf
+end
+
+_G.readFloat = function(buf)
+	return buffer.readf32(buf, 0)
+end
+
+_G.writeFloat = function(buf, v)
+	buffer.writef32(buf, 0, v)
+end
+
 local sandboxer = require("./modules/sandboxer")
 local Instance = require("@Instance")
 local filesystem = require("./modules/filesystem")

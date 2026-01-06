@@ -2,6 +2,7 @@ local raylib = require("@raylib")
 local structs = raylib.structs
 local const = raylib.const
 local lib = raylib.lib
+local r3d = raylib.r3d.lib
 
 local function Color3ToRaylib(c, transparency)
 	local r, g, b = c:ToRGB()
@@ -46,24 +47,27 @@ local function GenerateMesh(meshId: string, meshType: string, params: any)
 	local mesh
 
 	if meshType == "Cube" then
+		--mesh = r3d.R3D_GenMeshCube(params.width or 1, params.height or 1, params.length or 1)
 		mesh = lib.GenMeshCube(params.width or 1, params.height or 1, params.length or 1)
 	elseif meshType == "Sphere" then
+		--mesh = r3d.R3D_GenMeshSphere(params.radius or 1, params.rings or 16, params.slices or 16)
 		mesh = lib.GenMeshSphere(params.radius or 1, params.rings or 16, params.slices or 16)
 	elseif meshType == "Cylinder" then
+		--mesh = r3d.R3D_GenMeshCylinder(params.radius or 1, params.height or 2, params.slices or 16)
 		mesh = lib.GenMeshCylinder(params.radius or 1, params.height or 2, params.slices or 16)
 	elseif meshType == "Plane" then
+		--mesh = r3d.R3D_GenMeshPlane(params.width or 10, params.length or 10, params.resX or 1, params.resZ or 1)
 		mesh = lib.GenMeshPlane(params.width or 10, params.length or 10, params.resX or 1, params.resZ or 1)
 	elseif meshType == "Torus" then
+		--mesh = r3d.R3D_GenMeshTorus(params.radius or 1, params.size or 0.3, params.radSeg or 16, params.sides or 16)
 		mesh = lib.GenMeshTorus(params.radius or 1, params.size or 0.3, params.radSeg or 16, params.sides or 16)
 	else
 		warn(`Unknown mesh type: {meshType}`)
 		return nil
 	end
 
-	local model = lib.LoadModelFromMesh(mesh)
-	modelRegistry[meshId] = model
 	print(`Generated mesh: {meshId} ({meshType})`)
-	return { model, mesh }
+	return { nil, mesh }
 end
 
 local function PreloadStandardMeshes()

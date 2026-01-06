@@ -1,3 +1,3 @@
-local GameReplicator = game:GetService("GameReplicator")
+local ReplicatorService = game:GetService("ReplicatorService")
 
-GameReplicator.Run()
+ReplicatorService.Run()

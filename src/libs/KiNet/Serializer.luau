@@ -252,7 +252,9 @@ function Serializer.Serialize(value)
 	buffer.copy(trimmed, 0, b, 0, finalOffset)
 
 	if Serializer.CompressionEnabled then
-		return serde.zstd.compress(trimmed)
+		return serde.zstd.compress(trimmed, {
+			level = 9,
+		})
 	else
 		return trimmed
 	end

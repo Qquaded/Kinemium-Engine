@@ -53,7 +53,6 @@ return function(renderer)
 	players.LocalPlayer.PlayerGui = PlayerGui.InitRenderer(renderer, renderer.Signal)
 	players.LocalPlayer.Parent = players
 
-	renderer.SetLightingService(mainDatamodel:GetService("Lighting"))
 	renderer.Kinemium_camera.Parent = mainDatamodel:GetService("Workspace")
 
 	local ScriptRunnerService = mainDatamodel:GetService("ScriptRunnerService")
