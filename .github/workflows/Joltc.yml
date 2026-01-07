@@ -1,0 +1,102 @@
+name: Build JoltC Double Precision
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: Windows
+            os: windows-latest
+            artifact: joltc-windows.zip
+            lib_name: joltc.dll
+          - name: Linux
+            os: ubuntu-latest
+            artifact: joltc-linux.zip
+            lib_name: libjoltc.so
+          - name: macOS
+            os: macos-latest
+            artifact: joltc-macos.zip
+            lib_name: libjoltc.dylib
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake ninja-build
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake ninja
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DDOUBLE_PRECISION=ON \
+          -DBUILD_SHARED_LIBS=ON
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Package artifact
+      shell: bash
+      run: |
+        mkdir artifact
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          cp build/Release/${{ matrix.config.lib_name }} artifact/ || cp build/${{ matrix.config.lib_name }} artifact/
+        else
+          cp build/${{ matrix.config.lib_name }} artifact/
+        fi
+        cd artifact
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          7z a ../${{ matrix.config.artifact }} *
+        else
+          zip -r ../${{ matrix.config.artifact }} *
+        fi
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.config.name }}
+        path: ${{ matrix.config.artifact }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: build-${{ github.run_number }}
+        name: JoltC Double Precision Build ${{ github.run_number }}
+        draft: false
+        prerelease: false
+        files: |
+          Windows/joltc-windows.zip
+          Linux/joltc-linux.zip
+          macOS/joltc-macos.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
