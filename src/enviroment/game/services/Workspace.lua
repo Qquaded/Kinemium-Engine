@@ -75,7 +75,6 @@ Workspace.InitRenderer = function(renderer, signal, game)
 	end
 
 	proptable.materials = loadedMaterials
-	Workspace:SetProperties(proptable)
 
 	signal:Connect(function(route, data) end)
 
@@ -136,29 +135,72 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		end
 	end
 
-	if not IsHeadless then
-		renderer.Add3DStack(function()
-			renderer.Signal:Fire("WorkspaceStart")
+	local function drawParts()
+		for i = 1, #pool do
+			local object = pool[i]
+			if isRenderable(pool[i]) then
+				drawPart(object)
 
-			for i = 1, #pool do
-				local object = pool[i]
-				if isRenderable(pool[i]) then
-					drawPart(object)
+				if object.Position.Y <= 300 then
+					--object:Destroy()
+				end
+			else
+				if object.render then
+					object.render(object, renderer, game)
+				end
+			end
+		end
+	end
 
-					if object.Position.Y <= 300 then
-						--object:Destroy()
-					end
-				else
-					if object.render then
-						object.render(object, renderer, game)
+	local function draw()
+		renderer.Signal:Fire("WorkspaceStart")
+
+		drawParts()
+
+		local KinemiumPhysicsService = game:GetService("PhysicsService")
+		KinemiumPhysicsService.setGravity(Workspace.Gravity, Workspace.GlobalWind)
+		renderer.Signal:Fire("WorkspaceFinish")
+	end
+
+	local function renderShadows(shadowMaterial)
+		for i = 1, #pool do
+			local part = pool[i]
+			if isRenderable(part) then
+				local preloadedData = preloadedMeshes[part.Shape.Value]
+				local mesh = preloadedData and preloadedData[2]
+				local model = part._model
+
+				if mesh or model then -- Only drawing standard meshes for now
+					local matrix = part.CFrame:ToRaylibMatrixScale(part.Size, raylib.structs)
+
+					if model then
+						-- Model drawing with custom material is harder as Model has multiple materials
+						-- raylib.lib.DrawModel(model, ...) uses internal materials.
+						-- To force shadow material we might need to iterate model meshes or use a shader override override?
+						-- For now skip models or DrawModel normally (which won't use shadow shader)
+						-- Actually `DrawModel` might not support material override easily.
+						-- Assuming just Parts for now.
+					elseif mesh then
+						raylib.lib.DrawMesh(mesh, shadowMaterial, matrix)
 					end
 				end
 			end
+		end
+	end
 
-			local KinemiumPhysicsService = game:GetService("PhysicsService")
-			KinemiumPhysicsService.setGravity(Workspace.Gravity, Workspace.GlobalWind)
-			renderer.Signal:Fire("WorkspaceFinish")
-		end)
+	proptable.DrawParts = drawParts
+	proptable.Draw = draw
+	proptable.RenderShadows = renderShadows
+	Workspace:SetProperties(proptable)
+
+	signal:Connect(function(route, data)
+		if route == "workspace.DrawParts" then
+			drawParts()
+		end
+	end)
+
+	if not IsHeadless then
+		renderer.Add3DStack(draw)
 	end
 end
 

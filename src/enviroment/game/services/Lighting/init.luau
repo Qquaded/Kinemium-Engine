@@ -200,6 +200,7 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 	renderer.Add3DStack(function()
 		local camera = renderer.camera
+
 		renderer.skybox.Draw(camera, 50)
 		sunRenderer.Render(camera, Lighting:GetSunDirection())
 	end)

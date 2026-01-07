@@ -43,8 +43,8 @@ else
 	}
 
 	local LIB_PATHS = {
-		"/lib/libraylib.so", -- linux
-		"/lib/libraylib.dylib", -- macos
+		"/lib/raylib.so", -- linux
+		"/lib/raylib.dylib", -- macos
 		"/lib/raylib.dll", -- windows
 	}
 
@@ -53,6 +53,7 @@ else
 	local file = `raylib`
 
 	if fs.stat(`{BIN_LOCATION}/{file}.{ffi.suffix}`).kind == "none" then
+		print(`{BIN_LOCATION}/{file}.{ffi.suffix}`)
 		print(`Downloading '{file}'...`)
 
 		local archive: buffer?

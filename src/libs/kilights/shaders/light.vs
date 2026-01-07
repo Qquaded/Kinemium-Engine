@@ -16,6 +16,9 @@ out vec3 fragPosition;
 out vec2 fragTexCoord;
 out vec4 fragColor;
 out vec3 fragNormal;
+out vec4 fragPosLightSpace;
+
+uniform mat4 lightMVP;
 
 
 void main()
@@ -29,4 +32,7 @@ void main()
 
     // Calculate final vertex position
     gl_Position = mvp*vec4(vertexPosition, 1.0);
+
+    // Calculate vertex position in light space for shadow mapping
+    fragPosLightSpace = lightMVP * vec4(vertexPosition, 1.0);
 }
