@@ -577,7 +577,7 @@ local funcs = {
 	R3D_UnloadMesh = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	R3D_IsMeshValid = { returns = ffi.types.u8, args = { ffi.types.pointer } },
 	R3D_GenMeshQuad = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_Mesh,
 		args = { ffi.types.float, ffi.types.float, ffi.types.i32, ffi.types.i32, ffi.types.pointer },
 	},
 	R3D_GenMeshPlane = {

@@ -4,9 +4,7 @@
 local PhysicsUtils = {}
 local Vector3 = require("@Vector3")
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Vector3Double
--- ─────────────────────────────────────────────────────────────────────────────
 
 export type Vector3Double = {
 	X: number,
@@ -136,9 +134,7 @@ setmetatable(Vector3Double, {
 
 PhysicsUtils.Vector3Double = Vector3Double
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- AABB Utilities
--- ─────────────────────────────────────────────────────────────────────────────
 
 function PhysicsUtils.AABBOverlap(box1, box2): boolean
 	local h1x, h1y, h1z = box1.size.X * 0.5, box1.size.Y * 0.5, box1.size.Z * 0.5
@@ -181,9 +177,7 @@ function PhysicsUtils.resolveCollision(body, other)
 	return normal, penetration
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Sphere Utilities
--- ─────────────────────────────────────────────────────────────────────────────
 
 function PhysicsUtils.SphereOverlap(sphere1, sphere2): boolean
 	local dx = sphere1.pos.X - sphere2.pos.X
@@ -252,9 +246,7 @@ function PhysicsUtils.resolveSpherAABB(sphere, box)
 	return normal, sphere.radius - dist
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Ray Casting
--- ─────────────────────────────────────────────────────────────────────────────
 
 -- Intersect ray with AABB; returns (hit, tEnter, tExit, normal)
 function PhysicsUtils.RayAABBIntersection(rayOrigin, rayDir, box)
@@ -352,9 +344,7 @@ function PhysicsUtils.RaySphereIntersection(rayOrigin, rayDir, spherePos, radius
 	return true, t, normal
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Misc. Geometry
--- ─────────────────────────────────────────────────────────────────────────────
 
 function PhysicsUtils.PointInAABB(point, box): boolean
 	local bmin = box.pos - box.size * 0.5

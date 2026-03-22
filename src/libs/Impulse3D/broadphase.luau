@@ -12,9 +12,7 @@ Broadphase.__index = Broadphase
 local utility = require("./utility")
 local Vector3Double = utility.Vector3Double
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Constructor
--- ─────────────────────────────────────────────────────────────────────────────
 
 function Broadphase.new(cellSize: number?)
 	local self = setmetatable({}, Broadphase)
@@ -24,18 +22,14 @@ function Broadphase.new(cellSize: number?)
 	return self
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Helpers
--- ─────────────────────────────────────────────────────────────────────────────
 
 local function cellKey(cx, cy, cz)
 	-- Cantor-style hash; keeps keys unique for typical world coords
 	return cx * 1000003 + cy * 1009 + cz
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- API
--- ─────────────────────────────────────────────────────────────────────────────
 
 function Broadphase:clear()
 	table.clear(self._cells)

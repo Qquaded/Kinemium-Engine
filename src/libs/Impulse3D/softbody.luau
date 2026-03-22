@@ -15,9 +15,7 @@ local Vector3Double = utility.Vector3Double
 export type Vector3 = typeof(require("@Vector3"))
 export type Vector3Double = typeof(Vector3Double.new(0, 0, 0))
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Type Definitions
--- ─────────────────────────────────────────────────────────────────────────────
 
 export type Particle = {
 	position: Vector3Double,
@@ -48,9 +46,7 @@ export type SoftBody = {
 	friction: number, -- floor friction
 }
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- CRUD
--- ─────────────────────────────────────────────────────────────────────────────
 
 softbody._lastId = 0
 
@@ -116,9 +112,7 @@ function softbody.clear()
 	softbody._lastId = 0
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Simulation
--- ─────────────────────────────────────────────────────────────────────────────
 
 -- Step a single soft body by dt seconds.
 -- gravity: Vector3Double (world gravity, passed in from physics module)
@@ -228,9 +222,7 @@ function softbody.stepAll(dt: number, gravity: Vector3Double)
 	end
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Utilities
--- ─────────────────────────────────────────────────────────────────────────────
 
 -- Apply an impulse to a single particle (useful for user interaction)
 function softbody.applyImpulse(id: number, particleIdx: number, impulse: Vector3Double)

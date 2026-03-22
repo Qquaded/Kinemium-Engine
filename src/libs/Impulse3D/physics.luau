@@ -12,9 +12,7 @@ export type BodyManager = typeof(require("./body"))
 export type JointManager = typeof(joints)
 export type Vector3Double = typeof(Vector3Double.new(0, 0, 0))
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Configuration
--- ─────────────────────────────────────────────────────────────────────────────
 
 physics.gravity = Vector3Double.new(0, -9.81, 0)
 physics.wind_direction = Vector3Double.new(0, 0, 0)
@@ -26,18 +24,14 @@ physics.constraintIterations = 4
 physics.jointWarmStarting = true
 physics.broadphaseCellSize = 4 -- tune for your scene scale
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Internal state
--- ─────────────────────────────────────────────────────────────────────────────
 
 local _broadphase = Broadphase.new(physics.broadphaseCellSize)
 -- activeContacts[pairKey] = { normal, penetration }
 -- Tracks which body pairs are in contact for enter/stay/exit callbacks
 local _activeContacts = {}
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Helpers
--- ─────────────────────────────────────────────────────────────────────────────
 
 local function canCollide(bodyA, bodyB): boolean
 	if bodyA.bodyType == "static" and bodyB.bodyType == "static" then
@@ -101,9 +95,7 @@ local function resolveImpulse(bodyA, bodyB, normal, penetration)
 	end
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Collision Narrowphase
--- ─────────────────────────────────────────────────────────────────────────────
 
 local function narrowphase(bodyA, bodyB)
 	local shapeA = bodyA.shape or "box"
@@ -141,9 +133,7 @@ local function narrowphase(bodyA, bodyB)
 	return normal, penetration
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Step
--- ─────────────────────────────────────────────────────────────────────────────
 
 function physics.step(body_manager: BodyManager, joint_manager: JointManager?, dt: number)
 	dt = math.min(dt, 0.1)
@@ -333,9 +323,7 @@ function physics.substep(body_manager: BodyManager, joint_manager: JointManager?
 	end
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Force / Impulse API
--- ─────────────────────────────────────────────────────────────────────────────
 
 function physics.applyImpulse(body, impulse: Vector3Double)
 	if body.bodyType == "static" then
@@ -358,9 +346,7 @@ function physics.applyTorque(body, torque: Vector3Double, dt: number)
 	body.angularVelocity = body.angularVelocity + torque * dt
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Raycasting
--- ─────────────────────────────────────────────────────────────────────────────
 
 export type RaycastResult = {
 	bodyId: number,
@@ -405,9 +391,7 @@ function physics.raycast(
 	return bestResult
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Reset
--- ─────────────────────────────────────────────────────────────────────────────
 
 function physics.reset(body_manager: BodyManager, joint_manager: JointManager?)
 	body_manager.clear()

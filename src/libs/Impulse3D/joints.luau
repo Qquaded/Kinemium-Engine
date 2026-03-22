@@ -13,9 +13,7 @@ export type Vector3Double = typeof(Vector3Double.new(0, 0, 0))
 -- Baumgarte stabilization coefficient
 local BAUMGARTE = 0.1
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Type Definitions
--- ─────────────────────────────────────────────────────────────────────────────
 
 export type Joint = {
 	bodyA: number,
@@ -87,9 +85,7 @@ export type AnyJoint =
 	| PistonJoint
 	| UniversalJoint
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- CRUD
--- ─────────────────────────────────────────────────────────────────────────────
 
 joints._lastId = 0
 
@@ -132,9 +128,7 @@ function joints.clear()
 	joints._lastId = 0
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Internal helpers
--- ─────────────────────────────────────────────────────────────────────────────
 
 -- Shared positional constraint impulse, weighted by invMass
 local function applyPositionalConstraint(bodyA, bodyB, worldAnchorA, worldAnchorB, dt)
@@ -168,9 +162,7 @@ local function applyPositionalConstraint(bodyA, bodyB, worldAnchorA, worldAnchor
 	end
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Constraint Solvers
--- ─────────────────────────────────────────────────────────────────────────────
 
 function joints.solveHinge(joint: HingeJoint, bodyA: any, bodyB: any, dt: number)
 	if not joint.enabled then
@@ -446,9 +438,7 @@ function joints.solveUniversal(joint: UniversalJoint, bodyA: any, bodyB: any, dt
 	applyPositionalConstraint(bodyA, bodyB, worldAnchorA, worldAnchorB, dt)
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Solve All
--- ─────────────────────────────────────────────────────────────────────────────
 
 function joints.solveAll(bodyManager: any, dt: number, iterations: number)
 	iterations = (iterations and iterations >= 1) and iterations or 4

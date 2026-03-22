@@ -65,10 +65,6 @@ export type Body = {
 
 body._lastId = 0
 
--- ─────────────────────────────────────────────────────────────────────────────
--- Constructor
--- ─────────────────────────────────────────────────────────────────────────────
-
 function body.new(data: Body): number
 	local clone = table.clone(data)
 	body._lastId += 1
@@ -121,9 +117,7 @@ function body.new(data: Body): number
 	return clone.id
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- CRUD
--- ─────────────────────────────────────────────────────────────────────────────
 
 function body.get(id: number): Body?
 	return body.pool[id]
@@ -154,9 +148,7 @@ function body.each(func: (number, Body) -> ())
 	end
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Sleep
--- ─────────────────────────────────────────────────────────────────────────────
 
 -- Fix: wakeUp no longer zeros velocity — preserves motion continuity
 function body.wakeUp(id: number)
@@ -208,9 +200,7 @@ function body.isAwake(id: number): boolean
 	return b ~= nil and not b.isSleeping
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Pool Management
--- ─────────────────────────────────────────────────────────────────────────────
 
 -- Resets the entire body pool (used by physics.reset)
 function body.clear()

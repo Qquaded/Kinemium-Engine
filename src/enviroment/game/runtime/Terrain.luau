@@ -539,12 +539,9 @@ local function voxelToChunk(x, y, z)
 end
 
 Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
-	local workspace = datamodel:GetService("Workspace")
-	local materials = workspace.materials
-
 	Terrain:SetProperties({
 		Decoration = true,
-		GrassLength = 1,
+		GrassLength = 10,
 		BaseClass = "Singleton",
 		MaterialColors = "",
 		WaterColor = Color3.new(0, 0, 0),
@@ -728,19 +725,16 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 				table.insert(vertices, {
 					position = { vA[1], vA[2], vA[3] },
-					normal = { nA[1], nA[2], nA[3] },
 					color = { 255, 255, 255, 255 },
 					uv = { vA[1] * UV_SCALE, vA[3] * UV_SCALE },
 				})
 				table.insert(vertices, {
 					position = { vB[1], vB[2], vB[3] },
-					normal = { nB[1], nB[2], nB[3] },
 					color = { 255, 255, 255, 255 },
 					uv = { vB[1] * UV_SCALE, vB[3] * UV_SCALE },
 				})
 				table.insert(vertices, {
 					position = { vC[1], vC[2], vC[3] },
-					normal = { nC[1], nC[2], nC[3] },
 					color = { 255, 255, 255, 255 },
 					uv = { vC[1] * UV_SCALE, vC[3] * UV_SCALE },
 				})
@@ -903,6 +897,11 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 		if #vertices == 0 then
 			chunk.mesh = nil
 			chunk.dominantMaterial = nil
+			if chunk.grassInstanceBuffer then
+				pcall(rlib.R3D_UnloadInstanceBuffer, chunk.grassInstanceBuffer)
+				chunk.grassInstanceBuffer = nil
+				chunk.grassInstanceCount = nil
+			end
 			chunk.dirty = false
 			return
 		end
@@ -933,11 +932,13 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end
 		chunk.dominantMaterial = bestMat
 
-		chunk.mesh = meshgen.buildMesh(vertices, indices, {
+		local sv, si = meshgen.autoSmooth(vertices, indices, {
+			angleThreshold = 90,
+			tolerance = Terrain.VoxelSize * 0.05,
+		})
+		chunk.mesh = meshgen.buildMesh(sv, si, {
 			indicesAreZeroBased = true,
 			usage = meshgen.Usage.Dynamic,
-			smooth = true,
-			flat = false,
 		})
 		chunk.dirty = false
 		if Terrain.Decoration then
@@ -952,13 +953,21 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 	end
 
 	function Terrain:_spawnGrassForChunk(chunk)
+		if chunk.grassInstanceBuffer then
+			pcall(rlib.R3D_UnloadInstanceBuffer, chunk.grassInstanceBuffer)
+			chunk.grassInstanceBuffer = nil
+			chunk.grassInstanceCount = nil
+		end
+
 		local cx, cy, cz = chunk.cx, chunk.cy, chunk.cz
 		local x0 = cx * CHUNK_SIZE
 		local y0 = cy * CHUNK_SIZE
 		local z0 = cz * CHUNK_SIZE
 		local vs = Terrain.VoxelSize
 
-		local meshList = {}
+		local qw = grassgen.BLADE_QUAD_WIDTH -- rename to avoid collision with quaternion qw
+		local ql = grassgen.BLADE_QUAD_LENGTH
+		local instances = {}
 
 		for x = x0, x0 + CHUNK_SIZE - 1 do
 			for z = z0, z0 + CHUNK_SIZE - 1 do
@@ -979,48 +988,53 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 					if v.material == "grass" then
 						-- solid grass voxel with air above: spawn here
 						local nx, ny, nz = Terrain:_getNormal(x, y, z)
-						if ny >= 0.3 then
+						if ny >= 0.6 then
 							local dBelow = Terrain:_getDensity(x, y, z)
 							local dAbove = Terrain:_getDensity(x, y + 1, z)
 							local surfaceFrac = 1.0
 							if math.abs(dAbove - dBelow) > 1e-5 then
-								surfaceFrac = (Terrain.IsoLevel - dBelow) / (dAbove - dBelow)
-								surfaceFrac = math.max(0, math.min(1, surfaceFrac))
+								surfaceFrac = math.max(0, math.min(1, (Terrain.IsoLevel - dBelow) / (dAbove - dBelow)))
 							end
 
 							local worldX = x * vs
-							local worldY = y * vs + surfaceFrac * vs
+							local worldY = (y + surfaceFrac) * vs
 							local worldZ = z * vs
 
-							local bladesPerVoxel = math.max(1, math.floor(Terrain.GrassLength * 2))
+							local bladesPerVoxel = math.max(1, math.floor(Terrain.GrassLength * 4))
 							for _ = 1, bladesPerVoxel do
+								local angle = math.random() * math.pi * 2
+								local rot_qy = math.sin(angle * 0.5)
+								local rot_qw = math.cos(angle * 0.5)
+
 								local ox = (math.random() - 0.5) * vs
 								local oz = (math.random() - 0.5) * vs
 
-								local bverts, bidxs = grassgen.genBladeAligned({
-									surfaceNormal = { nx, ny, nz },
-									slopeLeaning = 0.35,
-									baseWidth = 0.04 + math.random() * 0.04,
-									tipWidth = 0.005,
-									height = 0.4 + math.random() * 1.5,
-									segments = 10,
-									lean = 0.15 + math.random() * 0.1,
-									bow = 0.1 + math.random() * 0.1,
-									twist = (math.random() - 0.5) * 0.2,
-								})
+								local sx = worldX + ox
+								local sy = worldY
+								local sz = worldZ + oz
 
-								local rotY = math.random() * math.pi * 2
-								local cos, sin = math.cos(rotY), math.sin(rotY)
-								for _, bv in ipairs(bverts) do
-									local px, py, pz = bv.position[1], bv.position[2], bv.position[3]
-									bv.position = {
-										px * cos - pz * sin + worldX + ox,
-										py + worldY,
-										px * sin + pz * cos + worldZ + oz,
-									}
-								end
+								local bladeH = 0.4 + math.random()
 
-								table.insert(meshList, { vertices = bverts, indices = bidxs })
+								local vr = math.clamp(math.floor(46 + math.random() * 40), 0, 255)
+								local vg = math.clamp(math.floor(140 + math.random() * 60), 0, 255)
+								local vb = math.clamp(math.floor(28 + math.random() * 35), 0, 255)
+
+								instances[#instances + 1] = {
+									px = sx,
+									py = worldY + bladeH * 0.5,
+									pz = sz,
+									qx = 0,
+									qy = rot_qy,
+									qz = 0,
+									qw = rot_qw,
+									sx = 1,
+									sy = bladeH,
+									sz = 1,
+									r = vr,
+									g = vg,
+									b = vb,
+									a = 255,
+								}
 							end
 						end
 					end
@@ -1029,17 +1043,13 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end
 		end
 
-		if #meshList == 0 then
-			chunk.grassMesh = nil
+		if #instances == 0 then
 			return
 		end
 
-		local mergedVerts, mergedIndices = meshgen.mergeMeshData(meshList)
-		chunk.grassMesh = meshgen.buildMesh(mergedVerts, mergedIndices, {
-			indicesAreZeroBased = true,
-			flat = true,
-			usage = meshgen.Usage.Dynamic,
-		})
+		local buf, n = grassgen.createGrassInstanceBuffer(rlib, instances)
+		chunk.grassInstanceBuffer = buf
+		chunk.grassInstanceCount = n
 	end
 
 	function Terrain:FillBlock(minPos, maxPos, block)
@@ -1058,6 +1068,11 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 	end
 
 	function Terrain:Fill(posX, posY, posZ, width, height, options)
+		posX = posX or 0
+		posY = posY or 0
+		posZ = posZ or 0
+		width = width or 20
+		height = height or 20
 		options = options or {}
 		local doMountains = options.mountains == true
 		if Terrain.UseMarchingCubes then
@@ -1269,6 +1284,10 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 	end
 
 	function Terrain:StartRendering()
+		local grassMat = grassgen.getGrassMaterial()
+		local quadMesh = grassgen.getBladeQuadMesh()
+		local grassShader = grassgen.getGrassSurfaceShader()
+
 		local workspace = datamodel:GetService("Workspace")
 		local terrainMatCache = {}
 
@@ -1284,6 +1303,9 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end
 
 		local identity = raylib.lib.MatrixIdentity()
+		local grassWindBuf = buffer.create(4)
+		buffer.writef32(grassWindBuf, 0, 0.08)
+		local grassTimeBuf = buffer.create(4)
 
 		renderer.Pool.new("3d", function()
 			for _, chunk in pairs(Terrain._chunks) do
@@ -1298,11 +1320,25 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 					end
 				end
 
-				if chunk.grassMesh then
-					local mat = getTerrainMaterial("grass")
-					if mat and renderer.MeshPool then
-						renderer.MeshPool.DrawMesh(chunk.grassMesh, mat.material, identity, nil, nil)
-					end
+				if
+					chunk.grassInstanceBuffer
+					and chunk.grassInstanceCount
+					and chunk.grassInstanceCount > 0
+					and renderer.MeshPool
+					and renderer.MeshPool.DrawMeshInstanced
+				then
+					buffer.writef32(grassTimeBuf, 0, raylib.lib.GetTime())
+					rlib.R3D_SetSurfaceShaderUniform(grassShader, "u_windStrength", grassWindBuf)
+					rlib.R3D_SetSurfaceShaderUniform(grassShader, "u_time", grassTimeBuf)
+
+					renderer.MeshPool.DrawMeshInstanced(
+						quadMesh,
+						grassMat,
+						chunk.grassInstanceBuffer,
+						chunk.grassInstanceCount,
+						nil,
+						nil
+					)
 				end
 			end
 		end)

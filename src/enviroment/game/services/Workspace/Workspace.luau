@@ -770,7 +770,6 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 	proptable.loadMaterial = function(name)
 		loadMaterial(name, true)
-		print(loadedMaterials[name])
 		return loadedMaterials[name]
 	end
 	Workspace:SetProperties(proptable)
