@@ -128,6 +128,3 @@ end
 if b_freebsd or zune.platform.os == "freebsd" then
 	buildExecutable("freebsd_x86-64", "", "so")
 end
-if b_freebsd or zune.platform.os == "freebsd" then
-	buildExecutable("freebsd_x86-64", "", "so")
-end
