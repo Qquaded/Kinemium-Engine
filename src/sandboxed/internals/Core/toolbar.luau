@@ -13,7 +13,7 @@ local renderer = KinemiumRaylib.renderer
 local structs = KinemiumRaylib.structs
 local vend = KinemiumFontService.GetDefaultFont()
 local currentlySelected = ""
-local StudioThemeService = game:GetService("StudioThemeService")
+local Theme = game:GetService("StudioThemeService").SelectedTheme
 
 if FlagExists("client") then
 	return
@@ -27,19 +27,12 @@ if FlagExists("headless") then
 	return
 end
 
-local backgroundColor =
-	StudioThemeService.SelectedTheme.BackgroundColor:ToRaylib(StudioThemeService.SelectedTheme.BackgroundTransparency)
-local TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
-local GuiHandlesColor =
-	StudioThemeService.SelectedTheme.GuiHandlesColor:ToRaylib(StudioThemeService.SelectedTheme.GuiHandlesTransparency)
-local SecondaryBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryBackgroundColorTransparency
-)
-local SecondaryTextColor = StudioThemeService.SelectedTheme.SecondaryTextColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryTextTransparency
-)
-local ImageColor =
-	StudioThemeService.SelectedTheme.ImageColor:ToRaylib(StudioThemeService.SelectedTheme.ImageTransparency)
+local backgroundColor = Theme.BackgroundColor:ToRaylib(Theme.BackgroundTransparency)
+local TextColor = Theme.TextColor:ToRaylib(Theme.TextTransparency)
+local GuiHandlesColor = Theme.GuiHandlesColor:ToRaylib(Theme.GuiHandlesTransparency)
+local SecondaryBackgroundColor = Theme.SecondaryBackgroundColor:ToRaylib(Theme.SecondaryBackgroundColorTransparency)
+local SecondaryTextColor = Theme.SecondaryTextColor:ToRaylib(Theme.SecondaryTextTransparency)
+local ImageColor = Theme.ImageColor:ToRaylib(Theme.ImageTransparency)
 
 export type elementTitle = string
 
@@ -71,7 +64,7 @@ end)
 
 local aereon = import("@Aereon")
 local window = aereon.window(game, nil, 1)
-local aRect = aereon.rect()
+local aRect = require("@Arect")(KinemiumRaylib.lib)
 local gui = aereon.gui
 
 local fileMenu = gui.menu({
@@ -178,14 +171,12 @@ local function create_window(title, frame)
 	repeat
 		task.wait()
 	until frame.AbsolutePosition and frame.AbsoluteSize
-	local dpiScale = rl.GetWindowScaleDPI().x
 	local myWindow = window.create({
 		title = title,
 		x = frame.AbsolutePosition.X,
 		y = frame.AbsolutePosition.Y,
 		width = frame.AbsoluteSize.X,
 		DisableClipping = true,
-		headerRender = false,
 		height = frame.AbsoluteSize.Y,
 
 		tabs = {
@@ -193,11 +184,11 @@ local function create_window(title, frame)
 				name = "File",
 				render = function(windowData)
 					local dt = KinemiumRaylib.lib.GetFrameTime()
-					local menuRect = aRect.new(windowData.x, windowData.y + 30, 200, 300)
+					local menuRect = aRect.new(windowData.x, windowData.y + 60, 200, 300)
 
 					fileMenu:show()
-					fileMenu.set("backgroundColor", StudioThemeService.SelectedTheme.aereon.window.BackgroundColor)
-					fileMenu.set("textColor", StudioThemeService.SelectedTheme.TextColor)
+					fileMenu.set("backgroundColor", Theme.aereon.window.BackgroundColor)
+					fileMenu.set("textColor", Theme.TextColor)
 					fileMenu.set("obj_rect", menuRect)
 					fileMenu.render(dt)
 				end,
@@ -214,7 +205,7 @@ end
 
 local function create_window_back(screenGui, title, AnchorPoint, size)
 	local frame = Instance.new("Frame")
-	frame.Position = UDim2.new(AnchorPoint.X, 0, AnchorPoint.Y, 0)
+	frame.Position = Theme.WindowConfig.Toolbar.position
 	frame.AnchorPoint = AnchorPoint
 	frame.Size = size or UDim2.new(0, 400, 0.5, 0)
 	frame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -228,12 +219,8 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "Toolbar"
 screenGui.Parent = LocalPlayer.PlayerGui
 
-local propback, frame = create_window_back(
-	screenGui,
-	"Toolbar",
-	Vector2.new(0, 0),
-	UDim2.new(0, KinemiumRaylib.lib.GetRenderWidth() - 400, 0, 160)
-)
+local propback, frame =
+	create_window_back(screenGui, "Toolbar", Theme.WindowConfig.Toolbar.anchorPoint, Theme.WindowConfig.Toolbar.size)
 
 local function Color3ToRaylib(c, transparency)
 	local r, g, b = c:ToRGB()
@@ -356,46 +343,30 @@ local function drawCategories(windowData)
 	end
 end
 
-local windowObject
-
-RunService.GuiRender:Connect(function()
-	if not windowObject then
-		return
-	end
-	renderer.Blur:DrawBlurredRegion(
-		windowObject.x,
-		windowObject.y,
-		windowObject.width,
-		windowObject.height,
-		Color3ToRaylib(Color3.new(1, 1, 1), 0)
-	)
-end)
-
 fileMenu:hide()
 
-window.stepped = function(windowData)
-	if windowData.title == "Toolbar" then
-		windowObject = windowData
-		window.dragspring:target(windowData, {
-			x = frame.AbsolutePosition.X,
-			y = frame.AbsolutePosition.Y,
-			width = frame.AbsoluteSize.X,
-			height = frame.AbsoluteSize.Y,
-		})
+propback:Minimize()
 
-		frame.Size = UDim2.new(0, KinemiumRaylib.lib.GetRenderWidth() - 400, 0, 160)
+RunService.RenderStepped:Connect(function(a0: number)
+	propback.x = frame.AbsolutePosition.X
+	propback.y = frame.AbsolutePosition.Y
+	propback.width = frame.AbsoluteSize.X
+	propback.height = frame.AbsoluteSize.Y
+end)
 
-		local currentX = 15 -- Initial left padding
+propback.stepped = function(propback)
+	if propback.title == "Toolbar" then
+		local currentX = 15
 		local category = categoryRegistry[currentlySelected]
 
 		if category then
 			local elements = category.elements
 			for _, element in pairs(elements) do
 				if element.type == "ImageButton" then
-					local width = renderButton(currentX, element.text, element, windowData)
+					local width = renderButton(currentX, element.text, element, propback)
 					currentX = currentX + width
 				elseif element.type == "Separator" then
-					local width = renderSeperator(currentX, windowData, element)
+					local width = renderSeperator(currentX, propback, element)
 					currentX = currentX + width
 				elseif element.type == "Custom" then
 					if element.render then
@@ -403,15 +374,15 @@ window.stepped = function(windowData)
 						local cellHeight = element.height or 50
 						local padding = element.padding or 20
 
-						local x = windowData.x + currentX
-						local y = windowData.y + 80
+						local x = propback.x + currentX
+						local y = propback.y + 80
 
 						element.render(aRect, {
 							x = x,
 							y = y,
 							width = cellWidth,
 							height = cellHeight,
-							window = windowData,
+							window = propback,
 						})
 
 						currentX = currentX + cellWidth + padding
@@ -420,6 +391,6 @@ window.stepped = function(windowData)
 			end
 		end
 
-		drawCategories(windowData)
+		drawCategories(propback)
 	end
 end

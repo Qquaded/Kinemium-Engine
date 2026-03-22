@@ -1,8 +1,8 @@
-local ffi = game:GetService("KinemiumFFI")
+-- devcell
+
 local rlservice = game:GetService("KinemiumRaylib")
 local raylib = require("@raylib")
 local lib = raylib.lib
-local const = raylib.const
 local structs = raylib.structs
 local renderer = rlservice.renderer
 local Selection = game:GetService("Selection")
@@ -12,7 +12,6 @@ local StudioThemeService = game:GetService("StudioThemeService")
 local vend = KinemiumFontService.GetDefaultFont()
 
 local aereon = import("@Aereon")
-local window = aereon.window(game, nil, 1)
 local gui = aereon.gui
 local currentObject
 local menuTarget

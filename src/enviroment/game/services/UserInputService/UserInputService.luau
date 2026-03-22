@@ -8,57 +8,79 @@ local InputEnded = signal.new()
 local MouseMoved = signal.new()
 local MouseWheel = signal.new()
 
-local active_keys = {}
+local active_keys = {} -- [keyValue: number] = true | nil
 
 UserInputService.InitRenderer = function(renderer, renderer_signal)
 	if IsHeadless then
 		UserInputService:SetProperties({})
 		return
 	end
+
 	local Enum = require("@EnumMap")
 	local lib = renderer.Raylib.lib
-	local const = renderer.Raylib.const
+
+	local valueToKeyCode = {}
+	for name, value in pairs(Enum.KeyCode) do
+		valueToKeyCode[value] = { Name = name, Value = value }
+	end
+
+	local function findSuitable(value: number)
+		return valueToKeyCode[value]
+	end
 
 	UserInputService:SetProperties({
-		IsKeyDown = false,
 		InputBegan = InputBegan,
+		InputEnded = InputEnded,
 		MouseMoved = MouseMoved,
 		MouseWheel = MouseWheel,
-		InputEnded = InputEnded,
 		GetCharPressed = lib.GetCharPressed,
 		TouchEnabled = false,
 		GamepadEnabled = false,
 	})
 
-	local function findSuitable(value: number)
-		for _, keycode in pairs(Enum.KeyCode:GetEnumItems()) do
-			if keycode.Value == value then
-				return keycode
-			end
-		end
-	end
-
-	function UserInputService:EnableKey(key)
-		local raylibKeyFound = nil
-		for _, keyValue in pairs(const.KeyboardKey) do
-			if keyValue == key.Value then
-				renderer:WatchKey(keyValue)
-				raylibKeyFound = keyValue
-				break
-			end
+	function UserInputService:EnableKey(keys: { { Name: string, Value: number } })
+		for _, key in pairs(keys) do
+			renderer:WatchKey(key.Value)
 		end
 		return {
 			Disable = function()
-				renderer:StopWatchingKey(raylibKeyFound)
+				for _, key in pairs(keys) do
+					renderer:StopWatchingKey(key.Value)
+				end
 			end,
 		}
 	end
 
+	function UserInputService:BindCombo(keys: {}, callback: () -> ())
+		InputBegan:Connect(function()
+			for _, key in pairs(keys) do
+				if lib.IsKeyDown(key.Value) ~= 1 then
+					return
+				end
+			end
+			callback()
+		end)
+	end
+
+	function UserInputService:GetOS()
+		if zune.platform.os == "windows" then
+			return Enum.Platform.Windows
+		elseif zune.platform.os == "linux" then
+			return Enum.Platform.Linux
+		elseif zune.platform.os == "freebsd" then
+			return Enum.Platform.FreeBSD
+		elseif zune.platform.os == "macos" then
+			return Enum.Platform.OSX
+		end
+	end
+
+	--function UserInputService:GetDeviceType() end
+
 	function UserInputService:GetKeysDown()
 		local keysDown = {}
-		for name, code in pairs(const.KeyboardKey) do
-			if lib.IsKeyDown(code) == 1 then
-				table.insert(keysDown, name)
+		for value, keyItem in pairs(valueToKeyCode) do
+			if lib.IsKeyDown(value) == 1 then
+				table.insert(keysDown, keyItem)
 			end
 		end
 		return keysDown
@@ -73,42 +95,40 @@ UserInputService.InitRenderer = function(renderer, renderer_signal)
 	end
 
 	function UserInputService:IsKeyDown(key)
-		return lib.IsKeyDown(const.KeyboardKey[key]) == 1
+		return lib.IsKeyDown(key.Value) == 1
 	end
 
 	function UserInputService:IsKeyPressed(key)
-		return lib.IsKeyPressed(const.KeyboardKey[key]) == 1
+		return lib.IsKeyPressed(key.Value) == 1
 	end
 
 	function UserInputService:IsKeyReleased(key)
-		return lib.IsKeyReleased(const.KeyboardKey[key]) == 1
+		return lib.IsKeyReleased(key.Value) == 1
 	end
 
 	renderer_signal:Connect(function(route, data)
-		local key
-
 		if route == "IsKeyDown" then
-			key = findSuitable(data)
+			if active_keys[data] then
+				return
+			end
+			local key = findSuitable(data)
 			if key then
-				if active_keys[key] == true then
-					return
-				end
+				active_keys[data] = true
 				InputBegan:Fire({
 					KeyCode = key,
 					UserInputType = Enum.UserInputType.Keyboard,
 					UserInputState = Enum.UserInputState.Begin,
 				})
-				active_keys[key] = true
 			end
 		elseif route == "IsKeyReleased" then
-			key = findSuitable(data)
+			active_keys[data] = nil
+			local key = findSuitable(data)
 			if key then
 				InputEnded:Fire({
 					KeyCode = key,
 					UserInputType = Enum.UserInputType.Keyboard,
 					UserInputState = Enum.UserInputState.End,
 				})
-				active_keys[key] = false
 			end
 		elseif route == "MouseMoved" then
 			MouseMoved:Fire({

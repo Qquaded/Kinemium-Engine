@@ -2340,7 +2340,8 @@ enums.Platform = {
 	UWP = 18,
 	PS5 = 19,
 	MetaOS = 20,
-	None = 21,
+	FreeBSD = 21,
+	None = 22,
 }
 enums.PlaybackState = {
 	Begin = 0,

@@ -191,7 +191,7 @@ local funcs = {
 	sail_codec_info_from_extension = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
 	sail_codec_info_from_mime_type = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
 	sail_codec_info_from_name = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
-	sail_codec_info_from_path = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
+	sail_codec_info_from_path = { returns = ffi.types.u32, args = { ffi.types.pointer, ffi.types.pointer } },
 
 	-- Initialization functions
 	sail_init = { returns = ffi.types.pointer, args = {} },
@@ -258,7 +258,7 @@ local funcs = {
 		returns = ffi.types.pointer,
 		args = { ffi.types.pointer, ffi.types.u64, ffi.types.pointer },
 	},
-	sail_load_next_frame = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
+	sail_load_next_frame = { returns = ffi.types.u32, args = { ffi.types.pointer, ffi.types.pointer } },
 	sail_probe_file = {
 		returns = ffi.types.pointer,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
@@ -273,7 +273,7 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
 	},
 	sail_start_loading_from_file_with_options = {
-		returns = ffi.types.pointer,
+		returns = ffi.types.u32,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
 	},
 	sail_start_loading_from_io = {

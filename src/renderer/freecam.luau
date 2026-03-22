@@ -1,7 +1,6 @@
 local raylib = require("@raylib")
 local lib = raylib.lib
 local const = raylib.const
-local structs = raylib.structs
 
 local CFrame = require("@CFrame")
 local Vector3 = require("@Vector3")
@@ -64,7 +63,7 @@ local function UpdateFreecam(delta: number, Kinemium_camera)
 		* MOVE_SPEED
 		* delta
 	local targetCF = CFrame.new(camCF.Position + move):WithRotation(camCF.Rotation)
-	camCF = camCF:Lerp(targetCF, 2)
+	camCF = targetCF
 
 	local target = camCF.Position + camCF:GetLookVector()
 

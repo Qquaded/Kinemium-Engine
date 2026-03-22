@@ -2,6 +2,7 @@ local raylib = require("@raylib")
 local structs = raylib.structs
 local lib = raylib.lib
 local r3d = require("@r3d").lib
+local meshgen = require("./meshgen")
 local modelRegistry = {}
 
 local function LoadMesh(meshId: string, filePath: string)
@@ -29,41 +30,89 @@ local function GetMesh(meshId: string)
 	return modelRegistry[meshId]
 end
 
-local function GenerateMesh(meshId: string, meshType: string, params: any)
+local function GenerateMesh(meshId: string, params: any)
 	local mesh
 
-	print(meshType)
-	if meshType == "Cube" then
+	if meshId == "cube" then
 		mesh = r3d.R3D_GenMeshCube(params.width or 1, params.height or 1, params.length or 1)
 		--mesh = lib.GenMeshCube(params.width or 1, params.height or 1, params.length or 1)
-	elseif meshType == "Sphere" then
+	elseif meshId == "sphere" then
 		mesh = r3d.R3D_GenMeshSphere(params.radius or 1, params.rings or 16, params.slices or 16)
 		--mesh = lib.GenMeshSphere(params.radius or 1, params.rings or 16, params.slices or 16)
-	elseif meshType == "Cylinder" then
+	elseif meshId == "cylinder" then
 		mesh = r3d.R3D_GenMeshCylinder(params.radius or 1, params.height or 2, params.slices or 16, 1)
 		--mesh = lib.GenMeshCylinder(params.radius or 1, params.height or 2, params.slices or 16)
-	elseif meshType == "Plane" then
+	elseif meshId == "plane" then
 		mesh = r3d.R3D_GenMeshPlane(params.width or 10, params.length or 10, params.resX or 1, params.resZ or 1)
 		--mesh = lib.GenMeshPlane(params.width or 10, params.length or 10, params.resX or 1, params.resZ or 1)
-	elseif meshType == "Torus" then
+	elseif meshId == "torus" then
 		mesh = r3d.R3D_GenMeshTorus(params.radius or 1, params.size or 0.3, params.radSeg or 16, params.sides or 16)
 		--mesh = lib.GenMeshTorus(params.radius or 1, params.size or 0.3, params.radSeg or 16, params.sides or 16)
+	elseif meshId == "wedge" then
+		mesh = r3d.R3D_GenMeshSlope(
+			params.width or 1,
+			params.height or 1,
+			params.length or 1,
+			params.slopeNormal or vector.create(1, 1, 0)
+		)
+	elseif meshId == "cornerwedge" then
+		local width = params.width or 1
+		local height = params.height or 1
+		local length = params.length or 1
+
+		local hx = width * 0.5
+		local hy = height * 0.5
+		local hz = length * 0.5
+
+		local a = { x = -hx, y = -hy, z = -hz } -- back-left
+		local b = { x = hx, y = -hy, z = -hz } -- back-right
+		local c = { x = hx, y = -hy, z = hz } -- front-right
+		local d = { x = -hx, y = -hy, z = hz } -- front-left
+		local e = { x = -hx, y = hy, z = -hz } -- top apex
+
+		local triangles = {
+			-- Bottom face (flipped)
+			{ a, b, c },
+			{ a, c, d },
+
+			-- Back face (-Z)
+			{ a, e, b },
+
+			-- Left face (-X)
+			{ a, d, e },
+
+			-- Right slope
+			{ b, e, c },
+
+			-- Front slope
+			{ d, c, e },
+		}
+
+		local custom = meshgen.buildFromTriangles(triangles, { usage = meshgen.Usage.Static })
+		if not custom then
+			return nil
+		end
+		return { nil, custom }
 	else
-		warn(`Unknown mesh type: {meshType}`)
+		warn(`Unknown mesh type: {meshId}`)
 		return nil
 	end
 
-	print(`Generated mesh: {meshId} ({meshType})`)
+	print(`Generated mesh: {meshId} ({meshId})`)
 	return { nil, mesh }
 end
 
 local function PreloadStandardMeshes()
 	local preloaded = {}
-	preloaded["block"] = GenerateMesh("cube", "Cube", { width = 1, height = 1, length = 1 })
-	preloaded["sphere"] = GenerateMesh("sphere", "Sphere", { radius = 0.5, rings = 16, slices = 16 })
-	preloaded["cylinder"] = GenerateMesh("cylinder", "Cylinder", { radius = 0.5, height = 1, slices = 16 })
-	preloaded["plane"] = GenerateMesh("plane", "Plane", { width = 10, length = 10, resX = 1, resZ = 1 })
-	preloaded["torus"] = GenerateMesh("torus", "Torus", { radius = 1, size = 0.3, radSeg = 16, sides = 16 })
+	preloaded["block"] = GenerateMesh("cube", { width = 1, height = 1, length = 1 })
+	preloaded["sphere"] = GenerateMesh("sphere", { radius = 0.5, rings = 16, slices = 16 })
+	preloaded["cylinder"] = GenerateMesh("cylinder", { radius = 0.5, height = 1, slices = 16 })
+	preloaded["plane"] = GenerateMesh("plane", { width = 10, length = 10, resX = 1, resZ = 1 })
+	preloaded["torus"] = GenerateMesh("torus", { radius = 1, size = 0.3, radSeg = 16, sides = 16 })
+	preloaded["wedge"] =
+		GenerateMesh("wedge", { width = 1, height = 1, length = 1, slopeNormal = vector.create(1, 1, 0) })
+	preloaded["cornerwedge"] = GenerateMesh("cornerwedge", { width = 1, height = 1, length = 1 })
+
 	return preloaded
 end
 

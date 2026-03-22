@@ -6,32 +6,25 @@ local KinemiumFontService = game:GetService("KinemiumFontService")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local renderer = KinemiumRaylib.renderer
-local const = KinemiumRaylib.const
 local rl = KinemiumRaylib.lib
-local Selection = game:GetService("Selection")
 local LogService = game:GetService("LogService")
-local RunService = game:GetService("RunService")
 local structs = KinemiumRaylib.structs
 local vend = KinemiumFontService.GetDefaultFont()
-local StudioThemeService = game:GetService("StudioThemeService")
+local Theme = game:GetService("StudioThemeService").SelectedTheme
 local arectlib = require("@Arect")(rl)
 local scrollOffset = 0
 
-local backgroundColor =
-	StudioThemeService.SelectedTheme.BackgroundColor:ToRaylib(StudioThemeService.SelectedTheme.BackgroundTransparency)
-local TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
-local GuiHandlesColor =
-	StudioThemeService.SelectedTheme.GuiHandlesColor:ToRaylib(StudioThemeService.SelectedTheme.GuiHandlesTransparency)
-local SecondaryBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryBackgroundColorTransparency
-)
-local SecondaryTextColor = StudioThemeService.SelectedTheme.SecondaryTextColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryTextTransparency
-)
-local ImageColor =
-	StudioThemeService.SelectedTheme.ImageColor:ToRaylib(StudioThemeService.SelectedTheme.ImageTransparency)
+local TextColor = Theme.TextColor:ToRaylib(Theme.TextTransparency)
 local lastLogCount = 0
+
+local syntax_highlighter = require("@syntax_highlighter")
+local syntax_autocomplete = require("@syntax_autocomplete")
+local aereon = require("@Aereon")
+local raylib = require("@raylib")
+
+local textbox = aereon.textbox(Theme, game)
+
+local kilang = require("@Kilang")
 
 if game.Context ~= Enum.GameContext.Editor then
 	return
@@ -49,14 +42,22 @@ if FlagExists("headless") then
 	return
 end
 
-print("This is output.")
+local box = textbox.new({
+	multiline = false,
+	placeholder = "Enter Kilang code here..",
+	fontSize = 16,
+	font = vend,
+	backgroundColor = Theme.SecondaryBackgroundColor,
+	borderColor = Theme.SecondaryBackgroundColor,
+	syntaxHighlighter = syntax_highlighter.highlight,
+	autocompleteProvider = syntax_autocomplete,
 
-KinemiumIconLoader.new("Add", "./src/assets/images/icons/vanilla3/ui/16x/200/Add.png")
-
-local png = KinemiumIconLoader.Get("Add")
-local addIcon = KinemiumIconLoader.ToTexture(png)
-
-local windowRegistry = {}
+	onSubmit = function(new)
+		kilang:execute(new, {
+			SecurityCapabilities = Enum.SecurityCapabilities.Internals,
+		})
+	end,
+})
 
 local aereon = import("@Aereon")
 local window = aereon.window(game, nil, 1)
@@ -71,7 +72,6 @@ local function create_window(title, frame)
 	until frame.AbsolutePosition and frame.AbsoluteSize
 	local myWindow = window.create({
 		title = title,
-		headerRender = false,
 		x = frame.AbsolutePosition.X,
 		y = frame.AbsolutePosition.Y,
 		width = frame.AbsoluteSize.X,
@@ -90,9 +90,7 @@ local function create_window(title, frame)
 
 					if logCount ~= lastLogCount then
 						lastLogCount = logCount
-
 						local totalHeight = logCount * (cellHeight + padding)
-
 						if totalHeight > winHeight then
 							scrollOffset = totalHeight - winHeight
 						else
@@ -114,35 +112,32 @@ local function create_window(title, frame)
 								logColor = structs.Color:new({ r = 255, g = 50, b = 50, a = 255 })
 							end
 
-							if not log then
-								return
-							end
-							if not log.message then
-								return
-							end
-							if not log.time then
+							if not log or not log.message or not log.time then
 								return
 							end
 
 							local ts = os.date("%H:%M:%S", log.time)
 							local text = string.format("[%s] %s", ts, log.message)
 
-							local col = StudioThemeService.SelectedTheme.Accent
-							local transparency = 1
-
 							rl.DrawTextEx(vend, text, vector.create(rect.x + 8, rect.y + 4), 17, 1, logColor)
 
 							if arectlib.MouseIsInRect(rect) then
-								transparency = 0
 								rl.DrawLineEx(
 									vector.create(rect.x, rect.y + cellHeight),
 									vector.create(rect.x + rect.width, rect.y + cellHeight),
 									1,
-									col:ToRaylib(transparency)
+									Theme.Accent:ToRaylib(0)
 								)
 							end
 						end
 					end
+
+					box:drawWithExtras(
+						windowData.x + padding,
+						windowData.y + windowData.height - 30 - padding,
+						windowData.width - 2 * padding,
+						30
+					)
 				end,
 			},
 			{
@@ -170,7 +165,7 @@ end
 
 local function create_window_back(screenGui, title, AnchorPoint, size)
 	local frame = Instance.new("Frame")
-	frame.Position = UDim2.new(AnchorPoint.X, 0, AnchorPoint.Y, 0)
+	frame.Position = Theme.WindowConfig.Output.position
 	frame.AnchorPoint = AnchorPoint
 	frame.Size = size or UDim2.new(0, 400, 0.6, 0)
 	frame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -184,39 +179,20 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "Console"
 screenGui.Parent = LocalPlayer.PlayerGui
 
-local propback, frame = create_window_back(
-	screenGui,
-	"Console",
-	Vector2.new(0, 1),
-	UDim2.new(0, KinemiumRaylib.lib.GetRenderWidth() - 400, 0.2, 0)
-)
-
-local windowObject
-
-RunService.GuiRender:Connect(function()
-	if not windowObject then
-		return
-	end
-	renderer.Blur:DrawBlurredRegion(
-		windowObject.x,
-		windowObject.y,
-		windowObject.width,
-		windowObject.height,
-		const.WHITE
-	)
-end)
+local propback, frame =
+	create_window_back(screenGui, "Console", Theme.WindowConfig.Output.anchorPoint, Theme.WindowConfig.Output.size)
 
 window.stepped = function(windowData)
 	if windowData.title == "Console" then
-		windowObject = windowData
+		if game.Context ~= Enum.GameContext.Editor then
+			return
+		end
 
-		window.dragspring:target(windowData, {
-			x = frame.AbsolutePosition.X,
-			y = frame.AbsolutePosition.Y,
-			width = frame.AbsoluteSize.X,
-			height = frame.AbsoluteSize.Y,
-		})
-
-		frame.Size = UDim2.new(0, KinemiumRaylib.lib.GetRenderWidth() - 400, 0.2, 0)
+		if rl.IsWindowResized() == 1 then
+			windowData.x = frame.AbsolutePosition.X
+			windowData.y = frame.AbsolutePosition.Y
+			windowData.width = frame.AbsoluteSize.X
+			windowData.height = frame.AbsoluteSize.Y
+		end
 	end
 end

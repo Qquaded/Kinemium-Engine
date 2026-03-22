@@ -244,8 +244,6 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		self.dropShadow = config.dropShadow or false
 		self.shadowOffset = config.shadowOffset or 2
 		self.shadowTransparency = config.shadowTransparency or 0.7
-
-		-- Label and prefix/suffix
 		self.label = config.label -- Text to display as label
 		self.labelPosition = config.labelPosition or "left" -- "left", "top", "right"
 		self.labelWidth = config.labelWidth or 60
@@ -255,8 +253,6 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		self.prefixGap = config.prefixGap or 5
 		self.labelOutlineColor = config.labelOutlineColor or Color3.new(1, 0, 0)
 		self.suffixGap = config.suffixGap or 5
-
-		-- Numeric controls
 		self.numeric = config.numeric or false -- Enable numeric mode
 		self.numericMin = config.numericMin
 		self.numericMax = config.numericMax
@@ -264,8 +260,6 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		self.numericPrecision = config.numericPrecision -- Decimal places
 		self.showStepButtons = config.showStepButtons or false
 		self.stepButtonWidth = config.stepButtonWidth or 20
-
-		-- Slider integration
 		self.slider = config.slider or false -- Enable slider
 		self.sliderWidth = config.sliderWidth or 100
 		self.sliderMin = config.sliderMin or 0
@@ -273,8 +267,6 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		self.sliderStep = config.sliderStep or 1
 		self.sliderPosition = config.sliderPosition or "right" -- "left", "right", "bottom"
 		self.sliderGap = config.sliderGap or 10
-
-		-- NEW: Additional features config
 		self.enableMinimap = config.enableMinimap or false -- Show minimap for large files
 		self.minimapWidth = config.minimapWidth or 80
 		self.enableScrollbar = config.enableScrollbar or true -- Show scrollbar
@@ -2832,10 +2824,11 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					or Color3ToRaylib(Color3.new(0.1, 0.1, 0.1), 0)
 			)
 			raylib.DrawRectangleLines(btnX, actualTextboxY, btnW, btnH, self.theme.border)
-			raylib.DrawTextEx(vend, "▲", vector.create(btnX + 4, actualTextboxY + 2), 10, 1, self.theme.text)
+			raylib.DrawTextEx(vend, "+", vector.create(btnX + 4, actualTextboxY + 2), 10, 1, self.theme.text)
 
 			if raylib.IsMouseButtonPressed(0) == 1 and upHovered then
 				self:incrementNumeric()
+				self.onSubmit(self:getText())
 			end
 
 			-- Down button
@@ -2851,10 +2844,11 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					or Color3ToRaylib(Color3.new(0.1, 0.1, 0.1), 0)
 			)
 			raylib.DrawRectangleLines(btnX, actualTextboxY + btnH, btnW, btnH, self.theme.border)
-			raylib.DrawTextEx(vend, "▼", vector.create(btnX + 4, actualTextboxY + btnH + 2), 10, 1, self.theme.text)
+			raylib.DrawTextEx(vend, "-", vector.create(btnX + 4, actualTextboxY + btnH + 2), 10, 1, self.theme.text)
 
 			if raylib.IsMouseButtonPressed(0) == 1 and downHovered then
 				self:decrementNumeric()
+				self.onSubmit(self:getText())
 			end
 		end
 

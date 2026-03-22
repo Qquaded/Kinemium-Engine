@@ -179,6 +179,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				or prop == "Transparency"
 				or prop == "Material"
 				or prop == "Shape"
+				or prop == "MeshObject"
 				or prop == "Destroyed"
 			then
 				markChunkDirty(rawget(part, "__workspaceChunk"))
@@ -243,7 +244,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			availableMaterials[material_name] = {
 				index = material_index,
 				material = material,
-				path = material_path
+				path = material_path,
 			}
 
 			if mtsh_sh[material_name] then
@@ -330,23 +331,45 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 			iodebug(string.format("Loading custom material %s", materialName))
 			local materialLoadStart = os.clock()
-			print(mtl_info.path)
 			local data_albedo, data_albedo_ext = read(mtl_info.path.albedo)
 			local data_normal, data_normal_ext = read(mtl_info.path.normal)
 			local data_orm, data_orm_ext = read(mtl_info.path.orm)
 			-- local data_emission, data_emission_ext = read(path.emission)
-			iodebug(string.format("Loaded custom material %s in %.3fms", materialName, (os.clock() - materialLoadStart) * 1000))
+			iodebug(
+				string.format(
+					"Loaded custom material %s in %.3fms",
+					materialName,
+					(os.clock() - materialLoadStart) * 1000
+				)
+			)
 
 			local materialProcessStart = os.clock()
 			if data_albedo then
 				iodebug(string.format("Found albedo map, processing"))
-				local map = rlib.R3D_LoadAlbedoMapFromMemory(data_albedo_ext, data_albedo, buffer.len(data_albedo), raylib.const.WHITE)
-				buffer.copy(material, r3d.structs.R3D_Material:offset("albedo"), map, 0, r3d.structs.R3D_AlbedoMap:size())
+				local map = rlib.R3D_LoadAlbedoMapFromMemory(
+					data_albedo_ext,
+					data_albedo,
+					buffer.len(data_albedo),
+					raylib.const.WHITE
+				)
+				buffer.copy(
+					material,
+					r3d.structs.R3D_Material:offset("albedo"),
+					map,
+					0,
+					r3d.structs.R3D_AlbedoMap:size()
+				)
 			end
 			if data_normal then
 				iodebug(string.format("Found normal map, processing"))
 				local map = rlib.R3D_LoadNormalMapFromMemory(data_normal_ext, data_normal, buffer.len(data_normal), 1)
-				buffer.copy(material, r3d.structs.R3D_Material:offset("normal"), map, 0, r3d.structs.R3D_NormalMap:size())
+				buffer.copy(
+					material,
+					r3d.structs.R3D_Material:offset("normal"),
+					map,
+					0,
+					r3d.structs.R3D_NormalMap:size()
+				)
 			end
 			if data_orm then
 				iodebug(string.format("Found ORM map, processing"))
@@ -357,9 +380,6 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				mtsh_sh[materialName].Apply(material)
 			end
 
-			buffer.copy(albedo, r3d.structs.R3D_AlbedoMap:offset("color"), raylib.const.WHITE)
-			-- buffer.copy(default, r3d.structs.R3D_Material:offset("normal"), normal, 0, r3d.structs.R3D_NormalMap:size())
-			buffer.copy(default, r3d.structs.R3D_Material:offset("albedo"), albedo, 0, r3d.structs.R3D_AlbedoMap:size())
 			availableMaterials[materialName].loading = false
 
 			loadedMaterials[materialName] = availableMaterials[materialName]
@@ -397,20 +417,32 @@ Workspace.InitRenderer = function(renderer, signal, game)
 	end
 
 	local function queueSinglePartDraw(part, r3dAABB)
+		local isMeshPart = part:IsA("MeshPart")
 		local shapeName = part.Shape and part.Shape.Value
 		local materialName = part.Material and part.Material.Value
-		if not shapeName or not materialName then
+
+		local mesh = nil
+		if isMeshPart then
+			if part.MeshObject and part.MeshObject._meshgenHandle then
+				mesh = part.MeshObject._meshgenHandle
+			end
+		elseif shapeName then
+			local meshData = preloadedMeshes and preloadedMeshes[shapeName]
+			if meshData then
+				mesh = meshData[2]
+			end
+		end
+
+		if not mesh or not materialName then
 			return
 		end
 
-		local meshData = preloadedMeshes and preloadedMeshes[shapeName]
 		local matData = loadedMaterials[materialName] or loadMaterial(materialName) or fallbackMaterial
-		if not meshData or not matData then
+		if not matData then
 			return
 		end
 
 		local matrix = part.CFrame:ToRaylibMatrixScale(part.Size, raylib.structs)
-		local mesh = meshData[2]
 
 		local tmpAlbedo = buffer.create(r3d.structs.R3D_AlbedoMap:size())
 		buffer.copy(
@@ -427,6 +459,13 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		buffer.copy(tmpMaterial, r3d.structs.R3D_Material:offset("albedo"), tmpAlbedo)
 		buffer.writei32(tmpMaterial, r3d.structs.R3D_Material:offset("transparencyMode"), 1)
 		buffer.writei32(tmpMaterial, r3d.structs.R3D_Material:offset("cullMode"), 1)
+
+		local size = part.Size
+		local uvScaleU = size.X -- Adjust multiplier as needed for desired tiling density
+		local uvScaleV = size.Z -- Use appropriate axes based on UV mapping
+
+		buffer.writef32(tmpMaterial, r3d.structs.R3D_Material:offset("uvScale"), uvScaleU)
+		buffer.writef32(tmpMaterial, r3d.structs.R3D_Material:offset("uvScale") + 4, uvScaleV)
 
 		local materialShader = mtsh_sh[materialName]
 		local applyPerObject = materialShader and (materialShader.Apply3Dbj or materialShader.Apply3DObj)
@@ -589,15 +628,30 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				continue
 			end
 
+			local isMeshPart = part:IsA("MeshPart")
 			local shapeName = part.Shape and part.Shape.Value
 			local materialName = part.Material and part.Material.Value
-			local meshData = shapeName and preloadedMeshes[shapeName]
+
+			local mesh = nil
+			local meshKey = ""
+			if isMeshPart then
+				if part.MeshObject and part.MeshObject._meshgenHandle then
+					mesh = part.MeshObject._meshgenHandle
+					meshKey = "meshobj_" .. part.UniqueId
+				end
+			elseif shapeName then
+				local meshData = preloadedMeshes and preloadedMeshes[shapeName]
+				if meshData then
+					mesh = meshData[2]
+					meshKey = shapeName
+				end
+			end
+
 			local matData = materialName and loadedMaterials[materialName]
 				or loadMaterial(materialName)
 				or fallbackMaterial
-			local partMesh = meshData[2]
 
-			if not meshData or not matData then
+			if not mesh or not matData then
 				continue
 			end
 
@@ -608,7 +662,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				and not hasPerObjectShader
 
 			if canInstance then
-				local key = shapeName .. "|" .. materialName
+				local key = meshKey .. "|" .. materialName
 				local batch = chunk.batches[key]
 				if not batch then
 					local instancedMaterial = getInstancedMaterial(materialName)
@@ -618,7 +672,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 					end
 
 					batch = {
-						mesh = meshData[2],
+						mesh = mesh,
 						material = instancedMaterial,
 						parts = {},
 						count = 0,
@@ -714,6 +768,11 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		end
 	end
 
+	proptable.loadMaterial = function(name)
+		loadMaterial(name, true)
+		print(loadedMaterials[name])
+		return loadedMaterials[name]
+	end
 	Workspace:SetProperties(proptable)
 
 	if not IsHeadless then

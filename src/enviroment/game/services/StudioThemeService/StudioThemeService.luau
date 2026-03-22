@@ -1,5 +1,7 @@
 local Instance = require("@Instance")
 local Color3 = require("@Color3")
+local UDim2 = require("@UDim2")
+local Vector2 = require("@Vector2")
 
 local StudioThemeService = Instance.new("StudioThemeService")
 StudioThemeService.ExplorerHidden = true
@@ -7,6 +9,33 @@ StudioThemeService.ExplorerHidden = true
 StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	local themes = {
 		dark = {
+			WindowConfig = {
+				Explorer = {
+					position = UDim2.new(1, -20, 0, 40),
+					anchorPoint = Vector2.new(1, 0),
+					size = UDim2.new(0, 400, 0.38, 0),
+				},
+				Inspector = {
+					position = UDim2.new(1, -20, 0.44, 0),
+					anchorPoint = Vector2.new(1, 0),
+					size = UDim2.new(0, 400, 0.55, 0),
+				},
+				Output = {
+					position = UDim2.new(0, 20, 0.99, 0),
+					anchorPoint = Vector2.new(0, 1),
+					size = UDim2.new(1, -450, 0, 200),
+				},
+				Toolbar = {
+					position = UDim2.new(0, 0, 0, 0),
+					anchorPoint = Vector2.new(0, 0),
+					size = UDim2.new(1, 0, 0, 170),
+				},
+				CodeEditor = {
+					position = UDim2.new(0, 20, 0, 220),
+					anchorPoint = Vector2.new(0, 0),
+					size = UDim2.new(1, -420, 0.73, -20),
+				},
+			},
 			TextColor = Color3.new(1, 1, 1),
 			ImageColor = Color3.new(1, 1, 1),
 			ImageTransparency = 0,
@@ -28,7 +57,7 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			WindowTitleHeight = 29,
 			ShadowsEnabled = true,
 			ShadowTransparency = 0.98,
-			CornerRadius = 5,
+			CornerRadius = 15,
 			ShadowColor = Color3.new(0, 0, 0),
 			ArrowImageColor = Color3.new(1, 1, 1),
 			TitleColor = Color3.new(1, 1, 1),
@@ -36,11 +65,11 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			aereon = {
 				window = {
 					BackgroundColor = Color3.new(0, 0, 0),
-					BackgroundTransparency = 0.05,
+					BackgroundTransparency = 1,
 					TextColor = Color3.new(1, 1, 1),
 					SecondaryBackgroundColor = Color3.new(0.05, 0.05, 0.05),
 					DragColor = Color3.new(0.02, 0.5, 1),
-					DragOutlineTransparency = 0,
+					DragOutlineTransparency = 1,
 					TitleBackgroundTransparency = 0,
 					TitleTextSize = 16,
 					TitleColor = Color3.new(1, 1, 1),
@@ -86,6 +115,7 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	themes.dark.aereon.window.ShadowsEnabled = themes.dark.ShadowsEnabled
 	themes.dark.aereon.window.ShadowTransparency = themes.dark.ShadowTransparency
 	themes.dark.aereon.window.ShadowColor = themes.dark.ShadowColor
+	themes.dark.aereon.window.CornerRadius = themes.dark.CornerRadius
 
 	StudioThemeService:SetProperties({
 		themes = themes,

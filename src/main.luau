@@ -1,5 +1,6 @@
 --!optimize 2
 --!native
+
 local zembed = require("@zembed")
 if zembed.IsEmbedded() then
 	_G.IsExecutable = true
@@ -272,7 +273,7 @@ local function loadInternals()
 end
 
 -- LOAD USER SCRIPTS
-function Kinemium:playtest()
+function Kinemium:run()
 	loop("src/sandboxed", function(path, entry)
 		if string.find(path, "internals") or string.find(path, "Core") then
 			return
@@ -296,11 +297,14 @@ function Kinemium:playtest()
 			superset = "typescript"
 		end
 
-		kilang:execute(code, {
+		local id, success, result = kilang:execute(code, {
 			superset = superset,
 			SecurityCapabilities = Enum.SecurityCapabilities.UserScript,
 			StackId = path,
 		})
+		if not success then
+			evalError(`{id}: {tostring(result)}`)
+		end
 	end)
 end
 
@@ -328,7 +332,7 @@ end
 -- INITIALIZE ENGINE
 loadInternals()
 httpServerViewer:Init()
-Kinemium:playtest()
+Kinemium:run()
 
 -- RUN RENDERER
 renderer:Run()

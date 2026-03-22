@@ -143,6 +143,9 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 	rlib.R3D_SetLightColor(light, raylib.const.WHITE)
 	rlib.R3D_SetLightEnergy(light, 1.0)
 	rlib.R3D_SetLightActive(light, true)
+	rlib.R3D_SetShadowSoftness(light, 1.0)
+	rlib.R3D_SetShadowDepthBias(light, 0.001)
+	rlib.R3D_SetShadowSlopeBias(light, 0.01)
 	rlib.R3D_EnableShadow(light)
 
 	local effectToEnvMap = {
@@ -226,7 +229,10 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end
 
 		local colorShift_Top = Lighting.ColorShift_Top:ToRaylib()
-		rlib.R3D_SetLightDirection(light, -calculateSunDirection((Lighting.ClockTime % 12) + 6, Lighting.GeographicLatitude):ToZuneVector())
+		rlib.R3D_SetLightDirection(
+			light,
+			-calculateSunDirection((Lighting.ClockTime % 12) + 6, Lighting.GeographicLatitude):ToZuneVector()
+		)
 		rlib.R3D_SetLightColor(light, colorShift_Top)
 		rlib.R3D_SetLightEnergy(light, Lighting.Brightness)
 		rlib.R3D_SetLightActive(light, Lighting.GlobalShadows)

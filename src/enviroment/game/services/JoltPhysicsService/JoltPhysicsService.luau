@@ -92,19 +92,25 @@ local function _debugBody(bodyInterface, bodyID, partName)
 	)
 end
 
+local function buildShapeForPart(part, halfSize)
+	if part.Shape == Enum.PartType.Block then
+		local convexRadius = math.min(0.05, math.min(part.Size.X, part.Size.Y, part.Size.Z) * 0.1)
+		return lib.JPH_BoxShape_Create(halfSize, convexRadius)
+	elseif part.Shape == Enum.PartType.Ball then
+		local radius = part.Size.X * 0.5
+		return lib.JPH_SphereShape_Create(radius)
+	end
+
+	return lib.JPH_BoxShape_Create(halfSize, 0.05)
+end
+
 local function createBody(bodyInterface, part, motionType)
 	local halfSize = ffi.alloc(structs.JPH_Vec3:size(), structs.JPH_Vec3:alignment())
 	halfSize:writef32(0, part.Size.X / 2)
 	halfSize:writef32(4, part.Size.Y / 2)
 	halfSize:writef32(8, part.Size.Z / 2)
 
-	local shape
-	if part.Shape == Enum.PartType.Block then
-		shape = lib.JPH_BoxShape_Create(halfSize, 0.05)
-	elseif part.Shape == Enum.PartType.Ball then
-		local radius = part.Size.X * 0.5
-		shape = lib.JPH_SphereShape_Create(radius)
-	end
+	local shape = buildShapeForPart(part, halfSize)
 
 	part.Position = part.CFrame.Position
 
@@ -373,16 +379,10 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 						halfSize:writef32(4, part.Size.Y / 2)
 						halfSize:writef32(8, part.Size.Z / 2)
 
-						local newShape
-						if part.Shape == Enum.PartType.Block then
-							local convexRadius = math.min(0.05, math.min(part.Size.X, part.Size.Y, part.Size.Z) * 0.1)
-							newShape = lib.JPH_BoxShape_Create(halfSize, convexRadius)
-						elseif part.Shape == Enum.PartType.Ball then
-							local radius = part.Size.X * 0.5
-							newShape = lib.JPH_SphereShape_Create(radius)
+						local newShape = buildShapeForPart(part, halfSize)
+						if newShape ~= ffi.null then
+							lib.JPH_BodyInterface_SetShape(bodyInterface, bodyID, newShape, 1, 1) -- updateMassProperties=1, activationMode=1 (Activate)
 						end
-
-						lib.JPH_BodyInterface_SetShape(bodyInterface, bodyID, newShape, 1, 1) -- updateMassProperties=1, activationMode=1 (Activate)
 					elseif property == "Anchored" then
 						local newMotion = part.Anchored and 0 or 2
 						local newLayer = part.Anchored and LAYER_NON_MOVING or LAYER_MOVING

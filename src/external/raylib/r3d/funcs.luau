@@ -247,7 +247,7 @@ export type Fns = {
 		energy: float
 	) -> R3D_EmissionMap,
 	R3D_LoadInstanceBuffer: (capacity: int, flags: int) -> R3D_InstanceBuffer,
-	R3D_LoadMesh: (type: FFIPointer, data: R3D_MeshData, aabb: FFIPointer, usage: FFIPointer) -> R3D_Mesh,
+	R3D_LoadMesh: (type: int, data: R3D_MeshData, aabb: FFIPointer, usage: int) -> R3D_Mesh,
 	R3D_LoadModel: (filePath: cstring) -> R3D_Model,
 	R3D_LoadModelFromMemory: (data: FFIPointer, size: int, hint: cstring) -> R3D_Model,
 	R3D_LoadNormalMap: (fileName: cstring, scale: float) -> R3D_NormalMap,
@@ -571,8 +571,8 @@ local funcs = {
 	},
 	R3D_UnloadOrmMap = { returns = ffi.types.void, args = { structs.R3D_OrmMap } },
 	R3D_LoadMesh = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		returns = structs.R3D_Mesh,
+		args = { ffi.types.i32, structs.R3D_MeshData, ffi.types.pointer, ffi.types.i32 },
 	},
 	R3D_UnloadMesh = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	R3D_IsMeshValid = { returns = ffi.types.u8, args = { ffi.types.pointer } },
@@ -607,38 +607,47 @@ local funcs = {
 	R3D_GenMeshHeightmap = { returns = structs.R3D_Mesh, args = { ffi.types.pointer, ffi.types.pointer } },
 	R3D_GenMeshCubicmap = { returns = structs.R3D_Mesh, args = { ffi.types.pointer, ffi.types.pointer } },
 	R3D_UpdateMesh = { returns = ffi.types.u8, args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer } },
-	R3D_UnloadMeshData = { returns = ffi.types.void, args = { ffi.types.pointer } },
-	R3D_IsMeshDataValid = { returns = ffi.types.u8, args = { ffi.types.pointer } },
+	R3D_UnloadMeshData = { returns = ffi.types.void, args = { structs.R3D_MeshData } },
+	R3D_IsMeshDataValid = { returns = ffi.types.u8, args = { structs.R3D_MeshData } },
 	R3D_GenMeshDataQuad = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_MeshData,
 		args = { ffi.types.float, ffi.types.float, ffi.types.i32, ffi.types.i32, ffi.types.pointer },
 	},
 	R3D_GenMeshDataPlane = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_MeshData,
 		args = { ffi.types.float, ffi.types.float, ffi.types.i32, ffi.types.i32 },
 	},
-	R3D_GenMeshDataPoly = { returns = ffi.types.pointer, args = { ffi.types.i32, ffi.types.float, ffi.types.pointer } },
-	R3D_GenMeshDataCube = { returns = ffi.types.pointer, args = { ffi.types.float, ffi.types.float, ffi.types.float } },
+	R3D_GenMeshDataPoly = {
+		returns = structs.R3D_MeshData,
+		args = { ffi.types.i32, ffi.types.float, ffi.types.pointer },
+	},
+	R3D_GenMeshDataCube = {
+		returns = structs.R3D_MeshData,
+		args = { ffi.types.float, ffi.types.float, ffi.types.float },
+	},
 	R3D_GenMeshDataCubeEx = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_MeshData,
 		args = { ffi.types.float, ffi.types.float, ffi.types.float, ffi.types.i32, ffi.types.i32, ffi.types.i32 },
 	},
-	R3D_GenMeshDataSphere = { returns = ffi.types.pointer, args = { ffi.types.float, ffi.types.i32, ffi.types.i32 } },
+	R3D_GenMeshDataSphere = {
+		returns = structs.R3D_MeshData,
+		args = { ffi.types.float, ffi.types.i32, ffi.types.i32 },
+	},
 	R3D_GenMeshDataHemiSphere = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_MeshData,
 		args = { ffi.types.float, ffi.types.i32, ffi.types.i32 },
 	},
 	R3D_GenMeshDataTorus = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_MeshData,
 		args = { ffi.types.float, ffi.types.float, ffi.types.i32, ffi.types.i32 },
 	},
 	R3D_GenMeshDataKnot = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_MeshData,
 		args = { ffi.types.float, ffi.types.float, ffi.types.i32, ffi.types.i32 },
 	},
-	R3D_GenMeshDataHeightmap = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
-	R3D_GenMeshDataCubicmap = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
-	R3D_MergeMeshData = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
+	R3D_GenMeshDataHeightmap = { returns = structs.R3D_MeshData, args = { ffi.types.pointer, ffi.types.pointer } },
+	R3D_GenMeshDataCubicmap = { returns = structs.R3D_MeshData, args = { ffi.types.pointer, ffi.types.pointer } },
+	R3D_MergeMeshData = { returns = structs.R3D_MeshData, args = { structs.R3D_MeshData, structs.R3D_MeshData } },
 	R3D_TranslateMeshData = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
 	R3D_RotateMeshData = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
 	R3D_ScaleMeshData = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
@@ -728,6 +737,8 @@ local funcs = {
 	},
 	R3D_UnloadImporter = { returns = ffi.types.void, args = { ffi.types.pointer } },
 
+	R3D_SetTextureWrap = { returns = ffi.types.void, args = { ffi.types.u32 } },
+
 	R3D_LoadMaterials = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
 	R3D_LoadMaterialsFromMemory = {
 		returns = ffi.types.pointer,
@@ -786,7 +797,7 @@ local funcs = {
 
 	R3D_LoadAnimationLibFromImporter = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 
-	R3D_LoadMeshData = { returns = ffi.types.pointer, args = { ffi.types.i32, ffi.types.i32 } },
+	R3D_LoadMeshData = { returns = structs.R3D_MeshData, args = { ffi.types.i32, ffi.types.i32 } },
 	R3D_ReserveMeshData = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.i32, ffi.types.i32 } },
 	R3D_ShrinkMeshData = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	R3D_ResetMeshData = { returns = ffi.types.void, args = { ffi.types.pointer } },

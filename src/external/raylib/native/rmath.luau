@@ -180,7 +180,7 @@ return {
 		MatrixTrace = { returns = ffi.types.float, args = { ffi.types.pointer } },
 		MatrixTranspose = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 		MatrixInvert = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
-		MatrixIdentity = { returns = ffi.types.pointer, args = {} },
+		MatrixIdentity = { returns = structs.Matrix, args = {} },
 		MatrixAdd = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
 		MatrixSubtract = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
 		MatrixMultiply = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },

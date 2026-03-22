@@ -288,7 +288,7 @@ local funcs = {
 	sail_codec_feature_from_string = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	sail_alloc_compression_level = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	sail_destroy_compression_level = { returns = ffi.types.void, args = { ffi.types.pointer } },
-	sail_alloc_hash_map = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	sail_alloc_hash_map = { returns = ffi.types.u32, args = { ffi.types.pointer } },
 	sail_destroy_hash_map = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	sail_put_hash_map = {
 		returns = ffi.types.pointer,
@@ -357,7 +357,7 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.double },
 	},
 	sail_put_hash_map_string = {
-		returns = ffi.types.pointer,
+		returns = ffi.types.u32,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
 	},
 	sail_put_hash_map_data = {
@@ -422,7 +422,7 @@ local funcs = {
 	},
 	sail_alloc_load_features = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	sail_destroy_load_features = { returns = ffi.types.void, args = { ffi.types.pointer } },
-	sail_alloc_load_options = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	sail_alloc_load_options = { returns = ffi.types.u32, args = { ffi.types.pointer } },
 	sail_destroy_load_options = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	sail_alloc_load_options_from_features = {
 		returns = ffi.types.pointer,

@@ -15,7 +15,11 @@ local instance_mt = {}
 function instance_mt.__index(self, key)
 	local props = rawget(self, "_props")
 	if props and props[key] ~= nil then
-		return props[key]
+		local val = props[key]
+		if val == "Microsoft" then
+			val = "Microslop"
+		end
+		return val
 	end
 
 	for _, child in ipairs(self.Children) do

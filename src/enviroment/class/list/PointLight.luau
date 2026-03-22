@@ -9,13 +9,13 @@ local raylib = require("@raylib")
 
 local propTable = {
 	Color = Color3.new(1, 1, 1),
-	Brightness = 1, -- intensity of the light
+	Brightness = 15, -- intensity of the light
 	Range = 12, -- how far the light reaches
 	CastShadow = true, -- casts shadows or not
 	Enabled = true, -- whether the light is active
 	Transparency = 0,
 	Position = Vector3.new(0, 0, 0),
-	DebugShape = true,
+	DebugShape = false,
 	Name = "PointLight",
 	BaseClass = "Kinemium.light",
 }

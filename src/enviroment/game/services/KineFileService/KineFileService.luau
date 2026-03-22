@@ -128,9 +128,6 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end
 		end,
 		Save = function(pathName)
-			if zembed.IsEmbedded() then
-				return
-			end
 			local SerializationService = datamodel:GetService("SerializationService")
 			local serialized = SerializationService.SerializeInstancesAsync({ datamodel })
 			if serialized then

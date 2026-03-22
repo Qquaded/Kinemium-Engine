@@ -1,9 +1,12 @@
+-- devcell
+
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
 local rlservice = game:GetService("KinemiumRaylib")
 local raylib = require("@raylib")
 
 if zune.platform.os == "linux" then
+	-- linux not supported Yet........................
 	return
 end
 
@@ -284,9 +287,7 @@ renderer.Pool.new("gizmo", function()
 		local camCF = freecam.GetCFrame()
 
 		focusAlpha = math.min(focusAlpha + 0.08, 1) -- speed (0.08 slower, 0.2 faster)
-		local lerped = camCF:Lerp(focusTargetCF, focusAlpha)
-
-		freecam.SetCFrame(lerped)
+		freecam.SetCFrame(focusTargetCF)
 
 		if focusAlpha >= 1 then
 			focusTargetCF = nil

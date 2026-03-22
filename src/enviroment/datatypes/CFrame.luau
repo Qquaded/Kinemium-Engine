@@ -133,21 +133,7 @@ function CFrame:Inverse()
 end
 
 function CFrame:Lerp(target, alpha)
-	local pos = Vector3.new(
-		self.Position.X + (target.Position.X - self.Position.X) * alpha,
-		self.Position.Y + (target.Position.Y - self.Position.Y) * alpha,
-		self.Position.Z + (target.Position.Z - self.Position.Z) * alpha
-	)
-	local rot = {}
-	for i = 1, 3 do
-		rot[i] = {}
-		for j = 1, 3 do
-			rot[i][j] = self.Rotation[i][j] + (target.Rotation[i][j] - self.Rotation[i][j]) * alpha
-		end
-	end
-	local cf = CFrame.new(pos)
-	cf.Rotation = rot
-	return cf
+	return self:Slerp(target, alpha)
 end
 
 function CFrame:PointToWorldSpace(point)
@@ -168,6 +154,10 @@ function CFrame.lookAt(pos, target, up)
 	local z = (pos - target)
 	local zmag = math.sqrt(z.X ^ 2 + z.Y ^ 2 + z.Z ^ 2)
 	z = Vector3.new(z.X / zmag, z.Y / zmag, z.Z / zmag)
+	if math.abs(up:Dot(z)) > 0.999 then
+		up = Vector3.new(0, 0, 1)
+	end
+
 	local x = up:Cross(z)
 	local xmag = math.sqrt(x.X ^ 2 + x.Y ^ 2 + x.Z ^ 2)
 	x = Vector3.new(x.X / xmag, x.Y / xmag, x.Z / xmag)
@@ -178,6 +168,7 @@ function CFrame.lookAt(pos, target, up)
 		{ x.Y, y.Y, z.Y },
 		{ x.Z, y.Z, z.Z },
 	}
+
 	return cf
 end
 
@@ -253,8 +244,8 @@ function CFrame:Orthonormalize()
 	local x = self:GetRightVector()
 	local y = self:GetUpVector()
 
-	x = x.Unit
-	y = (y - x * x:Dot(y)).Unit
+	x = x:Unit()
+	y = (y - x * x:Dot(y)):Unit()
 	local z = x:Cross(y)
 
 	self.Rotation = {
@@ -287,13 +278,13 @@ function CFrame:FastInverse()
 end
 
 function CFrame:DistanceTo(other)
-	return (self.Position - other.Position).Magnitude
+	return (self.Position - other.Position):Magnitude()
 end
 
 function CFrame:IsClose(other, epsilon)
 	epsilon = epsilon or 1e-4
 
-	if (self.Position - other.Position).Magnitude > epsilon then
+	if (self.Position - other.Position):Magnitude() > epsilon then
 		return false
 	end
 
@@ -343,9 +334,9 @@ end
 
 function CFrame:FacingDirection(dir, up)
 	up = up or Vector3.new(0, 1, 0)
-	dir = dir.Unit
+	dir = dir:Unit()
 
-	local x = up:Cross(dir).Unit
+	local x = up:Cross(dir):Unit()
 	local y = dir:Cross(x)
 
 	local cf = CFrame.new(self.Position)
@@ -366,12 +357,12 @@ function CFrame:RotateAroundPoint(point, axis, angle)
 end
 
 function CFrame.ProjectPointOntoPlane(point, normal)
-	normal = normal.Unit
+	normal = normal:Unit()
 	return point - normal * (point:Dot(normal))
 end
 
 function CFrame:Mirror(normal)
-	normal = normal.Unit
+	normal = normal:Unit()
 	local p = self.Position
 	local reflectedPos = p - normal * (2 * p:Dot(normal))
 
@@ -401,7 +392,7 @@ end
 function CFrame:ApproximatelyIdentity(epsilon)
 	epsilon = epsilon or 1e-5
 
-	if self.Position.Magnitude > epsilon then
+	if self.Position:Magnitude() > epsilon then
 		return false
 	end
 
@@ -434,7 +425,7 @@ function CFrame:FlattenY()
 	local look = self:GetLookVector()
 	look = Vector3.new(look.X, 0, look.Z)
 
-	if look.Magnitude < 1e-6 then
+	if look:Magnitude() < 1e-6 then
 		return self
 	end
 
@@ -517,12 +508,7 @@ function CFrame.fromAxisAngle(axis, angle)
 end
 
 function CFrame.__add(a, b)
-	if type(b) == "table" and b.__type == "Vector3" then
-		return CFrame.new(a.Position + b)
-	elseif type(b) == "table" and b.__type == "CFrame" then
-		return CFrame.new(a.Position + b.Position, a.Rotation)
-	end
-	error("Cannot add " .. type(b) .. " to CFrame")
+	error("Use :Add() instead of + for CFrame operations")
 end
 
 function CFrame.__sub(a, b)
@@ -613,7 +599,7 @@ end
 
 function CFrame:AlignUp(normal)
 	local look = self:GetLookVector()
-	local right = normal:Cross(look).Unit
+	local right = normal:Cross(look):Unit()
 	local up = look:Cross(right)
 
 	local cf = CFrame.new(self.Position)
@@ -705,8 +691,8 @@ function CFrame.Angles(x, y, z)
 
 	local rotX = {
 		{ 1, 0, 0 },
-		{ 0, cx, -sx },
-		{ 0, sx, cx },
+		{ 0, cx, sx },
+		{ 0, -sx, cx },
 	}
 
 	local rotY = {
@@ -774,6 +760,19 @@ function CFrame:ToRaylibMatrixScale(scale, structs)
 	})
 end
 
+function CFrame:Add(other)
+	return CFrame.new(self.Position + other.Position):WithRotation(self.Rotation)
+end
+
+function CFrame:AddPosition(vec)
+	return CFrame.new(self.Position + vec):WithRotation(self.Rotation)
+end
+
+function CFrame:AddRotation(other)
+	local rot = mulRotation(self.Rotation, other.Rotation)
+	return self:WithRotation(rot)
+end
+
 function CFrame.fromQuaternion(x, y, z, w, pos)
 	local len = math.sqrt(x * x + y * y + z * z + w * w)
 	x, y, z, w = x / len, y / len, z / len, w / len
@@ -796,7 +795,7 @@ function CFrame.fromQuaternion(x, y, z, w, pos)
 
 	local right = Vector3.new(m00, m10, m20)
 	local up = Vector3.new(m01, m11, m21)
-	local look = Vector3.new(m02, m12, m22)
+	local look = Vector3.new(-m02, -m12, -m22)
 
 	return CFrame.fromMatrix(pos, right, up, look)
 end

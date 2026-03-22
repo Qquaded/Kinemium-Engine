@@ -13,7 +13,7 @@ local funcs = require("./r3d/funcs")
 local constants = require("./r3d/constants")
 
 local libname = "r3d." .. ffi.suffix
-local assimpname = "assimp-vc145-mt." .. ffi.suffix
+local assimpname = "assimp-vc143-mt." .. ffi.suffix
 local raylibname = "raylib." .. ffi.suffix
 
 local asmpPath = dll .. assimpname

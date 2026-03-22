@@ -12,12 +12,10 @@ local Selection = game:GetService("Selection")
 local structs = KinemiumRaylib.structs
 local vend = KinemiumFontService.GetDefaultFont()
 local PropertyCategories = require("@PropertyCategories")
+local Theme = game:GetService("StudioThemeService").SelectedTheme
 
-local StudioThemeService = game:GetService("StudioThemeService")
-local theme = StudioThemeService.SelectedTheme
-
-local TextColor = theme.TextColor:ToRaylib(theme.TextTransparency)
-local SecondaryBackgroundColor = theme.SecondaryBackgroundColor:ToRaylib(theme.SecondaryBackgroundColorTransparency)
+local TextColor = Theme.TextColor:ToRaylib(Theme.TextTransparency)
+local SecondaryBackgroundColor = Theme.SecondaryBackgroundColor:ToRaylib(Theme.SecondaryBackgroundColorTransparency)
 
 if game.Context ~= Enum.GameContext.Editor then
 	return
@@ -36,7 +34,7 @@ local aereon = require("@Aereon")
 local gui = aereon.gui
 local window = aereon.window(game)
 local arect = aereon.rect()
-local textbox = aereon.textbox(theme, game)
+local textbox = aereon.textbox(Theme, game)
 
 local CATEGORY_ORDER = { "Object", "Appearance", "Transform", "Behavior", "Other" }
 local CATEGORY_HEADER_HEIGHT = 22
@@ -44,16 +42,14 @@ local CELL_HEIGHT = 30
 local NAME_COL_WIDTH = 160
 local PADDING = 8
 
--- ── window
-
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "Inspector"
 screenGui.Parent = LocalPlayer.PlayerGui
 
 local frame = Instance.new("Frame")
-frame.Position = UDim2.new(1, 0, 1, 0)
-frame.AnchorPoint = Vector2.new(1, 1)
-frame.Size = UDim2.new(0, 400, 0.5, 0)
+frame.Position = Theme.WindowConfig.Inspector.position
+frame.AnchorPoint = Theme.WindowConfig.Inspector.anchorPoint
+frame.Size = Theme.WindowConfig.Inspector.size
 frame.BackgroundTransparency = 1
 frame.Parent = screenGui
 
@@ -103,8 +99,8 @@ end
 local function makeTextbox(opts)
 	local base = {
 		padding = 4,
-		backgroundColor = theme.SecondaryBackgroundColor,
-		textColor = theme.TextColor,
+		backgroundColor = Theme.SecondaryBackgroundColor,
+		textColor = Theme.TextColor,
 		cornerRadius = 0.2,
 		BackgroundTransparency = 0.1,
 		BorderTransparency = 1,
@@ -335,7 +331,7 @@ datatypes["UDim2"] = {
 				vector.create(ex, ey + (CELL_HEIGHT - 14) / 2),
 				13,
 				1,
-				theme.SecondaryTextColor:ToRaylib(0)
+				Theme.SecondaryTextColor:ToRaylib(0)
 			)
 		end
 
@@ -351,19 +347,19 @@ datatypes["UDim2"] = {
 		local edH = CELL_HEIGHT - 8
 
 		local function drawSubRow(subY, label, tb1, tb2)
-			rl.DrawRectangle(rx2, subY, rw2, CELL_HEIGHT, theme.SecondaryBackgroundColor:ToRaylib(0))
-			rl.DrawRectangle(rx2 + subIndent - 4, subY, 1, CELL_HEIGHT, theme.ThirdBackgroundColor:ToRaylib(0))
+			rl.DrawRectangle(rx2, subY, rw2, CELL_HEIGHT, Theme.SecondaryBackgroundColor:ToRaylib(0))
+			rl.DrawRectangle(rx2 + subIndent - 4, subY, 1, CELL_HEIGHT, Theme.ThirdBackgroundColor:ToRaylib(0))
 			rl.DrawTextEx(
 				vend,
 				label,
 				vector.create(rx2 + subIndent, subY + (CELL_HEIGHT - 13) / 2),
 				13,
 				1,
-				theme.SecondaryTextColor:ToRaylib(0)
+				Theme.SecondaryTextColor:ToRaylib(0)
 			)
 
 			local divX = rx2 + NAME_COL_WIDTH
-			rl.DrawRectangle(divX, subY, 1, CELL_HEIGHT, theme.ThirdBackgroundColor:ToRaylib(0))
+			rl.DrawRectangle(divX, subY, 1, CELL_HEIGHT, Theme.ThirdBackgroundColor:ToRaylib(0))
 
 			local sp = 3
 			local w = (ew - sp) / 2
@@ -392,8 +388,8 @@ datatypes["EnumItem"] = {
 			options = items,
 			font = vend,
 			selectedIndex = selIdx,
-			backgroundColor = theme.SecondaryBackgroundColor,
-			hoverColor = theme.BackgroundColor,
+			backgroundColor = Theme.SecondaryBackgroundColor,
+			hoverColor = Theme.BackgroundColor,
 			onSelect = function(_, option)
 				selected[propName] = Enum[propValue.EnumType.Name][option]
 			end,
@@ -494,7 +490,7 @@ datatypes["CFrame"] = {
 				vector.create(ex, ey + (CELL_HEIGHT - 14) / 2),
 				13,
 				1,
-				theme.SecondaryTextColor:ToRaylib(0)
+				Theme.SecondaryTextColor:ToRaylib(0)
 			)
 		end
 
@@ -513,10 +509,10 @@ datatypes["CFrame"] = {
 
 		local function drawSubRow(subY, label, tbx, tby, tbz)
 			-- background (slightly inset)
-			rl.DrawRectangle(rx2, subY, rw2, CELL_HEIGHT, theme.SecondaryBackgroundColor:ToRaylib(0))
+			rl.DrawRectangle(rx2, subY, rw2, CELL_HEIGHT, Theme.SecondaryBackgroundColor:ToRaylib(0))
 
 			-- indent line
-			rl.DrawRectangle(rx2 + subIndent - 4, subY, 1, CELL_HEIGHT, theme.ThirdBackgroundColor:ToRaylib(0))
+			rl.DrawRectangle(rx2 + subIndent - 4, subY, 1, CELL_HEIGHT, Theme.ThirdBackgroundColor:ToRaylib(0))
 
 			-- sub-label
 			rl.DrawTextEx(
@@ -525,12 +521,12 @@ datatypes["CFrame"] = {
 				vector.create(rx2 + subIndent, subY + (CELL_HEIGHT - 13) / 2),
 				13,
 				1,
-				theme.SecondaryTextColor:ToRaylib(0)
+				Theme.SecondaryTextColor:ToRaylib(0)
 			)
 
 			-- divider
 			local divX = rx2 + NAME_COL_WIDTH
-			rl.DrawRectangle(divX, subY, 1, CELL_HEIGHT, theme.ThirdBackgroundColor:ToRaylib(0))
+			rl.DrawRectangle(divX, subY, 1, CELL_HEIGHT, Theme.ThirdBackgroundColor:ToRaylib(0))
 
 			-- three textboxes
 			local sp = 3
@@ -653,7 +649,7 @@ local function drawCategoryHeader(winX, winW, y, label, isOpen, mousePos)
 	local blockW = indicatorSize.x + gap + labelSize.x
 	local blockX = winX + PADDING
 	local centerY = y + (CATEGORY_HEADER_HEIGHT / 2)
-	local lineColor = theme.ThirdBackgroundColor:ToRaylib(0)
+	local lineColor = Theme.ThirdBackgroundColor:ToRaylib(0)
 
 	rl.DrawRectangle(winX, centerY, PADDING - 4, 1, lineColor)
 	rl.DrawTextEx(
@@ -662,7 +658,7 @@ local function drawCategoryHeader(winX, winW, y, label, isOpen, mousePos)
 		vector.create(blockX, centerY - 6),
 		11,
 		1,
-		theme.SecondaryTextColor:ToRaylib(0.4)
+		Theme.SecondaryTextColor:ToRaylib(0.4)
 	)
 	rl.DrawTextEx(
 		vend,
@@ -670,7 +666,7 @@ local function drawCategoryHeader(winX, winW, y, label, isOpen, mousePos)
 		vector.create(blockX + indicatorSize.x + gap, centerY - 6),
 		11,
 		1.5,
-		theme.SecondaryTextColor:ToRaylib(0)
+		Theme.SecondaryTextColor:ToRaylib(0)
 	)
 	local lineStartX = blockX + blockW + PADDING - 4
 	rl.DrawRectangle(lineStartX, centerY, w - lineStartX + winX, 1, lineColor)
@@ -696,11 +692,11 @@ local function drawPropertyRow(winX, winW, y, i, propName, propValue, selected, 
 
 	local isHovered = mousePos.x >= winX and mousePos.x <= winX + rw and mousePos.y >= y and mousePos.y <= y + rh
 
-	local bgCol = isHovered and theme.ThirdBackgroundColor:Lerp(Color3.new(1, 1, 1), 0.06):ToRaylib(0)
-		or (i % 2 == 0 and SecondaryBackgroundColor or theme.BackgroundColor:ToRaylib(theme.BackgroundTransparency))
+	local bgCol = isHovered and Theme.ThirdBackgroundColor:Lerp(Color3.new(1, 1, 1), 0.06):ToRaylib(0)
+		or (i % 2 == 0 and SecondaryBackgroundColor or Theme.BackgroundColor:ToRaylib(Theme.BackgroundTransparency))
 
 	rl.DrawRectangle(winX, y, rw, rh, bgCol)
-	rl.DrawRectangle(divX, y, 1, rh, theme.ThirdBackgroundColor:ToRaylib(0))
+	rl.DrawRectangle(divX, y, 1, rh, Theme.ThirdBackgroundColor:ToRaylib(0))
 
 	local entry = editorComps[propName]
 	if not entry then
@@ -725,7 +721,7 @@ local function drawPropertyRow(winX, winW, y, i, propName, propValue, selected, 
 			vector.create(winX + PADDING, y + (rh - 13) / 2),
 			12,
 			1,
-			theme.SecondaryTextColor:ToRaylib(0.5)
+			Theme.SecondaryTextColor:ToRaylib(0.5)
 		)
 		rl.DrawTextEx(vend, propName, vector.create(winX + PADDING + 14, y + (rh - 14) / 2), 14, 1, TextColor)
 
@@ -743,7 +739,7 @@ local function drawPropertyRow(winX, winW, y, i, propName, propValue, selected, 
 			vector.create(winX + PADDING, y + (rh - 13) / 2),
 			12,
 			1,
-			theme.SecondaryTextColor:ToRaylib(0.5)
+			Theme.SecondaryTextColor:ToRaylib(0.5)
 		)
 		rl.DrawTextEx(vend, propName, vector.create(winX + PADDING + 14, y + (rh - 14) / 2), 14, 1, TextColor)
 
@@ -794,12 +790,10 @@ window.stepped = function(windowData)
 	end
 
 	if rl.IsWindowResized() == 1 then
-		window.dragspring:target(windowData, {
-			x = frame.AbsolutePosition.X,
-			y = frame.AbsolutePosition.Y,
-			width = frame.AbsoluteSize.X,
-			height = frame.AbsoluteSize.Y,
-		})
+		windowData.x = frame.AbsolutePosition.X
+		windowData.y = frame.AbsolutePosition.Y
+		windowData.width = frame.AbsoluteSize.X
+		windowData.height = frame.AbsoluteSize.Y
 	end
 
 	local selected = Selection.Get()[1]
@@ -884,7 +878,7 @@ window.stepped = function(windowData)
 		local thumbH = math.max(24, (winH / totalH) * winH)
 		local thumbY = winY + (scrollOffset / maxScrollOffset) * (winH - thumbH)
 
-		rl.DrawRectangle(sbX, winY, sbW, winH, theme.SecondaryBackgroundColor:ToRaylib(0.6))
+		rl.DrawRectangle(sbX, winY, sbW, winH, Theme.SecondaryBackgroundColor:ToRaylib(0.6))
 		rl.DrawRectangleRounded(
 			structs.Rectangle:new({ x = sbX, y = thumbY, width = sbW, height = thumbH }),
 			0.5,

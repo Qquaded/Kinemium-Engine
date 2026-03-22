@@ -31,9 +31,11 @@ local propTable = {
 		AngularZ = false,
 	},
 
+	--[[ 
 	Credits = function()
 		return "This class uses Box2D, Thank you for running this function even though it serves no purpose other than informing what the UI physics backend is, Your welcome."
 	end,
+	--]]
 
 	-- storage
 	Bodies = {}, -- [Body2D] = true

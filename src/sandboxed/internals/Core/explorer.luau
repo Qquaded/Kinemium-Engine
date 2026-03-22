@@ -3,7 +3,6 @@
 local KinemiumRaylib = game:GetService("KinemiumRaylib")
 local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
 local KinemiumFontService = game:GetService("KinemiumFontService")
-local StudioThemeService = game:GetService("StudioThemeService")
 local Selection = game:GetService("Selection")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -59,15 +58,15 @@ local hoverspring = spring.new(2, 5)
 
 local notfound_tex = KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("NotFound.svg"))
 
-local theme = StudioThemeService.SelectedTheme
-local themeColors = {
-	background = theme.BackgroundColor:ToRaylib(theme.BackgroundTransparency),
-	text = theme.TextColor:ToRaylib(theme.TextTransparency),
-	guiHandles = theme.GuiHandlesColor:ToRaylib(theme.GuiHandlesTransparency),
-	secondaryBackground = theme.SecondaryBackgroundColor:ToRaylib(theme.SecondaryBackgroundColorTransparency),
-	secondaryText = theme.SecondaryTextColor:ToRaylib(theme.SecondaryTextTransparency),
-	image = theme.ImageColor:ToRaylib(theme.ImageTransparency),
-	arrowImage = theme.ArrowImageColor:ToRaylib(0),
+local Theme = game:GetService("StudioThemeService").SelectedTheme
+local ThemeColors = {
+	background = Theme.BackgroundColor:ToRaylib(Theme.BackgroundTransparency),
+	text = Theme.TextColor:ToRaylib(Theme.TextTransparency),
+	guiHandles = Theme.GuiHandlesColor:ToRaylib(Theme.GuiHandlesTransparency),
+	secondaryBackground = Theme.SecondaryBackgroundColor:ToRaylib(Theme.SecondaryBackgroundColorTransparency),
+	secondaryText = Theme.SecondaryTextColor:ToRaylib(Theme.SecondaryTextTransparency),
+	image = Theme.ImageColor:ToRaylib(Theme.ImageTransparency),
+	arrowImage = Theme.ArrowImageColor:ToRaylib(0),
 }
 
 local expanded = {}
@@ -80,7 +79,7 @@ local activeAddMenu = nil
 local yOffset = 0
 local windowObject = nil
 local arect = require("@Arect")(rl)
-local textbox = aereon.textbox(StudioThemeService.SelectedTheme, game)
+local textbox = aereon.textbox(Theme, game)
 
 local searchBox = textbox.new({
 	multiline = false,
@@ -91,7 +90,7 @@ local searchBox = textbox.new({
 
 	cornerRadius = 0.5,
 	BorderTransparency = 1,
-	TextColor = theme.text,
+	TextColor = ThemeColors.text,
 	padding = 5,
 })
 
@@ -380,8 +379,8 @@ local function drawAdditionMenu(instance, mousePos, btnY, toggleX)
 	rl.DrawRectangleRounded(
 		structs.Rectangle:new({ x = menuX, y = menuY, width = ADD_MENU_WIDTH, height = menuHeight }),
 		0.2,
-		6,
-		theme.SecondaryBackgroundColor:ToRaylib(0)
+		26,
+		Theme.SecondaryBackgroundColor:ToRaylib(0)
 	)
 
 	-- Handle scrolling
@@ -442,12 +441,12 @@ local function drawAdditionMenu(instance, mousePos, btnY, toggleX)
 				structs.Rectangle:new({ x = menuX + 4, y = itemY + 3, width = iconSize, height = iconSize }),
 				vector.create(0, 0),
 				0,
-				themeColors.image
+				ThemeColors.image
 			)
 		end
 
 		-- Draw text
-		rl.DrawTextEx(vend, class, vector.create(menuX + ADD_MENU_ITEM_HEIGHT + 4, itemY + 3), 17, 1, themeColors.text)
+		rl.DrawTextEx(vend, class, vector.create(menuX + ADD_MENU_ITEM_HEIGHT + 4, itemY + 3), 17, 1, ThemeColors.text)
 	end
 
 	rl.EndScissorMode()
@@ -537,7 +536,7 @@ local function DrawTree(instance, indent, winX, winY, winWidth)
 	local color = isSelected and Color3.new(0, 0.533333, 1) or Color3.new()
 
 	-- Draw node background
-	rl.DrawRectangleRounded(structs.Rectangle:new(rectData), 0.5, 8, color:ToRaylib(transparency))
+	rl.DrawRectangleRounded(structs.Rectangle:new(rectData), 0.5, 20, color:ToRaylib(transparency))
 
 	-- Draw icon
 	local icon = loadedIcon[instance.ClassName] or notfound_tex
@@ -550,11 +549,11 @@ local function DrawTree(instance, indent, winX, winY, winWidth)
 		0,
 		instance:GetMetadata("ExplorerIconColor")
 				and instance:GetMetadata("ExplorerIconColor"):ToRaylib(instance:GetMetadata("ExplorerIconTransparency"))
-			or themeColors.image
+			or ThemeColors.image
 	)
 
 	-- Draw text
-	rl.DrawTextEx(vend, instance.Name, vector.create(btnX + 28, btnY + 5), 18, 1, themeColors.text)
+	rl.DrawTextEx(vend, instance.Name, vector.create(btnX + 28, btnY + 5), 18, 1, ThemeColors.text)
 
 	if isHovered then
 		local iconSize = NODE_HEIGHT - 4
@@ -566,7 +565,7 @@ local function DrawTree(instance, indent, winX, winY, winWidth)
 			structs.Rectangle:new(addData),
 			vector.create(0, 0),
 			0,
-			themeColors.arrowImage
+			ThemeColors.arrowImage
 		)
 
 		if isMouseInRect(addData, mousePos) and rl.IsMouseButtonReleased(0) == 1 then
@@ -608,7 +607,7 @@ local function DrawTree(instance, indent, winX, winY, winWidth)
 			structs.Rectangle:new(buttonData),
 			vector.create(0, 0),
 			0,
-			themeColors.arrowImage
+			ThemeColors.arrowImage
 		)
 
 		if isMouseInRect(buttonData, mousePos) and rl.IsMouseButtonReleased(0) == 1 then
@@ -670,9 +669,9 @@ screenGui.Name = "Explorer"
 screenGui.Parent = LocalPlayer.PlayerGui
 
 local frame = Instance.new("Frame")
-frame.Position = UDim2.new(1, 0, 0, 0)
-frame.AnchorPoint = Vector2.new(1, 0)
-frame.Size = UDim2.new(0, 400, 0.5, 0)
+frame.Position = Theme.WindowConfig.Explorer.position
+frame.AnchorPoint = Theme.WindowConfig.Explorer.anchorPoint
+frame.Size = Theme.WindowConfig.Explorer.size
 frame.BackgroundTransparency = 1
 frame.Parent = screenGui
 
@@ -701,18 +700,6 @@ task.spawn(function()
 	end
 end)
 
-RunService.GuiRender:Connect(function()
-	if windowObject then
-		renderer.Blur:DrawBlurredRegion(
-			windowObject.x,
-			windowObject.y,
-			windowObject.width,
-			windowObject.height,
-			Color3.new(1, 1, 1):ToRaylib(0)
-		)
-	end
-end)
-
 explorerWindow.stepped = function(windowData)
 	if windowData.title ~= "Explorer" then
 		return
@@ -729,12 +716,10 @@ explorerWindow.stepped = function(windowData)
 	yOffset = 0
 
 	if rl.IsWindowResized() == 1 then
-		window.dragspring:target(windowData, {
-			x = frame.AbsolutePosition.X,
-			y = frame.AbsolutePosition.Y,
-			width = frame.AbsoluteSize.X,
-			height = frame.AbsoluteSize.Y,
-		})
+		windowData.x = frame.AbsolutePosition.X
+		windowData.y = frame.AbsolutePosition.Y
+		windowData.width = frame.AbsoluteSize.X
+		windowData.height = frame.AbsoluteSize.Y
 	end
 
 	local mousePos = rl.GetMousePosition()

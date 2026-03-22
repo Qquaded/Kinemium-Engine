@@ -7,9 +7,6 @@ local task = zune.task
 local fs = zune.fs
 local process = zune.process
 
-local qjsvm = require("@quickjs")
-local python = require("@python")
-
 local ScriptRunnerService = Instance.new("ScriptRunnerService")
 ScriptRunnerService.ExplorerHidden = true
 
@@ -40,6 +37,7 @@ ScriptRunnerService.InitEnviroment = function(enviroment, datamodel)
 		end,
 
 		RunPythonScript = function(ScriptInstance)
+			local python = require("@python")
 			local VM = python.PythonVM.new()
 
 			for k, p in pairs(enviroment) do
@@ -52,6 +50,8 @@ ScriptRunnerService.InitEnviroment = function(enviroment, datamodel)
 		end,
 
 		RunQuickJS = function(ScriptInstance)
+			local qjsvm = require("@quickjs")
+
 			local object = task.spawn(function()
 				local VM = qjsvm.new()
 				VM.Evaluate(ScriptInstance.Source)

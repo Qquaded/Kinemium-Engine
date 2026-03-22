@@ -1,3 +1,5 @@
+-- devcell
+
 if IsHeadless then
 	return
 end
@@ -10,8 +12,12 @@ chatFrame.AnchorPoint = Vector2.new(0, 1)
 chatFrame.BackgroundColor3 = Color3.new(0, 0, 0)
 chatFrame.BackgroundTransparency = 0.5
 chatFrame.Size = UDim2.new(0, 500, 0, 250)
-chatFrame.Position = UDim2.new(0, -5, 1, 5)
-chatFrame.Parent = Chat
+chatFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+--chatFrame.Parent = Chat
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 154)
+UICorner.Parent = chatFrame
 
 local ScrollingFrame = Instance.new("ScrollingFrame")
 ScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -47,8 +53,4 @@ for i = 1, numMessages do
 	exampleFrame.TextColor3 = Color3.new(1, 1, 1)
 	exampleFrame.TextSize = 18
 	exampleFrame.Parent = ScrollingFrame
-
-	local UICorner = Instance.new("UICorner")
-	UICorner.CornerRadius = UDim.new(1, 0)
-	UICorner.Parent = exampleFrame
 end

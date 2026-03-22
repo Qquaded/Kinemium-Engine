@@ -1,28 +1,11 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
-local Region3int16 = require("@Region3int16")
 local Color3 = require("@Color3")
-local Enum = require("@Enummap")
-local Vector3 = require("@Vector3")
-local CFrame = require("@CFrame")
 local raylib = require("@raylib")
-
-local Terrain = Instance.new("Terrain")
-
-local RL_LINES = 0x0001
-local RL_TRIANGLES = 0x0004
-local RL_QUADS = 0x0007
-
-local materialColors = {
-	grass = Color3.new(0, 1, 0),
-	water = Color3.new(0, 0, 1),
-}
-
-export type Block = {
-	density: number,
-	material: string,
-	color: typeof(Color3),
-}
+local r3d = require("@r3d")
+local rlib = r3d.lib
+local r3dstructs = r3d.structs
+local meshgen = require("@meshgen")
+local grassgen = require("../../classlibs/grassgen")
 
 local EDGE_TABLE = {
 	0x0,
@@ -542,6 +525,19 @@ local TRI_TABLE = {
 	{},
 }
 
+local Terrain = Instance.new("Terrain")
+
+local CHUNK_SIZE = 16 -- voxels per chunk axis
+local UV_SCALE = 0.5 -- scale for planar UV mapping
+
+local function chunkKey(cx, cy, cz)
+	return cx .. "," .. cy .. "," .. cz
+end
+
+local function voxelToChunk(x, y, z)
+	return math.floor(x / CHUNK_SIZE), math.floor(y / CHUNK_SIZE), math.floor(z / CHUNK_SIZE)
+end
+
 Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 	local workspace = datamodel:GetService("Workspace")
 	local materials = workspace.materials
@@ -560,77 +556,93 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 		UseMarchingCubes = true,
 		IsoLevel = 0.2,
 		_blocks = {}, -- [x][y][z] = voxel
-		_mesh = nil,
+		_chunks = {}, -- chunkKey -> { mesh, dirty }
 	})
 
 	function Terrain:_getVoxel(x, y, z)
-		Terrain._blocks[x] = Terrain._blocks[x] or {}
-		Terrain._blocks[x][y] = Terrain._blocks[x][y] or {}
-		return Terrain._blocks[x][y][z]
+		local xr = Terrain._blocks[x]
+		if not xr then
+			return nil
+		end
+		local yr = xr[y]
+		if not yr then
+			return nil
+		end
+		return yr[z]
 	end
 
 	function Terrain:_getDensity(x, y, z)
-		local xRow = Terrain._blocks[x]
-		if not xRow then
+		local xr = Terrain._blocks[x]
+		if not xr then
 			return 0
 		end
-		local yRow = xRow[y]
-		if not yRow then
+		local yr = xr[y]
+		if not yr then
 			return 0
 		end
-		local voxel = yRow[z]
-		return voxel and voxel.density or 0
+		local v = yr[z]
+		return v and v.density or 0
 	end
 
-	function Terrain:_addFace(vertices, indices, v1, v2, v3, v4, color)
-		local base = #vertices
+	function Terrain:_getNormal(x, y, z)
+		local nx = Terrain:_getDensity(x - 1, y, z) - Terrain:_getDensity(x + 1, y, z)
+		local ny = Terrain:_getDensity(x, y - 1, z) - Terrain:_getDensity(x, y + 1, z)
+		local nz = Terrain:_getDensity(x, y, z - 1) - Terrain:_getDensity(x, y, z + 1)
 
-		table.insert(vertices, { v1, color })
-		table.insert(vertices, { v2, color })
-		table.insert(vertices, { v3, color })
-		table.insert(vertices, { v4, color })
+		local len = math.sqrt(nx * nx + ny * ny + nz * nz)
+		if len < 1e-6 then
+			return 0, 1, 0
+		end
+		return nx / len, ny / len, nz / len
+	end
 
-		table.insert(indices, base + 1)
-		table.insert(indices, base + 2)
-		table.insert(indices, base + 3)
+	function Terrain:_setVoxel(x, y, z, voxel)
+		Terrain._blocks[x] = Terrain._blocks[x] or {}
+		Terrain._blocks[x][y] = Terrain._blocks[x][y] or {}
+		Terrain._blocks[x][y][z] = voxel
 
-		table.insert(indices, base + 1)
-		table.insert(indices, base + 3)
-		table.insert(indices, base + 4)
+		local cx, cy, cz = voxelToChunk(x, y, z)
+		local k = chunkKey(cx, cy, cz)
+		if not Terrain._chunks[k] then
+			Terrain._chunks[k] = { mesh = nil, dirty = true, cx = cx, cy = cy, cz = cz }
+		else
+			Terrain._chunks[k].dirty = true
+		end
 	end
 
 	function Terrain:_interpolateVertex(p1, p2, v1, v2)
-		local isoLevel = Terrain.IsoLevel
-		local diff = v2 - v1
-
-		if math.abs(isoLevel - v1) < 0.00001 then
+		local iso = Terrain.IsoLevel
+		if math.abs(iso - v1) < 1e-5 then
 			return p1
 		end
-		if math.abs(isoLevel - v2) < 0.00001 then
+		if math.abs(iso - v2) < 1e-5 then
 			return p2
 		end
-		if math.abs(diff) < 0.00001 then
+		if math.abs(v2 - v1) < 1e-5 then
 			return p1
 		end
-
-		local mu = (isoLevel - v1) / diff
-		return vector.create(p1.x + mu * (p2.x - p1.x), p1.y + mu * (p2.y - p1.y), p1.z + mu * (p2.z - p1.z))
+		local mu = (iso - v1) / (v2 - v1)
+		return {
+			p1[1] + mu * (p2[1] - p1[1]),
+			p1[2] + mu * (p2[2] - p1[2]),
+			p1[3] + mu * (p2[3] - p1[3]),
+		}
 	end
 
 	function Terrain:_marchCube(x, y, z, vertices, indices)
+		-- iodebug("Marching cube", x, y, z)
 		local vs = Terrain.VoxelSize
-		local isoLevel = Terrain.IsoLevel -- Cache this
 		local px, py, pz = x * vs, y * vs, z * vs
 
 		local corners = {
-			vector.create(px, py, pz),
-			vector.create(px + vs, py, pz),
-			vector.create(px + vs, py, pz + vs),
-			vector.create(px, py, pz + vs),
-			vector.create(px, py + vs, pz),
-			vector.create(px + vs, py + vs, pz),
-			vector.create(px + vs, py + vs, pz + vs),
-			vector.create(px, py + vs, pz + vs),
+			{ px, py, pz },
+			{ px + vs, py, pz },
+			{ px + vs, py, pz + vs },
+			{ px, py, pz + vs },
+			{ px, py + vs, pz },
+			{ px + vs, py + vs, pz },
+			{ px + vs, py + vs, pz + vs },
+			{ px, py + vs, pz + vs },
 		}
 
 		local values = {
@@ -655,155 +667,382 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 			return
 		end
 
-		local block = Terrain:_getVoxel(x, y, z) or { color = Color3.new(0.5, 0.5, 0.5), material = "default" }
-		local color = block.color
-
-		local vertList = {}
-		local edgeTable = EDGE_TABLE[cubeIndex + 1]
-
 		local edges = {
 			{ 1, 2 },
 			{ 2, 3 },
 			{ 3, 4 },
-			{ 4, 1 }, -- bottom edges
+			{ 4, 1 },
 			{ 5, 6 },
 			{ 6, 7 },
 			{ 7, 8 },
-			{ 8, 5 }, -- top edges
+			{ 8, 5 },
 			{ 1, 5 },
 			{ 2, 6 },
 			{ 3, 7 },
-			{ 4, 8 }, -- vertical edges
+			{ 4, 8 },
 		}
-
+		local edgeFlag = EDGE_TABLE[cubeIndex + 1]
+		local vertList = {}
 		for i = 0, 11 do
-			if bit32.band(edgeTable, bit32.lshift(1, i)) ~= 0 then
-				local edge = edges[i + 1]
-				local v =
-					Terrain:_interpolateVertex(corners[edge[1]], corners[edge[2]], values[edge[1]], values[edge[2]])
-				vertList[i] = v
+			if bit32.band(edgeFlag, bit32.lshift(1, i)) ~= 0 then
+				local e = edges[i + 1]
+				vertList[i] = Terrain:_interpolateVertex(corners[e[1]], corners[e[2]], values[e[1]], values[e[2]])
 			end
 		end
 
 		local triTable = TRI_TABLE[cubeIndex + 1]
-		local triCount = #triTable
+		local baseIdx = #vertices -- zero-based index of next vertex
 
-		if triCount > 0 then
-			local baseIdx = #vertices
+		local cornerNormals = {}
+		for i = 1, 8 do
+			local dx = (i == 2 or i == 3 or i == 6 or i == 7) and 1 or 0
+			local dy = (i >= 5) and 1 or 0
+			local dz = (i == 3 or i == 4 or i == 7 or i == 8) and 1 or 0
+			local nx, ny, nz = Terrain:_getNormal(x + dx, y + dy, z + dz)
+			cornerNormals[i] = { nx, ny, nz }
+		end
 
-			for i = 1, triCount do
-				vertices[baseIdx + i] = { vertList[triTable[i]], color }
+		local function getInterpolatedNormal(vIdx)
+			local e = edges[vIdx + 1]
+			local n1, n2 = cornerNormals[e[1]], cornerNormals[e[2]]
+			local v1, v2 = values[e[1]], values[e[2]]
+			local mu = (Terrain.IsoLevel - v1) / (v2 - v1)
+			local nx = n1[1] + mu * (n2[1] - n1[1])
+			local ny = n1[2] + mu * (n2[2] - n1[2])
+			local nz = n1[3] + mu * (n2[3] - n1[3])
+			local len = math.sqrt(nx * nx + ny * ny + nz * nz)
+			if len < 1e-6 then
+				return { 0, 1, 0 }
 			end
+			return { nx / len, ny / len, nz / len }
+		end
 
-			local indicesBase = #indices
-			for i = 1, triCount, 3 do
-				indices[indicesBase + i] = baseIdx + i
-				indices[indicesBase + i + 1] = baseIdx + i + 1
-				indices[indicesBase + i + 2] = baseIdx + i + 2
+		for i = 1, #triTable, 3 do
+			local vIdxA, vIdxB, vIdxC = triTable[i], triTable[i + 1], triTable[i + 2]
+			local vA, vB, vC = vertList[vIdxA], vertList[vIdxB], vertList[vIdxC]
+
+			if vA and vB and vC then
+				local nA = getInterpolatedNormal(vIdxA)
+				local nB = getInterpolatedNormal(vIdxB)
+				local nC = getInterpolatedNormal(vIdxC)
+
+				table.insert(vertices, {
+					position = { vA[1], vA[2], vA[3] },
+					normal = { nA[1], nA[2], nA[3] },
+					color = { 255, 255, 255, 255 },
+					uv = { vA[1] * UV_SCALE, vA[3] * UV_SCALE },
+				})
+				table.insert(vertices, {
+					position = { vB[1], vB[2], vB[3] },
+					normal = { nB[1], nB[2], nB[3] },
+					color = { 255, 255, 255, 255 },
+					uv = { vB[1] * UV_SCALE, vB[3] * UV_SCALE },
+				})
+				table.insert(vertices, {
+					position = { vC[1], vC[2], vC[3] },
+					normal = { nC[1], nC[2], nC[3] },
+					color = { 255, 255, 255, 255 },
+					uv = { vC[1] * UV_SCALE, vC[3] * UV_SCALE },
+				})
+
+				local b = #vertices - 3
+				table.insert(indices, b)
+				table.insert(indices, b + 1)
+				table.insert(indices, b + 2)
 			end
 		end
 	end
 
-	function Terrain:GenerateMesh()
+	local function addFaceVerts(vertices, indices, v1, v2, v3, v4, cr, cg, cb)
+		local base = #vertices
+		local col = { cr, cg, cb, 255 }
+		table.insert(vertices, { position = v1, color = col })
+		table.insert(vertices, { position = v2, color = col })
+		table.insert(vertices, { position = v3, color = col })
+		table.insert(vertices, { position = v4, color = col })
+		table.insert(indices, base)
+		table.insert(indices, base + 1)
+		table.insert(indices, base + 2)
+		table.insert(indices, base)
+		table.insert(indices, base + 2)
+		table.insert(indices, base + 3)
+	end
+
+	function Terrain:_rebuildChunk(chunk)
+		local cx, cy, cz = chunk.cx, chunk.cy, chunk.cz
+		local vs = Terrain.VoxelSize
+
+		local x0 = cx * CHUNK_SIZE
+		local y0 = cy * CHUNK_SIZE
+		local z0 = cz * CHUNK_SIZE
+		local x1 = x0 + CHUNK_SIZE - 1
+		local y1 = y0 + CHUNK_SIZE - 1
+		local z1 = z0 + CHUNK_SIZE - 1
+
 		local vertices = {}
 		local indices = {}
 
 		if Terrain.UseMarchingCubes then
-			local minX, maxX = math.huge, -math.huge
-			local minY, maxY = math.huge, -math.huge
-			local minZ, maxZ = math.huge, -math.huge
-
-			for x, xRow in pairs(Terrain._blocks) do
-				for y, yRow in pairs(xRow) do
-					for z, _ in pairs(yRow) do
-						minX, maxX = math.min(minX, x), math.max(maxX, x)
-						minY, maxY = math.min(minY, y), math.max(maxY, y)
-						minZ, maxZ = math.min(minZ, z), math.max(maxZ, z)
-					end
-				end
-			end
-
-			for x = minX, maxX do
-				for y = minY, maxY do
-					for z = minZ, maxZ do
+			for x = x0, x1 do
+				for y = y0, y1 do
+					for z = z0, z1 do
 						Terrain:_marchCube(x, y, z, vertices, indices)
 					end
 				end
 			end
 		else
-			local vs = Terrain.VoxelSize
-
 			local function isSolid(x, y, z)
 				local v = Terrain:_getVoxel(x, y, z)
 				return v and v.density > 0
 			end
 
-			for x, xRow in pairs(Terrain._blocks) do
-				for y, yRow in pairs(xRow) do
-					for z, block in pairs(yRow) do
-						if block.density <= 0 then
-							continue
-						end
+			for x = x0, x1 do
+				local xr = Terrain._blocks[x]
+				if xr then
+					for y = y0, y1 do
+						local yr = xr[y]
+						if yr then
+							for z = z0, z1 do
+								local block = yr[z]
+								if block and block.density > 0 then
+									local col = block.color
+									local cr, cg, cb = col.R * 255, col.G * 255, col.B * 255
+									local px, py, pz = x * vs, y * vs, z * vs
+									local s = vs
 
-						local px = x * vs
-						local py = y * vs
-						local pz = z * vs
+									local function V(dx, dy, dz)
+										return { px + dx * s, py + dy * s, pz + dz * s }
+									end
 
-						local color = block.color:ToRaylib(0)
-						if block.material == "water" then
-							color = block.color:ToRaylib(0.5)
-						end
-
-						local function V(dx, dy, dz)
-							return vector.create(px + dx * vs, py + dy * vs, pz + dz * vs)
-						end
-
-						-- +X
-						if not isSolid(x + 1, y, z) then
-							Terrain:_addFace(vertices, indices, V(1, 0, 0), V(1, 1, 0), V(1, 1, 1), V(1, 0, 1), color)
-						end
-
-						-- -X
-						if not isSolid(x - 1, y, z) then
-							Terrain:_addFace(vertices, indices, V(0, 0, 1), V(0, 1, 1), V(0, 1, 0), V(0, 0, 0), color)
-						end
-
-						-- +Y
-						if not isSolid(x, y + 1, z) then
-							Terrain:_addFace(vertices, indices, V(0, 1, 1), V(1, 1, 1), V(1, 1, 0), V(0, 1, 0), color)
-						end
-
-						-- -Y
-						if not isSolid(x, y - 1, z) then
-							Terrain:_addFace(vertices, indices, V(0, 0, 0), V(1, 0, 0), V(1, 0, 1), V(0, 0, 1), color)
-						end
-
-						-- +Z
-						if not isSolid(x, y, z + 1) then
-							Terrain:_addFace(vertices, indices, V(1, 0, 1), V(1, 1, 1), V(0, 1, 1), V(0, 0, 1), color)
-						end
-
-						-- -Z
-						if not isSolid(x, y, z - 1) then
-							Terrain:_addFace(vertices, indices, V(0, 0, 0), V(0, 1, 0), V(1, 1, 0), V(1, 0, 0), color)
+									if not isSolid(x + 1, y, z) then
+										addFaceVerts(
+											vertices,
+											indices,
+											V(1, 0, 0),
+											V(1, 1, 0),
+											V(1, 1, 1),
+											V(1, 0, 1),
+											cr,
+											cg,
+											cb
+										)
+									end
+									if not isSolid(x - 1, y, z) then
+										addFaceVerts(
+											vertices,
+											indices,
+											V(0, 0, 1),
+											V(0, 1, 1),
+											V(0, 1, 0),
+											V(0, 0, 0),
+											cr,
+											cg,
+											cb
+										)
+									end
+									if not isSolid(x, y + 1, z) then
+										addFaceVerts(
+											vertices,
+											indices,
+											V(0, 1, 1),
+											V(1, 1, 1),
+											V(1, 1, 0),
+											V(0, 1, 0),
+											cr,
+											cg,
+											cb
+										)
+									end
+									if not isSolid(x, y - 1, z) then
+										addFaceVerts(
+											vertices,
+											indices,
+											V(0, 0, 0),
+											V(1, 0, 0),
+											V(1, 0, 1),
+											V(0, 0, 1),
+											cr,
+											cg,
+											cb
+										)
+									end
+									if not isSolid(x, y, z + 1) then
+										addFaceVerts(
+											vertices,
+											indices,
+											V(1, 0, 1),
+											V(1, 1, 1),
+											V(0, 1, 1),
+											V(0, 0, 1),
+											cr,
+											cg,
+											cb
+										)
+									end
+									if not isSolid(x, y, z - 1) then
+										addFaceVerts(
+											vertices,
+											indices,
+											V(0, 0, 0),
+											V(0, 1, 0),
+											V(1, 1, 0),
+											V(1, 0, 0),
+											cr,
+											cg,
+											cb
+										)
+									end
+								end
+							end
 						end
 					end
 				end
 			end
 		end
 
-		Terrain._mesh = { vertices = vertices, indices = indices }
+		if #vertices == 0 then
+			chunk.mesh = nil
+			chunk.dominantMaterial = nil
+			chunk.dirty = false
+			return
+		end
+
+		local matCounts = {}
+		for x = x0, x1 do
+			local xr = Terrain._blocks[x]
+			if xr then
+				for y = y0, y1 do
+					local yr = xr[y]
+					if yr then
+						for z = z0, z1 do
+							local v = yr[z]
+							-- only count voxels that are actually solid and not air
+							if v and (v.density or 0) >= Terrain.IsoLevel and v.material and v.material ~= "air" then
+								matCounts[v.material] = (matCounts[v.material] or 0) + 1
+							end
+						end
+					end
+				end
+			end
+		end
+		local bestMat, bestCount = "grass", 0
+		for mat, count in pairs(matCounts) do
+			if count > bestCount then
+				bestMat, bestCount = mat, count
+			end
+		end
+		chunk.dominantMaterial = bestMat
+
+		chunk.mesh = meshgen.buildMesh(vertices, indices, {
+			indicesAreZeroBased = true,
+			usage = meshgen.Usage.Dynamic,
+			smooth = true,
+			flat = false,
+		})
+		chunk.dirty = false
+		if Terrain.Decoration then
+			Terrain:_spawnGrassForChunk(chunk)
+		end
 	end
 
-	function Terrain:_setVoxel(x, y, z, voxel)
-		Terrain._blocks[x] = Terrain._blocks[x] or {}
-		Terrain._blocks[x][y] = Terrain._blocks[x][y] or {}
-		Terrain._blocks[x][y][z] = voxel
+	function Terrain:GenerateMesh()
+		for _, chunk in pairs(Terrain._chunks) do
+			Terrain:_rebuildChunk(chunk)
+		end
+	end
+
+	function Terrain:_spawnGrassForChunk(chunk)
+		local cx, cy, cz = chunk.cx, chunk.cy, chunk.cz
+		local x0 = cx * CHUNK_SIZE
+		local y0 = cy * CHUNK_SIZE
+		local z0 = cz * CHUNK_SIZE
+		local vs = Terrain.VoxelSize
+
+		local meshList = {}
+
+		for x = x0, x0 + CHUNK_SIZE - 1 do
+			for z = z0, z0 + CHUNK_SIZE - 1 do
+				-- scan from 2 above the chunk top to catch surface voxels near the boundary
+				for y = y0 + CHUNK_SIZE + 1, y0, -1 do
+					local v = Terrain:_getVoxel(x, y, z)
+					if not v or (v.density or 0) < Terrain.IsoLevel then
+						continue -- air, keep scanning down
+					end
+
+					-- this voxel is solid, check the one above is air
+					local above = Terrain:_getVoxel(x, y + 1, z)
+					local aboveIsSolid = above and (above.density or 0) >= Terrain.IsoLevel
+					if aboveIsSolid then
+						break -- buried, nothing to spawn here
+					end
+
+					if v.material == "grass" then
+						-- solid grass voxel with air above: spawn here
+						local nx, ny, nz = Terrain:_getNormal(x, y, z)
+						if ny >= 0.3 then
+							local dBelow = Terrain:_getDensity(x, y, z)
+							local dAbove = Terrain:_getDensity(x, y + 1, z)
+							local surfaceFrac = 1.0
+							if math.abs(dAbove - dBelow) > 1e-5 then
+								surfaceFrac = (Terrain.IsoLevel - dBelow) / (dAbove - dBelow)
+								surfaceFrac = math.max(0, math.min(1, surfaceFrac))
+							end
+
+							local worldX = x * vs
+							local worldY = y * vs + surfaceFrac * vs
+							local worldZ = z * vs
+
+							local bladesPerVoxel = math.max(1, math.floor(Terrain.GrassLength * 2))
+							for _ = 1, bladesPerVoxel do
+								local ox = (math.random() - 0.5) * vs
+								local oz = (math.random() - 0.5) * vs
+
+								local bverts, bidxs = grassgen.genBladeAligned({
+									surfaceNormal = { nx, ny, nz },
+									slopeLeaning = 0.35,
+									baseWidth = 0.04 + math.random() * 0.04,
+									tipWidth = 0.005,
+									height = 0.4 + math.random() * 1.5,
+									segments = 10,
+									lean = 0.15 + math.random() * 0.1,
+									bow = 0.1 + math.random() * 0.1,
+									twist = (math.random() - 0.5) * 0.2,
+								})
+
+								local rotY = math.random() * math.pi * 2
+								local cos, sin = math.cos(rotY), math.sin(rotY)
+								for _, bv in ipairs(bverts) do
+									local px, py, pz = bv.position[1], bv.position[2], bv.position[3]
+									bv.position = {
+										px * cos - pz * sin + worldX + ox,
+										py + worldY,
+										px * sin + pz * cos + worldZ + oz,
+									}
+								end
+
+								table.insert(meshList, { vertices = bverts, indices = bidxs })
+							end
+						end
+					end
+					break -- found the surface column, move on
+				end
+			end
+		end
+
+		if #meshList == 0 then
+			chunk.grassMesh = nil
+			return
+		end
+
+		local mergedVerts, mergedIndices = meshgen.mergeMeshData(meshList)
+		chunk.grassMesh = meshgen.buildMesh(mergedVerts, mergedIndices, {
+			indicesAreZeroBased = true,
+			flat = true,
+			usage = meshgen.Usage.Dynamic,
+		})
 	end
 
 	function Terrain:FillBlock(minPos, maxPos, block)
-		local filled = {}
-
 		for x = minPos.X, maxPos.X do
 			for y = minPos.Y, maxPos.Y do
 				for z = minPos.Z, maxPos.Z do
@@ -812,63 +1051,216 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 						material = block.material,
 						color = block.color,
 					})
-					print("Filled voxel at", x, y, z)
 				end
 			end
 		end
 		Terrain:GenerateMesh()
-
-		return filled
 	end
 
-	function Terrain:Fill(height)
+	function Terrain:Fill(posX, posY, posZ, width, height, options)
+		options = options or {}
+		local doMountains = options.mountains == true
 		if Terrain.UseMarchingCubes then
-			for x = -15, 15 do
-				for z = -15, 15 do
-					for y = -8, height + 5 do
-						local noise = (math.sin(x * 0.1) * math.cos(z * 0.1) + math.sin(x * 0.05 + z * 0.05)) * 2
-						local heightFactor = (height - y) / 5.0
-						local density = heightFactor + noise * 0.3
+			local function fade(t)
+				return t * t * t * (t * (t * 6 - 15) + 10)
+			end
+			local function lerp(a, b, t)
+				return a + t * (b - a)
+			end
+			local function hash(x, y, z)
+				local n = math.sin(x * 127.1 + y * 311.7 + z * 74.3) * 43758.5453
+				return n - math.floor(n)
+			end
+			local function valueNoise3(x, y, z)
+				local ix, iy, iz = math.floor(x), math.floor(y), math.floor(z)
+				local fx, fy, fz = x - ix, y - iy, z - iz
+				local ux, uy, uz = fade(fx), fade(fy), fade(fz)
+				local function h(a, b, c)
+					return hash(a, b, c)
+				end
+				return lerp(
+					lerp(
+						lerp(h(ix, iy, iz), h(ix + 1, iy, iz), ux),
+						lerp(h(ix, iy + 1, iz), h(ix + 1, iy + 1, iz), ux),
+						uy
+					),
+					lerp(
+						lerp(h(ix, iy, iz + 1), h(ix + 1, iy, iz + 1), ux),
+						lerp(h(ix, iy + 1, iz + 1), h(ix + 1, iy + 1, iz + 1), ux),
+						uy
+					),
+					uz
+				)
+			end
+			local function fbm(x, y, z, oct, freq, amp)
+				local v, a = 0, 0
+				for _ = 1, oct do
+					v = v + valueNoise3(x * freq, y * freq, z * freq) * amp
+					a = a + amp
+					freq = freq * 2.1
+					amp = amp * 0.5
+				end
+				return v / a
+			end
 
-						-- Clamp density between 0 and 1
-						density = math.max(0, math.min(1, density))
+			-- mountain heightmap: large base hills + sharp ridges on top
+			local function mountainHeight(x, z)
+				-- broad base shape
+				local base = fbm(x, 0, z, 5, 0.03, 1.0)
+				-- ridge noise: take absolute value of noise then invert for sharp peaks
+				local ridge1 = 1 - math.abs(fbm(x, 10, z, 4, 0.06, 1.0) * 2 - 1)
+				local ridge2 = 1 - math.abs(fbm(x, 20, z, 3, 0.12, 1.0) * 2 - 1)
+				ridge1 = ridge1 * ridge1 -- sharpen
+				ridge2 = ridge2 * ridge2
+				return base * 0.4 + ridge1 * 0.4 + ridge2 * 0.2
+			end
 
-						-- Determine material based on density and position
-						local material = "Grass"
-						local color = Color3.new(0, 1, 0)
+			-- fill voxels
+			local extraHeight = doMountains and height or 0
+			for x = posX - width, posX + width do
+				for z = posZ - width, posZ + width do
+					local mh = 0
+					if doMountains then
+						mh = mountainHeight(x, z) * height * 1.4
+					end
 
-						if y < height - 5 then
-							material = "water"
-							color = Color3.new(0, 0.23529411764705882, 1)
+					local surfaceY = posY + height + mh
+
+					for y = posY, posY + height * 2 + 10 do
+						local depth = surfaceY - y
+
+						-- base terrain density
+						local sn = fbm(x, y, z, 4, 0.08, 1.0) * 4 - 2
+						local density = math.max(0, math.min(1, depth / 5.0 + sn * 0.3))
+
+						if density <= 0 then
+							-- above surface, skip
+							Terrain:_setVoxel(x, y, z, { density = 0, material = "air", color = Color3.new(1, 1, 1) })
+						else
+							local material, color
+							if depth > 12 then
+								material = "concrete"
+								color = Color3.new(0.6, 0.6, 0.6)
+							elseif depth > 4 then
+								material = "dirt"
+								color = Color3.new(0.52, 0.35, 0.18)
+							elseif depth > 2 and doMountains and mh > height * 0.6 then
+								material = "snow"
+								color = Color3.new(0.95, 0.95, 1.0)
+							elseif depth > 2 and doMountains and mh > height * 0.3 then
+								material = "stone"
+								color = Color3.new(0.55, 0.52, 0.48)
+							else
+								material = "grass"
+								color = Color3.new(0.18, 0.72, 0.12)
+							end
+
+							Terrain:_setVoxel(x, y, z, { density = density, material = material, color = color })
 						end
-
-						Terrain:_setVoxel(x, y, z, {
-							density = density,
-							material = material,
-							color = color,
-						})
 					end
 				end
 			end
-		else
-			-- Original blocky fill
-			for x = -32, 32 do
-				for z = -32, 32 do
-					for y = -8, height do
-						local random = math.random()
-						if random > 0.5 then
-							Terrain:_setVoxel(x, y, z, {
-								density = 1,
-								material = "Grass",
-								color = Color3.new(0, 1, 0),
-							})
-						else
-							Terrain:_setVoxel(x, y, z, {
-								density = 1,
-								material = "water",
-								color = Color3.new(0, 0.23529411764705882, 1),
-							})
+
+			local function carveSphere(cx, cy, cz, radius)
+				local ri = math.ceil(radius)
+				for dx = -ri, ri do
+					for dy = -ri, ri do
+						for dz = -ri, ri do
+							if dx * dx + dy * dy + dz * dz <= radius * radius then
+								local wx, wy, wz = cx + dx, cy + dy, cz + dz
+								if
+									wx >= posX - width
+									and wx <= posX + width
+									and wz >= posZ - width
+									and wz <= posZ + width
+									and wy >= posY
+								then
+									local existing = Terrain:_getVoxel(wx, wy, wz)
+									if existing and existing.material ~= "air" then
+										local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+										local t = dist / radius
+										local newDensity = existing.density * math.max(0, t * t - 0.1)
+										Terrain:_setVoxel(wx, wy, wz, {
+											density = newDensity,
+											material = existing.material,
+											color = existing.color,
+										})
+									end
+								end
+							end
 						end
+					end
+				end
+			end
+
+			local function walkCave(startX, startY, startZ, seed)
+				local rng = seed
+				local function rand()
+					rng = (rng * 1664525 + 1013904223) % (2 ^ 32)
+					return rng / (2 ^ 32)
+				end
+
+				local angle = rand() * math.pi * 2
+				local pitch = -0.4 - rand() * 0.3
+				local radius = 2.5 + rand() * 1.5
+
+				local px, py, pz = startX, startY, startZ
+				local steps = 80 + math.floor(rand() * 120)
+
+				for step = 1, steps do
+					local t = step * 0.07
+					angle = angle + (valueNoise3(px * 0.05, t, seed * 0.01) - 0.5) * 0.4
+					pitch = pitch + (valueNoise3(t, py * 0.05, seed * 0.01 + 5) - 0.5) * 0.2
+					pitch = math.max(-0.7, math.min(0.15, pitch))
+
+					local dx = math.cos(pitch) * math.cos(angle)
+					local dy = math.sin(pitch)
+					local dz = math.cos(pitch) * math.sin(angle)
+
+					local r = radius + math.sin(step * 0.3) * 0.8
+					carveSphere(math.floor(px + 0.5), math.floor(py + 0.5), math.floor(pz + 0.5), r)
+
+					px = px + dx
+					py = py + dy
+					pz = pz + dz
+
+					if
+						px < posX - width
+						or px > posX + width
+						or pz < posZ - width
+						or pz > posZ + width
+						or py < posY
+					then
+						break
+					end
+				end
+			end
+
+			local numCaves = math.max(1, math.floor((width * 2) / 12))
+			for i = 1, numCaves do
+				local ex = posX - width + math.random(0, width * 2)
+				local ez = posZ - width + math.random(0, width * 2)
+
+				local surfaceY = nil
+				for y = posY + height * 2 + 10, posY, -1 do
+					local v = Terrain:_getVoxel(ex, y, ez)
+					if v and (v.density or 0) >= Terrain.IsoLevel then
+						surfaceY = y
+						break
+					end
+				end
+
+				if surfaceY then
+					walkCave(ex, surfaceY, ez, i * 9301 + 49297)
+				end
+			end
+		else
+			for x = posX - width, posX + width do
+				for z = posZ - width, posZ + width do
+					for y = posY, posY + height do
+						local mat = math.random() > 0.5 and "Grass" or "water"
+						local col = mat == "Grass" and Color3.new(0, 1, 0) or Color3.new(0, 0.235, 1)
+						Terrain:_setVoxel(x, y, z, { density = 1, material = mat, color = col })
 					end
 				end
 			end
@@ -877,42 +1269,42 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 	end
 
 	function Terrain:StartRendering()
+		local workspace = datamodel:GetService("Workspace")
+		local terrainMatCache = {}
+
+		local function getTerrainMaterial(materialName)
+			if terrainMatCache[materialName] then
+				return terrainMatCache[materialName]
+			end
+			local mat = workspace.loadMaterial(materialName)
+			if mat then
+				terrainMatCache[materialName] = mat
+			end
+			return mat
+		end
+
+		local identity = raylib.lib.MatrixIdentity()
+
 		renderer.Pool.new("3d", function()
-			if not Terrain._mesh then
-				return
+			for _, chunk in pairs(Terrain._chunks) do
+				if chunk.mesh then
+					local matName = chunk.dominantMaterial or "grass"
+					local mat = getTerrainMaterial(matName)
+					if not mat then
+						mat = getTerrainMaterial("grass") -- fallback
+					end
+					if mat and renderer.MeshPool then
+						renderer.MeshPool.DrawMesh(chunk.mesh, mat.material, identity, nil, nil)
+					end
+				end
+
+				if chunk.grassMesh then
+					local mat = getTerrainMaterial("grass")
+					if mat and renderer.MeshPool then
+						renderer.MeshPool.DrawMesh(chunk.grassMesh, mat.material, identity, nil, nil)
+					end
+				end
 			end
-
-			local verts = Terrain._mesh.vertices
-			local inds = Terrain._mesh.indices
-			local TexID = buffer.readu32(materials.grass.material, 0)
-			raylib.lib.rlSetTexture(TexID)
-
-			for i = 1, #inds, 3 do
-				local a = verts[inds[i]]
-				local b = verts[inds[i + 1]]
-				local c = verts[inds[i + 2]]
-
-				raylib.lib.rlBegin(0x0004) -- RL_TRIANGLES
-
-				-- Vertex A
-				raylib.lib.rlColor4f(a[2].R, a[2].G, a[2].B, 1.0)
-				raylib.lib.rlTexCoord2f(0.0, 0.0)
-				raylib.lib.rlVertex3f(a[1].x, a[1].y, a[1].z)
-
-				-- Vertex B
-				raylib.lib.rlColor4f(b[2].R, b[2].G, b[2].B, 1.0)
-				raylib.lib.rlTexCoord2f(1.0, 0.0)
-				raylib.lib.rlVertex3f(b[1].x, b[1].y, b[1].z)
-
-				-- Vertex C
-				raylib.lib.rlColor4f(c[2].R, c[2].G, c[2].B, 1.0)
-				raylib.lib.rlTexCoord2f(0.5, 1.0)
-				raylib.lib.rlVertex3f(c[1].x, c[1].y, c[1].z)
-
-				raylib.lib.rlEnd()
-			end
-
-			raylib.lib.rlSetTexture(0)
 		end)
 	end
 

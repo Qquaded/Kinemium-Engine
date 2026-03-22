@@ -1,6 +1,5 @@
 local Vector3 = require("@Vector3")
 local Enum = require("@EnumMap")
-local jolt = require("@jolt")
 
 local raylib = require("@raylib")
 local rl = raylib.lib
@@ -32,7 +31,7 @@ return {
 			local attach = instance.Attachment0
 			if attach and attach:IsA("Attachment") then
 				local parent = attach.Parent
-				if parent:IsA("Part") or parent:IsA("MeshPart") then
+				if parent.BaseClass == "BasePart" then
 					local force = instance.Force
 					local magnitude = force:Magnitude()
 

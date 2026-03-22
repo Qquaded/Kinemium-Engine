@@ -228,8 +228,6 @@ enumTable.PartType = {
 	Wedge = "wedge",
 	Torus = "torus",
 	CornerWedge = "cornerwedge",
-	Mesh = "kmesh",
-	Terrain = "kterrain",
 }
 
 enumTable.ActuatorRelativeTo = {

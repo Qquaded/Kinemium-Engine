@@ -20,6 +20,10 @@ LogService.InitRenderer = function(renderer, renderer_signal)
 		BeforeLog = BeforeLog,
 		MessageOut = MessageOut,
 
+		Errortest = function()
+			error("Should error from stack")
+		end,
+
 		-- Engine API surface
 		CreateLog = function(type: "print" | "error" | "warn", message)
 			local id = math.random(1, 999999)

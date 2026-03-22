@@ -307,6 +307,24 @@ type ShaderModule = {
 	new: (source: ShaderSource) -> Shader,
 }
 
+type Color3 = {
+	R: number,
+	G: number,
+	B: number,
+
+	Clamp: (self: Color3) -> Color3,
+	PremultiplyAlpha: (self: Color3) -> Color3,
+	BlendOver: (self: Color3, bg: Color3) -> Color3,
+	Luminance: (self: Color3) -> number,
+	Multiply: (self: Color3, other: Color3) -> Color3,
+	ToRaylib: (self: Color3) -> { number },
+	Lerp: (self: Color3, other: Color3, alpha: number) -> Color3,
+	ToRGBA: (self: Color3) -> (number, number, number, number),
+	ToTable: (self: Color3) -> { type: string, R: number, G: number, B: number, A: number },
+
+	__tostring: (self: Color3) -> string,
+}
+
 type Color4 = {
 	R: number,
 	G: number,
@@ -530,6 +548,118 @@ type CFrameint16Module = {
 	}) -> CFrameint16,
 }
 
+type UDim2 = {
+
+}
+
+type WindowConfig = {
+	Explorer: {
+		position: UDim2,
+		anchorPoint: Vector2,
+		size: UDim2,
+	},
+	Inspector: {
+		position: UDim2,
+		anchorPoint: Vector2,
+		size: UDim2,
+	},
+	Output: {
+		position: UDim2,
+		anchorPoint: Vector2,
+		size: UDim2,
+	},
+	Toolbar: {
+		position: UDim2,
+		anchorPoint: Vector2,
+		size: UDim2,
+	},
+}
+
+type AereonWindow = {
+	BackgroundColor: Color3,
+	BackgroundTransparency: number,
+	TextColor: Color3,
+	SecondaryBackgroundColor: Color3,
+	DragColor: Color3,
+	DragOutlineTransparency: number,
+	TitleBackgroundTransparency: number,
+	TitleTextSize: number,
+	TitleColor: Color3,
+	TitleHeight: number,
+	ShadowsEnabled: boolean,
+	ShadowTransparency: number,
+	ShadowColor: Color3,
+}
+
+type AereonIDEAutocomplete = {
+	BackgroundColor: Color3,
+	OutlineColor: Color3,
+	ItemSelectColor: Color3,
+	OutlineThickness: number,
+	OutlineTransparency: number,
+	CornerRadius: number,
+	Width: number,
+	Height: number,
+	ListPadding: number,
+}
+
+type AereonIDE = {
+	BackgroundColor: Color3,
+	SecondaryBackgroundColor: Color3,
+	TextColor: Color3,
+	currentLineColor: Color3,
+	autocomplete: AereonIDEAutocomplete,
+}
+
+type AereonTheme = {
+	window: AereonWindow,
+	ide: AereonIDE,
+}
+
+type Theme = {
+	WindowConfig: WindowConfig,
+
+	TextColor: Color3,
+	ImageColor: Color3,
+	ImageTransparency: number,
+	GuiHandlesColor: Color3,
+	GuiHandlesTransparency: number,
+	TextTransparency: number,
+
+	BackgroundColor: Color3,
+	BackgroundTransparency: number,
+
+	SecondaryTextTransparency: number,
+	SecondaryTextColor: Color3,
+
+	SecondaryBackgroundColor: Color3,
+	ThirdBackgroundColor: Color3,
+	SecondaryBackgroundColorTransparency: number,
+
+	Accent: Color3,
+	AccentTransparency: number,
+
+	WindowBackgroundColor: Color3,
+	WindowBackgroundTransparency: number,
+
+	TitleTextSize: number,
+	WindowTitleHeight: number,
+
+	ShadowsEnabled: boolean,
+	ShadowTransparency: number,
+	CornerRadius: number,
+	ShadowColor: Color3,
+
+	ArrowImageColor: Color3,
+	TitleColor: Color3,
+
+	aereon: AereonTheme,
+}
+
+type ThemeCollection = {
+	SelectedTheme: Theme,
+}
+
 type include = (path: string) -> (any)
 type FlagExists = (flag: string) -> (boolean)
 
@@ -657,6 +787,7 @@ declare CFrame2D: CFrame2DModule
 declare CFrameint16: CFrameint16Module
 declare Schema: SchemaType
 declare Octree: Octree
+declare Theme: ThemeCollection
 declare Vector3int16: Vector3int16Module
 declare ishared: {any}
 declare shared: {}

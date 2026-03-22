@@ -4,18 +4,11 @@ local signal = require("@Kinemium.signal")
 local OdePhysicsService = Instance.new("OdePhysicsService")
 OdePhysicsService.ExplorerHidden = true
 
-local ode = require("@ode")
 local CFrame = require("@CFrame")
-local raylib = require("@raylib")
-local Vector3 = require("@Vector3")
-local zembed = require("@zembed")
 local Enum = require("@EnumMap")
-local lib = ode.lib
 
-local constants = ode.constants
 local odeBodies = {} -- part = ODEBodyID
 local ffi = zune.ffi
-local structs = ode.structs
 
 --[[
 dJointTypeBall	A ball-and-socket joint.
@@ -36,7 +29,7 @@ dJointTypeDHinge	A Double Hinge joint.
 dJointTypeTransmission	A Transmission joint.
 --]]
 
-local function createPhysicsBody(world, space, part)
+local function createPhysicsBody(world, space, part, lib)
 	if part.BaseClass ~= "BasePart" then
 		return
 	end
@@ -92,7 +85,7 @@ local function createPhysicsBody(world, space, part)
 	return part, bodyId
 end
 
-local function AddForce(part, force)
+local function AddForce(part, force, lib)
 	local bodyId = odeBodies[part]
 	if bodyId then
 		lib.dBodyEnable(bodyId)
@@ -100,7 +93,7 @@ local function AddForce(part, force)
 	end
 end
 
-local function AddTorque(part, torque)
+local function AddTorque(part, torque, lib)
 	local bodyId = odeBodies[part]
 	if bodyId then
 		lib.dBodyEnable(bodyId)
@@ -115,7 +108,7 @@ local function getGravity(v, wind)
 	return x, y, z
 end
 
-local function applyPositions(world)
+local function applyPositions(world, lib)
 	for part, bodyId in pairs(odeBodies) do
 		local posPtr = lib.dBodyGetPosition(bodyId)
 
@@ -127,6 +120,10 @@ end
 
 OdePhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 	OdePhysicsService:SetProperties({})
+
+	--[[
+	local ode = require("@ode")
+	local lib = ode.lib
 
 	task.spawn(function()
 		repeat
@@ -190,6 +187,7 @@ OdePhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 			lib.dCloseODE()
 		end)
 	end)
+	--]]
 end
 
 return OdePhysicsService

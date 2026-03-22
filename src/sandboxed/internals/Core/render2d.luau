@@ -43,9 +43,18 @@ local ide = aereon.ide(nil, game)
 
 gui.SetFont(vend)
 
+local Theme = game:GetService("StudioThemeService").SelectedTheme
+
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "Output"
+screenGui.Name = "CodeEditor"
 screenGui.Parent = LocalPlayer.PlayerGui
+
+local frame = Instance.new("Frame")
+frame.Position = Theme.WindowConfig.CodeEditor.position
+frame.AnchorPoint = Theme.WindowConfig.CodeEditor.anchorPoint
+frame.Size = Theme.WindowConfig.CodeEditor.size
+frame.BackgroundTransparency = 1
+frame.Parent = screenGui
 
 local enableIDE = false
 local currentObject
@@ -69,25 +78,16 @@ end)
 
 local window = aereon.window(game)
 
-local function calculate()
-	local screenWidth = rl.GetMonitorWidth(0)
-	local screenHeight = rl.GetMonitorHeight(0)
-	local toolbarHeight = 160
-	local viewportX = 0
-	local viewportY = toolbarHeight
-	local viewportWidth = screenWidth - 400
-	local viewportHeight = screenHeight - toolbarHeight - screenHeight * 0.2
-	return viewportX, viewportY, viewportWidth, viewportHeight
-end
-
-local x, y, width, height = calculate()
+repeat
+	task.wait()
+until frame.AbsolutePosition
 
 local ideWindow = window.create({
 	title = "Script Editor",
-	x = x,
-	y = y,
-	width = width,
-	height = height,
+	x = frame.AbsolutePosition.X,
+	y = frame.AbsolutePosition.Y,
+	width = frame.AbsoluteSize.X,
+	height = frame.AbsoluteSize.Y,
 	enabled = false,
 })
 
