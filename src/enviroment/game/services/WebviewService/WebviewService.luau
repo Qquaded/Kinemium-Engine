@@ -45,7 +45,7 @@ WebviewService.InitRenderer = function(renderer, renderer_signal)
 					local view = UL.ulCreateView(ULrenderer, 1280, 720, viewConfig, session)
 					UL.ulDestroyViewConfig(viewConfig)
 
-					local url = UL.ulCreateString("file:///C:/Users/devco/OneDrive/Desktop/KineticaEngine/example.html")
+					local url = UL.ulCreateString(htmlPath)
 					UL.ulViewLoadURL(view, url)
 					UL.ulDestroyString(url)
 
