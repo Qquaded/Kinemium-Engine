@@ -857,4 +857,72 @@ function CFrame:ToRaylibMatrix(structs)
 	return structs.Matrix:new(CFrame:GetMatrixData())
 end
 
+CFrame.identity = CFrame.new(0, 0, 0)
+
+function CFrame.fromOrientation(rx, ry, rz)
+	local cx, cy, cz = math.cos(rx), math.cos(ry), math.cos(rz)
+	local sx, sy, sz = math.sin(rx), math.sin(ry), math.sin(rz)
+
+	local m00 = cy * cz
+	local m01 = sx * sy * cz - cx * sz
+	local m02 = cx * sy * cz + sx * sz
+
+	local m10 = cy * sz
+	local m11 = sx * sy * sz + cx * cz
+	local m12 = cx * sy * sz - sx * cz
+
+	local m20 = -sy
+	local m21 = sx * cy
+	local m22 = cx * cy
+
+	-- Pos X, Y, Z, and rotation matrix components
+	return CFrame.new(0, 0, 0, m00, m01, m02, m10, m11, m12, m20, m21, m22)
+end
+
+function CFrame:ToOrientation()
+	local r = self.Rotation
+	local m00, m10, m20 = r[1][1], r[2][1], r[3][1]
+	local m21 = r[3][2]
+	local m22 = r[3][3]
+
+	local rx = math.atan2(m21, m22)
+	local ry = math.asin(math.clamp(-m20, -1, 1))
+	local rz = math.atan2(m10, m00)
+
+	return rx, ry, rz
+end
+
+function CFrame:components()
+	return self:GetComponents()
+end
+
+function CFrame.__unm(a)
+	local r = a.Rotation
+	return CFrame.new(
+		-a.Position.X,
+		-a.Position.Y,
+		-a.Position.Z,
+		r[1][1],
+		r[1][2],
+		r[1][3],
+		r[2][1],
+		r[2][2],
+		r[2][3],
+		r[3][1],
+		r[3][2],
+		r[3][3]
+	)
+end
+
+function CFrame:Dot(other)
+	return self.Position:Dot(other.Position)
+end
+
+function CFrame:Determinant()
+	local r = self.Rotation
+	return r[1][1] * (r[2][2] * r[3][3] - r[2][3] * r[3][2])
+		- r[1][2] * (r[2][1] * r[3][3] - r[2][3] * r[3][1])
+		+ r[1][3] * (r[2][1] * r[3][2] - r[2][2] * r[3][1])
+end
+
 return CFrame

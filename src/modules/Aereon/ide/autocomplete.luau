@@ -1034,14 +1034,14 @@ return {
 				rect:translate(background),
 				0.1,
 				15,
-				Color3ToRaylib(Color3.new(0.12, 0.12, 0.12), 0)
+				Color3.new(0.12, 0.12, 0.12):ToRaylib(0)
 			)
 			raylib.DrawRectangleRoundedLinesEx(
 				rect:translate(background),
 				0.1,
 				15,
 				1,
-				Color3ToRaylib(Color3.new(0.2, 0.2, 0.2), 0)
+				Color3.new(0.2, 0.2, 0.2):ToRaylib(0)
 			)
 
 			for i = 1, math.min(#editor.autocomplete.items, maxVisible) do
@@ -1054,7 +1054,7 @@ return {
 						rect:translate(rect.new(acX + 2, itemY + 1, acWidth - 4, acItemHeight - 2)),
 						0.1,
 						15,
-						Color3ToRaylib(Color3.new(0.04, 0.35, 0.61), 0) -- VS Code blue
+						Color3.new(0.04, 0.35, 0.61):ToRaylib(0) -- VS Code blue
 					)
 				end
 
@@ -1098,7 +1098,7 @@ return {
 					vector.create(acX + acWidth - tw - acPadding, itemY + (acItemHeight - (fontSize - 6)) / 2),
 					fontSize - 6,
 					spacing,
-					Color3ToRaylib(Color3.new(0.6, 0.6, 0.6), 0)
+					Color3.new(0.6, 0.6, 0.6):ToRaylib(0)
 				)
 			end
 		else

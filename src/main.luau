@@ -316,7 +316,7 @@ game.EngineSignal:Connect(function(route)
 end)
 
 -- KILANG REPL
-if FlagExists("kilang") then
+if FlagExists("kilang") or IsServer then
 	require("./repl"):init(function(line)
 		task.spawn(function()
 			local _, success, result = kilang:execute(line, {
@@ -330,9 +330,16 @@ if FlagExists("kilang") then
 end
 
 -- INITIALIZE ENGINE
+print("son")
+
 loadInternals()
-httpServerViewer:Init()
+print("son")
+
+httpServerViewer:Init(renderer)
+print("son")
+
 Kinemium:run()
+print("son")
 
 -- RUN RENDERER
 renderer:Run()

@@ -12,7 +12,7 @@ ReplicatorService.InitRenderer = function(renderer, renderer_signal, game)
 		task.wait(4)
 
 		repeat
-			log("[Replicator] Waiting for SerializationService and NetworkService")
+			--log("[Replicator] Waiting for SerializationService and NetworkService")
 			task.wait()
 		until game.SerializationService and game.NetworkService
 		local ctx = {

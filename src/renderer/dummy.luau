@@ -345,6 +345,10 @@ function KiRend.new(config: KiRendConf)
 			end,
 		},
 
+		DecalPool = {
+			DrawDecal = function() end,
+		},
+
 		Pool = {
 			new = function(type: "2d" | "3d" | "gizmo", renderFn: () -> (), priority: number?)
 				local pool

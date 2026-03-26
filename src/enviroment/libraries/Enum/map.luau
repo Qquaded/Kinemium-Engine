@@ -53,6 +53,45 @@ enumTable.KinemiumOutputMode = {
 	DOF = 12,
 }
 
+enumTable.ParticleTransparencyMode = {
+	Disabled = 0,
+	Prepass = 1,
+	Alpha = 2,
+}
+
+enumTable.ParticleBlendMode = {
+	Mix = 0,
+	Additive = 1,
+	Multiply = 2,
+	PremultipliedAlpha = 3,
+}
+
+enumTable.ParticleCullMode = {
+	None = 0,
+	Back = 1,
+	Front = 2,
+}
+
+enumTable.ParticleBillboardMode = {
+	Disabled = 0,
+	Front = 1,
+	YAxis = 2,
+}
+
+enumTable.ParticleFlipbookMode = {
+	Loop = 0,
+	OneShot = 1,
+	PingPong = 2,
+	Random = 3,
+}
+
+enumTable.UIParticleEmitterShape = {
+	Point = 0,
+	Box = 1,
+	Circle = 2,
+	Ring = 3,
+}
+
 enumTable.KinemiumShaderPreset = {
 	Low = 1,
 	Medium = 2,

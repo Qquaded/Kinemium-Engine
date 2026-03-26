@@ -11,7 +11,7 @@ local raylib = require("@raylib")
 local lib = raylib.lib
 
 local zembed = require("@zembed")
-local general = zembed.IsEmbedded() and zembed.GetFilesThatHas([[images\icons]]) or "./src/assets/images/icons"
+local general = zembed.IsEmbedded() and "./assets/images/icons" or "./src/assets/images/icons"
 
 KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 	local registry = {}
@@ -25,12 +25,18 @@ KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 		table.clear(textures)
 
 		for _, file in pairs(type(general) == "string" and fs.entries(general) or general) do
-			if zembed.IsEmbedded() then
-				file = "../" .. string.gsub(file, [[\]], "/")
+			local fileName = file.name
+			local filePath
+
+			if type(general) == "string" then
+				filePath = general .. "/" .. fileName
+			else
+				filePath = file
 			end
-			registry[zembed.IsEmbedded() and zune.fs.path.basename(file) or file.name] = zembed.IsEmbedded() and file
-				or general .. "/" .. file.name
-			print("Loading " .. file.name)
+
+			registry[fileName] = filePath
+
+			print("Loading " .. fileName)
 		end
 	end
 

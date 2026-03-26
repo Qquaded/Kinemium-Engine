@@ -5,6 +5,7 @@ local r3d = require("@r3d")
 local rlib = r3d.lib
 local r3dstructs = r3d.structs
 local meshgen = require("@meshgen")
+local Vector3 = require("@Vector3")
 local grassgen = require("../../classlibs/grassgen")
 
 local EDGE_TABLE = {
@@ -556,6 +557,10 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 		_chunks = {}, -- chunkKey -> { mesh, dirty }
 	})
 
+	if FlagExists("server") then
+		return Terrain
+	end
+
 	function Terrain:_getVoxel(x, y, z)
 		local xr = Terrain._blocks[x]
 		if not xr then
@@ -773,8 +778,8 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 		local y1 = y0 + CHUNK_SIZE - 1
 		local z1 = z0 + CHUNK_SIZE - 1
 
-		local vertices = {}
-		local indices = {}
+		local vertices = table.create(4096)
+		local indices = table.create(4096)
 
 		if Terrain.UseMarchingCubes then
 			for x = x0, x1 do
@@ -946,10 +951,45 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end
 	end
 
+	local MAX_REBUILDS_PER_FRAME = 4
+	local MAX_CHUNK_DISTANCE = 12 -- chunks distance
+
 	function Terrain:GenerateMesh()
-		for _, chunk in pairs(Terrain._chunks) do
-			Terrain:_rebuildChunk(chunk)
+		if Terrain._isGenerating then
+			return
 		end
+		Terrain._isGenerating = true
+
+		task.spawn(function()
+			local count = 0
+			local workspace = datamodel:GetService("Workspace")
+
+			for _, chunk in pairs(Terrain._chunks) do
+				if chunk.dirty then
+					local camera = workspace.CurrentCamera
+					local camPos = camera and camera.CFrame.Position or Vector3.new(0, 0, 0)
+
+					local chunkWorldX = (chunk.cx + 0.5) * CHUNK_SIZE * Terrain.VoxelSize
+					local chunkWorldY = (chunk.cy + 0.5) * CHUNK_SIZE * Terrain.VoxelSize
+					local chunkWorldZ = (chunk.cz + 0.5) * CHUNK_SIZE * Terrain.VoxelSize
+
+					local distSq = (chunkWorldX - camPos.X) ^ 2
+						+ (chunkWorldY - camPos.Y) ^ 2
+						+ (chunkWorldZ - camPos.Z) ^ 2
+					local limitSq = (MAX_CHUNK_DISTANCE * CHUNK_SIZE * Terrain.VoxelSize) ^ 2
+
+					if distSq <= limitSq then
+						Terrain:_rebuildChunk(chunk)
+						count = count + 1
+						if count >= MAX_REBUILDS_PER_FRAME then
+							count = 0
+							task.wait()
+						end
+					end
+				end
+			end
+			Terrain._isGenerating = false
+		end)
 	end
 
 	function Terrain:_spawnGrassForChunk(chunk)

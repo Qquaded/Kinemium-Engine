@@ -22,6 +22,7 @@ return {
 
 	callback = function(instance, renderer)
 		instance:SetProperties(propTable)
+		instance:SetMetadata("IsMovable", true)
 
 		return instance
 	end,

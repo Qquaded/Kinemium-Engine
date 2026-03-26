@@ -16,8 +16,11 @@ local propTable = {
 	Transparency = 0,
 	Color3 = Color3.new(1, 1, 1),
 	Texture = "./src/assets/images/placeholder.png",
-	ColorMapContent = "./src/assets/images/placeholder.png",
 	Face = Enum.NormalId.Top,
+	StudsPerTileU = 1,
+	StudsPerTileV = 1,
+	OffsetStudsU = 0,
+	OffsetStudsV = 0,
 	Adornee = nil,
 	Position = Vector3.new(0, 0, 0),
 	Wrap = false,
@@ -89,22 +92,6 @@ local function buildBaseDecal()
 	buffer.writeu8(decal, r3dstructs.R3D_Decal:offset("applyColor"), 1)
 
 	return decal
-end
-
-local function resolveTextureSource(instance)
-	if type(instance.ColorMapContent) == "table" and instance.ColorMapContent.ClassName == "EditableImage" then
-		return instance.ColorMapContent
-	end
-	if type(instance.ColorMapContent) == "string" and instance.ColorMapContent ~= "" then
-		return instance.ColorMapContent
-	end
-	if type(instance.Texture) == "table" and instance.Texture.ClassName == "EditableImage" then
-		return instance.Texture
-	end
-	if type(instance.Texture) == "string" and instance.Texture ~= "" then
-		return instance.Texture
-	end
-	return nil
 end
 
 local function loadAlbedoMap(path, color)
@@ -184,8 +171,31 @@ local function applyFaceOffset(cf, offset)
 	return cf
 end
 
+local function applyUvSettings(instance, decal, width, height)
+	local studsU = tonumber(instance.StudsPerTileU) or 1
+	local studsV = tonumber(instance.StudsPerTileV) or 1
+
+	if studsU == 0 then
+		studsU = 1
+	end
+	if studsV == 0 then
+		studsV = 1
+	end
+
+	local tilesU = width / studsU
+	local tilesV = height / studsV
+
+	local offsetU = (instance.OffsetStudsU or 0) / studsU
+	local offsetV = (instance.OffsetStudsV or 0) / studsV
+
+	buffer.writef32(decal, r3dstructs.R3D_Decal:offset("uvScale"), tilesU)
+	buffer.writef32(decal, r3dstructs.R3D_Decal:offset("uvScale") + 4, tilesV)
+	buffer.writef32(decal, r3dstructs.R3D_Decal:offset("uvOffset"), offsetU)
+	buffer.writef32(decal, r3dstructs.R3D_Decal:offset("uvOffset") + 4, offsetV)
+end
+
 return {
-	class = "Decal",
+	class = "Texture",
 	callback = function(instance, renderer)
 		instance:SetProperties(propTable)
 
@@ -195,8 +205,8 @@ return {
 		instance._decalLastPath = nil
 
 		local function syncAlbedo(force)
-			local source = resolveTextureSource(instance)
 			local color = instance.Color3:ToRaylib(instance.Transparency or 0)
+			local source = instance.Texture
 
 			if not force and source == instance._decalLastPath then
 				if type(source) == "table" and source.ClassName == "EditableImage" then
@@ -269,23 +279,31 @@ return {
 				local depth = math.max(0.001, instance.Depth or 0.1)
 				local cf
 				local scale
+				local width
+				local height
 
 				if instance.Wrap == true then
 					cf = adornee.CFrame
+					width = adornee.Size.X
+					height = adornee.Size.Z
 					scale = Vector3.new(adornee.Size.X + depth, adornee.Size.Y + depth, adornee.Size.Z + depth)
 				else
-					local width, height = getFaceSize(adornee.Size, face)
+					width, height = getFaceSize(adornee.Size, face)
 					if not width or not height then
 						return
 					end
+
 					cf = getFaceCFrame(adornee.CFrame, adornee.Size, face)
 					if not cf then
 						return
 					end
+
 					scale = Vector3.new(width, depth, height)
 				end
 
 				cf = applyFaceOffset(cf, instance.Position)
+
+				applyUvSettings(instance, decal, width, height)
 				local matrix = cf:ToRaylibMatrixScale(scale, structs)
 
 				renderer.DecalPool.DrawDecal(decal, matrix)
@@ -293,7 +311,7 @@ return {
 		end
 
 		instance.Changed:Connect(function(property)
-			if property == "Texture" or property == "ColorMapContent" then
+			if property == "Texture" then
 				syncAlbedo(true)
 			elseif property == "Color3" or property == "Transparency" then
 				applyAlbedoColor(decal, instance.Color3, instance.Transparency or 0)

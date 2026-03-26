@@ -10,7 +10,7 @@ local entry = zjoin(root, "main.luau")
 local bin = zjoin("build")
 
 local include = {
-	zjoin(root, "**", "*.lua*"),
+	zjoin(root, "**", "*.luau*"),
 }
 
 local assets = {

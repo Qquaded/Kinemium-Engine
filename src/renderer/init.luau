@@ -103,6 +103,7 @@ function KiRend.new(config: KiRendConf)
 	local renderer_watching_keys = {}
 	local renderer_draw_calls = {}
 	local renderer_instanced_draw_calls = {}
+	local renderer_decal_draw_calls = {}
 	local renderer_instance_buffers_to_unload = {}
 	local renderer_meshes = {}
 	local ENGINE_PROFILER = {}
@@ -278,6 +279,17 @@ function KiRend.new(config: KiRendConf)
 						break
 					end
 				end
+			end,
+		},
+
+		DecalPool = {
+			DrawDecal = function(decal, transform, begin, End)
+				table.insert(renderer_decal_draw_calls, {
+					decal = decal,
+					transform = transform,
+					Begin = begin,
+					End = End,
+				})
 			end,
 		},
 
@@ -559,7 +571,7 @@ function KiRend.new(config: KiRendConf)
 
 		perf_stats.call3d_ms = 0
 		local callStart = os.clock()
-		if #renderer_draw_calls > 0 or #renderer_instanced_draw_calls > 0 then
+		if #renderer_draw_calls > 0 or #renderer_instanced_draw_calls > 0 or #renderer_decal_draw_calls > 0 then
 			if Dimension == "3D" then
 				rlib.R3D_Begin(activeCamera)
 				for _, drawCall in ipairs(renderer_draw_calls) do
@@ -584,6 +596,15 @@ function KiRend.new(config: KiRendConf)
 						table.insert(renderer_instance_buffers_to_unload, drawCall.instances)
 					end
 				end
+				for _, drawCall in ipairs(renderer_decal_draw_calls) do
+					if drawCall.Begin then
+						drawCall.Begin()
+					end
+					rlib.R3D_DrawDecalPro(drawCall.decal, drawCall.transform)
+					if drawCall.End then
+						drawCall.End()
+					end
+				end
 				rlib.R3D_End()
 				for i = 1, #renderer_instance_buffers_to_unload do
 					pcall(rlib.R3D_UnloadInstanceBuffer, renderer_instance_buffers_to_unload[i])
@@ -593,6 +614,7 @@ function KiRend.new(config: KiRendConf)
 		end
 		table.clear(renderer_draw_calls)
 		table.clear(renderer_instanced_draw_calls)
+		table.clear(renderer_decal_draw_calls)
 		perf_stats.call3d_ms = (os.clock() - callStart) * 1000
 
 		for _, item in ipairs(getSortedPool(renderer_pool.gizmos)) do

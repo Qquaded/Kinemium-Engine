@@ -1,109 +1,158 @@
 local Server = {}
 
 local KiNet = require("@kinet")
-local Enum = require("@EnumMap")
 export type Server = typeof(KiNet.Server)
 
 local OPCODES = {
 	CREATE = 1,
 	REMOVE = 2,
 	EDIT = 3,
+	PHYSICS = 4,
 }
-
-local last_value
 
 function Server.init(context)
 	local game = context.game
 	local serializationService = context.SerializationService
 	local networkService = context.NetworkService
 	local server = networkService.KiNet.Server :: Server
-	local signal = context.signal
 
 	local lookup = {}
 	local values = {}
 	local userdata = serializationService.userdata
 
-	local function replicate_client_create(object)
+	local nextNetId = 1
+	local function assignNetworkId(object)
+		if object.NetworkId == nil then
+			object.NetworkId = nextNetId
+			nextNetId += 1
+		end
+	end
+
+	local function send_create(buffer)
 		server:SendAll({
 			opcode = OPCODES.CREATE,
-			objects = object,
+			objects = buffer,
 		})
 	end
 
-	local function replicate_client_edit(object, prop, newval)
-		local data = {
+	local function send_edit(object, prop, newval)
+		server:SendAll({
 			opcode = OPCODES.EDIT,
-			object = object.UniqueId,
+			object = object.NetworkId,
 			prop = prop,
 			newval = newval,
-		}
-		print(data)
-		server:SendAll(data)
+		})
+	end
+
+	local function send_remove(netId)
+		server:SendAll({
+			opcode = OPCODES.REMOVE,
+			object = netId,
+		})
+	end
+
+	local function monitor(object)
+		return object.Changed:Connect(function(prop, val)
+			if object.NetworkId == nil then
+				return
+			end
+			if prop == "_parentID" then
+				return
+			end
+			if prop == "Parent" then
+				return
+			end
+			if prop == "IsPlaytesting" then
+				return
+			end
+			if prop == "NetworkId" then
+				return
+			end
+			if prop == "CanReplicate" then
+				return
+			end
+
+			local netId = object.NetworkId
+			values[netId] = values[netId] or {}
+
+			if values[netId][prop] == val then
+				return
+			end
+			values[netId][prop] = val
+
+			task.spawn(function()
+				send_edit(object, prop, userdata.Encode(val))
+			end)
+		end)
 	end
 
 	for _, v in pairs(game:GetDescendants()) do
-		lookup[v.UniqueId] = v
-		log("[Replicator] Created lookup pointer: " .. v.UniqueId .. " to " .. v.Name)
+		assignNetworkId(v)
+		lookup[v.NetworkId] = v
+		log("[Replicator] Created lookup pointer: " .. v.NetworkId .. " to " .. v.Name)
+		monitor(v)
 	end
 
 	game.DescendantAdded:Connect(function(object)
-		lookup[object.UniqueId] = object
-		log("[Replicator] Created lookup pointer: " .. object.UniqueId .. " to " .. object.Name)
+		assignNetworkId(object)
+		lookup[object.NetworkId] = object
+		log("[Replicator] Created lookup pointer: " .. object.NetworkId .. " to " .. object.Name)
+		monitor(object)
 
 		task.spawn(function()
 			if object.CanReplicate == false then
 				return
 			end
-			object._parentID = object.Parent.UniqueId
+
+			-- Inject NetworkId and parent reference into _props for serialization
+			object._props.NetworkId = object.NetworkId
+			object._props._parentID = object.Parent and object.Parent.NetworkId
+
 			local serialized = serializationService.SerializeInstancesAsync({ object })
-			replicate_client_create(serialized)
-			object._parentID = nil
+
+			object._props.NetworkId = nil
+			object._props._parentID = nil
+
+			send_create(serialized)
 		end)
-
-		--[[
-		object.Changed:Connect(function(prop, val)
-			values[object.UniqueId] = values[object.UniqueId] or {}
-
-			if values[object.UniqueId][prop] == val then
-				return
-			end
-
-			values[object.UniqueId][prop] = val
-
-			if val == last_value then
-				return
-			end
-
-
-			last_value = val
-
-			print(`object {object.Name}: {prop} = {tostring(val)}`)
-			task.spawn(function()
-				replicate_client_edit(object, prop, userdata.Encode(val))
-			end)
-		end)
-		--]]
 	end)
 
 	game.DescendantRemoving:Connect(function(object)
-		lookup[object.UniqueId] = nil
+		if object.NetworkId == nil then
+			return
+		end
+		lookup[object.NetworkId] = nil
+		values[object.NetworkId] = nil
+		send_remove(object.NetworkId)
 	end)
 
 	server:OnNewClient(function(addr)
 		log("[Replicator] New client connected, sending initial state")
 
 		local batch = {}
-		for id, obj in pairs(lookup) do
+		for _, obj in pairs(game:GetDescendants()) do
 			if obj.CanReplicate == false then
 				continue
 			end
-			obj._parentID = obj.Parent.UniqueId
+			assignNetworkId(obj)
+			lookup[obj.NetworkId] = obj
+			obj._props.NetworkId = obj.NetworkId
+			obj._props._parentID = obj.Parent and obj.Parent.NetworkId
 			table.insert(batch, obj)
 		end
+
 		local serialized = serializationService.SerializeInstancesAsync(batch)
-		replicate_client_create(serialized)
+
+		-- Clean up injected props
+		for _, obj in pairs(batch) do
+			obj._props.NetworkId = nil
+			obj._props._parentID = nil
+		end
 		table.clear(batch)
+
+		send_create(serialized)
 	end)
+
 	return {}
 end
 

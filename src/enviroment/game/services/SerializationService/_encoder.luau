@@ -1,6 +1,3 @@
--- Binary Table Encoder/Decoder for Luau
--- Supports: nil, boolean, number, string, and nested tables
-
 local TableEncoder = {}
 
 -- Type tags for serialization

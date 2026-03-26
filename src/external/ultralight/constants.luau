@@ -143,7 +143,6 @@ local constants = {
 		kLogLevel_Warning = 0x1,
 		kLogLevel_Info = 0x2,
 	},
-
 }
 
 return constants

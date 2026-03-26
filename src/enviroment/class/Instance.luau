@@ -9,6 +9,15 @@ local function generateUniqueId()
 	return id
 end
 
+local nextNetworkId = 1
+local PREFIX = ""
+
+local function generateNetworkId()
+	local id = nextNetworkId
+	nextNetworkId += 1
+	return PREFIX .. id
+end
+
 -- Instance metatable
 local instance_mt = {}
 
@@ -63,6 +72,15 @@ function instance_mt.__newindex(self, key, value)
 
 	if key == "UniqueId" then
 		error("UniqueId is read-only", 2)
+	end
+
+	if key == "NetworkId" then
+		if props and props.NetworkId ~= nil then
+			error("NetworkId is already assigned and read-only", 2)
+		end
+		props.NetworkId = value
+		rawset(self, "NetworkId", value)
+		return
 	end
 
 	if key == "Parent" then
@@ -134,6 +152,7 @@ function Instance.new(className)
 	self.tags = {}
 	self.DescendantChanged = Signal.new()
 	self.attributes = {}
+	self.NetworkId = nil -- nil until server assigns one
 	self.CanReplicate = true
 
 	-- deprecated
@@ -148,6 +167,7 @@ function Instance.new(className)
 		Name = className,
 		Parent = nil,
 		Children = {},
+		NetworkId = nil,
 		UniqueId = generateUniqueId(),
 	}
 

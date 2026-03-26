@@ -42,13 +42,15 @@ local propTable = {
 	AssemblyRootPart = nil,
 
 	-- Network
-	NetworkOwnerType = Enum.MachineNetworkOwner.Client,
+	NetworkOwnerType = Enum.MachineNetworkOwner.Server,
 }
 
 return {
 	class = "Part",
 
 	callback = function(instance, renderer, game)
+		instance:SetMetadata("IsMovable", true)
+
 		local PhysicsService = game:GetService("PhysicsService")
 
 		propTable.ApplyImpulse = function(self, v)

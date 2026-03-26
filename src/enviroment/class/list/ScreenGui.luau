@@ -26,7 +26,7 @@ return {
 	class = "ScreenGui",
 
 	callback = function(instance, renderer)
-		proptble.render = function(lib, instance, dt, structs)
+		proptble.render = function(lib, instance, dt, structs, datamodel)
 			if not instance.Enabled then
 				return
 			end
@@ -57,7 +57,7 @@ return {
 
 			for _, child in pairs(instance:GetChildren()) do
 				if child["render"] then
-					child.render(lib, child, dt, structs, renderer)
+					child.render(lib, child, dt, structs, renderer, datamodel)
 				end
 			end
 		end

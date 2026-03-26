@@ -65,7 +65,7 @@ PlaytestService.GetToolbarCategory = function(renderer, renderer_signal, datamod
 				hoverTransparency = 0.5,
 				hoverColor = Color3.new(0, 0, 0),
 				roundness = 0.2,
-				--texture = PlayIcon,
+				--\\texture = PlayIcon,
 			},
 		},
 	}

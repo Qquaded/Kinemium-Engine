@@ -20,6 +20,7 @@ function DataModel.new(RENDERER, ...)
 	self.EngineSignal = signal.new()
 	self.Stop3DInput = false
 	self.ShutdownCallbacks = {}
+	self.Loaded = false
 
 	self.Services = {}
 
@@ -97,6 +98,8 @@ function DataModel.new(RENDERER, ...)
 			)
 		end
 	end
+	self.Loaded = true
+
 	log(string.format("[ServiceRegistry] Core services initialized in %.2fs", os.clock() - serviceInitStart))
 
 	for name, service in pairs(self.Services) do

@@ -3,7 +3,7 @@ local signal = require("@Kinemium.signal")
 
 local PlayerGui = Instance.new("PlayerGui")
 
-PlayerGui.InitRenderer = function(renderer, renderer_signal)
+PlayerGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 	PlayerGui:SetProperties({
 		ResetOnSpawn = true,
 	})
@@ -18,7 +18,7 @@ PlayerGui.InitRenderer = function(renderer, renderer_signal)
 						return
 					end
 					local dt = renderer.Raylib.lib.GetFrameTime()
-					child.render(renderer.Raylib.lib, child, dt, renderer.Raylib.structs, renderer)
+					child.render(renderer.Raylib.lib, child, dt, renderer.Raylib.structs, renderer, datamodel)
 				end, -5)
 			end
 		end

@@ -41,6 +41,10 @@ local function snapVec3(v)
 	return Vector3.new(snap(v.X), snap(v.Y), snap(v.Z))
 end
 
+local function isMovable(object)
+	return object:GetMetadata("IsMovable")
+end
+
 local function getSelectionCenter()
 	local selection = Selection:Get()
 	if #selection == 0 then
@@ -128,7 +132,7 @@ connection = Movement.MouseDrag:Connect(function(newCF)
 		MoveStartPivot = CFrame.new(center)
 
 		for _, obj in ipairs(selection) do
-			if obj.BaseClass == "BasePart" then
+			if isMovable(obj) then
 				table.insert(
 					MoveOffsets,
 					{ obj = obj, pos = MoveStartPivot:ToObjectSpace(obj.CFrame), size = obj.Size }
@@ -145,7 +149,13 @@ connection = Movement.MouseDrag:Connect(function(newCF)
 		if part and part.Parent then
 			local finalCF = snappedPivot * offset.pos
 			local o = part.Orientation
-			part.CFrame = finalCF * CFrame.Angles(math.rad(o.X), math.rad(o.Y), math.rad(o.Z))
+			local res: CFrame = finalCF * CFrame.Angles(math.rad(o.X), math.rad(o.Y), math.rad(o.Z))
+			if part.Position then
+				part.Position = res.Position
+			end
+			if part.CFrame then
+				part.CFrame = res
+			end
 		end
 	end
 end)
@@ -172,7 +182,7 @@ Selection.SelectionAdded:Connect(function(selected)
 	MoveOffsets = {}
 
 	if selected then
-		if not selected:IsA("Part") then
+		if not isMovable(selected) then
 			return
 		end
 		if handlestype == "MOVEMENT" then
@@ -210,7 +220,7 @@ renderer.Pool.new("gizmo", function()
 	local selected = Selection:Get()[1]
 
 	if selected then
-		if not selected:IsA("Part") and not selected:IsA("MeshPart") then
+		if not isMovable(selected) then
 			return
 		end
 
@@ -318,7 +328,7 @@ NewCategoryToolbar:Fire("Tools", {
 			hoverTransparency = 0.5,
 			hoverColor = Color3.new(0, 0, 0),
 			roundness = 0.2,
-			texture = KinemiumIconLoader.ToTexture("src/assets/images/icons/vanilla3/general/32x/200/Move.png"),
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Move.svg"),
 		},
 		{
 			type = "ImageButton",
@@ -330,7 +340,7 @@ NewCategoryToolbar:Fire("Tools", {
 			text = "Rotate",
 			hoverColor = Color3.new(0, 0, 0),
 			roundness = 0.2,
-			texture = KinemiumIconLoader.ToTexture("src/assets/images/icons/vanilla3/general/32x/200/Rotate.png"),
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Rotate.svg"),
 		},
 		{
 			type = "ImageButton",
@@ -341,7 +351,7 @@ NewCategoryToolbar:Fire("Tools", {
 			hoverTransparency = 0.5,
 			hoverColor = Color3.new(0, 0, 0),
 			roundness = 0.2,
-			texture = KinemiumIconLoader.ToTexture("src/assets/images/icons/vanilla3/general/32x/200/Scale.png"),
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Size.svg"),
 		},
 		{
 			type = "Separator",
@@ -353,13 +363,16 @@ NewCategoryToolbar:Fire("Tools", {
 				local x, y = data.x, data.y
 				local width, height = data.width, data.height + 25
 
-				local textboxHeight = (height / 2)
-
-				local textboxY = y + height - textboxHeight
-
 				lib.DrawRectangle(x, y, width, height, raylib.const.WHITE)
-				gridInput:drawWithExtras(x, textboxY, width, textboxHeight)
-				rotateGrid:drawWithExtras(x + width + 10, textboxY, width, textboxHeight)
+
+				local textboxWidth = 60 -- small width for numbers
+				local textboxHeight = height -- keep full rectangle height
+				local textboxX = x + width - textboxWidth - 10 -- right edge with 10px padding
+				local textboxY = y -- top aligned
+
+				-- both textboxes occupy the same vertical space
+				gridInput:drawWithExtras(textboxX, textboxY, textboxWidth, textboxHeight)
+				rotateGrid:drawWithExtras(textboxX + textboxWidth + 2, textboxY, textboxWidth, textboxHeight)
 			end,
 		},
 	},

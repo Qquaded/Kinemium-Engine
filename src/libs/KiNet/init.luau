@@ -6,6 +6,9 @@ return {
 	Client = require("./KiNet/Client"),
 	Serializer = require("./KiNet/Serializer"),
 
+	TCPServer = require("./KiNet/TCPServer"),
+	TCPClient = require("./KiNet/TCPClient"),
+
 	ClientType = require("./KiNet/ClientTypes"),
 	ServerType = require("./KiNet/ServerTypes"),
 }

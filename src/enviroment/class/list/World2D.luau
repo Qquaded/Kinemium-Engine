@@ -9,6 +9,12 @@ local propTable = {
 	TimeScale = 1,
 	Paused = false,
 
+	ResetOnSpawn = true,
+	Position = UDim2.new(0, 0, 0, 0),
+	Size = UDim2.new(0, 400, 0, 400),
+	RenderOffset = Vector2.new(0, 0),
+	OverrideScreenSize = false,
+
 	-- simulation
 	FixedDeltaTime = 1 / 60,
 	ElapsedTime = 0,
@@ -73,23 +79,13 @@ return {
 	callback = function(instance, renderer, game)
 		local Box2DService = game.Box2DService
 
-		propTable.render = function(lib, instance, dt, structs)
+		instance.render = function(lib, instance, dt, structs)
 			instance.Size = UDim2.new(0, lib.GetRenderWidth(), 0, lib.GetRenderHeight())
 
-			for _, child in pairs(instance:GetDescendants()) do
-				if renderpool[child.UniqueId] then
-					continue
+			for _, child in pairs(instance:GetChildren()) do
+				if child["render"] then
+					child.render(lib, child, dt, structs, renderer, game)
 				end
-
-				if child.BaseClass == "Kinemium.uimodifier" then
-					continue
-				end
-
-				renderer.AddToGuiRenderingPool(function()
-					return child
-				end, child.render)
-
-				renderpool[child.UniqueId] = true
 			end
 		end
 

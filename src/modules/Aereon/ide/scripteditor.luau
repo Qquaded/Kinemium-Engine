@@ -1652,35 +1652,6 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					autocomplete.indexVariables(editor, game)
 					autocomplete.updateAutocomplete(editor, game)
 				end
-				-- UP/DOWN also moves cursor when autocomplete is visible (not just autocomplete navigation)
-				if raylib.IsKeyPressed(const.KeyboardKey.KEY_UP) == 1 then
-					if altDown then
-						editor:beginTextEdit()
-						editor.text:moveLineUp()
-						editor:endTextEdit()
-						editor._highlightCache = {}
-						editor:updateLSP()
-					else
-						editor.text:moveUp()
-						updateSelection()
-						autocomplete.indexVariables(editor, game)
-						autocomplete.updateAutocomplete(editor, game)
-					end
-				end
-				if raylib.IsKeyPressed(const.KeyboardKey.KEY_DOWN) == 1 then
-					if altDown then
-						editor:beginTextEdit()
-						editor.text:moveLineDown()
-						editor:endTextEdit()
-						editor._highlightCache = {}
-						editor:updateLSP()
-					else
-						editor.text:moveDown()
-						updateSelection()
-						autocomplete.indexVariables(editor, game)
-						autocomplete.updateAutocomplete(editor, game)
-					end
-				end
 			else
 				-- No autocomplete: handle all cursor movement
 				if raylib.IsKeyPressed(const.KeyboardKey.KEY_LEFT) == 1 then

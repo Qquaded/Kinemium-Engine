@@ -6,16 +6,6 @@ local Color3 = require("@Color3")
 local structs = rl.structs
 local const = rl.const
 
-local function Color3ToRaylib(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
 return function(raylib: typeof(rl.lib), theme, aereon, game)
 	local rect = aereon.rect()
 	local TextBox = {}
@@ -306,29 +296,28 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			}
 
 		self.theme = {
-			background = Color3ToRaylib(
-				config.backgroundColor or default_theme.BackgroundColor,
+			background = (config.backgroundColor or default_theme.BackgroundColor):ToRaylib(
 				self.BackgroundTransparency
 			),
-			text = Color3ToRaylib(config.textColor or default_theme.TextColor, 0),
-			placeholder = Color3ToRaylib(config.placeholderColor or default_theme.PlaceholderColor, 0),
-			selection = Color3ToRaylib(config.selectionColor or default_theme.SelectionColor, 0.5),
-			border = Color3ToRaylib(config.borderColor or default_theme.BorderColor, self.BorderTransparency),
-			focusBorder = Color3ToRaylib(config.focusBorderColor or Color3.new(0.4, 0.6, 1), self.BorderTransparency),
-			currentLine = Color3ToRaylib(config.currentLineColor or default_theme.currentLineColor, 0),
-			error = Color3ToRaylib(config.errorColor or default_theme.ErrorColor, 0),
-			matchBracket = Color3ToRaylib(config.matchBracketColor or default_theme.MatchBracketColor, 0.8),
-			searchHighlight = Color3ToRaylib(config.searchHighlightColor or default_theme.SearchHighlightColor, 0.4),
-			gutterBackground = Color3ToRaylib(config.gutterBackgroundColor or Color3.new(0.05, 0.05, 0.05), 0),
-			statusBarBackground = Color3ToRaylib(config.statusBarBackgroundColor or Color3.new(0.05, 0.05, 0.05), 0),
-			popupBackground = Color3ToRaylib(config.popupBackgroundColor or Color3.new(0.1, 0.1, 0.1), 0),
-			shadow = Color3ToRaylib(config.shadowColor or Color3.new(0, 0, 0), self.shadowTransparency),
+			text = (config.textColor or default_theme.TextColor):ToRaylib(0),
+			placeholder = (config.placeholderColor or default_theme.PlaceholderColor):ToRaylib(0),
+			selection = (config.selectionColor or default_theme.SelectionColor):ToRaylib(0.5),
+			border = (config.borderColor or default_theme.BorderColor):ToRaylib(self.BorderTransparency),
+			focusBorder = (config.focusBorderColor or Color3.new(0.4, 0.6, 1)):ToRaylib(self.BorderTransparency),
+			currentLine = (config.currentLineColor or default_theme.currentLineColor):ToRaylib(0),
+			error = (config.errorColor or default_theme.ErrorColor):ToRaylib(0),
+			matchBracket = (config.matchBracketColor or default_theme.MatchBracketColor):ToRaylib(0.8),
+			searchHighlight = (config.searchHighlightColor or default_theme.SearchHighlightColor):ToRaylib(0.4),
+			gutterBackground = (config.gutterBackgroundColor or Color3.new(0.05, 0.05, 0.05)):ToRaylib(0),
+			statusBarBackground = (config.statusBarBackgroundColor or Color3.new(0.05, 0.05, 0.05)):ToRaylib(0),
+			popupBackground = (config.popupBackgroundColor or Color3.new(0.1, 0.1, 0.1)):ToRaylib(0),
+			shadow = (config.shadowColor or Color3.new(0, 0, 0)):ToRaylib(self.shadowTransparency),
 			-- New theme colors
-			hyperlink = Color3ToRaylib(config.hyperlinkColor or Color3.new(0.3, 0.5, 1), 0),
-			scrollbar = Color3ToRaylib(config.scrollbarColor or Color3.new(0.3, 0.3, 0.3), 0),
-			scrollbarHover = Color3ToRaylib(config.scrollbarHoverColor or Color3.new(0.4, 0.4, 0.4), 0),
-			minimapBackground = Color3ToRaylib(config.minimapBackgroundColor or Color3.new(0.05, 0.05, 0.05), 0),
-			minimapSelection = Color3ToRaylib(config.minimapSelectionColor or Color3.new(0.2, 0.4, 0.8), 0.5),
+			hyperlink = (config.hyperlinkColor or Color3.new(0.3, 0.5, 1)):ToRaylib(0),
+			scrollbar = (config.scrollbarColor or Color3.new(0.3, 0.3, 0.3)):ToRaylib(0),
+			scrollbarHover = (config.scrollbarHoverColor or Color3.new(0.4, 0.4, 0.4)):ToRaylib(0),
+			minimapBackground = (config.minimapBackgroundColor or Color3.new(0.05, 0.05, 0.05)):ToRaylib(0),
+			minimapSelection = (config.minimapSelectionColor or Color3.new(0.2, 0.4, 0.8)):ToRaylib(0.5),
 		}
 		self.autocompleteTheme = config.autocompleteTheme or default_theme.autocomplete or {}
 
@@ -1243,7 +1232,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 						itemRect.y,
 						itemRect.width,
 						itemRect.height,
-						Color3ToRaylib(Color3.new(0.2, 0.4, 0.8), 0)
+						Color3.new(0.2, 0.4, 0.8):ToRaylib(0)
 					)
 				end
 
@@ -1258,7 +1247,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 						vector.create(x + menuWidth - 50, itemY + 6),
 						12,
 						1,
-						Color3ToRaylib(Color3.new(0.5, 0.5, 0.5), 0)
+						Color3.new(0.5, 0.5, 0.5):ToRaylib(0)
 					)
 				end
 			end
@@ -1285,7 +1274,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		local hovered = isMouseInRect(thumbRect, mousePos)
 		local thumbColor = (hovered or self.scrollbarState.dragging) and self.theme.scrollbarHover
 			or self.theme.scrollbar
-		thumbColor = Color3ToRaylib(Color3.new(0.4, 0.4, 0.4), 0)
+		thumbColor = Color3.new(0.4, 0.4, 0.4):ToRaylib(0)
 		raylib.DrawRectangleRounded(structs.Rectangle:new(thumbRect), 0.3, 4, thumbColor)
 
 		-- Handle scrollbar interaction
@@ -1350,7 +1339,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 						vector.create(minimapX + 2, lineY),
 						6,
 						0,
-						Color3ToRaylib(Color3.new(0.4, 0.4, 0.4), 0)
+						Color3.new(0.4, 0.4, 0.4):ToRaylib(0)
 					)
 				end
 			end
@@ -1387,14 +1376,11 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		if self.focusRingAnim.progress > 0.01 then
 			-- Draw animated border
 			local inset = 2
-			local ringColor = Color3ToRaylib(
-				Color3.new(
-					0.4 + 0.2 * self.focusRingAnim.progress,
-					0.6 + 0.2 * self.focusRingAnim.progress,
-					1.0 * self.focusRingAnim.progress
-				),
-				0
-			)
+			local ringColor = Color3.new(
+				0.4 + 0.2 * self.focusRingAnim.progress,
+				0.6 + 0.2 * self.focusRingAnim.progress,
+				1.0 * self.focusRingAnim.progress
+			):ToRaylib(0)
 			if self.cornerRadius > 0 then
 				raylib.DrawRectangleRoundedLinesEx(
 					structs.Rectangle:new({
@@ -1545,11 +1531,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				width = width,
 				height = height,
 			})
-			if useRounded then
-				raylib.DrawRectangleRounded(shadowRect, self.cornerRadius, self.cornerSegments, self.theme.shadow)
-			else
-				raylib.DrawRectangle(shadowRect.x, shadowRect.y, shadowRect.width, shadowRect.height, self.theme.shadow)
-			end
+			raylib.DrawRectangleRounded(shadowRect, self.cornerRadius, self.cornerSegments, self.theme.shadow)
 		end
 		if useRounded then
 			raylib.DrawRectangleRounded(boxRect, self.cornerRadius, self.cornerSegments, self.theme.background)
@@ -1631,7 +1613,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 						+ measureTextWidth(line:sub(1, res.col + res.length - 1), self.fontSize, spacing)
 
 					local isCurrent = (idx == self.search.currentIndex)
-					local color = isCurrent and Color3ToRaylib(Color3.new(1, 0.5, 0), 0.4) or self.theme.searchHighlight
+					local color = isCurrent and Color3.new(1, 0.5, 0):ToRaylib(0.4) or self.theme.searchHighlight
 					raylib.DrawRectangle(x1, ly, x2 - x1, lineHeight, color)
 				end
 			end
@@ -1702,7 +1684,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					local lineNumberText = tostring(i)
 					local lineNumColor = self.TextColor
 						or (i == self.buffer.cursor.line and self.isFocused) and self.theme.text
-						or Color3ToRaylib(Color3.new(0.5, 0.5, 0.5), 0)
+						or Color3.new(0.5, 0.5, 0.5):ToRaylib(0)
 					raylib.DrawTextEx(
 						vend,
 						lineNumberText,
@@ -1805,7 +1787,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					vector.create(x + 8, sbY + 5),
 					12,
 					1,
-					Color3ToRaylib(Color3.new(0.7, 0.7, 0.7), 0)
+					Color3.new(0.7, 0.7, 0.7):ToRaylib(0)
 				)
 			end
 		end
@@ -1839,7 +1821,9 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					self.autocompleteTheme,
 					rect,
 					raylib,
-					Color3ToRaylib,
+					function(c, t)
+						return c:ToRaylib(t)
+					end,
 					vend,
 					spacing,
 					self.TextColor or self.theme.text,
@@ -1923,13 +1907,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					local itemText = getAutocompleteItemText(item) or ""
 
 					if i == self.autocomplete.selectedIndex then
-						raylib.DrawRectangle(
-							acX,
-							itemY,
-							acWidth,
-							acItemHeight,
-							Color3ToRaylib(Color3.new(0.2, 0.4, 0.8), 0)
-						)
+						raylib.DrawRectangle(acX, itemY, acWidth, acItemHeight, Color3.new(0.2, 0.4, 0.8):ToRaylib(0))
 					end
 
 					raylib.DrawTextEx(vend, itemText, vector.create(acX + 5, itemY + 4), 14, 1, self.theme.text)
@@ -1981,7 +1959,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					vector.create(boxX + boxW - 50, boxY + 12),
 					14,
 					1,
-					Color3ToRaylib(Color3.new(0.7, 0.7, 0.7), 0)
+					Color3.new(0.7, 0.7, 0.7):ToRaylib(0)
 				)
 			end
 
@@ -2709,7 +2687,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					vector.create(x, y),
 					self.fontSize - 2,
 					1,
-					Color3ToRaylib(Color3.new(0.7, 0.7, 0.7), 0)
+					Color3.new(0.7, 0.7, 0.7):ToRaylib(0)
 				)
 				actualTextboxY = y + self.fontSize + self.labelGap
 				actualTextboxHeight = height - self.fontSize - self.labelGap
@@ -2720,7 +2698,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					vector.create(x, y + (height / 2) - (self.fontSize / 2)),
 					self.fontSize - 2,
 					1,
-					Color3ToRaylib(Color3.new(0.7, 0.7, 0.7), 0)
+					Color3.new(0.7, 0.7, 0.7):ToRaylib(0)
 				)
 				actualTextboxX = x + self.labelWidth + self.labelGap
 				actualTextboxWidth = width - self.labelWidth - self.labelGap
@@ -2786,7 +2764,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				vector.create(prefixX, posY),
 				self.fontSize - 2,
 				1,
-				Color3ToRaylib(Color3.new(0.6, 0.6, 0.6), 0)
+				Color3.new(0.6, 0.6, 0.6):ToRaylib(0)
 			)
 			raylib.DrawRectangleLines(prefixX, posY, width, height, self.labelOutlineColor:ToRaylib(0))
 		end
@@ -2800,7 +2778,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				vector.create(suffixX, actualTextboxY + (actualTextboxHeight / 2) - (self.fontSize / 2)),
 				self.fontSize - 2,
 				1,
-				Color3ToRaylib(Color3.new(0.6, 0.6, 0.6), 0)
+				Color3.new(0.6, 0.6, 0.6):ToRaylib(0)
 			)
 		end
 
@@ -2820,8 +2798,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				actualTextboxY,
 				btnW,
 				btnH,
-				upHovered and Color3ToRaylib(Color3.new(0.15, 0.15, 0.15), 0)
-					or Color3ToRaylib(Color3.new(0.1, 0.1, 0.1), 0)
+				upHovered and Color3.new(0.15, 0.15, 0.15):ToRaylib(0) or Color3.new(0.1, 0.1, 0.1):ToRaylib(0)
 			)
 			raylib.DrawRectangleLines(btnX, actualTextboxY, btnW, btnH, self.theme.border)
 			raylib.DrawTextEx(vend, "+", vector.create(btnX + 4, actualTextboxY + 2), 10, 1, self.theme.text)
@@ -2840,8 +2817,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				actualTextboxY + btnH,
 				btnW,
 				btnH,
-				downHovered and Color3ToRaylib(Color3.new(0.15, 0.15, 0.15), 0)
-					or Color3ToRaylib(Color3.new(0.1, 0.1, 0.1), 0)
+				downHovered and Color3.new(0.15, 0.15, 0.15):ToRaylib(0) or Color3.new(0.1, 0.1, 0.1):ToRaylib(0)
 			)
 			raylib.DrawRectangleLines(btnX, actualTextboxY + btnH, btnW, btnH, self.theme.border)
 			raylib.DrawTextEx(vend, "-", vector.create(btnX + 4, actualTextboxY + btnH + 2), 10, 1, self.theme.text)
@@ -2854,9 +2830,9 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 
 		-- Draw slider
 		if self.slider then
-			local trackColor = Color3ToRaylib(Color3.new(0.2, 0.2, 0.2), 0)
-			local thumbColor = Color3ToRaylib(Color3.new(0.4, 0.6, 1), 0)
-			local thumbHoverColor = Color3ToRaylib(Color3.new(0.5, 0.7, 1), 0)
+			local trackColor = Color3.new(0.2, 0.2, 0.2):ToRaylib(0)
+			local thumbColor = Color3.new(0.4, 0.6, 1):ToRaylib(0)
+			local thumbHoverColor = Color3.new(0.5, 0.7, 1):ToRaylib(0)
 
 			if self.sliderPosition == "right" or self.sliderPosition == "left" then
 				-- Vertical slider
@@ -2875,13 +2851,6 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				local mousePos = raylib.GetMousePosition()
 				local thumbRect = { x = thumbX, y = thumbY, width = thumbW, height = thumbH }
 				local thumbHovered = isMouseInRect(thumbRect, mousePos)
-
-				raylib.DrawCircle(
-					thumbX + 6,
-					thumbY + 6,
-					6,
-					thumbHovered or self.sliderDragging and thumbHoverColor or thumbColor
-				)
 
 				-- Handle slider interaction
 				local sliderRect = { x = sliderX, y = sliderY, width = sliderW, height = sliderH }
@@ -2963,7 +2932,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				vector.create(labelX, actualTextboxY + (actualTextboxHeight / 2) - (self.fontSize / 2)),
 				self.fontSize - 2,
 				1,
-				Color3ToRaylib(Color3.new(0.7, 0.7, 0.7), 0)
+				Color3.new(0.7, 0.7, 0.7):ToRaylib(0)
 			)
 		end
 	end

@@ -2,7 +2,7 @@
 --!optimize 2
 -- Made by FFIGen (Kinemium)
 
-local dll = "./src/external/bgfx/bin/"
+local dll = "./"
 local ffi = zune.ffi
 local platform = zune.platform
 
@@ -12,17 +12,17 @@ local constants = require("./constants")
 
 local libname
 if platform.os == "windows" then
-	libname = "bgfx.dll"
+	libname = "manifold.dll"
 elseif platform.os == "linux" then
-	libname = "bgfx.so"
+	libname = "manifold.so"
 elseif platform.os == "macos" then
-	libname = "bgfx.dylib"
+	libname = "manifold.dylib"
 end
 
-local bgfx: funcs.Fns = ffi.dlopen(dll .. libname, funcs)
+local manifold: funcs.Fns = ffi.dlopen(dll .. libname, funcs)
 
 return {
-	lib = bgfx,
+	lib = manifold,
 	structs = structs,
 	constants = constants,
 }
