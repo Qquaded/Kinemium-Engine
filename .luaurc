@@ -10,7 +10,7 @@
         "UDim": "./src/enviroment/datatypes/UDim",
         "FileWalker": "./src/modules/filewalker",
         "dllLib": "./src/libs/dllLib",
-        "Navmesh": "./src/libs/navmesh",
+        "Navmesh": "./src/libs/NavMesh",
         "ColorSequenceKeypoint": "./src/enviroment/datatypes/ColorSequenceKeypoint",
         "ColorSequence": "./src/enviroment/datatypes/ColorSequence",
         "NumberRange": "./src/enviroment/datatypes/NumberRange",
