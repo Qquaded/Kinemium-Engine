@@ -29,9 +29,11 @@ local function libPath(name: string): string
 	return dll .. name
 end
 
-ffi.dlopen(libPath("abseil_dll." .. ffi.suffix), {})
-ffi.dlopen(libPath("libprotobuf." .. ffi.suffix), {})
-ffi.dlopen(libPath("libcrypto-3-x64." .. ffi.suffix), {})
+if platform.os == "windows" then 
+	ffi.dlopen(libPath("abseil_dll." .. ffi.suffix), {})
+	ffi.dlopen(libPath("libprotobuf." .. ffi.suffix), {})
+	ffi.dlopen(libPath("libcrypto-3-x64." .. ffi.suffix), {})
+end
 
 local gns: funcs.Fns = ffi.dlopen(libPath(libname), funcs)
 
