@@ -65,18 +65,8 @@ or connected to Roblox Corporation. Roblox is a trademark of Roblox Corporation
 - KinemiumShaderService
 
 # That's cool.. But how do I use this?
-Fortunately theres a tutorial:
-
-- Clone the repo:
-```git clone --depth 1 https://github.com/Qquaded/Kinemium-Engine.git```
-
-- Get zune *(skip this step if you have it already installed.)*<br>
-https://zune.sh/guides/install
-
-- Run the engine<br>
-```zune run engine```<br>
-*This tutorial works with both Linux and Windows, MacOS support is coming soon.*
-
+You can check out the guide here:
+https://kinemiumengine.discourse.group/t/guide-to-running-kinemium-engine/25
 # Commands
 Kinemium provides with several flags you can run with ```zune run game```<br>
 - headless (lets you run the engine without graphics)<br>
