@@ -797,7 +797,7 @@ function Client.init(context)
 		local ok, deserialized = pcall(serializationService.Deserialize, serializedBuffer)
 		local deserTime = os.clock() - deserStart
 		if not ok or not deserialized then
-			warn(`[Replicator][Client] handleCreate: failed to deserialize batch — {deserialized}`)
+			warn(`[Replicator][Client] handleCreate: failed to deserialize batch  {deserialized}`)
 			return
 		end
 		if DEBUG_CREATE_TRACE then
@@ -820,7 +820,7 @@ function Client.init(context)
 
 		if duplicateCount > 0 then
 			warn(
-				`[Replicator][Client] Received duplicate Create message with {duplicateCount}/{#deserialized} already-created objects — rejecting duplicates`
+				`[Replicator][Client] Received duplicate Create message with {duplicateCount}/{#deserialized} already-created objects  rejecting duplicates`
 			)
 		end
 
@@ -971,7 +971,7 @@ function Client.init(context)
 
 		if DEBUG_CREATE_TRACE then
 			print(
-				`[Replicator][Client] handleCreate: classification done — deferred={#deferred}, skipped={skippedCount}, players={playerCount}, singletons={singletonCount}, trees={treeCount}`
+				`[Replicator][Client] handleCreate: classification done  deferred={#deferred}, skipped={skippedCount}, players={playerCount}, singletons={singletonCount}, trees={treeCount}`
 			)
 		end
 
@@ -1082,7 +1082,7 @@ function Client.init(context)
 		local totalTime = os.clock() - processStart
 		if DEBUG_CREATE_TRACE or totalTime > 0.1 or deserTime > 0.1 then
 			print(
-				`[Replicator][Client] handleCreate: COMPLETE in {string.format("%.1f", totalTime * 1000)}ms — {#deferred} objects parented`
+				`[Replicator][Client] handleCreate: COMPLETE in {string.format("%.1f", totalTime * 1000)}ms  {#deferred} objects parented`
 			)
 		end
 	end

@@ -65,42 +65,54 @@ end
 
 function Writer:u8(v: number)
 	local off = self.offset
-	if off + 1 > self.size then self:_ensure(1) end
+	if off + 1 > self.size then
+		self:_ensure(1)
+	end
 	buf_writeu8(self.buf, off, v)
 	self.offset = off + 1
 end
 
 function Writer:u16(v: number)
 	local off = self.offset
-	if off + 2 > self.size then self:_ensure(2) end
+	if off + 2 > self.size then
+		self:_ensure(2)
+	end
 	buf_writeu16(self.buf, off, v)
 	self.offset = off + 2
 end
 
 function Writer:u32(v: number)
 	local off = self.offset
-	if off + 4 > self.size then self:_ensure(4) end
+	if off + 4 > self.size then
+		self:_ensure(4)
+	end
 	buf_writeu32(self.buf, off, v)
 	self.offset = off + 4
 end
 
 function Writer:f64(v: number)
 	local off = self.offset
-	if off + 8 > self.size then self:_ensure(8) end
+	if off + 8 > self.size then
+		self:_ensure(8)
+	end
 	buf_writef64(self.buf, off, v)
 	self.offset = off + 8
 end
 
 function Writer:str(v: string)
 	local len = #v
-	if self.offset + len > self.size then self:_ensure(len) end
+	if self.offset + len > self.size then
+		self:_ensure(len)
+	end
 	buf_writestring(self.buf, self.offset, v)
 	self.offset += len
 end
 
 function Writer:bytes(v: buffer)
 	local len = buf_len(v)
-	if self.offset + len > self.size then self:_ensure(len) end
+	if self.offset + len > self.size then
+		self:_ensure(len)
+	end
 	buf_copy(self.buf, self.offset, v, 0, len)
 	self.offset += len
 end
@@ -209,7 +221,7 @@ encodeValue = function(w: typeof(Writer.new()), value: any, seen: { [any]: boole
 		for i = 1, hashCount do
 			local k = hashKeys[i]
 			local v = value[k]
-			-- Encode key-value directly without pcall — invalid types
+			-- Encode key-value directly without pcall  invalid types
 			-- will simply emit TAG_NIL which is harmless. The pcall per
 			-- pair was the single largest overhead in the encoder.
 			local savedOffset = w.offset

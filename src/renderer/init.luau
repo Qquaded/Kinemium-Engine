@@ -1010,6 +1010,12 @@ function KiRend.new(config: KiRendConf)
 		renderer_mousedata.mouse_wheel_delta = lib.GetMouseDelta()
 		renderer_mousedata.is_cursor_hidden = lib.IsCursorHidden() == 1
 		renderer_mousedata.is_cursor_inbounds = lib.IsCursorOnScreen() == 1
+		renderer_mousedata.Button1IsDown = lib.IsMouseButtonDown(0) == 1
+		renderer_mousedata.Button1Down = lib.IsMouseButtonPressed(0) == 1
+		renderer_mousedata.Button1Released = lib.IsMouseButtonReleased(0) == 1
+		renderer_mousedata.Button2IsDown = lib.IsMouseButtonDown(1) == 1
+		renderer_mousedata.Button2Down = lib.IsMouseButtonPressed(1) == 1
+		renderer_mousedata.Button2Released = lib.IsMouseButtonReleased(1) == 1
 		renderer_eventbus:Fire("MouseData", renderer_mousedata)
 
 		local delta = lib.GetFrameTime()

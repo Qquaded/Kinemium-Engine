@@ -452,6 +452,36 @@ renderer.Pool.new("gizmo", function()
 			if not Movement.Transform then
 				return
 			end
+			local newCF = CFrame.new(snapVec3(Movement.Transform.Position))
+			if selected:IsA("BasePart") then
+				selected.CFrame = newCF
+			elseif selected:IsA("Model") then
+				selected:PivotTo(newCF)
+			end
+		end
+
+		if handlestype == "ROTATE" then
+			if not Rotation.Transform then
+				return
+			end
+
+			local pos = Rotation.Transform.Position
+
+			local x, y, z = Rotation.Transform:ToOrientation()
+
+			local snap = math.rad(15) -- 15 degree snapping
+
+			x = math.round(x / snap) * snap
+			y = math.round(y / snap) * snap
+			z = math.round(z / snap) * snap
+
+			local newCF = CFrame.new(pos) * CFrame.fromOrientation(x, y, z)
+
+			if selected:IsA("BasePart") then
+				selected.CFrame = newCF
+			elseif selected:IsA("Model") then
+				selected:PivotTo(newCF)
+			end
 		end
 
 		if lib.IsKeyDown(const.KeyboardKey.KEY_F) == 1 then

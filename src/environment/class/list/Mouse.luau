@@ -1,6 +1,7 @@
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")
+local Ray = require("@Ray")
 local signal = require("@Kinemium.signal")
 
 local function RayIntersectOBB(ox, oy, oz, dx, dy, dz, part)
@@ -154,10 +155,22 @@ local propTable = {
 	end,
 
 	Raycast = function(mouse, distance)
-		return nil
+		local unitRay = mouse.UnitRay
+		local workspace = mouse._workspace
+		if not unitRay or not workspace or not workspace.Raycast then
+			return nil
+		end
+
+		local rayDistance = distance or 1000
+		return workspace:Raycast(unitRay.Origin, unitRay.Direction:Unit() * rayDistance)
 	end,
 
 	IsButtonDown = function(mouse, button)
+		if button == Enum.MouseButton.Left or button == Enum.MouseButton.MouseButton1 then
+			return mouse._button1Down == true
+		elseif button == Enum.MouseButton.Right or button == Enum.MouseButton.MouseButton2 then
+			return mouse._button2Down == true
+		end
 		return false
 	end,
 
@@ -195,6 +208,7 @@ return {
 	non_creatable = true,
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
+		instance._workspace = game and game.Workspace
 
 		instance.Changed:Connect(function(property, value)
 			if property == "Icon" then
@@ -237,6 +251,8 @@ return {
 						rayInfo.direction.X or rayInfo.direction.x,
 						rayInfo.direction.Y or rayInfo.direction.y,
 						rayInfo.direction.Z or rayInfo.direction.z
+
+					instance.UnitRay = Ray.new(Vector3.new(ox, oy, oz), Vector3.new(dx, dy, dz))
 
 					local parts = Workspace:Get3DObjects()
 					for _, part in ipairs(parts) do
@@ -368,6 +384,8 @@ return {
 				instance.Hit = bestPoint and CFrame.new(bestPoint) or nil
 				instance.hit = instance.Hit
 				instance.TargetSurface = bestNormal
+				instance._button1Down = data.Button1IsDown == true
+				instance._button2Down = data.Button2IsDown == true
 
 				if mouse_wheel_move then
 					Move:Fire()

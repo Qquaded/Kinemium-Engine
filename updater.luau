@@ -216,7 +216,7 @@ local function action_update(branch, dry_run)
 	-- Check for uncommitted changes
 	local status = git_run({ "status", "--porcelain" })
 	if status.stdout and status.stdout:match("%S") then
-		log_warn("Uncommitted local changes detected — these will be preserved (untracked files safe).")
+		log_warn("Uncommitted local changes detected  these will be preserved (untracked files safe).")
 	end
 
 	-- Fetch and compare
@@ -342,7 +342,7 @@ end
 
 -- Dry-run banner
 if opts.dry_run then
-	writeln(colored(c.yellow, "  ⚠  DRY-RUN MODE — no changes will be made\n"))
+	writeln(colored(c.yellow, "  ⚠  DRY-RUN MODE  no changes will be made\n"))
 end
 
 -- Status shortcut
@@ -375,7 +375,7 @@ local repo_exists = fs.stat(REPO_DIR).kind ~= "none"
 
 if opts.action == "clone" or not repo_exists then
 	if repo_exists and opts.action ~= "clone" then
-		-- Directory exists but no .git — warn
+		-- Directory exists but no .git  warn
 		log_warn(REPO_DIR .. " already exists but may not be a git repo.")
 	end
 	if not opts.yes then

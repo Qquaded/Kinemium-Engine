@@ -958,7 +958,7 @@ return function(objects, data)
 				config.subtextColor
 			)
 			drawText(
-				"—",
+				"",
 				rightHeaderRect.x + config.padding,
 				rightHeaderRect.y + 24,
 				config.headerFontSize,

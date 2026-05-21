@@ -921,7 +921,7 @@ return function(objects, data)
 
 		--
 
-		-- BODY — scroll on wheel when mouse over main panel
+		-- BODY  scroll on wheel when mouse over main panel
 
 		--
 

@@ -22,6 +22,10 @@ TextLabel.AnchorPoint = Vector2.new(0.5, 1)
 TextLabel.Visible = false
 TextLabel.Parent = Gui
 
+repeat
+	task.wait()
+until NetworkService.Disconnected
+
 NetworkService.Disconnected:Connect(function(reason)
 	TextLabel.Visible = true
 	TextLabel.Text = `Disconnected from server. Reason: {reason}`

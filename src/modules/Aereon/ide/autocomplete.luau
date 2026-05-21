@@ -43,44 +43,119 @@ end
 
 local function indexVariables(editor, game)
 	dynamicVariables = {}
-	for _, line in ipairs(editor.text.lines) do
-		-- Match local X = game:GetService("Y")
-		local varName, serviceName =
-			line:match("local%s+([%w_]+)%s*=%s*game:GetService%s*%(%s*[\"']([^\"']+)[\"']%s*%)")
-		if varName and serviceName then
-			local success, service = pcall(function()
-				return game:GetService(serviceName)
-			end)
-			if success and service then
-				dynamicVariables[varName] = {
-					type = "service",
-					name = serviceName,
-					members = getObjectMembers(service),
-				}
-			end
-		end
+	
+	local src = editor.text:getContent()
+	local zune = require("@zune")
+	local success, ast = pcall(function()
+		return zune.luau.parse(src)
+	end)
+	
+	if not success or not ast or not ast.root then
+		return
+	end
 
-		-- Match local X = require(path/instance)
-		local varName2, requirePath = line:match("local%s+([%w_]+)%s*=%s*require%s*%(%s*[\"']([^\"']+)[\"']%s*%)")
-		if varName2 and requirePath then
-			local success, lib = pcall(function()
-				return require(requirePath)
-			end)
-			if success and lib then
-				dynamicVariables[varName2] = {
-					type = "library",
-					name = requirePath,
-					members = getObjectMembers(lib),
-				}
+	local function walkBlock(block)
+		if block.tag == "block" and block.statements then
+			for _, stmt in ipairs(block.statements) do
+				if stmt.tag == "local" or stmt.tag == "assign" then
+					local vars = stmt.variables
+					local vals = stmt.values
+					if vars and vals then
+						for i, varContainer in ipairs(vars) do
+							local valContainer = vals[i]
+							if varContainer.node and valContainer and valContainer.node then
+								local varName
+								if stmt.tag == "local" then
+									varName = varContainer.node.name and varContainer.node.name.text
+								elseif stmt.tag == "assign" then
+									if varContainer.node.tag == "global" or varContainer.node.tag == "local" then
+										varName = varContainer.node.name and varContainer.node.name.text
+									end
+								end
+								
+								if varName then
+									local val = valContainer.node
+									if val.tag == "call" and val.func then
+										local func = val.func
+										if func.tag == "indexname" then
+											local expr = func.expression
+											local index = func.index and func.index.text
+											if expr and expr.tag == "global" then
+												local globalName = expr.name and expr.name.text
+												
+												if globalName == "Instance" and index == "new" then
+													local arg = val.arguments and val.arguments[1] and val.arguments[1].node
+													if arg and arg.tag == "string" then
+														local pcallSuccess, inst = pcall(function() return Instance.new(arg.text) end)
+														if pcallSuccess and inst then
+															dynamicVariables[varName] = {
+																type = "instance",
+																name = arg.text,
+																members = getObjectMembers(inst),
+															}
+														end
+													end
+												elseif globalName == "game" and index == "GetService" then
+													local arg = val.arguments and val.arguments[1] and val.arguments[1].node
+													if arg and arg.tag == "string" then
+														local pcallSuccess, service = pcall(function() return game:GetService(arg.text) end)
+														if pcallSuccess and service then
+															dynamicVariables[varName] = {
+																type = "service",
+																name = arg.text,
+																members = getObjectMembers(service),
+															}
+														end
+													end
+												end
+											end
+										elseif func.tag == "global" and func.name and func.name.text == "require" then
+											local arg = val.arguments and val.arguments[1] and val.arguments[1].node
+											if arg and arg.tag == "string" then
+												local pcallSuccess, lib = pcall(function() return require(arg.text) end)
+												if pcallSuccess and lib then
+													dynamicVariables[varName] = {
+														type = "library",
+														name = arg.text,
+														members = getObjectMembers(lib),
+													}
+												end
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
 			end
 		end
 	end
+	
+	local function walk(node)
+		if type(node) ~= "table" then return end
+		if node.tag == "block" then
+			walkBlock(node)
+		end
+		
+		for k, v in pairs(node) do
+			if type(v) == "table" and k ~= "location" and k ~= "position" then
+				walk(v)
+			end
+		end
+	end
+	walk(ast.root)
 end
 
 local function getCurrentWord(editor)
 	local c = editor.text.cursor
 	local line = editor.text.lines[c.line] or ""
 	local beforeCursor = line:sub(1, c.col - 1)
+
+	local instanceClass = beforeCursor:match("Instance%.new%s*%(%s*[\"']([%w_]*)$")
+	if instanceClass then
+		return instanceClass, "Instance.new", true
+	end
 
 	-- Check for member access (e.g., math.)
 	local library, memberPart = beforeCursor:match("([%w_]+)%.([%w_]*)$")
@@ -131,19 +206,30 @@ local function updateAutocomplete(editor, game)
 	end
 
 	if isMember then
-		-- Search for the library in completions
-		local libraryItem
-		for _, item in ipairs(completions) do
-			if item.label == libraryName then
-				libraryItem = item
-				break
+		if libraryName == "Instance.new" then
+			for _, item in ipairs(completions) do
+				if item.type == "class" then
+					if item.label:lower():sub(1, #word) == word:lower() and not seen[item.label] then
+						table.insert(items, item)
+						seen[item.label] = true
+					end
+				end
 			end
-		end
+		else
+			-- Search for the library in completions
+			local libraryItem
+			for _, item in ipairs(completions) do
+				if item.label == libraryName then
+					libraryItem = item
+					break
+				end
+			end
 
-		if libraryItem and libraryItem.members then
-			addIfMatch(libraryItem.members)
-		elseif dynamicVariables[libraryName] then
-			addIfMatch(dynamicVariables[libraryName].members)
+			if libraryItem and libraryItem.members then
+				addIfMatch(libraryItem.members)
+			elseif dynamicVariables[libraryName] then
+				addIfMatch(dynamicVariables[libraryName].members)
+			end
 		end
 	else
 		addIfMatch(completions)

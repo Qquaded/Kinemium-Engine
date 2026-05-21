@@ -141,8 +141,12 @@ repeat
 	task.wait(0.5)
 	local elapsed = os.clock() - waitStart
 	if elapsed > 2 and math.floor(elapsed) % 3 == 0 then
-		print(`[loading_screen] Still waiting for Character... elapsed={string.format("%.1f", elapsed)}s, Character={tostring(player.Character)}`)
+		print(
+			`[loading_screen] Still waiting for Character... elapsed={string.format("%.1f", elapsed)}s, Character={tostring(
+				player.Character
+			)}`
+		)
 	end
 until player.Character
 screenGui:Destroy()
-print(`[loading_screen] finished — Character loaded: {tostring(player.Character)}`)
+print(`[loading_screen] finished  Character loaded: {tostring(player.Character)}`)

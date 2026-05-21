@@ -1005,7 +1005,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 		-- Per-rebuild transform deduplication table.
 		-- Parts that share the exact CFrame (position + rotation) and Size with
-		-- a previously-processed part are completely occluded — skip them to
+		-- a previously-processed part are completely occluded  skip them to
 		-- save draw calls and GPU overdraw. This catches accidentally duplicated
 		-- or layered-but-identical geometry common in imported maps.
 		-- The key encodes position and size to 0.01-stud precision and rotation
@@ -1030,10 +1030,16 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				if qw < 0 then
 					qx, qy, qz, qw = -qx, -qy, -qz, -qw
 				end
-			local f = math.floor
-				local key = string.format("%d,%d,%d,%d,%d,%d",
-					f(pos.X * 10), f(pos.Y * 10), f(pos.Z * 10),
-					f(sz.X * 10), f(sz.Y * 10), f(sz.Z * 10))
+				local f = math.floor
+				local key = string.format(
+					"%d,%d,%d,%d,%d,%d",
+					f(pos.X * 10),
+					f(pos.Y * 10),
+					f(pos.Z * 10),
+					f(sz.X * 10),
+					f(sz.Y * 10),
+					f(sz.Z * 10)
+				)
 				if globalSeenTransforms[key] then
 					rawset(part, "__workspaceDuplicate", true)
 					continue
@@ -1096,7 +1102,9 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				if not batch then
 					local instancedMaterial = nil
 					if customMaterial then
-						local matKey = "custom_" .. tostring(customMaterial) .. (isOpaque and "_opaque" or "_transparent")
+						local matKey = "custom_"
+							.. tostring(customMaterial)
+							.. (isOpaque and "_opaque" or "_transparent")
 						if not instancedMaterialCache[matKey] then
 							local materialBuffer = buffer.create(SIZE_MATERIAL)
 							buffer.copy(materialBuffer, 0, customMaterial, 0, SIZE_MATERIAL)
@@ -1406,7 +1414,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 			-- Whole-chunk LOD fast-skip: if even the largest part in this chunk
 			-- is smaller than the current LOD threshold, nothing here will be
-			-- rendered — skip all inner loops.
+			-- rendered  skip all inner loops.
 			if lodMinSize > 0 and chunk.maxPartSize < lodMinSize then
 				continue
 			end
@@ -1489,6 +1497,9 @@ Workspace.InitRenderer = function(renderer, signal, game)
 						local part = batch.parts[partIndex]
 						if lodMinSize > 0 then
 							local sz = part.Size
+							if not sz then
+								continue
+							end
 							if math.max(sz.X, sz.Y, sz.Z) < lodMinSize then
 								continue
 							end

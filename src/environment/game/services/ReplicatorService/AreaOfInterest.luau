@@ -145,7 +145,7 @@ function AreaOfInterest.IsInRange(session, entityPosition)
 
 	local state = sessionAoI[session.key]
 	if not state or not state.position then
-		-- No position tracked yet — assume everything is relevant
+		-- No position tracked yet  assume everything is relevant
 		return true
 	end
 
@@ -207,7 +207,7 @@ function AreaOfInterest.ShouldReplicateToSession(session, object, getWorldPositi
 	-- Check spatial distance
 	local entityPos = getWorldPosition and getWorldPosition(object) or nil
 	if entityPos == nil then
-		-- No spatial position — treat as global (e.g. a Script, ModuleScript, etc.)
+		-- No spatial position  treat as global (e.g. a Script, ModuleScript, etc.)
 		return true
 	end
 
@@ -225,7 +225,7 @@ function AreaOfInterest.GetRelevantSessions(object, allSessions, getWorldPositio
 
 	local entityPos = getWorldPosition and getWorldPosition(object) or nil
 	if entityPos == nil then
-		-- No position — replicate to everyone
+		-- No position  replicate to everyone
 		return allSessions
 	end
 
@@ -252,7 +252,7 @@ function AreaOfInterest.ShouldReplicateNetId(session, netId, lookup, getWorldPos
 
 	local object = lookup[netId]
 	if not object then
-		return true -- Object not in lookup; might be pending — don't cull
+		return true -- Object not in lookup; might be pending  don't cull
 	end
 
 	return AreaOfInterest.ShouldReplicateToSession(session, object, getWorldPosition, networkOwnership)

@@ -1,0 +1,5 @@
+[projects.chicken]
+path = "./src/projects/chicken"
+name = "chicken"
+engine_version = "1.10.7"
+last_opened = 1779365512

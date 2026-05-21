@@ -66,16 +66,7 @@ function registry.ClassValid(class)
 	end
 end
 
-function registry.GetUnparentedInstances()
-	for _, v in ipairs(created) do
-		if v:IsA("Instance") and v.Parent == nil then
-			return v
-		end
-	end
-	return nil
-end
-
-function registry.new(class, renderer, datamodel, force)
+local function findClass(class)
 	local found
 
 	for _, looped_class in pairs(listOfClasses) do
@@ -86,6 +77,51 @@ function registry.new(class, renderer, datamodel, force)
 		end
 	end
 
+	return found
+end
+
+local function initializeInstance(instance, class, renderer, datamodel, allowReplacement)
+	local found = findClass(class)
+	if not found then
+		return nil, "Class not found: " .. tostring(class)
+	end
+
+	rawset(instance, "_classContext", {
+		renderer = renderer,
+		datamodel = datamodel,
+	})
+
+	local success, result = pcall(function()
+		return found.callback(instance, renderer, datamodel)
+	end)
+	if not success then
+		return nil, result
+	end
+
+	if allowReplacement and result ~= nil and result ~= instance then
+		rawset(result, "_classContext", {
+			renderer = renderer,
+			datamodel = datamodel,
+		})
+		return result
+	end
+
+	table.insert(created, instance)
+	return instance
+end
+
+function registry.GetUnparentedInstances()
+	for _, v in ipairs(created) do
+		if v:IsA("Instance") and v.Parent == nil then
+			return v
+		end
+	end
+	return nil
+end
+
+function registry.new(class, renderer, datamodel, force)
+	local found = findClass(class)
+
 	if not found then
 		return error("Class not found: " .. tostring(class))
 	end
@@ -94,19 +130,30 @@ function registry.new(class, renderer, datamodel, force)
 	end
 
 	local instance = Instance.new(class)
-	local success, result = pcall(function()
-		return found.callback(instance, renderer, datamodel)
-	end)
-	if not success then
-		_G.warn(`CLASS: Failed to create {class}: {result}`)
+	local result, err = initializeInstance(instance, class, renderer, datamodel, true)
+	if not result then
+		_G.warn(`CLASS: Failed to create {class}: {err}`)
+		table.insert(created, instance)
+		return instance
 	end
-	if success and result ~= nil and result ~= instance then
+	if result ~= nil and result ~= instance then
 		-- callback returned an existing singleton instance; do not register the new one
 		return result
 	end
-	table.insert(created, instance)
 	return instance
 end
+
+Instance.SetCloneInitializer(function(source, clone)
+	local context = rawget(source, "_classContext")
+	if not context then
+		return
+	end
+
+	local _, err = initializeInstance(clone, source.ClassName, context.renderer, context.datamodel, false)
+	if err then
+		error(err, 0)
+	end
+end)
 
 function registry.GetActiveInstances()
 	return created

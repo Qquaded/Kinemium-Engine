@@ -29,7 +29,7 @@ local SKIP_PROPS = {
 	tags = true,
 	attributes = true,
 	_childByName = true,
-	-- Humanoid runtime state — contains live Part references that cause
+	-- Humanoid runtime state  contains live Part references that cause
 	-- CyclicReference errors in the thread encoder. These are rebuilt
 	-- on the client via RestoreRig / inferRigDescriptorFromCharacter.
 	RigBindings = true,
@@ -41,7 +41,7 @@ local SKIP_PROPS = {
 	PoseOffsets = true,
 	StateMachine = true,
 	Animator = true,
-	-- Signal objects — runtime only, never serialized
+	-- Signal objects  runtime only, never serialized
 	Died = true,
 	HealthChanged = true,
 	MoveToFinished = true,
@@ -58,7 +58,7 @@ local SKIP_PROPS = {
 	CrouchStarted = true,
 	CrouchEnded = true,
 	Dashed = true,
-	-- Instance signals — runtime only
+	-- Instance signals  runtime only
 	ChildAdded = true,
 	ChildRemoved = true,
 	DescendantAdded = true,
@@ -298,7 +298,7 @@ local function serialize_value(value, visited)
 		if datatype and value ~= datatype and datatype.ToTable then
 			return datatype.ToTable(value), true
 		end
-		-- Unknown typed table — check if we have a deserializer for it
+		-- Unknown typed table  check if we have a deserializer for it
 		if not TYPE_DESERIALIZERS[robloxType] then
 			return nil, false
 		end
@@ -346,7 +346,7 @@ local function serialize_object(object, obj_visited)
 		uid = props.UniqueId,
 	}
 
-	-- Serialize properties — reuse a single visited table, clearing between props
+	-- Serialize properties  reuse a single visited table, clearing between props
 	local visited = sharedVisited
 	local resultProps = result.p
 	for propname, propvalue in pairs(props) do
@@ -387,7 +387,7 @@ local function serialize_object(object, obj_visited)
 
 	local tags = object:GetTags()
 	if #tags > 0 then
-		result.t = tags -- Directly assign — no need to copy one-by-one
+		result.t = tags -- Directly assign  no need to copy one-by-one
 	end
 
 	local children = object:GetChildren()

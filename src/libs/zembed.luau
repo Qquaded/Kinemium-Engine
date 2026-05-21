@@ -5,6 +5,29 @@ local function normalizePath(path: string): string
 	return (path:gsub([[\]], "/"))
 end
 
+local function stripCurrentPrefix(path: string): string
+	return normalizePath(path):gsub("^%./", "")
+end
+
+local function isPathUnder(path: string, base: string): boolean
+	local normalizedPath = stripCurrentPrefix(path)
+	local normalizedBase = stripCurrentPrefix(base):gsub("/+$", "")
+
+	return normalizedPath == normalizedBase or normalizedPath:sub(1, #normalizedBase + 1) == normalizedBase .. "/"
+end
+
+local function getEmbeddedUnder(entries: { string }, base: string): { string }
+	local results = {}
+
+	for _, entry in entries do
+		if isPathUnder(entry, base) then
+			table.insert(results, entry)
+		end
+	end
+
+	return results
+end
+
 local function isAbsolutePath(path: string): boolean
 	return path:match("^%a:[/\\]") ~= nil or path:sub(1, 1) == "/" or path:sub(1, 2) == [[\\]]
 end
@@ -66,6 +89,14 @@ end
 
 function lib.GetEmbeddedFiles()
 	return fs.embeddedFiles()
+end
+
+function lib.GetScriptsUnder(path: string): { string }
+	return getEmbeddedUnder(lib.GetEmbeddedScripts(), path)
+end
+
+function lib.GetFilesUnder(path: string): { string }
+	return getEmbeddedUnder(lib.GetEmbeddedFiles(), path)
 end
 
 function lib.GetScriptsThatHas(str)

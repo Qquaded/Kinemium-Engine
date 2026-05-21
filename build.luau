@@ -8,16 +8,36 @@ local root = zjoin("src")
 local entry = zjoin(root, "main.luau")
 
 local bin = zjoin("build")
+local sandboxEmbedRoot = zjoin(bin, ".embedded", root, "sandboxed")
+local sandboxEmbedGlob = zjoin(sandboxEmbedRoot, "**")
 
-local include = {
-	zjoin(root, "**", "*.luau*"),
-}
+local function normalizePath(path: string): string
+	return (path:gsub([[\]], "/"))
+end
+
+local function collectScriptIncludes(path: string, includes: { string })
+	if normalizePath(path) == "src/sandboxed" then
+		return
+	end
+
+	for _, entry in pairs(zune.fs.entries(path)) do
+		local entryPath = zjoin(path, entry.name)
+		if entry.kind == "directory" then
+			collectScriptIncludes(entryPath, includes)
+		elseif entry.kind == "file" and (entry.name:match("%.luau$") or entry.name:match("%.lua$")) then
+			table.insert(includes, entryPath)
+		end
+	end
+end
+
+local include = {}
+collectScriptIncludes(root, include)
 
 local assets = {
 	zjoin("**", ".luaurc"),
 	zjoin(root, "assets", "**"),
 	zjoin(root, "projects.toml"),
-	zjoin(root, "sandboxed", "**"),
+	sandboxEmbedGlob,
 }
 
 local function flagExists(flag: string)
@@ -31,6 +51,23 @@ local function flagExists(flag: string)
 end
 
 local ext = ""
+
+local function copySandboxedSources(source: string, target: string)
+	if zune.fs.stat(target).kind ~= "directory" then
+		zune.fs.makeDir(target, true)
+	end
+
+	for _, entry in pairs(zune.fs.entries(source)) do
+		local sourcePath = zjoin(source, entry.name)
+		local targetPath = zjoin(target, entry.name)
+
+		if entry.kind == "directory" then
+			copySandboxedSources(sourcePath, targetPath)
+		elseif entry.kind == "file" then
+			zune.fs.writeFile(targetPath .. ".kinesrc", zune.fs.readFile(sourcePath))
+		end
+	end
+end
 
 local function copyLibraries(ext, bin, path)
 	for _, f in pairs(zune.fs.entries(path)) do
@@ -96,6 +133,7 @@ local function buildExecutable(name, exec_ext, lib_ext)
 	copyLibraries(lib_ext, dir, zpath.join(root, "external"))
 
 	print("Copying assets")
+	copySandboxedSources(zjoin(root, "sandboxed"), sandboxEmbedRoot)
 	zune.fs.copy(zjoin(root, "assets"), zjoin(dir, "assets"), true)
 	table.insert(l_args, "--out=" .. l_exec)
 

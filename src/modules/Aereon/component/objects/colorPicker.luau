@@ -108,10 +108,10 @@ return function(objects, data)
 		local svSize = contentWidth
 		local svRect = rect.new(r.x + padding, r.y + headerHeight + padding, svSize, svSize)
 
-		-- Hue bar — full width, horizontal
+		-- Hue bar  full width, horizontal
 		local hueRect = rect.new(r.x + padding, svRect.y + svRect.height + spacing, contentWidth, barHeight)
 
-		-- Alpha bar — full width, horizontal, below hue
+		-- Alpha bar  full width, horizontal, below hue
 		local alphaRect = rect.new(r.x + padding, hueRect.y + barHeight + spacing, contentWidth, barHeight)
 
 		-- Hex row
@@ -133,11 +133,7 @@ return function(objects, data)
 		)
 
 		-- Header: "Solid" label + close icon placeholder
-		local headerColor = color3.new(0.85, 0.85, 0.87)
 		local mutedColor = color3.new(0.55, 0.55, 0.58)
-
-		drawText(fnt, "Solid", r.x + padding, r.y + 8, fs + 1, headerColor:ToRaylib(0))
-		drawText(fnt, "x", r.x + r.width - padding - 10, r.y + 8, fs + 1, mutedColor:ToRaylib(0))
 
 		-- Handle mouse dragging
 		if mouseDown then
@@ -181,7 +177,7 @@ return function(objects, data)
 			color3.new(1, 1, 1):ToRaylib(0),
 			color3.new(1, 1, 1):ToRaylib(1)
 		)
-		-- Black gradient top→bottom (value) — drawn bottom-bright, top-dark
+		-- Black gradient top→bottom (value)  drawn bottom-bright, top-dark
 		raylib.lib.DrawRectangleGradientV(
 			svRect.x,
 			svRect.y,

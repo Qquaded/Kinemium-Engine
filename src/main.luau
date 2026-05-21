@@ -39,7 +39,7 @@ _G.warn = function(...)
 end
 
 _G.log = function(...)
-	--print("[\x1b[94mLOG\x1b[0m]", ...)
+	print("[\x1b[94mLOG\x1b[0m]", ...)
 end
 
 _G.runtime = function(...)
@@ -169,7 +169,7 @@ elseif FlagExists("server") then
 	_G.IsServer = true
 end
 
-if FlagExists("headless") or FlagExists("cli") or (_G.IsServer and not FlagExists("editor")) then
+if FlagExists("headless") or FlagExists("cli") then
 	_G.IsHeadless = true
 end
 
@@ -253,6 +253,46 @@ renderer:SetProfiler(ENGINE_PROFILER)
 renderer:UseRlCamera(Kinemium_camera._raylibcam)
 
 -- FILE SYSTEM UTILITIES
+local function normalizeScriptPath(path)
+	return (path:gsub([[\]], "/"))
+end
+
+local function isScriptPath(path)
+	return path:match("%.luau$") ~= nil or path:match("%.lua$") ~= nil
+end
+
+local function isUserScriptPath(path)
+	return isScriptPath(path) or path:match("%.cpp$") ~= nil or path:match("%.ts$") ~= nil
+end
+
+local function readBundledScript(path)
+	if zembed.IsEmbedded() then
+		local normalized = normalizeScriptPath(path)
+		local variants = {
+			path,
+			normalized,
+			normalized:gsub("/", [[\]]),
+			"./" .. normalized,
+			[[.\]] .. normalized:gsub("/", [[\]]),
+			"../" .. normalized,
+			[[..\]] .. normalized:gsub("/", [[\]]),
+		}
+
+		for _, variant in ipairs(variants) do
+			local success, data = pcall(zune.fs.embedFile, variant)
+			if success and data then
+				if type(data) == "buffer" then
+					return buffer.tostring(data)
+				end
+				return data
+			end
+		end
+
+		return nil
+	end
+	return zune.fs.readFile(path)
+end
+
 local function loop(base, callback)
 	base = base or "src/sandboxed"
 	filesystem.entryloop(base, function(entry)
@@ -275,24 +315,22 @@ local function loadInternals()
 		return
 	end
 
-	loop(zembed.IsEmbedded() and "../../src/sandboxed/internals" or "src/sandboxed/internals", function(path, entry)
+	local loadedCount = 0
+	loop("src/sandboxed/internals", function(path, entry)
 		if kilang.threads[path] then
 			return
 		end
 
-		local readPath = path
-		if zembed.IsEmbedded() and entry.path then
-			readPath = "../" .. entry.path
-		end
-
-		local code = zune.fs.readFile(readPath)
+		local readPath = zembed.IsEmbedded() and (entry.readPath or entry.path) or path
+		local code = readBundledScript(readPath)
 
 		if not code then
 			warn("Failed to read file: " .. tostring(readPath))
 			return
 		end
 
-		if string.find(path, ".luau") or string.find(path, ".lua") then
+		if isScriptPath(path) then
+			loadedCount += 1
 			task.spawn(function()
 				local threadid, success, result = kilang:execute(code, {
 					SecurityCapabilities = Enum.SecurityCapabilities.Internals,
@@ -303,17 +341,21 @@ local function loadInternals()
 					error(`Error loading internal {threadid}: {tostring(result)}`)
 				end
 			end)
-		elseif string.find(path, ".c") then
+		elseif path:match("%.c$") then
 			iodebug("Found C file!", path)
 			CEnv.runC(code)
 		end
 	end)
+
+	log(string.format("[Internals] Queued %d internal scripts", loadedCount))
 end
 
 -- LOAD USER SCRIPTS
 function Kinemium:run()
-	loop(zembed.IsEmbedded() and "../../src/sandboxed" or "src/sandboxed", function(path, entry)
-		if string.find(path, "internals") or string.find(path, "Core") then
+	local loadedCount = 0
+	loop("src/sandboxed", function(path, entry)
+		local normalizedPath = normalizeScriptPath(path)
+		if normalizedPath:find("src/sandboxed/internals/", 1, true) then
 			return
 		end
 
@@ -321,20 +363,26 @@ function Kinemium:run()
 			return
 		end
 
-		local readPath = path
-		if zembed.IsEmbedded() and entry.path then
-			readPath = entry.path
+		if not isUserScriptPath(path) then
+			return
 		end
 
-		local code = filesystem.read(readPath)
+		local readPath = zembed.IsEmbedded() and (entry.readPath or entry.path) or path
+		local code = readBundledScript(readPath)
+		if not code then
+			warn("Failed to read file: " .. tostring(readPath))
+			return
+		end
+
 		local superset = "kilang"
 
-		if string.find(entry.name, ".cpp") then
+		if entry.name:match("%.cpp$") then
 			superset = "cpp"
-		elseif string.find(entry.name, ".ts") then
+		elseif entry.name:match("%.ts$") then
 			superset = "typescript"
 		end
 
+		loadedCount += 1
 		task.spawn(function()
 			local id, success, result = kilang:execute(code, {
 				superset = superset,
@@ -346,6 +394,8 @@ function Kinemium:run()
 			end
 		end)
 	end)
+
+	log(string.format("[Scripts] Queued %d user scripts", loadedCount))
 end
 
 -- ENGINE SIGNAL HANDLER

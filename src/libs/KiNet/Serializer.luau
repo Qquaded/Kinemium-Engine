@@ -13,22 +13,90 @@ local TYPE_INT = 8
 local MAX_SAFE_INT = 2 ^ 53
 
 local KNOWN_STRINGS = {
-	"cframe", "position", "velocity", "objects", "entries", "updates",
-	"object", "args", "kind", "timestamp", "sessionId", "messageId",
-	"reliable", "type", "NetworkId", "ClassName", "Name", "Parent",
-	"CFrame", "Vector3", "FireClient", "FireAllClients", "FireClients",
-	"Color3", "BrickColor", "Material", "Transparency", "Reflectance",
-	"Size", "SizeOffset", "Position", "Rotation", "Text", "TextColor3",
-	"BackgroundColor3", "BackgroundTransparency", "Visible", "Enabled",
-	"Value", "Anchored", "CanCollide", "Massless", "RootPriority",
-	"State", "WalkSpeed", "JumpPower", "Health", "MaxHealth",
-	"Color", "LightEmission", "LightInfluence", "Texture",
-	"ZOffset", "Rate", "RotSpeed", "Speed", "SpreadAngle", "Acceleration",
-	"EmissionDirection", "Lifetime", "id", "states", "tick", "baseTick",
-	"lastProcessedOwnedStateSequence", "ownerNetId", "linear", "angular",
-	"force", "target", "stance", "state", "sprinting", "crouching",
-	"facingDir", "channel", "payload", "fragment", "fragmentIndex",
-	"totalFragments", "reset", "chunks", "blobFingerprint", "netIds",
+	"cframe",
+	"position",
+	"velocity",
+	"objects",
+	"entries",
+	"updates",
+	"object",
+	"args",
+	"kind",
+	"timestamp",
+	"sessionId",
+	"messageId",
+	"reliable",
+	"type",
+	"NetworkId",
+	"ClassName",
+	"Name",
+	"Parent",
+	"CFrame",
+	"Vector3",
+	"FireClient",
+	"FireAllClients",
+	"FireClients",
+	"Color3",
+	"BrickColor",
+	"Material",
+	"Transparency",
+	"Reflectance",
+	"Size",
+	"SizeOffset",
+	"Position",
+	"Rotation",
+	"Text",
+	"TextColor3",
+	"BackgroundColor3",
+	"BackgroundTransparency",
+	"Visible",
+	"Enabled",
+	"Value",
+	"Anchored",
+	"CanCollide",
+	"Massless",
+	"RootPriority",
+	"State",
+	"WalkSpeed",
+	"JumpPower",
+	"Health",
+	"MaxHealth",
+	"Color",
+	"LightEmission",
+	"LightInfluence",
+	"Texture",
+	"ZOffset",
+	"Rate",
+	"RotSpeed",
+	"Speed",
+	"SpreadAngle",
+	"Acceleration",
+	"EmissionDirection",
+	"Lifetime",
+	"id",
+	"states",
+	"tick",
+	"baseTick",
+	"lastProcessedOwnedStateSequence",
+	"ownerNetId",
+	"linear",
+	"angular",
+	"force",
+	"target",
+	"stance",
+	"state",
+	"sprinting",
+	"crouching",
+	"facingDir",
+	"channel",
+	"payload",
+	"fragment",
+	"fragmentIndex",
+	"totalFragments",
+	"reset",
+	"chunks",
+	"blobFingerprint",
+	"netIds",
 }
 local KNOWN_STRING_TO_ID = {}
 for i, str in ipairs(KNOWN_STRINGS) do
@@ -320,7 +388,7 @@ local function estimateSize(value, depth)
 		return 2
 	elseif t == "string" then
 		if KNOWN_STRING_TO_ID[value] then
-			return 3  -- 1 byte type + 2 bytes ID
+			return 3 -- 1 byte type + 2 bytes ID
 		else
 			return 5 + #value
 		end
@@ -364,7 +432,7 @@ function Serializer.Serialize(value)
 			break
 		end
 
-		-- Buffer was too small — double the capacity and retry.
+		-- Buffer was too small  double the capacity and retry.
 		retries += 1
 		capacity = capacity * 2
 		b = buffer.create(capacity)

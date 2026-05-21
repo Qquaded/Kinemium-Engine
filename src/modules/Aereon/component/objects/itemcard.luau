@@ -275,7 +275,7 @@ return function(objects, data)
 		local statSize = 10
 		local statX = textX
 
-		-- downloads icon (small square placeholder — swap for icon texture if available)
+		-- downloads icon (small square placeholder  swap for icon texture if available)
 		raylib.lib.DrawRectangle(math.floor(statX), math.floor(statY + 1), 9, 9, config.dimTextColor:ToRaylib(0))
 		if config.font then
 			raylib.lib.DrawTextEx(

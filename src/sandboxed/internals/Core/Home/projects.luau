@@ -219,14 +219,18 @@ group = aereon.create({
 					project_prompt_active = false
 					local gnInput = gameNameInput:getText()
 					local projInput = projectPath:getText()
+					local path = "./src/projects/" .. gnInput
 
 					if gnInput == "" then
 						return
 					end
 
 					if projInput == "" then
-						fs.makeDir("./src/projects/" .. gnInput)
-						projInput = "./src/projects/" .. gnInput
+						if fs.stat(path).kind ~= "none" then
+							return
+						end
+						fs.makeDir(path)
+						projInput = path
 					end
 
 					ishared.GameName = gnInput

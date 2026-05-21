@@ -436,7 +436,7 @@ function Serializer.Serialize(value)
 			break
 		end
 
-		-- Buffer was too small — double the capacity and retry.
+		-- Buffer was too small  double the capacity and retry.
 		retries += 1
 		capacity = capacity * 2
 		b = buffer.create(capacity)

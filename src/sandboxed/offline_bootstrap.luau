@@ -33,7 +33,7 @@ CharacterModel:SetAttribute("__characterUserId", player.UserId)
 -- Ownership must be established before the humanoid steps.
 -- NetworkOwnership.ShouldSimulatePhysicsForMachine walks up from RootPart
 -- looking for a NetworkController; without one it falls through to checking
--- RootPart.NetworkOwner (nil) and returns false — preventing all movement.
+-- RootPart.NetworkOwner (nil) and returns false  preventing all movement.
 -- Setting NetworkOwner on the Model root and parenting a NetworkController
 -- to it makes the ownership check resolve correctly for offline play.
 CharacterModel.NetworkOwner = player

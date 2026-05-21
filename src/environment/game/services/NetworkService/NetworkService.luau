@@ -644,7 +644,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				)
 				return
 			end
-			print(`[NetworkService] Client {session.key} is ready — loading character for {session.player.Name}`)
+			print(`[NetworkService] Client {session.key} is ready  loading character for {session.player.Name}`)
 			task.spawn(function()
 				local players = datamodel:GetService("Players")
 				print(

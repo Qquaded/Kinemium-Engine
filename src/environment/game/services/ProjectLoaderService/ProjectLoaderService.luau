@@ -11,8 +11,7 @@ local projectsFile = "./src/projects.toml"
 local zembed = require("@zembed")
 
 if zembed.IsEmbedded() then
-	local tomlFile = zembed.GetFilesThatHas("projects.toml")
-	projectsFile = "../" .. tomlFile[1]
+	projectsFile = "./projects.toml"
 end
 
 local settings = {
@@ -50,8 +49,16 @@ end
 ProjectLoaderService.InitRenderer = function(renderer, renderer_signal)
 	ProjectLoaderService:SetProperties({
 		GetProjects = function()
-			local read = fs.readFile(projectsFile)
-			local data = toml.decode(read)
+			local success, read = pcall(fs.readFile, projectsFile)
+			if not success or read == "" then
+				return {}
+			end
+
+			local decodeSuccess, data = pcall(toml.decode, read)
+			if not decodeSuccess then
+				return {}
+			end
+
 			if data then
 				if data.projects then
 					return data.projects

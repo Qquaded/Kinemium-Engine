@@ -565,7 +565,11 @@ function Server.init(context)
 		end
 
 		local payloadBytes = buffer.len(result)
-		logReplicationDiagnostic(`serializeObjects done roots={#objects} stamped={stampedCount} bytes={payloadBytes} stampSeconds={formatSeconds(stampSeconds)} serializeSeconds={formatSeconds(serializeSeconds)} totalSeconds={formatSeconds(os.clock() - startedAt)}`)
+		logReplicationDiagnostic(
+			`serializeObjects done roots={#objects} stamped={stampedCount} bytes={payloadBytes} stampSeconds={formatSeconds(
+				stampSeconds
+			)} serializeSeconds={formatSeconds(serializeSeconds)} totalSeconds={formatSeconds(os.clock() - startedAt)}`
+		)
 
 		return result
 	end
@@ -695,7 +699,9 @@ function Server.init(context)
 	local function sendCreate(recipient, roots, reason)
 		local sendCreateStartedAt = os.clock()
 		local reasonLabel = reason or "unspecified"
-		logReplicationDiagnostic(`sendCreate begin reason={reasonLabel} recipient={recipient and recipient.key or "broadcast"} roots={roots and #roots or 0}`)
+		logReplicationDiagnostic(
+			`sendCreate begin reason={reasonLabel} recipient={recipient and recipient.key or "broadcast"} roots={roots and #roots or 0}`
+		)
 		debugTrace(
 			`sendCreate reason={reason or "unspecified"} recipient={recipient and recipient.key or "broadcast"} roots={roots and #roots or 0}`
 		)
@@ -754,7 +760,13 @@ function Server.init(context)
 			local batchTreeCount = 0
 			for _, object in ipairs(objects) do
 				local treeCount = getTreeCount(object)
-				if #batch > 0 and (#batch >= CREATE_PRE_SERIALIZE_MAX_ROOTS_PER_BATCH or batchTreeCount + treeCount > CREATE_PRE_SERIALIZE_TREE_SPLIT_COUNT) then
+				if
+					#batch > 0
+					and (
+						#batch >= CREATE_PRE_SERIALIZE_MAX_ROOTS_PER_BATCH
+						or batchTreeCount + treeCount > CREATE_PRE_SERIALIZE_TREE_SPLIT_COUNT
+					)
+				then
 					queueBatch(batch)
 					batch = {}
 					batchTreeCount = 0
@@ -779,7 +791,9 @@ function Server.init(context)
 					if #children > 0 then
 						didSplit = true
 						batchesSplit += 1
-						logReplicationDiagnostic(`sendBatch pre-split-root reason={reasonLabel} root={describeObject(object)} tree={treeCount} children={#children}`)
+						logReplicationDiagnostic(
+							`sendBatch pre-split-root reason={reasonLabel} root={describeObject(object)} tree={treeCount} children={#children}`
+						)
 						queueBalancedBatches(children)
 					else
 						table.insert(passthrough, object)
@@ -796,7 +810,9 @@ function Server.init(context)
 
 			if #batch > 1 and totalTreeCount > CREATE_PRE_SERIALIZE_TREE_SPLIT_COUNT then
 				batchesSplit += 1
-				logReplicationDiagnostic(`sendBatch pre-split-batch reason={reasonLabel} roots={#batch} tree={totalTreeCount} limit={CREATE_PRE_SERIALIZE_TREE_SPLIT_COUNT}`)
+				logReplicationDiagnostic(
+					`sendBatch pre-split-batch reason={reasonLabel} roots={#batch} tree={totalTreeCount} limit={CREATE_PRE_SERIALIZE_TREE_SPLIT_COUNT}`
+				)
 				queueBalancedBatches(batch)
 				return true
 			end
@@ -819,10 +835,7 @@ function Server.init(context)
 						anyConnected = true
 						local stats = GNS.Server:GetClientStats(client)
 						highestPendingMessages = math.max(highestPendingMessages, stats.pendingReliable or 0)
-						highestPendingFragments = math.max(
-							highestPendingFragments,
-							stats.pendingReliableFragments or 0
-						)
+						highestPendingFragments = math.max(highestPendingFragments, stats.pendingReliableFragments or 0)
 					end
 				end
 
@@ -843,10 +856,7 @@ function Server.init(context)
 				if now - lastWarningAt > CREATE_BACKPRESSURE_LOG_INTERVAL_SECONDS then
 					lastWarningAt = now
 					warn(
-						`[Replicator][Server] Create backpressure waiting {string.format(
-							"%.1f",
-							now - startedAt
-						)}s with {highestPendingMessages} unacked reliable messages ({highestPendingFragments} wire fragments)`
+						`[Replicator][Server] Create backpressure waiting {string.format("%.1f", now - startedAt)}s with {highestPendingMessages} unacked reliable messages ({highestPendingFragments} wire fragments)`
 					)
 				end
 
@@ -910,12 +920,21 @@ function Server.init(context)
 			if #batch > 12 then
 				table.insert(batchNames, `...+{#batch - 12} more`)
 			end
-			logReplicationDiagnostic(`sendBatch begin reason={reasonLabel} recipient={recipientLabel} roots={#batch} pendingBefore={#pendingBatches} names=[{table.concat(batchNames, ", ")}]`)
+			logReplicationDiagnostic(
+				`sendBatch begin reason={reasonLabel} recipient={recipientLabel} roots={#batch} pendingBefore={#pendingBatches} names=[{table.concat(
+					batchNames,
+					", "
+				)}]`
+			)
 			debugTrace(`sendBatch reason={reason or "unspecified"} serializing size={#batch}`)
 			local serializeStartedAt = os.clock()
 			local serialized = serializeObjects(batch)
 			local batchSerializeSeconds = os.clock() - serializeStartedAt
-			logReplicationDiagnostic(`sendBatch serialized reason={reasonLabel} roots={#batch} ok={serialized ~= nil} serializeSeconds={formatSeconds(batchSerializeSeconds)}`)
+			logReplicationDiagnostic(
+				`sendBatch serialized reason={reasonLabel} roots={#batch} ok={serialized ~= nil} serializeSeconds={formatSeconds(
+					batchSerializeSeconds
+				)}`
+			)
 			debugTrace(`sendBatch reason={reason or "unspecified"} serialized={serialized and "success" or "failed"}`)
 
 			if not serialized then
@@ -929,7 +948,7 @@ function Server.init(context)
 					end
 					return
 				else
-					-- Single root failed — try its children.
+					-- Single root failed  try its children.
 					local root = batch[1]
 					local children = root:GetChildren()
 					if #children > 0 then
@@ -978,7 +997,9 @@ function Server.init(context)
 						table.insert(right, batch[i])
 					end
 					batchesSplit += 1
-					logReplicationDiagnostic(`sendBatch split reason={reasonLabel} oversized bytes={payloadBytes} limit={MAX_CREATE_PAYLOAD_BYTES} roots={#batch} left={#left} right={#right}`)
+					logReplicationDiagnostic(
+						`sendBatch split reason={reasonLabel} oversized bytes={payloadBytes} limit={MAX_CREATE_PAYLOAD_BYTES} roots={#batch} left={#left} right={#right}`
+					)
 					queueBatch(left)
 					queueBatch(right)
 					return
@@ -997,7 +1018,9 @@ function Server.init(context)
 								`sendBatch reason={reason or "unspecified"} split root {root.ClassName}:{root.Name} into {#splitChildren} children`
 							)
 							batchesSplit += 1
-							logReplicationDiagnostic(`sendBatch split-root reason={reasonLabel} root={describeObject(root)} bytes={payloadBytes} children={#splitChildren}`)
+							logReplicationDiagnostic(
+								`sendBatch split-root reason={reasonLabel} root={describeObject(root)} bytes={payloadBytes} children={#splitChildren}`
+							)
 							queueBatch(splitChildren)
 							return
 						end
@@ -1043,7 +1066,11 @@ function Server.init(context)
 			end
 
 			batchesSent += 1
-			logReplicationDiagnostic(`sendBatch sent reason={reasonLabel} recipient={recipientLabel} roots={#batch} bytes={payloadBytes} totalSeconds={formatSeconds(os.clock() - batchStartedAt)} batchesSent={batchesSent} queued={batchesQueued} pending={#pendingBatches}`)
+			logReplicationDiagnostic(
+				`sendBatch sent reason={reasonLabel} recipient={recipientLabel} roots={#batch} bytes={payloadBytes} totalSeconds={formatSeconds(
+					os.clock() - batchStartedAt
+				)} batchesSent={batchesSent} queued={batchesQueued} pending={#pendingBatches}`
+			)
 			-- Pace every Create batch so reliable initial-sync traffic does not starve
 			-- gameplay remotes, ACKs, and control messages.
 			task.wait(CREATE_INTER_BATCH_YIELD_SECONDS)
@@ -1070,12 +1097,20 @@ function Server.init(context)
 			local batch = table.remove(pendingBatches, 1)
 			sendBatch(batch)
 		end
-		logReplicationDiagnostic(`sendCreate done reason={reasonLabel} recipient={recipientLabel} roots={#serializable} queued={batchesQueued} sent={batchesSent} split={batchesSplit} totalBytes={totalPayloadBytes} largestBytes={largestPayloadBytes} largestRoots=[{largestPayloadRoots}] backpressureSeconds={formatSeconds(totalBackpressureSeconds)} totalSeconds={formatSeconds(os.clock() - sendCreateStartedAt)}`)
+		logReplicationDiagnostic(
+			`sendCreate done reason={reasonLabel} recipient={recipientLabel} roots={#serializable} queued={batchesQueued} sent={batchesSent} split={batchesSplit} totalBytes={totalPayloadBytes} largestBytes={largestPayloadBytes} largestRoots=[{largestPayloadRoots}] backpressureSeconds={formatSeconds(
+				totalBackpressureSeconds
+			)} totalSeconds={formatSeconds(os.clock() - sendCreateStartedAt)}`
+		)
 		debugTrace(`sendCreate reason={reason or "unspecified"} batching done`)
 
 		local patchStartedAt = os.clock()
 		local referencePatches = collectReferencePatchEntries(serializable)
-		logReplicationDiagnostic(`sendCreate referencePatches reason={reasonLabel} entries={#referencePatches} collectSeconds={formatSeconds(os.clock() - patchStartedAt)}`)
+		logReplicationDiagnostic(
+			`sendCreate referencePatches reason={reasonLabel} entries={#referencePatches} collectSeconds={formatSeconds(
+				os.clock() - patchStartedAt
+			)}`
+		)
 		sendPatchEntries(recipient, referencePatches)
 	end
 
@@ -1136,7 +1171,11 @@ function Server.init(context)
 				addWorkspaceRoot(object)
 			end
 		end
-		logReplicationDiagnostic(`collectInitialRoots workspaceScan descendants={#workspaceDescendants} rootsSoFar={#roots} seconds={formatSeconds(os.clock() - workspaceScanStartedAt)}`)
+		logReplicationDiagnostic(
+			`collectInitialRoots workspaceScan descendants={#workspaceDescendants} rootsSoFar={#roots} seconds={formatSeconds(
+				os.clock() - workspaceScanStartedAt
+			)}`
+		)
 
 		local singletonIds = {
 			[0] = true,
@@ -1161,7 +1200,11 @@ function Server.init(context)
 			end
 		end
 
-		logReplicationDiagnostic(`collectInitialRoots singletonScan descendants={#gameDescendants} rootsSoFar={#roots} seconds={formatSeconds(os.clock() - singletonScanStartedAt)}`)
+		logReplicationDiagnostic(
+			`collectInitialRoots singletonScan descendants={#gameDescendants} rootsSoFar={#roots} seconds={formatSeconds(
+				os.clock() - singletonScanStartedAt
+			)}`
+		)
 
 		table.sort(roots, function(a, b)
 			local function parentPriority(object)
@@ -1197,10 +1240,17 @@ function Server.init(context)
 				table.insert(rootDetails, `...+{#roots - INITIAL_ROOT_DETAIL_LIMIT} more roots`)
 				break
 			end
-			table.insert(rootDetails, `{describeObject(root)} parent={describeObject(root.Parent)} tree={countTreeObjects(root)}`)
+			table.insert(
+				rootDetails,
+				`{describeObject(root)} parent={describeObject(root.Parent)} tree={countTreeObjects(root)}`
+			)
 		end
 		logReplicationDiagnostic(`collectInitialRoots details [{table.concat(rootDetails, "; ")}]`)
-		logReplicationDiagnostic(`collectInitialRoots done tracked={trackedCount} roots={#roots} seconds={formatSeconds(os.clock() - startedAt)}`)
+		logReplicationDiagnostic(
+			`collectInitialRoots done tracked={trackedCount} roots={#roots} seconds={formatSeconds(
+				os.clock() - startedAt
+			)}`
+		)
 		return roots
 	end
 
@@ -1319,7 +1369,9 @@ function Server.init(context)
 		local initialRoots = collectInitialRoots()
 		local collectSeconds = os.clock() - collectStartedAt
 		local rootsToReplicate = initialRoots
-		logReplicationDiagnostic(`Initial sync {session.key}: collected roots={#initialRoots} seconds={formatSeconds(collectSeconds)}`)
+		logReplicationDiagnostic(
+			`Initial sync {session.key}: collected roots={#initialRoots} seconds={formatSeconds(collectSeconds)}`
+		)
 
 		local filterStartedAt = os.clock()
 		if clientNetIds ~= nil then
@@ -1333,7 +1385,11 @@ function Server.init(context)
 				end
 			end
 		end
-		logReplicationDiagnostic(`Initial sync {session.key}: filtered roots={#rootsToReplicate}/{#initialRoots} missingOnly={clientNetIds ~= nil} seconds={formatSeconds(os.clock() - filterStartedAt)}`)
+		logReplicationDiagnostic(
+			`Initial sync {session.key}: filtered roots={#rootsToReplicate}/{#initialRoots} missingOnly={clientNetIds ~= nil} seconds={formatSeconds(
+				os.clock() - filterStartedAt
+			)}`
+		)
 
 		print(
 			`[Replicator][Server] Initial sync {session.key}: sending {#rootsToReplicate}/{#initialRoots} roots (missing-only={clientNetIds ~= nil}, blobMatch={clientBlobFingerprint == (game.GetMetadata and game:GetMetadata(
@@ -1344,17 +1400,23 @@ function Server.init(context)
 		pendingInitialInventorySync[session.key] = nil
 		local sendCreateStartedAt = os.clock()
 		sendCreate(session, rootsToReplicate, "initial_sync")
-		logReplicationDiagnostic(`Initial sync {session.key}: sendCreateSeconds={formatSeconds(os.clock() - sendCreateStartedAt)}`)
+		logReplicationDiagnostic(
+			`Initial sync {session.key}: sendCreateSeconds={formatSeconds(os.clock() - sendCreateStartedAt)}`
+		)
 		if clientBlobFingerprint == nil then
 			local terrainStartedAt = os.clock()
 			sendTerrainSnapshot(session)
-			logReplicationDiagnostic(`Initial sync {session.key}: terrainSnapshotSeconds={formatSeconds(os.clock() - terrainStartedAt)}`)
+			logReplicationDiagnostic(
+				`Initial sync {session.key}: terrainSnapshotSeconds={formatSeconds(os.clock() - terrainStartedAt)}`
+			)
 		else
 			debugTrace(`Initial sync {session.key}: skipped terrain snapshot because blob fingerprints match`)
 		end
 		sendWorldLoaded(session)
 		print(`[Replicator][Server] WorldLoaded sent to {session.key}`)
-		logReplicationDiagnostic(`Initial sync {session.key}: totalSeconds={formatSeconds(os.clock() - initialSyncStartedAt)}`)
+		logReplicationDiagnostic(
+			`Initial sync {session.key}: totalSeconds={formatSeconds(os.clock() - initialSyncStartedAt)}`
+		)
 	end
 
 	local function completeInitialSyncWithoutCreate(session)
@@ -2312,7 +2374,17 @@ function Server.init(context)
 
 			local tickSeconds = os.clock() - tickStartedAt
 			if REPLICATION_DIAGNOSTICS and tickSeconds >= SLOW_TICK_DIAGNOSTIC_SECONDS then
-				warn(`[Replicator][Server][Diag] slow tick={tick} totalSeconds={formatSeconds(tickSeconds)} rebalance={formatSeconds(timings.rebalanceOwnership)} aoi={formatSeconds(timings.updateAoIPositions)} owned={formatSeconds(timings.applyPendingOwnedStateBatches)} patches={formatSeconds(timings.flushDirtyPatches)} terrainChunks={formatSeconds(timings.flushTerrainChunkUpdates)} terrainQueue={formatSeconds(timings.flushTerrainQueues)} snapshots={formatSeconds(timings.flushSnapshots)}`)
+				warn(
+					`[Replicator][Server][Diag] slow tick={tick} totalSeconds={formatSeconds(tickSeconds)} rebalance={formatSeconds(
+						timings.rebalanceOwnership
+					)} aoi={formatSeconds(timings.updateAoIPositions)} owned={formatSeconds(
+						timings.applyPendingOwnedStateBatches
+					)} patches={formatSeconds(timings.flushDirtyPatches)} terrainChunks={formatSeconds(
+						timings.flushTerrainChunkUpdates
+					)} terrainQueue={formatSeconds(timings.flushTerrainQueues)} snapshots={formatSeconds(
+						timings.flushSnapshots
+					)}`
+				)
 			end
 		end)
 		if not tickOk then

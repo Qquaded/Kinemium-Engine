@@ -19,6 +19,22 @@ local datamodelMock = {
 	end,
 }
 
+local cloneProbeCallbacks = 0
+Registry.createclass({
+	class = "CloneProbe",
+	callback = function(instance)
+		cloneProbeCallbacks += 1
+		instance.RuntimeReady = true
+		instance.Value = "default"
+		instance.Changed:Connect(function(property, value)
+			if property == "Value" then
+				instance.LastValue = value
+			end
+		end)
+		return instance
+	end,
+})
+
 test.test("Weld creation", function()
 	local weld = Registry.new("Weld", rendererMock, datamodelMock)
 	assert(weld.Name == "Weld")
@@ -111,4 +127,17 @@ end)
 test.test("Can create Torque", function()
 	local inst = Registry.new("Torque", rendererMock, datamodelMock, true)
 	test.expect(inst.ClassName).toBe("Torque")
+end)
+
+test.test("Clone initializes class callback and preserves copied properties", function()
+	local inst = Registry.new("CloneProbe", rendererMock, datamodelMock, true)
+	inst.Value = "custom"
+
+	local clone = inst:Clone()
+	test.expect(clone.RuntimeReady).toBe(true)
+	test.expect(clone.Value).toBe("custom")
+	assert(cloneProbeCallbacks >= 2)
+
+	clone.Value = "changed"
+	test.expect(clone.LastValue).toBe("changed")
 end)

@@ -2,6 +2,7 @@ local Instance = {}
 local Signal = require("@Kinemium.signal")
 local task = _G.zune.task
 local nextUniqueId = 1
+local cloneInitializer = nil
 
 local function generateUniqueId()
 	local id = nextUniqueId
@@ -20,7 +21,7 @@ local SIGNAL_NAMES = {
 	DescendantRemoving = true,
 	Destroying = true,
 	DescendantAdded = true,
-	DescendantChanged = true
+	DescendantChanged = true,
 }
 
 function instance_mt.__index(self, key)
@@ -168,7 +169,9 @@ function instance_mt.__newindex(self, key, value)
 		end
 	elseif key == "Name" then
 		local oldName = props.Name
-		if oldName == value then return end
+		if oldName == value then
+			return
+		end
 		local parent = props.Parent
 		if parent then
 			local pMap = rawget(parent, "_childByName")
@@ -234,6 +237,64 @@ function Instance.new(className)
 	}
 
 	return setmetatable(self, instance_mt)
+end
+
+function Instance.SetCloneInitializer(callback)
+	cloneInitializer = callback
+end
+
+local function copyState(source, target, keepUniqueId)
+	local srcProps = rawget(source, "_props")
+	local dstProps = rawget(target, "_props")
+	for k, v in pairs(srcProps) do
+		if k ~= "Parent" and k ~= "Children" and (keepUniqueId or k ~= "UniqueId") then
+			dstProps[k] = v
+		end
+	end
+
+	for k, v in pairs(source.tags) do
+		target.tags[k] = v
+	end
+	for k, v in pairs(source.attributes) do
+		target.attributes[k] = v
+	end
+end
+
+local function resetCloneHierarchy(clone)
+	local children = rawget(clone, "Children")
+	if children then
+		for _, child in ipairs(children) do
+			local props = rawget(child, "_props")
+			if props then
+				props.Parent = nil
+			end
+		end
+	end
+
+	rawset(clone, "Children", {})
+	rawset(clone, "_childByName", {})
+
+	local props = rawget(clone, "_props")
+	if props then
+		props.Parent = nil
+	end
+end
+
+local function createCloneShell(source, keepUniqueId)
+	local clone = Instance.new(source.ClassName)
+
+	if cloneInitializer then
+		local success, err = pcall(function()
+			cloneInitializer(source, clone)
+		end)
+		if not success then
+			_G.warn(`CLASS: Failed to initialize clone of {source.ClassName}: {err}`)
+		end
+	end
+
+	resetCloneHierarchy(clone)
+	copyState(source, clone, keepUniqueId)
+	return clone
 end
 
 -- Utility methods
@@ -307,13 +368,13 @@ end
 
 function Instance:IterDescendants()
 	local current = self
-	
+
 	return function()
 		if #current.Children > 0 then
 			current = current.Children[1]
 			return current
 		end
-		
+
 		while current and current ~= self do
 			local parent = current.Parent
 			if parent then
@@ -335,22 +396,7 @@ function Instance:IsA(className)
 end
 
 function Instance:Clone(keepUniqueId)
-	local root = Instance.new(self.ClassName)
-
-	local srcProps = rawget(self, "_props")
-	local dstProps = rawget(root, "_props")
-	for k, v in pairs(srcProps) do
-		if k ~= "Parent" and k ~= "Children" and (keepUniqueId or k ~= "UniqueId") then
-			dstProps[k] = v
-		end
-	end
-
-	for k, v in pairs(self.tags) do
-		root.tags[k] = v
-	end
-	for k, v in pairs(self.attributes) do
-		root.attributes[k] = v
-	end
+	local root = createCloneShell(self, keepUniqueId)
 
 	local queue = { { src = self, dst = root } }
 	local head = 1
@@ -363,22 +409,8 @@ function Instance:Clone(keepUniqueId)
 		local dstParent = pair.dst
 
 		for _, child in ipairs(srcChildren) do
-			local copy = Instance.new(child.ClassName)
-
-			local cSrcProps = rawget(child, "_props")
+			local copy = createCloneShell(child, keepUniqueId)
 			local cDstProps = rawget(copy, "_props")
-			for k, v in pairs(cSrcProps) do
-				if k ~= "Parent" and k ~= "Children" and (keepUniqueId or k ~= "UniqueId") then
-					cDstProps[k] = v
-				end
-			end
-
-			for k, v in pairs(child.tags) do
-				copy.tags[k] = v
-			end
-			for k, v in pairs(child.attributes) do
-				copy.attributes[k] = v
-			end
 
 			cDstProps.Parent = dstParent
 			table.insert(rawget(dstParent, "Children"), copy)
