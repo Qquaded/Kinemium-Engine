@@ -17,15 +17,12 @@ local vend = KinemiumFontService.GetDefaultFont()
 local Theme = game:GetService("StudioThemeService").SelectedTheme
 local arectlib = require("@arect")
 local scrollableComp
-local scrollOffset = 0
 local scrollTarget = 0
 local repr = require("@repr")
 
 local TextColor = Theme.TextColor:ToRaylib(Theme.TextTransparency)
 local lastLogCount = 0
 local lastMaxScroll = 0
-local SCROLL_SMOOTHNESS = 18
-local SCROLL_SPEED = 3
 local LOG_FONT_SIZE = 17
 local LOG_FONT_SPACING = 1
 local MIN_CELL_HEIGHT = 25
@@ -384,15 +381,20 @@ local renderer = KinemiumRaylib.GetRenderer()
 
 local StudioThemeService = game:GetService("StudioThemeService")
 renderer.Pool.new("2d", function(data)
-	if game.Context ~= Enum.GameContext.Editor then
-		return
-	end
-
 	local dt = rl.GetFrameTime()
 	local mainTheme = StudioThemeService.SelectedTheme
 
-	window.update(dt)
-	window.draw(dt, mainTheme.aereon)
+	if game.Context == Enum.GameContext.Editor then
+		window.update(dt)
+		window.draw(dt, mainTheme.aereon)
+	end
+
+	if rl.IsWindowResized() == 1 then
+		propback.x = frame.AbsolutePosition.X
+		propback.y = frame.AbsolutePosition.Y
+		propback.width = frame.AbsoluteSize.X
+		propback.height = frame.AbsoluteSize.Y
+	end
 end)
 
 window.stepped = function(windowData)
@@ -404,16 +406,6 @@ window.stepped = function(windowData)
 				windowData.width = frame.AbsoluteSize.X
 				windowData.height = frame.AbsoluteSize.Y
 			end
-		end
-		if game.Context ~= Enum.GameContext.Editor then
-			return
-		end
-
-		if rl.IsWindowResized() == 1 then
-			windowData.x = frame.AbsolutePosition.X
-			windowData.y = frame.AbsolutePosition.Y
-			windowData.width = frame.AbsoluteSize.X
-			windowData.height = frame.AbsoluteSize.Y
 		end
 	end
 end

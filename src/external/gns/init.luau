@@ -29,7 +29,7 @@ local function libPath(name: string): string
 	return dll .. name
 end
 
-if platform.os == "windows" then 
+if platform.os == "windows" then
 	ffi.dlopen(libPath("abseil_dll." .. ffi.suffix), {})
 	ffi.dlopen(libPath("libprotobuf." .. ffi.suffix), {})
 	ffi.dlopen(libPath("libcrypto-3-x64." .. ffi.suffix), {})

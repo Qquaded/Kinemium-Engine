@@ -84,10 +84,6 @@ local tooltipState = {
 	y = 0,
 }
 
-local dropdownState = {
-	openKey = nil,
-}
-
 local toggleStates = {}
 
 local fileMenu = gui.menu({
@@ -201,6 +197,7 @@ local function create_window(title, frame)
 		DisableClipping = true,
 		height = initialSize.Y,
 		headerRender = true,
+		Draggable = false,
 		Minimized = true,
 
 		tabs = {
@@ -844,10 +841,12 @@ propback.stepped = function(propback)
 							local width = renderToggleButton(renderX - propback.x, element.text, element, propback, dt)
 							renderX = renderX + width
 						elseif element.type == "DropdownButton" then
-							local width = renderDropdownButton(renderX - propback.x, element.text, element, propback, dt)
+							local width =
+								renderDropdownButton(renderX - propback.x, element.text, element, propback, dt)
 							renderX = renderX + width
 						elseif element.type == "ImageDropdownButton" then
-							local width = renderImageDropdownButton(renderX - propback.x, element.text, element, propback, dt)
+							local width =
+								renderImageDropdownButton(renderX - propback.x, element.text, element, propback, dt)
 							renderX = renderX + width
 						elseif element.type == "Separator" then
 							local width = renderSeperator(renderX - propback.x, propback, element, dt)

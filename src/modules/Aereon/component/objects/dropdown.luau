@@ -25,6 +25,8 @@ return function(objects, data)
 		backgroundTransparency = data.backgroundTransparency or 0,
 		borderTransparency = data.borderTransparency or 0,
 		onSelect = data.onSelect,
+		onExpand = data.onExpand,
+		onCollapse = data.onCollapse,
 		animProgress = 0,
 	}
 
@@ -44,6 +46,10 @@ return function(objects, data)
 	end
 
 	local wrapper = {}
+
+	wrapper.get = function(prop)
+		return config[prop]
+	end
 
 	wrapper.set = function(prop, value)
 		if type(config[prop]) == "function" then
@@ -132,6 +138,15 @@ return function(objects, data)
 		if rect.MouseIsInRect(r) then
 			if raylib.lib.IsMouseButtonReleased(0) == 1 then
 				config.expanded = not config.expanded
+				if config.expanded then
+					if config.onExpand then
+						config.onExpand()
+					end
+				else
+					if config.onCollapse then
+						config.onCollapse()
+					end
+				end
 			end
 			MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
 		else
@@ -234,6 +249,9 @@ return function(objects, data)
 						if raylib.lib.IsMouseButtonReleased(0) == 1 then
 							config.selectedIndex = i
 							config.expanded = false
+							if config.onCollapse then
+								config.onCollapse()
+							end
 							if config.onSelect then
 								config.onSelect(i, option)
 							end

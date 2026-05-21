@@ -540,6 +540,78 @@ local function stopState(state, clearManaged)
 	end
 end
 
+local function getScriptExtension(className, language)
+	local langExt = "luau"
+	if language == Enum.Language.JavaScript then
+		langExt = "ts"
+	elseif language == Enum.Language.Python then
+		langExt = "py"
+	elseif language == Enum.Language.WASM then
+		langExt = "wasm"
+	end
+
+	if className == "Script" then
+		return ".server." .. langExt
+	elseif className == "LocalScript" then
+		return ".client." .. langExt
+	else
+		return "." .. langExt
+	end
+end
+
+local function deleteRecursive(path)
+	local ok, stat = pcall(fs.stat, path)
+	if not ok or not stat or stat.kind == "none" then
+		return
+	end
+	if stat.kind == "file" then
+		pcall(fs.deleteFile, path)
+	elseif stat.kind == "directory" then
+		local entries = fs.entries(path)
+		if entries then
+			for _, entry in ipairs(entries) do
+				deleteRecursive(fs.path.join(path, entry.name))
+			end
+		end
+		pcall(fs.deleteDir, path)
+		pcall(fs.removeDir, path)
+		pcall(fs.deleteFile, path)
+		pcall(fs.removeFile, path)
+	end
+end
+
+local function writeInstanceToDisk(instance, diskParentPath)
+	if instance.ClassName == "Folder" then
+		local dirPath = fs.path.join(diskParentPath, instance.Name)
+		pcall(fs.makeDir, dirPath, true)
+		for _, child in ipairs(instance:GetChildren()) do
+			writeInstanceToDisk(child, dirPath)
+		end
+	elseif instance.BaseClass == "ScriptContainer" or instance.ClassName == "Script" or instance.ClassName == "LocalScript" or instance.ClassName == "ModuleScript" then
+		local serializableChildren = {}
+		for _, child in ipairs(instance:GetChildren()) do
+			if child.ClassName == "Folder" or child.BaseClass == "ScriptContainer" or child.ClassName == "Script" or child.ClassName == "LocalScript" or child.ClassName == "ModuleScript" then
+				table.insert(serializableChildren, child)
+			end
+		end
+
+		if #serializableChildren == 0 then
+			local ext = getScriptExtension(instance.ClassName, instance.Language)
+			local fileName = instance.Name .. ext
+			pcall(fs.writeFile, fs.path.join(diskParentPath, fileName), instance.Source or "")
+		else
+			local dirPath = fs.path.join(diskParentPath, instance.Name)
+			pcall(fs.makeDir, dirPath, true)
+			local ext = getScriptExtension(instance.ClassName, instance.Language)
+			local initName = "init" .. ext
+			pcall(fs.writeFile, fs.path.join(dirPath, initName), instance.Source or "")
+			for _, child in ipairs(serializableChildren) do
+				writeInstanceToDisk(child, dirPath)
+			end
+		end
+	end
+end
+
 ProjectSyncService.InitRenderer = function(renderer, renderer_signal, game)
 	ProjectSyncService:SetProperties({
 		StartSyncing = function(self, projectPath, options)
@@ -616,6 +688,49 @@ ProjectSyncService.InitRenderer = function(renderer, renderer_signal, game)
 			activeState = nil
 			stopState(state, clearManaged == true)
 			return snapshotState(state)
+		end,
+
+		SyncToDirectory = function(self, projectPath)
+			if not projectPath or projectPath == "" then
+				if activeState then
+					projectPath = activeState.projectPath
+				else
+					return nil, "No active project and no project path provided"
+				end
+			end
+
+			local ok, err = pcall(function()
+				local config = readProjectConfig(projectPath)
+				local roots, warnings = resolveRoots(projectPath, config, game)
+
+				for _, root in ipairs(roots) do
+					local dirPath = root.dirPath
+					-- Clean the directory on disk recursively
+					local statOk, stat = pcall(fs.stat, dirPath)
+					if statOk and stat and stat.kind == "directory" then
+						local entries = fs.entries(dirPath)
+						if entries then
+							for _, entry in ipairs(entries) do
+								deleteRecursive(fs.path.join(dirPath, entry.name))
+							end
+						end
+					else
+						pcall(fs.makeDir, dirPath, true)
+					end
+
+					-- Sync children of root.target to disk
+					for _, child in ipairs(root.target:GetChildren()) do
+						writeInstanceToDisk(child, dirPath)
+					end
+				end
+			end)
+
+			if not ok then
+				warn(`[ProjectSync] SyncToDirectory failed: {tostring(err)}`)
+				return false, tostring(err)
+			end
+
+			return true
 		end,
 
 		IsSyncing = function()

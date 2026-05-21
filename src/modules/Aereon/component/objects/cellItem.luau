@@ -57,6 +57,10 @@ return function(objects, data)
 		return wrapper
 	end
 
+	wrapper.get = function(prop)
+		return config[prop]
+	end
+
 	wrapper.setPropertyValue = function(value)
 		config.propertyValue = value
 		if config.editorComponent and config.editorComponent.setText then
@@ -155,26 +159,6 @@ return function(objects, data)
 				config.fontSpacing,
 				config.descriptionColor:ToRaylib(0)
 			)
-		end
-
-		local editorX = r.x + r.width - config.editorWidth - config.padding
-		local editorY = r.y + (r.height - 30) / 2
-		local editorWidth = config.editorWidth
-		local editorHeight = 30
-		if config.editorComponent then
-			if config.editorComponent.drawWithExtras then
-				-- Textbox-style component
-				config.editorComponent:drawWithExtras(editorX, editorY, editorWidth, editorHeight)
-			elseif config.editorComponent.render then
-				-- Custom render method
-				if config.editorComponent.set then
-					config.editorComponent.set("obj_rect", rect.new(editorX, editorY, editorWidth, editorHeight))
-				end
-				config.editorComponent.render(dt)
-			elseif config.editorComponent.draw then
-				-- Simple draw method
-				config.editorComponent.draw(editorX, editorY, editorWidth, editorHeight)
-			end
 		end
 
 		-- Handle click

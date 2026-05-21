@@ -18,6 +18,14 @@ ConfigService.InitRenderer = function(renderer, renderer_signal)
 			configChanged:Fire(config)
 		end,
 
+		prop = function(prop, val)
+			currentConfig[prop] = val
+		end,
+
+		get = function(prop)
+			return currentConfig[prop]
+		end,
+
 		GetConfig = function()
 			return currentConfig
 		end,

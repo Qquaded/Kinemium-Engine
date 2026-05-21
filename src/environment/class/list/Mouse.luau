@@ -266,6 +266,9 @@ return {
 						end
 
 						-- Fast Sphere Cull
+						if not part.Size then
+							continue
+						end
 						local sX, sY, sZ = part.Size.X, part.Size.Y, part.Size.Z
 						local pX, pY, pZ = part.CFrame.Position.X, part.CFrame.Position.Y, part.CFrame.Position.Z
 						local radius = (sX > sY and (sX > sZ and sX or sZ) or (sY > sZ and sY or sZ)) * 0.866

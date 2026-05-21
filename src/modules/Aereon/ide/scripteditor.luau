@@ -7,7 +7,6 @@ local Color3 = require("@Color3")
 local MouseCursor = require("@Kinemium.MouseCursor")
 local syntax = require("./syntax")
 local autocomplete = require("./autocomplete")
-local ligatures = require("./ligatures")
 local luau = zune.luau
 
 local structs = rl.structs

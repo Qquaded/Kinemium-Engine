@@ -92,6 +92,14 @@ return function(objects, data)
 		else
 			textWidth = raylib.lib.MeasureText(config.text, config.fontSize)
 		end
+
+		local requiredWidth = textWidth + (config.paddingX or 32)
+		if config.obj_rect.width < requiredWidth then
+			config.obj_rect.width = requiredWidth
+			r.width = requiredWidth
+			drawRect.width = requiredWidth
+		end
+
 		local textX = drawRect.x + (drawRect.width - textWidth) / 2
 		local textY = drawRect.y + (drawRect.height - config.fontSize) / 2
 

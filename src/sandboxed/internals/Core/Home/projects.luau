@@ -126,7 +126,7 @@ local function generateProjectCards()
 			title = projectData.name,
 			subtext = "Edited on " .. os.date("%Y-%m-%d %H:%M:%S", projectData.last_opened),
 			tags = { "son", "im crine" },
-			backgroundColor = ThirdBackgroundColor,
+			backgroundColor = SecondaryBackgroundColor,
 			icon = icon,
 			font = vend,
 			zindex = 3,
@@ -213,6 +213,7 @@ group = aereon.create({
 		buttons = {
 			{
 				text = "Create Project",
+				width = 140,
 				color = StudioThemeService.SelectedTheme.Accent,
 				onClick = function()
 					project_prompt_active = false
@@ -235,6 +236,30 @@ group = aereon.create({
 					ProjectSyncService:StartSyncing(ishared.FolderPath)
 					ishared.EnableHomescreen = false
 					renderer:SetDimension("3D")
+
+					if ishared.RBXLPlacefile then
+						local file = ishared.RBXLPlacefile
+						if file then
+							current_place_imported = file
+
+							local converted = RBXModelImporter.ImportPlaceFile(file)
+
+							-- expected structure:
+							-- { Service = {children = raw}}
+							if converted then
+								for service, children in pairs(converted) do
+									local service_object = game:GetService(service)
+									if service_object then
+										for _, child in pairs(children) do
+											if child then
+												child.Parent = service_object
+											end
+										end
+									end
+								end
+							end
+						end
+					end
 
 					generateProjectCards()
 					applyProjectFilter()
@@ -266,29 +291,10 @@ group = aereon.create({
 					rounded = { 0.2, 6 },
 					onClick = function()
 						local file = FileDialogService.RequestFile({
-                            { name = "Place file", extensions = { "rbxl", "rbxlx" } },
-                        })
+							{ name = "Place file", extensions = { "rbxl", "rbxlx" } },
+						})
 
-						if file then
-							current_place_imported = file
-
-							local converted = RBXModelImporter.ImportPlaceFile(file)
-
-							-- expected structure:
-							-- { Service = {children = raw}}
-							if converted then
-								for service, children in pairs(converted) do
-									local service_object = game:GetService(service)
-									if service_object then
-										for _, child in pairs(children) do
-											if child then
-												child.Parent = service_object
-											end
-										end
-									end
-								end
-							end
-						end
+						ishared.RBXLPlacefile = file
 					end,
 				})
 			end
@@ -501,6 +507,18 @@ ishared.Home.pages["Projects"] = function(dt, alpha, slideOffset)
 			onSelect = function(index, value)
 				projectFilter = value or "All"
 				applyProjectFilter()
+			end,
+			onExpand = function()
+				if group.newProjectPrompt.get("visible") then
+					return
+				end
+				project_prompt_active = projectFilterDropdown.get("expanded")
+			end,
+			onCollapse = function()
+				if group.newProjectPrompt.get("visible") then
+					return
+				end
+				project_prompt_active = projectFilterDropdown.get("expanded")
 			end,
 		})
 	end

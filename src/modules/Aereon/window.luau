@@ -128,36 +128,47 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 	end
 
 	local function getResizeSide(window, mousePos)
-				if window.Minimized then
-					return nil
-				end
-				local sides = {}
-				local t = resizeThreshold
+		if window.Minimized then
+			return nil
+		end
+		local sides = {}
+		local t = resizeThreshold
 
-				-- Check horizontal position
-				local isLeft = math.abs(mousePos.x - window.x) <= t
-				local isRight = math.abs(mousePos.x - (window.x + window.width)) <= t
+		-- Horizontal check - within vertical bounds of window
+		local inVerticalBounds = mousePos.y >= window.y - t and mousePos.y <= window.y + window.height + t
+		local isLeft = inVerticalBounds and (math.abs(mousePos.x - window.x) <= t)
+		local isRight = inVerticalBounds and (math.abs(mousePos.x - (window.x + window.width)) <= t)
 
-				-- Check vertical position
-				local isTop = math.abs(mousePos.y - window.y) <= t
-				local isBottom = math.abs(mousePos.y - (window.y + window.height)) <= t
+		-- Vertical check - within horizontal bounds of window
+		local inHorizontalBounds = mousePos.x >= window.x - t and mousePos.x <= window.x + window.width + t
+		local isTop = inHorizontalBounds and (math.abs(mousePos.y - window.y) <= t)
+		local isBottom = inHorizontalBounds and (math.abs(mousePos.y - (window.y + window.height)) <= t)
 
-				-- Only allow resizing at corners (must be on both horizontal and vertical edges)
-				if isLeft and isTop then
-					table.insert(sides, "left")
-					table.insert(sides, "top")
-				elseif isLeft and isBottom then
-					table.insert(sides, "left")
-					table.insert(sides, "bottom")
-				elseif isRight and isTop then
-					table.insert(sides, "right")
-					table.insert(sides, "top")
-				elseif isRight and isBottom then
-					table.insert(sides, "right")
-				table.insert(sides, "bottom")
-			end
+		-- Prioritize corner resizes (both H and V)
+		if isLeft and isTop then
+			table.insert(sides, "left")
+			table.insert(sides, "top")
+		elseif isLeft and isBottom then
+			table.insert(sides, "left")
+			table.insert(sides, "bottom")
+		elseif isRight and isTop then
+			table.insert(sides, "right")
+			table.insert(sides, "top")
+		elseif isRight and isBottom then
+			table.insert(sides, "right")
+			table.insert(sides, "bottom")
+		-- Then single-side resizes
+		elseif isLeft then
+			table.insert(sides, "left")
+		elseif isRight then
+			table.insert(sides, "right")
+		elseif isTop then
+			table.insert(sides, "top")
+		elseif isBottom then
+			table.insert(sides, "bottom")
+		end
 
-	return #sides > 0 and sides or nil
+		return #sides > 0 and sides or nil
 	end
 
 	local function setCursorForResize(sides)
@@ -165,20 +176,27 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 			MouseCursor.request(Enum.KinemiumMouseCursor.MOUSE_CURSOR_DEFAULT.Value)
 			return
 		end
-		local hasH, hasV = false, false
+
+		local hasLeft, hasRight, hasTop, hasBottom = false, false, false, false
 		for _, s in ipairs(sides) do
-			if s == "left" or s == "right" then
-				hasH = true
-			end
-			if s == "top" or s == "bottom" then
-				hasV = true
+			if s == "left" then
+				hasLeft = true
+			elseif s == "right" then
+				hasRight = true
+			elseif s == "top" then
+				hasTop = true
+			elseif s == "bottom" then
+				hasBottom = true
 			end
 		end
-		if hasH and hasV then
+
+		if (hasLeft and hasTop) or (hasRight and hasBottom) then
 			MouseCursor.request(Enum.KinemiumMouseCursor.MOUSE_CURSOR_RESIZE_NWSE.Value)
-		elseif hasH then
+		elseif (hasRight and hasTop) or (hasLeft and hasBottom) then
+			MouseCursor.request(Enum.KinemiumMouseCursor.MOUSE_CURSOR_RESIZE_NESW.Value)
+		elseif hasLeft or hasRight then
 			MouseCursor.request(Enum.KinemiumMouseCursor.MOUSE_CURSOR_RESIZE_EW.Value)
-		elseif hasV then
+		elseif hasTop or hasBottom then
 			MouseCursor.request(Enum.KinemiumMouseCursor.MOUSE_CURSOR_RESIZE_NS.Value)
 		end
 	end
@@ -275,6 +293,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 			enabled = data.enabled ~= false,
 			Closed = false,
 			Focused = false,
+			Draggable = data.Draggable or true,
 			IsDragging = false,
 			Minimized = data.Minimized or false,
 			Maximized = data.Maximized or false,
@@ -591,6 +610,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 						and not isMouseOverTrafficLight(w, mousePos, 3)
 						and not getTabAtPosition(w, mousePos, tabFontSize)
 						and not w.Maximized
+						and not w.Draggable
 					then
 						draggedWindow = w
 						dragOffset.x = mousePos.x - w.x

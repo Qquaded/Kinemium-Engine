@@ -15,6 +15,9 @@ return function(objects, config)
 		groupSpacing = config.groupSpacing or 20, -- Spacing between different groups
 	}
 
+	local props = {}
+	local cellOffsets = {}
+
 	local function createCell(cellConfig, position, yOffset)
 		local cell = MergedCell(objects, {
 			x = cellConfig.x or defaults.x,
@@ -91,6 +94,12 @@ return function(objects, config)
 				local cell = createCell(itemConfig, position, currentY)
 				table.insert(groupCells, cell)
 				table.insert(cells, cell)
+				cellOffsets[cell] = currentY
+
+				local editorcomp = itemConfig.editor
+				if editorcomp then
+					props[cell] = editorcomp
+				end
 
 				currentY = currentY + (itemConfig.height or defaults.cellHeight)
 			end
@@ -128,6 +137,27 @@ return function(objects, config)
 		for _, cell in ipairs(cells) do
 			cell.render(dt)
 		end
+		for cell, comp in pairs(props) do
+			local r = cell.getRect()
+
+			local editorX = r.x + r.width - (cell.editorWidth or 240) - (cell.padding or 10)
+			local editorY = r.y + (r.height - 30) / 2
+			local editorWidth = cell.editorWidth or 240
+			local editorHeight = 30
+
+			local new = arect.new(editorX, editorY, editorWidth, editorHeight)
+			if comp.set then
+				comp.set("obj_rect", new)
+			else
+				comp.obj_rect = new
+			end
+
+			if comp.render then
+				comp.render(dt)
+			elseif comp.drawWithExtras then
+				comp:drawWithExtras(new.x, new.y, new.width, new.height)
+			end
+		end
 	end
 
 	wrapper.getAll = function()
@@ -135,11 +165,10 @@ return function(objects, config)
 	end
 
 	wrapper.setPosition = function(x, y)
-		local offsetY = 0
 		for _, cell in ipairs(cells) do
 			local cellRect = cell.getRect()
+			local offsetY = cellOffsets[cell] or 0
 			cell.set("obj_rect", arect.new(x, y + offsetY, cellRect.width, cellRect.height))
-			offsetY = offsetY + cellRect.height
 		end
 	end
 

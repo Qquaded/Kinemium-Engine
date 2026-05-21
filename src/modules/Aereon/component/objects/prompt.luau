@@ -187,15 +187,6 @@ return function(objects, data)
 			)
 		end
 
-		-- Subtle accent glow along top edge
-		local glowH = 2
-		raylib.lib.DrawRectangleRounded(
-			rect:translate(rect.new(pr.x + 2, pr.y, pr.width - 4, glowH)),
-			1,
-			4,
-			config.accentColor:ToRaylib(0.35)
-		)
-
 		-- Border
 		raylib.lib.DrawRectangleRounded(
 			rect:translate(pr),

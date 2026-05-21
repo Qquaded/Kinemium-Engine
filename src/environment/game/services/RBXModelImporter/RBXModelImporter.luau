@@ -569,7 +569,7 @@ RBXModelImporter.InitRenderer = function(renderer, renderer_signal, datamodel)
 		ImportPlaceFile = function(path)
 			local file = fs.readFile(path, true) -- return buffer
 			if file then
-			    local decoded = rbxImport.deserializePlace(file)
+				local decoded = rbxImport.deserializePlace(file)
 				local converted = {}
 
 				for _, service in pairs(decoded:GetChildren()) do
@@ -577,7 +577,7 @@ RBXModelImporter.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 					for _, child in pairs(service:GetChildren()) do
 						local inst = decodeObject(child)
-				        if inst then
+						if inst then
 							table.insert(converted[service.Name], inst)
 						end
 					end
@@ -585,7 +585,7 @@ RBXModelImporter.InitRenderer = function(renderer, renderer_signal, datamodel)
 				return converted
 			end
 			return false
-		end
+		end,
 	})
 end
 return RBXModelImporter

@@ -6,7 +6,6 @@ local proptble = {
 	Enabled = true,
 	GravityY = -50,
 	GravityX = 0,
-	PhysicsEnabled = false,
 	ZIndexBehavior = "Sibling",
 
 	ResetOnSpawn = true,
@@ -43,6 +42,7 @@ return {
 
 			if not instance.OverrideScreenSize then
 				local currentSize = instance.Size
+				local currentAbsSize = instance.AbsoluteSize
 				local needsResize = currentSize == nil
 					or currentSize.X == nil
 					or currentSize.Y == nil
@@ -50,9 +50,14 @@ return {
 					or currentSize.Y.Scale ~= 0
 					or currentSize.X.Offset ~= renderWidth
 					or currentSize.Y.Offset ~= renderHeight
+					or currentAbsSize == nil
+					or currentAbsSize.X ~= renderWidth
+					or currentAbsSize.Y ~= renderHeight
 
 				if needsResize then
 					instance.Size = UDim2.new(0, renderWidth, 0, renderHeight)
+					instance.AbsoluteSize = Vector2.new(renderWidth, renderHeight)
+					instance.AbsolutePosition = Vector2.new(0, 0)
 				end
 			end
 

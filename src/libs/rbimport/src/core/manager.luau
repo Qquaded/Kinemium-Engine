@@ -61,6 +61,9 @@ function manager.instancesFromDOM(doc: dom.DOM): {Instance}
     local valid = doc.info.instances;
     for _, instance in doc.instances do
         local object = instances[instance.referent];
+        if (not object) then
+            continue;
+        end
         if (instance.parent) then
             local parent = instances[instance.parent];
             if (not parent) then

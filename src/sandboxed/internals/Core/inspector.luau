@@ -1259,27 +1259,13 @@ local function drawPropertyRow(winX, winW, y, i, propName, propValue, selected, 
 		local measured = rl.MeasureTextEx(vend, displayName, 14, 1)
 		if measured.x <= maxWidth then
 			-- Text fits, draw normally
-			rl.DrawTextEx(
-					vend,
-					displayName,
-					vector.create(textX, textY),
-					14,
-					1,
-					TextColor
-				)
-			else
-				-- Text is too long, use scissor mode to clip it
-				rl.BeginScissorMode(textX, y, maxWidth, rh)
-				rl.DrawTextEx(
-					vend,
-					displayName,
-					vector.create(textX, textY),
-					14,
-							1,
-					TextColor
-				)
-				rl.EndScissorMode()
-			end
+			rl.DrawTextEx(vend, displayName, vector.create(textX, textY), 14, 1, TextColor)
+		else
+			-- Text is too long, use scissor mode to clip it
+			rl.BeginScissorMode(textX, y, maxWidth, rh)
+			rl.DrawTextEx(vend, displayName, vector.create(textX, textY), 14, 1, TextColor)
+			rl.EndScissorMode()
+		end
 	end
 
 	if not entry then
@@ -1338,18 +1324,22 @@ end
 --  main loop
 
 renderer.Pool.new("2d", function(data)
-	if game.Context ~= Enum.GameContext.Editor then
-		return
-	end
-
 	local dt = rl.GetFrameTime()
 	local mainTheme = StudioThemeService.SelectedTheme
 
-	window.update(dt)
-	window.draw(dt, mainTheme.aereon)
+	if game.Context == Enum.GameContext.Editor then
+		window.update(dt)
+		window.draw(dt, mainTheme.aereon)
+	end
+
+	if rl.IsWindowResized() == 1 then
+		propback.x = frame.AbsolutePosition.X
+		propback.y = frame.AbsolutePosition.Y
+		propback.width = frame.AbsoluteSize.X
+		propback.height = frame.AbsoluteSize.Y
+	end
 end)
 
-local arect = require("@arect")
 local raylib = require("@raylib")
 local scrollableComp
 
@@ -1379,8 +1369,10 @@ window.stepped = function(windowData)
 	local mouseDown = rl.IsMouseButtonDown(0) == 1
 
 	-- Check if mouse is over divider
-	local isOverDivider = mousePos.x >= divX - 3 and mousePos.x <= divX + 3
-		and mousePos.y >= winY and mousePos.y <= winY + winH
+	local isOverDivider = mousePos.x >= divX - 3
+		and mousePos.x <= divX + 3
+		and mousePos.y >= winY
+		and mousePos.y <= winY + winH
 
 	-- Start drag
 	if mousePressed and isOverDivider and not dividerDrag.active then
@@ -1402,13 +1394,6 @@ window.stepped = function(windowData)
 		local MouseCursor = require("@Kinemium.MouseCursor")
 		local Enum = require("@EnumMap")
 		MouseCursor.request(Enum.KinemiumMouseCursor.MOUSE_CURSOR_RESIZE_EW.Value)
-	end
-
-	if rl.IsWindowResized() == 1 then
-		windowData.x = frame.AbsolutePosition.X
-	windowData.y = frame.AbsolutePosition.Y
-	windowData.width = frame.AbsoluteSize.X
-	windowData.height = frame.AbsoluteSize.Y
 	end
 
 	local selected = Selection.Get()[1]

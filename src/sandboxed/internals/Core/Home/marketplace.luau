@@ -90,7 +90,7 @@ local function createCard(plugin, textureData, thumbnailData)
 		font = vend,
 
 		backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
-		darkBackgroundColor = StudioThemeService.SelectedTheme.BackgroundColor,
+		darkBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 		textColor = StudioThemeService.SelectedTheme.TextColor,
 		dimTextColor = StudioThemeService.SelectedTheme.SecondaryTextColor,
 		categoryColor = StudioThemeService.SelectedTheme.Accent,
@@ -203,7 +203,7 @@ local scrollArea = gui.scrollable({
 	scrollbarWidth = 8,
 	scrollbarColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 	scrollbarHoverColor = StudioThemeService.SelectedTheme.Accent,
-	scrollbarBackground = StudioThemeService.SelectedTheme.ThirdBackgroundColor,
+	scrollbarBackground = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 	scrollbarBackgroundTransparency = 0.7,
 })
 
@@ -226,6 +226,7 @@ ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
 		isLoadingPlugins = true
 		task.spawn(function()
 			plugins = game.PluginLoader.GetPluginsMarketplace()
+
 			for _, plugin in pairs(plugins) do
 				local textureData
 				if plugin.icon then
@@ -385,7 +386,7 @@ ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
 			font = vend,
 			selectedIndex = 1,
 			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
-			hoverColor = StudioThemeService.SelectedTheme.ThirdBackgroundColor,
+			hoverColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 			textColor = StudioThemeService.SelectedTheme.TextColor,
 			borderTransparency = 1,
 			onSelect = function(index, value)

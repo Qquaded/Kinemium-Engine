@@ -397,7 +397,16 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 				["User-Agent"] = "Kinemium-Engine",
 			})
 
-			decoded = HttpService:JSONDecode(decoded)
+			local success, result = pcall(function()
+				return HttpService:JSONDecode(decoded)
+			end)
+
+			if not success then
+				print("Failed decoding json: " .. result)
+				return {}
+			end
+
+			decoded = result
 
 			local base64 = zune.serde.base64
 			local marketplaceUrl = ENGINE_ENDPOINT.MARKETPLACE

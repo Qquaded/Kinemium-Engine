@@ -24,6 +24,7 @@ return function(objects, data)
 		scrollbarBackgroundTransparency = data.scrollbarBackgroundTransparency or 0.8,
 		child = data.child,
 		input = data.input or raylib.lib,
+		enabled = data.enabled or true,
 		inputButtons = data.inputButtons,
 		disableClipping = data.disableClipping or false,
 		debug = data.debug or false,
@@ -62,8 +63,10 @@ return function(objects, data)
 				and mousePos.y <= r.y + r.height
 		end
 		-- Mouse wheel
+		local isEnabled = config.enabled ~= false
+
 		local wheel = input.GetMouseWheelMove()
-		if isInRect(config.obj_rect) and wheel ~= 0 then
+		if isEnabled and isInRect(config.obj_rect) and wheel ~= 0 then
 			config.scrollTarget = config.scrollTarget - wheel * config.wheelSpeed
 		end
 

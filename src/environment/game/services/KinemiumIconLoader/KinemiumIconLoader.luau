@@ -50,62 +50,7 @@ KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 
 	KinemiumIconLoader:SetProperties({
 		Reload = reload,
-		LoadImageCustom = function(path: string)
-			path = zembed.AssetPath(path)
-			if true then
-				local image = raylib.lib.LoadImage(path)
 
-				local width = buffer.readi32(image, 0)
-				local height = buffer.readi32(image, 4)
-				return {
-					texture = raylib.lib.LoadTextureFromImage(image),
-					width = width,
-					height = height,
-					image = image,
-				}
-			end
-
-			local sail = require("@Sail")
-			local structs = sail.common.structs
-			local image_holder = ffi.alloc(8)
-			local result = sail.lib.sail_load_from_file(path, image_holder)
-
-			if result == 0 then
-				local addr_buf = buffer.create(8)
-				mem.copy(addr_buf, 0, image_holder, 0, 8)
-
-				local image_ptr = ffi.ptrFromAddress(addr_buf)
-				local width = image_ptr:readu32(structs.sail_image:offset("width"))
-				local height = image_ptr:readu32(structs.sail_image:offset("height"))
-				local pixels = image_ptr:readptr(structs.sail_image:offset("pixels"))
-				local pixel_format = image_ptr:readi32(structs.sail_image:offset("pixel_format"))
-
-				local rl_image = raylib.structs.Image:new({
-					width = width,
-					height = height,
-					mipmaps = 1,
-					format = 7,
-				})
-
-				local pixels_lo = image_ptr:readu32(structs.sail_image:offset("pixels"))
-				local pixels_hi = image_ptr:readu32(structs.sail_image:offset("pixels") + 4)
-				buffer.writeu32(rl_image, 0, pixels_lo)
-				buffer.writeu32(rl_image, 4, pixels_hi)
-
-				result = nil
-				sail.commonlib.sail_destroy_image(image_ptr)
-
-				return {
-					texture = raylib.lib.LoadTextureFromImage(rl_image),
-					width = width,
-					height = height,
-					pixels = pixels,
-					pixel_format = pixel_format,
-					image = rl_image,
-				}
-			end
-			return
-		end,
 		ToTextureBuffer = function(buffer_data: buffer, filename: string)
 			if not buffer_data then
 				return nil

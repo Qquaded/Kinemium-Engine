@@ -2,10 +2,6 @@ local kinec = require("@kinec")
 local ffi = zune.ffi
 
 local int = ffi.types.i32
-local uint = ffi.types.u32
-local bool = ffi.types.u8
-local float = ffi.types.float
-local cstring = ffi.types.pointer
 
 return function(luaENV)
 	kinec.func("get_service", int, { ffi.types.pointer }, function(pointer)

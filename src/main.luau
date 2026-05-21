@@ -39,7 +39,7 @@ _G.warn = function(...)
 end
 
 _G.log = function(...)
-	print("[\x1b[94mLOG\x1b[0m]", ...)
+	--print("[\x1b[94mLOG\x1b[0m]", ...)
 end
 
 _G.runtime = function(...)

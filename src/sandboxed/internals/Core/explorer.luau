@@ -32,9 +32,6 @@ local MAX_VISIBLE_ITEMS = 20
 local ADD_MENU_TITLE_HEIGHT = 30
 local MENU_PADDING = 4
 local TOGGLE_SIZE = 20
-local SCROLL_SPEED = 3
-local SCROLLBAR_WIDTH = 8
-local scrollTarget = 0
 
 local SERVICE_ORDER = {
 	"Workspace",
@@ -60,7 +57,6 @@ local rl = KinemiumRaylib.GetLib()
 local structs = KinemiumRaylib.GetStructs()
 local addMenuOpenBool = false
 local EngineSignal = game.EngineSignal
-local vend = KinemiumFontService.GetDefaultFont()
 local hoverspring = spring.new(2, 5)
 
 local notfound_tex = KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("NotFound.png"))
@@ -350,8 +346,6 @@ local function matchesSearch(instance, query, mode)
 	return false
 end
 
-
-
 -- Selection menu
 local SelectionMenu = gui.menu({
 	x = 0,
@@ -496,10 +490,12 @@ local SelectionMenu = gui.menu({
 						if object then
 							local path = FileDialogService.RequestSaveFile(object.Name)
 
-							local dir = path:match("^(.*)[\\/][^\\/]+$")
-							local name = path:match("[^\\/]+$")
+							if path then
+								local dir = path:match("^(.*)[\\/][^\\/]+$")
+								local name = path:match("[^\\/]+$")
 
-							KineFileService.ExportObject(object, dir, name)
+								KineFileService.ExportObject(object, dir, name)
+							end
 						end
 					end,
 				},
@@ -512,7 +508,9 @@ local SelectionMenu = gui.menu({
 					label = ".KINEOBJ",
 					onClick = function()
 						task.spawn(function()
-							local path = FileDialogService.RequestFile({})
+							local path = FileDialogService.RequestFile({
+								{ name = "Kinemium Object File", extensions = { "kineobj" } },
+							})
 
 							if not path then
 								return
@@ -538,7 +536,9 @@ local SelectionMenu = gui.menu({
 					label = ".RBXM, .RBXMX",
 					onClick = function()
 						task.spawn(function()
-							local path = FileDialogService.RequestFile({})
+							local path = FileDialogService.RequestFile({
+								{ name = "Model", extensions = { "rbxm", "rbxmx" } },
+							})
 
 							if not path then
 								return
@@ -575,14 +575,6 @@ SelectionMenu:hide()
 
 -- Scrolling state
 local scrollOffset = 0
-local contentHeight = 0
-local maxScroll = 0
-
--- Scrollbar drag state
-local scrollbarDrag = {
-	active = false,
-	offset = 0,
-}
 
 KinemiumIconLoader.new("Add", "./src/assets/images/icons/Add.png")
 KinemiumIconLoader.new("ArrowRight", "./src/assets/images/icons/ArrowRight.png")
@@ -1026,7 +1018,9 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 	local toggleX = btnX + NODE_WIDTH
 
 	local mousePos = rl.GetMousePosition()
-	local windowRect = { x = winX, y = winY, width = winWidth, height = windowObject and windowObject.height or 600 }
+	local treeTop = winY + 10
+	local treeHeight = (windowObject and windowObject.height or 600) - 80
+	local windowRect = { x = winX, y = treeTop, width = winWidth, height = treeHeight }
 
 	-- Early culling check (only skip drawing, still process height/children)
 	local isVisible = isRectVisible(rectData, windowRect)
@@ -1083,7 +1077,6 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 		rl.DrawTextEx(vend, instance.Name, vector.create(btnX + 28, btnY + 5), 18, 1, ThemeColors.text)
 
 		if isHovered then
-			local iconSize = NODE_HEIGHT - 4
 			local addData = { x = toggleX - 50, y = btnY + 2, width = iconSize, height = iconSize }
 
 			rl.DrawTexturePro(
@@ -1196,22 +1189,26 @@ local explorerWindow = window.create({
 	width = frame.AbsoluteSize.X,
 	height = frame.AbsoluteSize.Y,
 })
-explorerWindow.Scrollable = true
 explorerWindow._contentHeight = 0
 
 local renderer = KinemiumRaylib.GetRenderer()
 local StudioThemeService = game:GetService("StudioThemeService")
 
 renderer.Pool.new("2d", function(data)
-	if game.Context ~= Enum.GameContext.Editor then
-		return
-	end
-
 	local dt = rl.GetFrameTime()
 	local mainTheme = StudioThemeService.SelectedTheme
 
-	window.update(dt)
-	window.draw(dt, mainTheme.aereon)
+	if game.Context == Enum.GameContext.Editor then
+		window.update(dt)
+		window.draw(dt, mainTheme.aereon)
+	end
+
+	if rl.IsWindowResized() == 1 then
+		explorerWindow.x = frame.AbsolutePosition.X
+		explorerWindow.y = frame.AbsolutePosition.Y
+		explorerWindow.width = frame.AbsoluteSize.X
+		explorerWindow.height = frame.AbsoluteSize.Y
+	end
 end)
 
 explorerWindow.stepped = function(windowData)
@@ -1224,6 +1221,8 @@ explorerWindow.stepped = function(windowData)
 
 	local dt = rl.GetFrameTime()
 
+	windowData.Scrollable = true
+
 	hoverspring:step(dt)
 
 	windowObject = windowData
@@ -1234,11 +1233,8 @@ explorerWindow.stepped = function(windowData)
 		scrollOffset = 0
 	end
 
-	if rl.IsWindowResized() == 1 then
-		windowData.x = frame.AbsolutePosition.X
-		windowData.y = frame.AbsolutePosition.Y
-		windowData.width = frame.AbsoluteSize.X
-		windowData.height = frame.AbsoluteSize.Y
+	if windowData._scrollArea then
+		windowData._scrollArea.set("enabled", not addMenuOpenBool)
 	end
 
 	local mousePos = rl.GetMousePosition()
@@ -1318,8 +1314,12 @@ explorerWindow.stepped = function(windowData)
 		searchFilterMenu:hide()
 	end
 
-
 	local services = getServicesInOrder()
+	-- Switch scissor mode to tree region to prevent overlapping the search bar and going out of bounds
+	local treeScissorY = windowData.y + 70
+	local treeScissorH = windowData.height - 80
+	rl.BeginScissorMode(windowData.x, treeScissorY, windowData.width, treeScissorH)
+
 	for _, child in ipairs(services) do
 		DrawTree(child, 0, windowData.x - 50, windowData.y + 60, windowData.width, false)
 	end

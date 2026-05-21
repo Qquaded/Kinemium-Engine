@@ -93,7 +93,11 @@ local viewportWindow = window.create({
 --]]
 
 ideWindow.stepped = function(data)
-	ide.draw(ideWindow.x, ideWindow.y + 30, vector.create(ideWindow.width, ideWindow.height - 50), 50)
+	ideWindow.x = 0
+	ideWindow.y = 30
+	ideWindow.width = rl.GetRenderWidth()
+	ideWindow.height = rl.GetRenderHeight() - 30
+	ide.draw(0, 60, vector.create(rl.GetRenderWidth(), rl.GetRenderHeight() - 60), 50)
 
 	if currentObject then
 		if currentObject.IsOverridden then

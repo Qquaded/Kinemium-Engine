@@ -93,15 +93,6 @@ local function getLayerForPart(part)
 	return (cgId * 4) + motionState
 end
 
-local function isZero(v)
-	if v == -0 then
-		return true
-	elseif v == 0 then
-		return true
-	end
-	return false
-end
-
 local function getNetworkAuthorityTarget(object)
 	return select(1, NetworkOwnership.GetControllerRoot(object)) or object
 end
@@ -617,11 +608,8 @@ local function CalculateBodyPhysics(part, bodyInterface, bodyID, assumeActive)
 
 	local linearVelocity
 	if velX * velX + velY * velY + velZ * velZ > 1e-8 then
-		linearVelocity = Vector3.new(
-			f(velX * 1000 + 0.5) * 0.001,
-			f(velY * 1000 + 0.5) * 0.001,
-			f(velZ * 1000 + 0.5) * 0.001
-		)
+		linearVelocity =
+			Vector3.new(f(velX * 1000 + 0.5) * 0.001, f(velY * 1000 + 0.5) * 0.001, f(velZ * 1000 + 0.5) * 0.001)
 	else
 		linearVelocity = Vector3.zero
 	end
@@ -1207,17 +1195,27 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 					motionState = data.Anchored and 2 or 3
 				end
 				local layer = (cgId * 4) + motionState
-				local motionType = data.Anchored and 0 or 2 
+				local motionType = data.Anchored and 0 or 2
 
 				local bodySettings = lib.JPH_BodyCreationSettings_Create3(shape, position, rotation, motionType, layer)
 				lib.JPH_BodyCreationSettings_SetAllowSleeping(bodySettings, 1)
 				lib.JPH_BodyCreationSettings_SetAllowDynamicOrKinematic(bodySettings, 1)
 
-				if data.Friction then lib.JPH_BodyCreationSettings_SetFriction(bodySettings, data.Friction) end
-				if data.Restitution then lib.JPH_BodyCreationSettings_SetRestitution(bodySettings, data.Restitution) end
-				if data.LinearDamping then lib.JPH_BodyCreationSettings_SetLinearDamping(bodySettings, data.LinearDamping) end
-				if data.AngularDamping then lib.JPH_BodyCreationSettings_SetAngularDamping(bodySettings, data.AngularDamping) end
-				if data.GravityFactor ~= nil then lib.JPH_BodyCreationSettings_SetGravityFactor(bodySettings, data.GravityFactor) end
+				if data.Friction then
+					lib.JPH_BodyCreationSettings_SetFriction(bodySettings, data.Friction)
+				end
+				if data.Restitution then
+					lib.JPH_BodyCreationSettings_SetRestitution(bodySettings, data.Restitution)
+				end
+				if data.LinearDamping then
+					lib.JPH_BodyCreationSettings_SetLinearDamping(bodySettings, data.LinearDamping)
+				end
+				if data.AngularDamping then
+					lib.JPH_BodyCreationSettings_SetAngularDamping(bodySettings, data.AngularDamping)
+				end
+				if data.GravityFactor ~= nil then
+					lib.JPH_BodyCreationSettings_SetGravityFactor(bodySettings, data.GravityFactor)
+				end
 
 				local bodyPtr = lib.JPH_BodyInterface_CreateBody(bodyInterface, bodySettings)
 				if bodyPtr == ffi.null then
@@ -1241,7 +1239,9 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 			end,
 
 			GetRawBodyCFrame = function(bodyID)
-				if not bodyID then return CFrame.new() end
+				if not bodyID then
+					return CFrame.new()
+				end
 				local position = tempBodyPosition
 				local rotation = tempBodyRotation
 
@@ -1249,7 +1249,7 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 				local posX = position:readf64(0)
 				local posY = position:readf64(8)
 				local posZ = position:readf64(16)
-				
+
 				local qx = rotation:readf32(0)
 				local qy = rotation:readf32(4)
 				local qz = rotation:readf32(8)
@@ -1275,33 +1275,43 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 			end,
 
 			GetRawBodyPosition = function(bodyID)
-				if not bodyID then return Vector3.zero end
+				if not bodyID then
+					return Vector3.zero
+				end
 				local position = tempBodyPosition
 				lib.JPH_BodyInterface_GetPosition(bodyInterface, bodyID, position)
 				return Vector3.new(position:readf64(0), position:readf64(8), position:readf64(16))
 			end,
 
 			GetRawBodyVelocity = function(bodyID)
-				if not bodyID then return Vector3.zero end
+				if not bodyID then
+					return Vector3.zero
+				end
 				local velocity = tempBodyLinear
 				lib.JPH_BodyInterface_GetLinearVelocity(bodyInterface, bodyID, velocity)
 				return Vector3.new(velocity:readf32(0), velocity:readf32(4), velocity:readf32(8))
 			end,
 
 			DeleteRawBody = function(bodyID)
-				if not bodyID then return end
+				if not bodyID then
+					return
+				end
 				lib.JPH_BodyInterface_RemoveAndDestroyBody(bodyInterface, bodyID)
 			end,
 
 			ApplyForceToRawBody = function(bodyID, force)
-				if not bodyID then return end
+				if not bodyID then
+					return
+				end
 				lib.JPH_BodyInterface_ActivateBody(bodyInterface, bodyID)
 				local f = structs.JPH_Vec3:new({ x = force.X, y = force.Y, z = force.Z })
 				lib.JPH_BodyInterface_AddForce(bodyInterface, bodyID, f)
 			end,
 
 			ApplyImpulseToRawBody = function(bodyID, impulse)
-				if not bodyID then return end
+				if not bodyID then
+					return
+				end
 				lib.JPH_BodyInterface_ActivateBody(bodyInterface, bodyID)
 				local f = structs.JPH_Vec3:new({ x = impulse.X, y = impulse.Y, z = impulse.Z })
 				lib.JPH_BodyInterface_AddImpulse(bodyInterface, bodyID, f)
