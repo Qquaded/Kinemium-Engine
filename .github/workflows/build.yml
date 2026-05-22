@@ -2,9 +2,9 @@ name: Build Kinemium Engine
 
 on:
   push:
-    branches: [main, develop]
+    branches: [nightly]
   pull_request:
-    branches: [main, develop]
+    branches: [nightly]
 
 jobs:
   build:
@@ -48,16 +48,22 @@ jobs:
         if: runner.os == 'Linux'
         run: timeout 10 ${{ matrix.exe }} --headless || [ $? -eq 124 ] && true
 
+      - name: Install coreutils (macOS)
+        if: runner.os == 'macOS'
+        run: brew install coreutils
+
       - name: Run executable (macOS)
         if: runner.os == 'macOS'
-        run: timeout 10 ${{ matrix.exe }} --headless || [ $? -eq 124 ] && true
+        run: gtimeout 10 ${{ matrix.exe }} --headless || [ $? -eq 124 ] && true
 
       - name: Run executable (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $proc = Start-Process -FilePath "${{ matrix.exe }}" -ArgumentList "--headless" -PassThru -Wait -TimeoutSec 10
-          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne $null) { exit 1 }
+          $proc = Start-Process -FilePath "${{ matrix.exe }}" -ArgumentList "--headless" -PassThru
+          $finished = $proc.WaitForExit(10000)
+          if (-not $finished) { $proc.Kill() }
+          elseif ($proc.ExitCode -ne 0) { exit 1 }
 
       - name: Archive build (Linux/macOS)
         if: runner.os != 'Windows'
@@ -78,7 +84,7 @@ jobs:
 
   release:
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
     runs-on: ubuntu-latest
     permissions:
       contents: write
