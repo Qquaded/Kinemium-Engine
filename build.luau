@@ -86,6 +86,8 @@ local b_macos = flagExists("macos")
 local b_debian = flagExists("debian")
 local b_freebsd = flagExists("freebsd")
 
+local anyPlatform = b_windows or b_macos or b_debian or b_freebsd
+
 local b_args = {
 	"bundle",
 	entry,
@@ -146,23 +148,18 @@ local function buildExecutable(name, exec_ext, lib_ext)
 	print("successfully bundled at " .. l_exec)
 end
 
-if b_windows or zune.platform.os == "windows" then
+if b_windows or (not anyPlatform and zune.platform.os == "windows") then
 	buildExecutable("windows_x86-64", ".exe", "dll")
 end
 
-if b_macos or zune.platform.os == "macos" then
-	buildExecutable("macos_x86-64", ".app", "dll")
+if b_macos or (not anyPlatform and zune.platform.os == "macos") then
+	buildExecutable("macos_x86-64", ".app", "dylib")
 end
 
--- Zune's Linux release is compiled for Debian.
-if b_debian or zune.platform.os == "linux" then
+if b_debian or (not anyPlatform and zune.platform.os == "linux") then
 	buildExecutable("debian_x86-64", "", "so")
 end
 
--- There is no progress on proper FreeBSD support despite
--- an available native Zune executable.
--- Linux compatibility may need to be enabled by the user,
--- since the .so libraries are re-used from Linux.
-if b_freebsd or zune.platform.os == "freebsd" then
+if b_freebsd or (not anyPlatform and zune.platform.os == "freebsd") then
 	buildExecutable("freebsd_x86-64", "", "so")
 end

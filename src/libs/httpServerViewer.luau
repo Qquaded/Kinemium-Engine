@@ -291,7 +291,7 @@ function kinemium_http:Init(renderer)
     </div>
 
     <div class="page-header">
-        <div class="eyebrow">Renderer Diagnostics</div>
+        <div class="eyebrow">Engine Diagnostics</div>
         <h1>Perf <em>Stats</em></h1>
     </div>
 
