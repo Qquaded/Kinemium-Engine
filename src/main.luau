@@ -104,15 +104,15 @@ _G.GetFlagShell = function(flag)
 end
 
 _G.GetFlagValue = function(flag)
-	local shellValue = GetFlagShell(flag)
-	if shellValue then
-		return shellValue
-	end
 	local args = zune.process.args
 	for i, v in ipairs(args) do
 		if v == "--" .. flag then
 			return args[i + 1]
 		end
+	end
+	local shellValue = GetFlagShell(flag)
+	if shellValue then
+		return shellValue
 	end
 	return nil
 end

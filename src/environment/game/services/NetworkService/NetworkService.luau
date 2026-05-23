@@ -1,9 +1,21 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
-local KiNet = require("@KiNet")
+
+local GNS
+local gnsOk, gnsResult = pcall(require, "@gns")
+if gnsOk then
+	GNS = gnsResult
+else
+	print("[NetworkService] GNS failed to load, falling back to KiNet: " .. tostring(gnsResult))
+	GNS = require("@KiNet")
+end
+
 local Protocol = require("./Protocol")
 local ServerPreview = require("./ServerPreview")
 local GuiMirror = require("../../runtime/GuiMirror")
+local RateLimiter = require("./RateLimiter")
+local RpcService = require("./RpcService")
+local NetworkAttributes = require("./NetworkAttributes")
 
 local NetworkService = Instance.new("NetworkService")
 NetworkService.ExplorerHidden = true
@@ -40,6 +52,13 @@ local tickRate = 30
 local tickInterval = 1 / tickRate
 local tickAccumulator = 0
 local tickLoopBound = false
+local networkSimulation = {
+	enabled = false,
+	lagMs = 0,
+	jitterMs = 0,
+	lossPercent = 0,
+	dropReliable = false,
+}
 
 local previewStartedAt = os.time()
 local previewMetadata = {
@@ -156,7 +175,56 @@ local function resetTrafficStats()
 	end
 end
 
+local function readNumberFlag(names, defaultValue)
+	for _, name in ipairs(names) do
+		local value = tonumber(GetFlagValue(name))
+		if value ~= nil then
+			return value
+		end
+	end
+	return defaultValue
+end
+
+local function readNetworkSimulationConfig()
+	local config = {
+		enabled = false,
+		lagMs = math.max(0, readNumberFlag({ "net_lag_ms", "lag_ms" }, 0)),
+		jitterMs = math.max(0, readNumberFlag({ "net_jitter_ms", "jitter_ms" }, 0)),
+		lossPercent = math.clamp(readNumberFlag({ "net_loss_percent", "packet_loss_percent" }, 0), 0, 100),
+		dropReliable = FlagExists("net_drop_reliable") or FlagExists("drop_reliable_packets"),
+	}
+
+	config.enabled = config.lagMs > 0 or config.jitterMs > 0 or config.lossPercent > 0
+	return config
+end
+
+local function shouldDropSimulatedPacket(reliable)
+	if not networkSimulation.enabled or networkSimulation.lossPercent <= 0 then
+		return false
+	end
+	if reliable and not networkSimulation.dropReliable then
+		return false
+	end
+	return math.random() * 100 < networkSimulation.lossPercent
+end
+
+local function getSimulatedDelaySeconds()
+	if not networkSimulation.enabled then
+		return 0
+	end
+
+	local delayMs = networkSimulation.lagMs
+	if networkSimulation.jitterMs > 0 then
+		delayMs += (math.random() * 2 - 1) * networkSimulation.jitterMs
+	end
+
+	return math.max(0, delayMs) / 1000
+end
+
 local function clientKey(client)
+	if client and client.hConn ~= nil then
+		return `gns:{client.hConn}`
+	end
 	return `{client.address}:{client.port}`
 end
 
@@ -252,18 +320,38 @@ end
 local function sendEnvelope(sendFn, recipient, channel, kind, payload, reliable)
 	local envelope = Protocol.MakeEnvelope(channel, kind, payload, currentTick)
 	envelope.reliable = reliable == true
-	local sent
-	if recipient then
-		sent = sendFn(normalizeRecipient(recipient), envelope, reliable == true)
-	else
-		sent = sendFn(envelope, reliable == true)
+
+	local actualReliable = reliable == true
+	if shouldDropSimulatedPacket(actualReliable) then
+		return true
 	end
 
+	local function sendNow()
+		local sent
+		if recipient then
+			sent = sendFn(normalizeRecipient(recipient), envelope, actualReliable)
+		else
+			sent = sendFn(envelope, actualReliable)
+		end
+
+		if sent == false then
+			return false
+		end
+
+		recordTraffic("sent", envelope, actualReliable)
+		return true
+	end
+
+	local delaySeconds = getSimulatedDelaySeconds()
+	if delaySeconds > 0 then
+		task.delay(delaySeconds, sendNow)
+		return true
+	end
+
+	local sent = sendNow()
 	if sent == false then
 		return false
 	end
-
-	recordTraffic("sent", envelope, reliable == true)
 	return true
 end
 
@@ -393,6 +481,12 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 		datamodelRef = datamodel
 		bindTickLoop(datamodel:GetService("RunService"))
+		networkSimulation = readNetworkSimulationConfig()
+		if networkSimulation.enabled then
+			print(
+				`[NetworkService] Network simulation enabled: lag={networkSimulation.lagMs}ms jitter={networkSimulation.jitterMs}ms loss={networkSimulation.lossPercent}% dropReliable={networkSimulation.dropReliable}`
+			)
+		end
 
 		local function sendToClient(recipient, channel, kind, payload, reliable)
 			-- Force Create messages to be unreliable to prevent blocking reliable traffic (chat, input, remotes)
@@ -402,23 +496,23 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end
 
 			sendEnvelope(function(client, envelope, shouldBeReliable)
-				if KiNet.Server.IsClientConnected and not KiNet.Server:IsClientConnected(client) then
+				if GNS.Server.IsClientConnected and not GNS.Server:IsClientConnected(client) then
 					return false
 				end
-				return KiNet.Server:Send(client, envelope, shouldBeReliable)
+				return GNS.Server:Send(client, envelope, shouldBeReliable)
 			end, recipient, channel, kind, payload, actualReliable)
 		end
 
 		local function broadcast(channel, kind, payload, reliable)
 			sendEnvelope(function(envelope, shouldBeReliable)
-				return KiNet.Server:SendAll(envelope, shouldBeReliable)
+				return GNS.Server:SendAll(envelope, shouldBeReliable)
 			end, nil, channel, kind, payload, reliable)
 		end
 
 		local function broadcastFiltered(channel, kind, payload, reliable, filterFn)
 			local envelope = Protocol.MakeEnvelope(channel, kind, payload, currentTick)
 			envelope.reliable = reliable == true
-			local sent = KiNet.Server:SendFiltered(envelope, reliable == true, filterFn)
+			local sent = GNS.Server:SendFiltered(envelope, reliable == true, filterFn)
 			if sent ~= false then
 				recordTraffic("sent", envelope, reliable == true)
 			end
@@ -437,24 +531,24 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				actualReliable = false
 			end
 
-			if not NetworkService.IsClientConnected or not KiNet.Client.Socket then
+			if not NetworkService.IsClientConnected or not GNS.Client.Socket then
 				return
 			end
 			sendEnvelope(function(envelope, shouldBeReliable)
-				return KiNet.Client:Send(envelope, shouldBeReliable)
+				return GNS.Client:Send(envelope, shouldBeReliable)
 			end, nil, channel, kind, payload, actualReliable)
 		end
 
 		function NetworkService:StartServer(address, port, allowedTokens)
-			KiNet.Server:Init(address, port, allowedTokens)
+			GNS.Server:Init(address, port, allowedTokens)
 			previewStartedAt = os.time()
-			KiNet.Server:Listen()
+			GNS.Server:Listen()
 		end
 
 		function NetworkService:StartClient(address, port, authToken)
-			KiNet.Client:Init(address, port, authToken)
+			GNS.Client:Init(address, port, authToken)
 
-			KiNet.Client:OnRecieve(function(addr, msg)
+			GNS.Client:OnRecieve(function(addr, msg)
 				if msg.type == "AUTH_SUCCESS" then
 					NetworkService.IsClientConnected = true
 					return
@@ -469,14 +563,14 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				dispatchPacket(nil, msg)
 			end)
 
-			KiNet.Client:OnShutdown(function()
+			GNS.Client:OnShutdown(function()
 				if NetworkService.IsClientConnected then
 					NetworkService.IsClientConnected = false
 					disconnectedSignal:Fire("Connection Lost")
 				end
 			end)
 
-			KiNet.Client:Listen()
+			GNS.Client:Listen()
 		end
 
 		local function isCharacterModelForPlayer(model, payload)
@@ -669,10 +763,11 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end)
 		end)
 
-		KiNet.Server:OnClientConnectionRequest(function(client, clientData)
+		GNS.Server:OnClientConnectionRequest(function(client, clientData)
 			local name = clientData and clientData.name
 			local userId = clientData and clientData.id
 			local clientAddr = `{client.address}:{client.port}`
+			local key = clientKey(client)
 
 			if not clientData then
 				warn(
@@ -695,10 +790,10 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				return
 			end
 
-			print(`[NetworkService] Connection accepted from {clientAddr}: name={name}, userId={userId}`)
+			print(`[NetworkService] Connection accepted from {clientAddr} ({key}): name={name}, userId={userId}`)
 
 			local session = {
-				key = clientKey(client),
+				key = key,
 				client = client,
 				address = client.address,
 				port = client.port,
@@ -743,12 +838,18 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			clientConnectedSignal:Fire(session, session.player)
 		end)
 
-		KiNet.Server:OnRecieve(function(addr, msg)
-			local session = sessionsByKey[clientKey(addr)]
+		GNS.Server:OnRecieve(function(addr, msg)
+			local key = clientKey(addr)
+			local session = sessionsByKey[key]
+
+			if session and not RateLimiter.Allow(key) then
+				return
+			end
+
 			dispatchPacket(session, msg)
 		end)
 
-		KiNet.Server:OnClientRemoved(function(addr)
+		GNS.Server:OnClientRemoved(function(addr)
 			local key = clientKey(addr)
 			local session = sessionsByKey[key]
 			if not session then
@@ -767,17 +868,17 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			clientRemovedSignal:Fire(session)
 		end)
 
-		KiNet.Server:OnPreAuthMessage(function(addr, msg)
-			return ServerPreview.HandleRequest(KiNet.Server.Socket, addr, msg, {
+		GNS.Server:OnPreAuthMessage(function(addr, msg)
+			return ServerPreview.HandleRequest(GNS.Server.Socket, addr, msg, {
 				datamodel = datamodel,
 				sessions = sessionsByKey,
 				previewData = previewMetadata,
-				address = KiNet.Server and KiNet.Server.Address,
-				port = KiNet.Server and KiNet.Server.Port,
+				address = GNS.Server and GNS.Server.Address,
+				port = GNS.Server and GNS.Server.Port,
 				tickRate = tickRate,
 				currentTick = currentTick,
 				startedAt = previewStartedAt,
-				requiresAuth = KiNet.Server and KiNet.Server.AllowedTokens and #KiNet.Server.AllowedTokens > 0,
+				requiresAuth = false,
 			})
 		end)
 
@@ -787,7 +888,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 		if IsClient then
 			local userName = GetFlagValue("username") or "Player"
-			local userId = math.random(1000, 999999)
+			local userId = tonumber(GetFlagValue("userid") or GetFlagValue("userId")) or math.random(1000, 999999)
 			data = { name = userName, id = userId }
 		end
 
@@ -807,35 +908,82 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			if port and address then
 				connectedTo = { address, port }
 				NetworkService:StartClient(address, port, authToken)
-				KiNet.Client:Connect(data)
-				KiNet.Client:StartHeartbeat()
+				GNS.Client:Connect(data)
+				GNS.Client:StartHeartbeat()
 			else
 				connectedTo = { "127.0.0.1", 1234 }
 				NetworkService:StartClient("127.0.0.1", 1234, authToken)
-				KiNet.Client:Connect(data)
-				KiNet.Client:StartHeartbeat()
+				GNS.Client:Connect(data)
+				GNS.Client:StartHeartbeat()
 			end
 		elseif FlagExists("live") then
 			NetworkService:StartServer("0.0.0.0", 1234, allowedTokens)
 			connectedTo = { "127.0.0.1", 1234 }
 			NetworkService:StartClient("127.0.0.1", 1234, authToken)
-			KiNet.Client:Connect(data)
-			KiNet.Client:StartHeartbeat()
+			GNS.Client:Connect(data)
+			GNS.Client:StartHeartbeat()
 		end
 
 		table.insert(datamodel.ShutdownCallbacks, function()
-			if KiNet.Client then
-				KiNet.Client:Disconnect()
+			if GNS.Client then
+				GNS.Client:Disconnect()
 			end
-			if KiNet.Server then
-				KiNet.Server:Shutdown()
+			if GNS.Server then
+				GNS.Server:Shutdown()
+			end
+			RpcService.Clear()
+		end)
+
+		-- Heartbeat system: check connection health every 10 seconds
+		-- Based on Polytoria's heartbeat timer (NetworkService.cs:42, 102)
+		local HEARTBEAT_INTERVAL = 10
+		task.spawn(function()
+			while datamodelRef ~= nil do
+				task.wait(HEARTBEAT_INTERVAL)
+				if IsServer then
+					for key, session in pairs(sessionsByKey) do
+						if session.client then
+							local stats = GNS.Server:GetClientStats(session.client)
+							if stats and stats.pendingReliable and stats.pendingReliable > 256 then
+								warn(
+									`[NetworkService] Heartbeat: peer {key} has {stats.pendingReliable} pending reliable messages`
+								)
+							end
+						end
+					end
+				end
+			end
+		end)
+
+		-- RPC dispatch handler: route incoming RPC packets to registered handlers
+		registerMessageHandler(Protocol.Channels.Message, Protocol.Kinds.Rpc, function(sender, payload)
+			if not RpcService.IsRpcEnvelope(payload) then
+				return
+			end
+
+			local localPeerId = if IsServer then 1 else 0
+			local senderPeerId = if sender and sender.client then 0 else 1
+			local authorityPeerId = payload.authorityPeerId or 0
+
+			RpcService.Invoke(payload.method, {
+				localPeerId = localPeerId,
+				senderPeerId = senderPeerId,
+				authorityPeerId = authorityPeerId,
+				target = nil,
+			}, payload.args)
+		end)
+
+		-- Peer rate limiter cleanup on client disconnect
+		clientRemovedSignal:Connect(function(session)
+			if session and session.key then
+				RateLimiter.Reset(session.key)
 			end
 		end)
 
 		NetworkService:SetProperties({
 			Success = true,
 			IsClientConnected = false,
-			KiNet = KiNet,
+			GNS = GNS,
 			Protocol = Protocol,
 			Replicate = true,
 			Tick = tickSignal,
@@ -845,6 +993,11 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			PacketReceived = packetSignal,
 			TickRate = tickRate,
 			TickInterval = tickInterval,
+			LocalPeerID = if IsServer then 1 else 0,
+			ActivePeerIDs = {},
+			RpcService = RpcService,
+			NetworkAttributes = NetworkAttributes,
+			RateLimiter = RateLimiter,
 			RegisterMessageHandler = function(self, channel, kind, callback)
 				return registerMessageHandler(channel, kind, callback)
 			end,
@@ -931,6 +1084,24 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end,
 			ResetStats = function()
 				resetTrafficStats()
+			end,
+			RegisterRpc = function(self, target, methodName, attribute, handler)
+				return RpcService.Register(target, methodName, attribute, handler)
+			end,
+			UnregisterRpc = function(self, rpcId)
+				return RpcService.Unregister(rpcId)
+			end,
+			InvokeRpc = function(self, methodName, args, reliable)
+				local envelope = RpcService.MakeRpcEnvelope(methodName, args, nil, reliable ~= false)
+				if IsServer then
+					broadcast(Protocol.Channels.Message, Protocol.Kinds.Rpc, envelope, reliable ~= false)
+				else
+					sendToServer(Protocol.Channels.Message, Protocol.Kinds.Rpc, envelope, reliable ~= false)
+				end
+			end,
+			InvokeRpcOnClient = function(self, recipient, methodName, args, reliable)
+				local envelope = RpcService.MakeRpcEnvelope(methodName, args, nil, reliable ~= false)
+				sendToClient(recipient, Protocol.Channels.Message, Protocol.Kinds.Rpc, envelope, reliable ~= false)
 			end,
 		})
 	end)

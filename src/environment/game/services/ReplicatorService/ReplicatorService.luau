@@ -7,6 +7,8 @@ local Server = require("./_Server")
 local Client = require("./_Client")
 local StateRegistry = require("./StateRegistry")
 local NetworkOwnership = require("./NetworkOwnership")
+local NetworkReplicateSync = require("./NetworkReplicateSync")
+local NetworkPropSync = require("./NetworkPropSync")
 
 ReplicatorService.InitRenderer = function(renderer, renderer_signal, game)
 	task.spawn(function()
@@ -21,14 +23,6 @@ ReplicatorService.InitRenderer = function(renderer, renderer_signal, game)
 			and type(networkService.SendToClient) == "function"
 			and type(networkService.Broadcast) == "function"
 
-		ReplicatorService:SetProperties({
-			RegisterStateAdapter = function(self, name, adapter)
-				StateRegistry.RegisterAdapter(name, adapter)
-			end,
-			StateRegistry = StateRegistry,
-			NetworkOwnership = NetworkOwnership,
-		})
-
 		local ctx = {
 			game = game,
 			ReplicatorService = ReplicatorService,
@@ -40,13 +34,32 @@ ReplicatorService.InitRenderer = function(renderer, renderer_signal, game)
 			NetworkOwnership = NetworkOwnership,
 		}
 
+		local replicateSync = NetworkReplicateSync.new(ctx)
+		local propSync = NetworkPropSync.new(ctx)
+
+		ReplicatorService:SetProperties({
+			RegisterStateAdapter = function(self, name, adapter)
+				StateRegistry.RegisterAdapter(name, adapter)
+			end,
+			StateRegistry = StateRegistry,
+			NetworkOwnership = NetworkOwnership,
+			NetworkReplicateSync = replicateSync,
+			NetworkPropSync = propSync,
+			IsReplicationDone = false,
+			IsPlaceReplicationDone = false,
+			IsTransformReplicateDone = false,
+			IsClientScriptReplicateDone = false,
+		})
+
 		if IsServer then
+			propSync:StartProcessLoop()
 			local ok, err = pcall(Server.init, ctx)
 			if not ok then
 				warn(`[ReplicatorService] Server.init failed: {err}`)
 			end
 		end
 		if IsClient then
+			replicateSync:StartProcessLoop()
 			local ok, err = pcall(Client.init, ctx)
 			if not ok then
 				warn(`[ReplicatorService] Client.init failed: {err}`)

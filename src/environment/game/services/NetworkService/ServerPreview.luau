@@ -1,7 +1,13 @@
-local KiNet = require("@KiNet")
+local GNS
+local gnsOk, gnsResult = pcall(require, "@gns")
+if gnsOk then
+	GNS = gnsResult
+else
+	GNS = require("@KiNet")
+end
 local Protocol = require("./Protocol")
 
-local Serializer = KiNet.Serializer
+local Serializer = GNS.Serializer
 local net = zune.net
 local task = zune.task
 
@@ -210,7 +216,7 @@ function ServerPreview.BuildResponse(request, context)
 		},
 		software = {
 			name = "Kinemium",
-			transport = "KiNet/UDP",
+			transport = "GNS/UDP",
 			protocol = Protocol.MAGIC,
 			preview = ServerPreview.MAGIC,
 		},

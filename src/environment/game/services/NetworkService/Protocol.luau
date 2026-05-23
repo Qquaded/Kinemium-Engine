@@ -33,6 +33,15 @@ Protocol.Kinds = {
 	OwnedPatchBatch = "owned_patch_batch",
 	OwnershipImpact = "ownership_impact",
 	SnapshotAck = "snapshot_ack",
+
+	-- Polytoria-style RPC and replication kinds
+	Rpc = "rpc",
+	ReplicateChunk = "replicate_chunk",
+	RuntimeReplicate = "runtime_replicate",
+	ReplicateRemove = "replicate_remove",
+	PropBatch = "prop_batch",
+	PropUpdateToServer = "prop_update_to_server",
+	PropUpdateToServerUnreliable = "prop_update_to_server_unreliable",
 }
 
 function Protocol.MakeEnvelope(channel, kind, payload, tick)

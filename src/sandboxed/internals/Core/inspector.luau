@@ -203,6 +203,9 @@ local function openColorPicker(selected, propName, initialColor, kpIndex)
 	colorPickerTarget = { selected = selected, propName = propName, kpIndex = kpIndex }
 	if not colorPickerComp then
 		colorPickerComp = gui.colorPicker({
+			backgroundColor = Theme.SecondaryBackgroundColor,
+			backgroundTransparency = Theme.BackgroundTransparency,
+
 			onChanged = function(newColor)
 				if not colorPickerTarget then
 					return
@@ -1361,7 +1364,6 @@ window.stepped = function(windowData)
 
 	local dt = rl.GetFrameTime()
 	local mousePos = rl.GetMousePosition()
-	local mouseWheel = rl.GetMouseWheelMove()
 
 	-- Divider drag handling
 	local divX = winX + NAME_COL_WIDTH
@@ -1522,7 +1524,6 @@ window.stepped = function(windowData)
 			cpX = winX - cpW - 5
 		end
 
-		rl.DrawRectangle(cpX - 2, cpY - 2, cpW + 4, cpH + 4, Theme.BackgroundColor:ToRaylib(0))
 		colorPickerComp.set("obj_rect", arect.new(cpX, cpY, cpW, cpH))
 		colorPickerComp.render(dt)
 

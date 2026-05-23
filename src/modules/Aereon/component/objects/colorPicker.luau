@@ -23,8 +23,8 @@ return function(objects, data)
 		font = data.font or font,
 		fontSize = data.fontSize or 12,
 
-		backgroundColor = color3.new(0.13, 0.13, 0.15),
-		backgroundTransparency = 0,
+		backgroundColor = data.backgroundColor or color3.new(0.13, 0.13, 0.15),
+		backgroundTransparency = data.backgroundTransparency or 0,
 
 		recentColors = {},
 		maxRecentColors = 30,

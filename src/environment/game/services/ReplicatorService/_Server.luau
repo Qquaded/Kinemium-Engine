@@ -6,6 +6,7 @@ local Shared = require("./Shared")
 local OwnedStateAntiCheat = require("./OwnedStateAntiCheat")
 local PredictionBuffer = require("./PredictionBuffer")
 local CFrame = require("@CFrame")
+local Vector3 = require("@Vector3")
 local InputActionService = require("../InputActionService/InputActionService")
 local AreaOfInterest = require("./AreaOfInterest")
 local Enum = require("@EnumMap")
@@ -1734,7 +1735,7 @@ function Server.init(context)
 
 	networkService.ClientConnected:Connect(function(session)
 		-- Run the initial world send in a separate coroutine so it does NOT
-		-- block the KiNet receive loop.  Without this, large maps cause the
+		-- block the GNS receive loop.  Without this, large maps cause the
 		-- server to stop processing heartbeats during sendCreate, which
 		-- triggers a heartbeat-timeout disconnect on the client.
 		task.spawn(function()
@@ -2050,6 +2051,46 @@ function Server.init(context)
 	end
 
 	local function applyPendingOwnedStateBatches()
+		local function applyOwnedBasePartStateSilently(object, state)
+			local props = rawget(object, "_props")
+			if type(props) ~= "table" then
+				return false
+			end
+
+			if state.cframe then
+				local ok, cframe = pcall(CFrame.FromTable, state.cframe)
+				if ok and cframe then
+					props.CFrame = cframe
+					if cframe.Position then
+						props.Position = cframe.Position
+					end
+					if cframe.ToOrientation then
+						local rx, ry, rz = cframe:ToOrientation()
+						local orientation = Vector3.new(rx, ry, rz)
+						props.Orientation = orientation
+						props.Rotation = orientation
+					end
+				end
+			end
+
+			if state.linear then
+				local ok, linear = pcall(Vector3.FromTable, state.linear)
+				if ok and linear then
+					props.AssemblyLinearVelocity = linear
+					props.Velocity = linear
+				end
+			end
+
+			if state.angular then
+				local ok, angular = pcall(Vector3.FromTable, state.angular)
+				if ok and angular then
+					props.AssemblyAngularVelocity = angular
+				end
+			end
+
+			return true
+		end
+
 		for _, session in ipairs(networkService:GetSessions()) do
 			local payload = session.pendingOwnedStateBatch
 			if not session.player or not payload then
@@ -2079,7 +2120,9 @@ function Server.init(context)
 					`sequence={payload.sequence or 0}`
 				)
 				withMutedObject(object, function()
-					stateRegistry.Apply(object, state)
+					if state.type ~= "BasePart" or not applyOwnedBasePartStateSilently(object, state) then
+						stateRegistry.Apply(object, state)
+					end
 				end)
 				logHumanoidRootState(
 					"apply-owned-after",
@@ -2395,7 +2438,7 @@ function Server.init(context)
 	--  Race-condition catch-up
 	-- The server socket begins accepting connections inside NetworkService.InitRenderer,
 	-- which runs concurrently with ReplicatorService.InitRenderer.  A client can
-	-- therefore complete the KiNet handshake and fire ClientConnected *before* the
+	-- therefore complete the GNS handshake and fire ClientConnected *before* the
 	-- handler above was registered, meaning those clients never received the initial
 	-- world state or WorldLoaded packet.
 	--

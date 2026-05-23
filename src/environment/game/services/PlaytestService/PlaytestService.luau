@@ -70,27 +70,18 @@ PlaytestService.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 			task.spawn(function()
 				server_process = Process.CreateKinemiumServerProcess({
+					"--headless",
 					"--blob",
 					"./.temp/" .. gameName .. ".kine",
 				})
 				server_logger = outputProcess("[SERVER]", server_process, function(line)
 					PlaytestService.OnServerLog:Fire(line)
-					if string.find(line, "Created server socket") then
-						serverReady = true
-					end
 				end)
 			end)
 
 			task.spawn(function()
-				local waited = 0
-				while not serverReady and waited < 10 do
-					task.wait(0.1)
-					waited += 0.1
-				end
-
-				if not serverReady then
-					warn("[PlaytestService] Server did not signal ready within 10s, starting client anyway")
-				end
+				-- wait 2 seconds for the server to startup
+				task.wait(2)
 
 				local playerName = "Player"
 				pcall(function()
@@ -107,6 +98,13 @@ PlaytestService.InitRenderer = function(renderer, renderer_signal, datamodel)
 						end
 					end)
 				end
+
+				client_process = Process.CreateKinemiumClientProcess({
+					"--username " .. playerName,
+				})
+				client_logger = outputProcess("[CLIENT]", client_process, function(line)
+					PlaytestService.OnClientLog:Fire(line)
+				end)
 			end)
 		end,
 

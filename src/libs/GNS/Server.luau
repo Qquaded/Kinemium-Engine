@@ -20,6 +20,13 @@ local function log(...)
 	--print(...)
 end
 
+local function clientKey(client)
+	if client and client.hConn ~= nil then
+		return tostring(client.hConn)
+	end
+	return `{client.address}:{client.port}`
+end
+
 local function toPointer(addr: number)
 	local buf = buffer.create(8)
 	buffer.writeu32(buf, 0, addr % 4294967296)
@@ -98,8 +105,7 @@ function Server:HandleConnectionStatusChanged(hConn, eState, remoteAddress)
 			sessionId = nil,
 		}
 
-		local key = `{client.address}:{port}`
-		self.ConnectedClients[key] = client
+		self.ConnectedClients[clientKey(client)] = client
 		self.ConnectedClientsByConn[hConn] = client
 	elseif eState == 4 or eState == 5 then -- ClosedByPeer / ProblemDetectedLocally
 		self:RemoveClient(hConn, "connection closed by peer or local problem")
@@ -112,8 +118,7 @@ function Server:RemoveClient(hConn, reason)
 		return
 	end
 
-	local key = `{client.address}:{client.port}`
-	self.ConnectedClients[key] = nil
+	self.ConnectedClients[clientKey(client)] = nil
 	self.ConnectedClientsByConn[hConn] = nil
 
 	gns.lib.SteamAPI_ISteamNetworkingSockets_CloseConnection(

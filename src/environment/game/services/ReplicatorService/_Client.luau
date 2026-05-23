@@ -1337,7 +1337,7 @@ function Client.init(context)
 				and object.Parent ~= nil
 				and stateRegistry.ResolveAdapter(object)
 				and not (object.GetAttribute and object:GetAttribute("__humanoidRigSkipOwnedState") == true)
-				and networkOwnership.IsOwnedByPlayer(object, localPlayer)
+				and networkOwnership.IsOwnedReplicatedPhysicsPart(object, localPlayer)
 			then
 				local state = stateRegistry.Capture(object)
 				if state then
