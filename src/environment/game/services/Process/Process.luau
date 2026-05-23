@@ -1,13 +1,17 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
-
-local zpross = zune.process
 
 local Process = Instance.new("Process")
 Process.ExplorerHidden = true
 
 Process.InitRenderer = function(renderer, renderer_signal)
 	Process:SetProperties({
+		RunProcessZune = function(flags)
+			local process = zune.process.create(zune.fs.getExePath(), flags, {
+				opts = { stdin = "inherit", stdout = "inherit", stderr = "inherit" },
+			})
+			return process
+		end,
+
 		CreateKinemiumClientProcess = function(flags: { string })
 			local info = {
 				"run",
@@ -26,10 +30,7 @@ Process.InitRenderer = function(renderer, renderer_signal)
 				end
 			end
 
-			local process = zune.process.create(zune.fs.getExePath(), info, {
-				opts = { stdin = "inherit", stdout = "inherit", stderr = "inherit" },
-			})
-			return process
+			return Process.RunProcessZune(info)
 		end,
 
 		CreateKinemiumClientProcessEx = function(username, ip, port, flags)
@@ -54,10 +55,7 @@ Process.InitRenderer = function(renderer, renderer_signal)
 				end
 			end
 
-			local process = zune.process.create(zune.fs.getExePath(), info, {
-				opts = { stdin = "inherit", stdout = "inherit", stderr = "inherit" },
-			})
-			return process
+			return Process.RunProcessZune(info)
 		end,
 
 		CreateKinemiumServerProcessPiped = function(ip, port, maxPlayers)
@@ -96,10 +94,17 @@ Process.InitRenderer = function(renderer, renderer_signal)
 				ip,
 			}
 
-			local process = zune.process.create(zune.fs.getExePath(), info, {
-				opts = { stdin = "inherit", stdout = "inherit", stderr = "inherit" },
-			})
-			return process
+			return Process.RunProcessZune(info)
+		end,
+
+		ForceKill = function(process)
+			if process then
+				task.spawn(function()
+					pcall(function()
+						process:kill()
+					end)
+				end)
+			end
 		end,
 
 		CreateKinemiumServerProcess = function(flags: { string })
@@ -116,10 +121,7 @@ Process.InitRenderer = function(renderer, renderer_signal)
 				end
 			end
 
-			local process = zune.process.create(zune.fs.getExePath(), info, {
-				opts = { stdin = "inherit", stdout = "inherit", stderr = "inherit" },
-			})
-			return process
+			return Process.RunProcessZune(info)
 		end,
 	})
 end

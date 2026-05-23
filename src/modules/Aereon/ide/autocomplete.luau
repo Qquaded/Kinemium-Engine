@@ -43,13 +43,12 @@ end
 
 local function indexVariables(editor, game)
 	dynamicVariables = {}
-	
-	local src = editor.text:getContent()
-	local zune = require("@zune")
+
+	local src = editor:getCode()
 	local success, ast = pcall(function()
 		return zune.luau.parse(src)
 	end)
-	
+
 	if not success or not ast or not ast.root then
 		return
 	end
@@ -72,7 +71,7 @@ local function indexVariables(editor, game)
 										varName = varContainer.node.name and varContainer.node.name.text
 									end
 								end
-								
+
 								if varName then
 									local val = valContainer.node
 									if val.tag == "call" and val.func then
@@ -82,11 +81,15 @@ local function indexVariables(editor, game)
 											local index = func.index and func.index.text
 											if expr and expr.tag == "global" then
 												local globalName = expr.name and expr.name.text
-												
+
 												if globalName == "Instance" and index == "new" then
-													local arg = val.arguments and val.arguments[1] and val.arguments[1].node
+													local arg = val.arguments
+														and val.arguments[1]
+														and val.arguments[1].node
 													if arg and arg.tag == "string" then
-														local pcallSuccess, inst = pcall(function() return Instance.new(arg.text) end)
+														local pcallSuccess, inst = pcall(function()
+															return Instance.new(arg.text)
+														end)
 														if pcallSuccess and inst then
 															dynamicVariables[varName] = {
 																type = "instance",
@@ -96,9 +99,13 @@ local function indexVariables(editor, game)
 														end
 													end
 												elseif globalName == "game" and index == "GetService" then
-													local arg = val.arguments and val.arguments[1] and val.arguments[1].node
+													local arg = val.arguments
+														and val.arguments[1]
+														and val.arguments[1].node
 													if arg and arg.tag == "string" then
-														local pcallSuccess, service = pcall(function() return game:GetService(arg.text) end)
+														local pcallSuccess, service = pcall(function()
+															return game:GetService(arg.text)
+														end)
 														if pcallSuccess and service then
 															dynamicVariables[varName] = {
 																type = "service",
@@ -112,7 +119,9 @@ local function indexVariables(editor, game)
 										elseif func.tag == "global" and func.name and func.name.text == "require" then
 											local arg = val.arguments and val.arguments[1] and val.arguments[1].node
 											if arg and arg.tag == "string" then
-												local pcallSuccess, lib = pcall(function() return require(arg.text) end)
+												local pcallSuccess, lib = pcall(function()
+													return require(arg.text)
+												end)
 												if pcallSuccess and lib then
 													dynamicVariables[varName] = {
 														type = "library",
@@ -131,13 +140,15 @@ local function indexVariables(editor, game)
 			end
 		end
 	end
-	
+
 	local function walk(node)
-		if type(node) ~= "table" then return end
+		if type(node) ~= "table" then
+			return
+		end
 		if node.tag == "block" then
 			walkBlock(node)
 		end
-		
+
 		for k, v in pairs(node) do
 			if type(v) == "table" and k ~= "location" and k ~= "position" then
 				walk(v)

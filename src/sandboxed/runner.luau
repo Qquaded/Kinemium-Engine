@@ -7,6 +7,6 @@ until ScriptContext.RunClientScripts and ScriptContext.RunServerScripts
 
 if RunService:IsClient() then
 	ScriptContext.RunClientScripts()
-else
+elseif RunService:IsServer() then
 	ScriptContext.RunServerScripts()
 end

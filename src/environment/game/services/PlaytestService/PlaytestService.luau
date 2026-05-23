@@ -122,13 +122,17 @@ PlaytestService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end
 
 			if client_process then
-				pcall(function()
-					client_process:kill()
+				task.spawn(function()
+					pcall(function()
+						client_process:kill()
+					end)
 				end)
 			end
 			if server_process then
-				pcall(function()
-					server_process:kill()
+				task.spawn(function()
+					pcall(function()
+						server_process:kill()
+					end)
 				end)
 			end
 		end,

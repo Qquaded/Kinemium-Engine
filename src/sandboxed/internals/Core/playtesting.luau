@@ -14,6 +14,9 @@ repeat
 until ishared.NewCategoryToolbar
 local NewCategoryToolbar = ishared.NewCategoryToolbar
 
+local Process = game:GetService("Process")
+local processes = {}
+
 local playerCount = 1
 
 NewCategoryToolbar:Fire("Playtest", {
@@ -44,6 +47,9 @@ NewCategoryToolbar:Fire("Playtest", {
 
 				playtestService.StopCurrentPlaytest(ishared.GameName or "Game")
 				IsPlaytesting = false
+				for _, client in pairs(processes) do
+					Process.ForceKill(client)
+				end
 			end,
 			hoverTransparency = 0.5,
 			text = "Stop",
@@ -57,13 +63,16 @@ NewCategoryToolbar:Fire("Playtest", {
 			text = "New Client",
 			callback = function()
 				task.spawn(function()
-					zune.process.create(zune.fs.getExePath(), {
-						"run",
-						"game",
-						"--client",
-						"--username",
-						"Player" .. playerCount,
-					})
+					table.insert(
+						processes,
+						Process.RunProcessZune({
+							"run",
+							"engine",
+							"--client",
+							"--username",
+							"Player" .. playerCount,
+						})
+					)
 					playerCount += 1
 				end)
 			end,
