@@ -31,7 +31,6 @@ PlayerGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 		guiMirroringBound = true
 		guiMirrorController = GuiMirror.new(PlayerGui)
 		guiMirrorController:BindContainer(datamodel.StarterGui, "StarterGui")
-		guiMirrorController:BindContainer(datamodel.CoreGui, "CoreGui")
 	end
 
 	return PlayerGui

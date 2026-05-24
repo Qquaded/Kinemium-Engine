@@ -182,12 +182,12 @@ local propTable = {
 	Name = "FluidSimulation",
 	BaseClass = "Instance",
 
-	-- ── Geometry ──────────────────────────────────────────────────────────
+	--  Geometry
 	Position = Vector3.new(0, 0, 0),
 	-- Size.X/Z = surface dimensions; Size.Y = max water depth.
 	Size = Vector3.new(20, 4, 20),
 
-	-- ── Simulation ────────────────────────────────────────────────────────
+	--  Simulation
 	-- Coarse grid used for physics (NxN columns, default 16).
 	SimResolution = 16,
 	-- How fast water equalises between adjacent cells (0–1).
@@ -198,7 +198,7 @@ local propTable = {
 	-- Set to false (or use ConnectTo) to allow leaks.
 	Contained = true,
 
-	-- ── Visuals ────────────────────────────────────────────────────────────
+	--  Visuals
 	-- Fine mesh resolution for rendering (NxN vertices, default 32).
 	VisResolution = 32,
 	-- Surface ripple overlay (purely visual, does not affect simulation).
@@ -211,23 +211,23 @@ local propTable = {
 	-- 0 = opaque, 1 = invisible.
 	Transparency = 0.42,
 
-	-- ── Flow ──────────────────────────────────────────────────────────────
+	--  Flow
 	FlowDirection = Vector2.new(0, 0),
 	FlowSpeed = 0.0,
 
-	-- ── Physics ───────────────────────────────────────────────────────────
+	--  Physics
 	PhysicsEnabled = true,
 	BuoyancyFactor = 25.0,
 	Dampening = 0.55,
 
-	-- ── Container fitting ─────────────────────────────────────────────────
+	--  Container fitting
 	Container = nil,
 	FitContainer = false,
 	FillLevel = 0.85,
 
 	Enabled = true,
 
-	-- ── Events ────────────────────────────────────────────────────────────
+	--  Events
 	Splashed = signal.new(), -- (part, fraction)
 	Emptied = signal.new(), -- ()
 	Overflowed = signal.new(), -- (amountLost)
@@ -249,10 +249,10 @@ return {
 
 		ensureOffsets()
 
-		-- ── Service references ──────────────────────────────────────────────
+		--  Service references
 		local workspace = game and game:GetService("Workspace") or nil
 
-		-- ── GPU resources ───────────────────────────────────────────────────
+		--  GPU resources
 		local gpuMesh = nil
 		local cpuMeshData = nil
 		local material = nil
@@ -267,13 +267,13 @@ return {
 		local off_mdV = 0
 		local offCached = false
 
-		-- ── Simulation state ────────────────────────────────────────────────
+		--  Simulation state
 		local simW = math.max(4, math.min(64, math.floor(instance.SimResolution or 16)))
 		local simH = simW
 		local simGrid: { number } = {} -- [z*simW + x + 1] = water height (0..Size.Y)
 		local simInitialised = false
 
-		-- ── Visual mesh state ────────────────────────────────────────────────
+		--  Visual mesh state
 		-- gridPositions[i] = {worldX, worldZ, u, v}
 		local gridPositions: { { number } } = {}
 		local vertCount = 0
@@ -290,17 +290,17 @@ return {
 		local flowAccumU = 0
 		local flowAccumV = 0
 
-		-- ── Drain connections ────────────────────────────────────────────────
+		--  Drain connections
 		-- Each entry: { target=FluidSim, wx, wz, thresholdH, flowMult }
 		local drainConnections: { any } = {}
 
-		-- ── Buoyancy tracking ────────────────────────────────────────────────
+		--  Buoyancy tracking
 		local submergedSet: { [any]: boolean } = {}
 
 		-- Container signature (cheap change-detection)
 		local lastContainerSig = ""
 
-		-- ── Event flags ─────────────────────────────────────────────────────
+		--  Event flags
 		local wasEmpty = false
 
 		-- ====================================================================
@@ -372,7 +372,7 @@ return {
 			return sum / (simW * simH) -- average height (convenient 0..Size.Y range)
 		end
 
-		-- ── Simulation step ─────────────────────────────────────────────────
+		--  Simulation step
 		local function stepSimulation(dt: number)
 			local maxH = instance.Size.Y
 			local flowFac = math.clamp((instance.FlowRate or 0.7) * dt * 18.0, 0, 0.48)
@@ -633,7 +633,7 @@ return {
 			return indices
 		end
 
-		-- ── Material creation ────────────────────────────────────────────────
+		--  Material creation
 		local function createMaterial()
 			local base = rlib.R3D_GetDefaultMaterial()
 			local mat = buffer.create(SIZE_MAT)
@@ -654,7 +654,7 @@ return {
 			return mat
 		end
 
-		-- ── GPU mesh build/rebuild ────────────────────────────────────────────
+		--  GPU mesh build/rebuild
 		local function buildMesh()
 			if gpuMesh then
 				pcall(rlib.R3D_UnloadMesh, gpuMesh)
@@ -708,7 +708,7 @@ return {
 			renderMatrix = lib.MatrixIdentity()
 		end
 
-		-- ── Vertex deformation ────────────────────────────────────────────────
+		--  Vertex deformation
 		local function updateMeshVerts(t: number)
 			if not cpuMeshData or not gpuMesh or not offCached then
 				return
@@ -756,7 +756,7 @@ return {
 			pcall(rlib.R3D_UpdateMesh, gpuMesh, cpuMeshData, ffi.null)
 		end
 
-		-- ── Shader uniforms ───────────────────────────────────────────────────
+		--  Shader uniforms
 		local function syncShaderUniforms()
 			if not surfaceShader then
 				return

@@ -1128,6 +1128,16 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 					ContextMenuOpen = false
 				end
 			end
+
+			if rl.IsMouseButtonReleased(0) == 1 then
+				local obj_rect = SelectionMenu.get("obj_rect")
+				if ContextMenuOpen then
+					if arect.MouseIsOutsideRect(obj_rect) then
+						ContextMenuOpen = false
+						SelectionMenu:hide()
+					end
+				end
+			end
 		end
 
 		-- Handle selection

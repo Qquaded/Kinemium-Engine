@@ -28,7 +28,7 @@ local logo = [[
             @@@@@@@@@@@@@@@@@@            
 ]]
 
--- ─── ANSI Colors ─────────────────────────────────────────────────────────────
+--  ANSI Colors
 
 local isTTY = io.terminal.isTTY
 
@@ -47,7 +47,7 @@ local function colored(color, text)
 	return color .. text .. c.reset
 end
 
--- ─── Logging ─────────────────────────────────────────────────────────────────
+--  Logging
 
 local out = io.stdout
 local err = io.stderr
@@ -81,7 +81,7 @@ end
 
 local function log_section(title)
 	writeln()
-	writeln(colored(c.bold, colored(c.white, "── " .. title .. " ")))
+	writeln(colored(c.bold, colored(c.white, " " .. title .. " ")))
 end
 
 local function die(msg)
@@ -89,7 +89,7 @@ local function die(msg)
 	process.exit(1)
 end
 
--- ─── I/O Helpers ─────────────────────────────────────────────────────────────
+--  I/O Helpers
 
 local function io_confirm(msg)
 	write(colored(c.cyan, "[?] ") .. msg .. colored(c.dim, " (y/n) "))
@@ -116,14 +116,14 @@ local function io_input(msg, default)
 	return (line ~= "" and line) or default
 end
 
--- ─── Constants ───────────────────────────────────────────────────────────────
+--  Constants
 
 local REPO_URL = "https://github.com/Qquaded/Kinemium-Engine.git"
 local REPO_DIR = "../Kinemium-Engine"
 local DEFAULT_BRANCH = "main"
 local BACKUP_TAG = "__kinemium_pre_update"
 
--- ─── Git Helpers ─────────────────────────────────────────────────────────────
+--  Git Helpers
 
 local function git_run(args, opts)
 	opts = opts or {}
@@ -172,7 +172,7 @@ local function list_tags()
 	return tags
 end
 
--- ─── Actions ─────────────────────────────────────────────────────────────────
+--  Actions
 
 local function action_clone(branch, dry_run)
 	log_section("Clone")
@@ -307,7 +307,7 @@ local function action_rollback(dry_run)
 	log_ok("Rollback complete.")
 end
 
--- ─── Argument Parsing ────────────────────────────────────────────────────────
+--  Argument Parsing
 
 local args = process.args or {}
 local opts = {
@@ -333,7 +333,7 @@ while i <= #args do
 	i += 1
 end
 
--- ─── Main ────────────────────────────────────────────────────────────────────
+--  Main
 
 -- Print logo (skip if not a TTY to keep piped output clean)
 if isTTY then

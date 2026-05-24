@@ -388,7 +388,6 @@ local function attachPlayerSession(datamodel, session)
 
 	local guiMirrorController = GuiMirror.new(playerGui)
 	guiMirrorController:BindContainer(datamodel.StarterGui, "StarterGui")
-	guiMirrorController:BindContainer(datamodel.CoreGui, "CoreGui")
 	session.guiMirrorController = guiMirrorController
 
 	session.player = player
@@ -489,18 +488,12 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end
 
 		local function sendToClient(recipient, channel, kind, payload, reliable)
-			-- Force Create messages to be unreliable to prevent blocking reliable traffic (chat, input, remotes)
-			local actualReliable = reliable
-			if channel == Protocol.Channels.Replication and kind == Protocol.Kinds.Create then
-				actualReliable = false
-			end
-
 			sendEnvelope(function(client, envelope, shouldBeReliable)
 				if GNS.Server.IsClientConnected and not GNS.Server:IsClientConnected(client) then
 					return false
 				end
 				return GNS.Server:Send(client, envelope, shouldBeReliable)
-			end, recipient, channel, kind, payload, actualReliable)
+			end, recipient, channel, kind, payload, reliable)
 		end
 
 		local function broadcast(channel, kind, payload, reliable)
@@ -525,18 +518,12 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end
 
 		local function sendToServer(channel, kind, payload, reliable)
-			-- Force Create messages to be unreliable to prevent blocking reliable traffic
-			local actualReliable = reliable
-			if channel == Protocol.Channels.Replication and kind == Protocol.Kinds.Create then
-				actualReliable = false
-			end
-
 			if not NetworkService.IsClientConnected or not GNS.Client.Socket then
 				return
 			end
 			sendEnvelope(function(envelope, shouldBeReliable)
 				return GNS.Client:Send(envelope, shouldBeReliable)
-			end, nil, channel, kind, payload, actualReliable)
+			end, nil, channel, kind, payload, reliable)
 		end
 
 		function NetworkService:StartServer(address, port, allowedTokens)
