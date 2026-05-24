@@ -39,6 +39,9 @@ local function buildProjectConfig(name, iconPath, description)
 			debounce = 0.35,
 			ignore = { git = ".git", vscode = ".vscode", autosave = "autosave" },
 		},
+		backups = {
+			interval = 300,
+		},
 		scripting = {
 			polyglot = true,
 			ncg = true,

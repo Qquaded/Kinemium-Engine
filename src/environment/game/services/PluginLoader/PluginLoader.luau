@@ -103,6 +103,7 @@ local function getMarketplace()
 end
 
 local kilang = require("@Kilang")
+local Transpiler = require("@Transpiler")
 
 PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 	PluginLoader:SetProperties({
@@ -240,6 +241,11 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 
 					if filePath:sub(1, 1) == "@" then
 						local rest = filePath:sub(2)
+
+						if rest == "Transpiler" then
+							requireCache[filePath] = Transpiler
+							return Transpiler
+						end
 
 						-- @engine/libname -> engine library via host require
 						local engineLib = rest:match("^engine/(.+)$")

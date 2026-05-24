@@ -94,6 +94,7 @@
         "Kinemium.2dbutton": "./src/environment/classlibs/buttonlogic",
         "Kinemium.2dinput": "./src/environment/classlibs/textboxLogic",
         "Kinemium.richtext": "./src/environment/classlibs/richtext",
+        "Transpiler": "./src/kilang/Transpiler",
         "Kinemium.MouseCursor": "./src/modules/mouseCursor",
         "Kinemium.StudioIconLoader": "./src/assets/images/icons/vanilla3/iconloader",
         "Kinemium.window": "./src/environment/libraries/window",
