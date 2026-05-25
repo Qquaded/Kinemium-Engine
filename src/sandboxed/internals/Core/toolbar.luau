@@ -198,6 +198,7 @@ local function create_window(title, frame)
 		height = initialSize.Y,
 		headerRender = true,
 		Draggable = false,
+		Resizable = false,
 		Minimized = true,
 
 		tabs = {

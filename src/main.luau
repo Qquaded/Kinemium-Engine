@@ -424,5 +424,21 @@ loadInternals()
 httpServerViewer:Init(renderer)
 Kinemium:run()
 
+if FlagExists("rojo") then
+	local port = GetFlagValue("rojo")
+	if not port or type(port) == "boolean" or type(port) == "string" and port == "" then
+		port = 3487
+	else
+		port = tonumber(port) or 3487
+	end
+	log("Rojo flag detected, connecting to Rojo server on port " .. tostring(port) .. "...")
+	local RojoSyncService = game:GetService("RojoSyncService")
+	if RojoSyncService then
+		task.spawn(function()
+			RojoSyncService:Connect(port)
+		end)
+	end
+end
+
 -- RUN RENDERER
 renderer:Run()

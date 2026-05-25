@@ -1794,6 +1794,11 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 						editor.text:deleteSelection()
 					end
 					local text = raylib.GetClipboardText()
+
+					if text == zune.ffi.null then
+						return
+					end
+
 					local bufferLength = buffer.len(text:span())
 					local data = buffer.readstring(text:span(), 0, bufferLength - 1)
 

@@ -294,6 +294,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 			Closed = false,
 			Focused = false,
 			Draggable = data.Draggable or true,
+			Resizable = data.Resizable or true,
 			IsDragging = false,
 			Minimized = data.Minimized or false,
 			Maximized = data.Maximized or false,
@@ -610,7 +611,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 						and not isMouseOverTrafficLight(w, mousePos, 3)
 						and not getTabAtPosition(w, mousePos, tabFontSize)
 						and not w.Maximized
-						and not w.Draggable
+						and w.Draggable
 					then
 						draggedWindow = w
 						dragOffset.x = mousePos.x - w.x
@@ -625,11 +626,18 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 					for i = #windowRegistry, 1, -1 do
 						local w = windowRegistry[i]
 						local anim = getOrCreateAnim(w)
-						if w.Closed or anim.closing or not w.enabled or w.Minimized or w.Maximized then
+						if
+							w.Closed
+							or anim.closing
+							or not w.enabled
+							or w.Minimized
+							or w.Maximized
+							or not w.Resizable
+						then
 							continue
 						end
 						local sides = getResizeSide(w, mousePos)
-						if sides then
+						if sides and w.Resizable then
 							resizingWindow = w
 							resizeSide = sides
 							resizeStart = vector.create(mousePos.x, mousePos.y)
@@ -686,7 +694,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 						continue
 					end
 					local sides = getResizeSide(w, mousePos)
-					if sides then
+					if sides and w.Resizable then
 						setCursorForResize(sides)
 						anySide = true
 						break

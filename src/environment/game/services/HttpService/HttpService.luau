@@ -5,6 +5,8 @@ local net = zune.net
 local HttpService = Instance.new("HttpService")
 HttpService.ExplorerHidden = true
 
+local msgpack = require("@msgpack")
+
 HttpService.InitRenderer = function(renderer, renderer_signal, game)
 	HttpService.RequestStarted = signal.new()
 	HttpService.RequestFinished = signal.new()
@@ -63,6 +65,14 @@ HttpService.InitRenderer = function(renderer, renderer_signal, game)
 		return JSON.decode(str)
 	end
 
+	function HttpService:MsgPackEncode(tbl)
+		return msgpack.encode(tbl)
+	end
+
+	function HttpService:MsgPackDecode(data)
+		return msgpack.decode(data)
+	end
+
 	function HttpService:GenerateGUID(curly)
 		local function generateGUID(): string
 			local template = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
@@ -81,7 +91,6 @@ HttpService.InitRenderer = function(renderer, renderer_signal, game)
 
 	function HttpService:Websocket(opts, accepted)
 		local host = opts.host
-
 		local socketObject = {
 			OnMessage = signal.new(),
 			OnOpen = signal.new(),
@@ -91,37 +100,41 @@ HttpService.InitRenderer = function(renderer, renderer_signal, game)
 			Host = host,
 		}
 
-		local HttpWebSocketOptions = {
+		local new = zune.net.http.websocket(host, {
 			headers = opts.headers,
-			protocols = opts.protocols,
 			timeout = opts.timeout,
-			accept = function(self, request)
-				socketObject.OnAccept:Fire(request)
-			end,
+
 			open = function(self)
 				socketObject.OnOpen:Fire()
+				return true
 			end,
-			close = function(self, close)
-				socketObject.OnClose:Fire(close)
+			close = function(self, code)
+				socketObject.OnClose:Fire(code)
+				return true
 			end,
-			message = function(self, message: string)
+			message = function(self, message)
 				socketObject.OnMessage:Fire(message)
+				return true
 			end,
-		}
-
-		local new = zune.net.http.websocket(host, HttpWebSocketOptions)
+		})
 
 		function socketObject:Destroy(code)
-			new:close(code)
+			if new then
+				new:close(code)
+			end
 		end
 
 		function socketObject:isConnected()
-			return new:isConnected()
+			return new ~= nil and new:isConnected()
 		end
 
-		function socketObject:Send()
-			return new:isConnected()
+		function socketObject:Send(message)
+			if new then
+				new:send(message)
+			end
 		end
+
+		return socketObject
 	end
 end
 

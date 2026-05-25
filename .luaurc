@@ -28,6 +28,7 @@
         "UDim2": "./src/environment/datatypes/UDim2",
         "RbxImport": "./src/libs/rbimport/src",
         "PropertyCategories": "./src/modules/propertyCategories",
+        "msgpack": "./src/libs/msgpack",
         "CFrame": "./src/environment/datatypes/CFrame",
         "Schema": "./src/environment/datatypes/Schema",
         "SVGMaker": "./src/modules/SVGMaker",
