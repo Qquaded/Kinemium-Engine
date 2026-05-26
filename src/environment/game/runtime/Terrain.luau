@@ -1844,7 +1844,13 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 		local grassTimeBuf = buffer.create(4)
 
 		renderer.Pool.new("3d", function()
-			for _, chunk in pairs(Terrain._chunks) do
+			local chunks = Terrain._chunks
+			if type(chunks) ~= "table" then
+				Terrain._chunks = Terrain._chunks or {}
+				return
+			end
+
+			for _, chunk in pairs(chunks) do
 				if chunk.mesh then
 					local matName = chunk.dominantMaterial or "grass"
 					local mat = getTerrainMaterial(matName)

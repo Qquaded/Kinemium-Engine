@@ -18,7 +18,7 @@ local MAX_PATCH_ENTRIES_PER_MESSAGE = 96
 local MAX_SNAPSHOT_STATES_PER_MESSAGE = 16
 local INITIAL_INVENTORY_HANDSHAKE_TIMEOUT = 8
 local SNAPSHOT_MIN_SEND_INTERVAL_TICKS = 6
-local SNAPSHOT_IDLE_KEEPALIVE_TICKS = 0
+local _SNAPSHOT_IDLE_KEEPALIVE_TICKS = 0
 local SNAPSHOT_MAX_UNACKED_TICKS = 2
 local SNAPSHOT_BACKPRESSURE_RETRY_TICKS = 12
 local MAX_CREATE_PAYLOAD_BYTES = REPLICATION_TARGET_BYTES
@@ -33,6 +33,8 @@ local DEBUG_REPLICATION_TRACE = false
 local REPLICATION_DIAGNOSTICS = true
 local SLOW_TICK_DIAGNOSTIC_SECONDS = 0.05
 local INITIAL_ROOT_DETAIL_LIMIT = 40
+local STREAM_CHUNK_SIZE_DEFAULT = 192
+local STREAM_RECONCILE_INTERVAL_TICKS = 3
 
 local function packArgs(...)
 	return table.pack(...)
@@ -42,7 +44,7 @@ function Server.init(context)
 	local game = context.game
 	local serializationService = context.SerializationService
 	local networkService = context.NetworkService
-	local transportSerializer = GNS.Serializer
+	local _transportSerializer = GNS.Serializer
 	local stateRegistry = context.StateRegistry
 	local networkOwnership = context.NetworkOwnership
 	local userdata = serializationService.userdata
@@ -74,6 +76,14 @@ function Server.init(context)
 		end
 	end
 
+	local function sendRemoveToSession(session, netId)
+		if not session or netId == nil then
+			return
+		end
+
+		networkService:SendToClient(session, Protocol.Channels.Replication, Protocol.Kinds.Remove, { object = netId }, true)
+	end
+
 	local trackedStateObjects = {}
 	local dirtyPatches = {}
 	local objectStateHistory = {}
@@ -81,7 +91,21 @@ function Server.init(context)
 	local ownershipRoots = {}
 	local ownershipStateByRoot = setmetatable({}, { __mode = "k" })
 	local workspace = game.Workspace or game:GetService("Workspace")
+	local configuredChunkSize = tonumber(workspace and workspace.StreamingChunkSize) or STREAM_CHUNK_SIZE_DEFAULT
+	local streamChunkSize = math.max(32, math.floor(configuredChunkSize))
+	local streamChunkSizeInv = 1 / streamChunkSize
+	local streamChunks = {}
+	local streamRoots = setmetatable({}, { __mode = "k" })
+	local streamRootChunkKey = setmetatable({}, { __mode = "k" })
+	local streamRootsWithoutChunk = setmetatable({}, { __mode = "k" })
+	local sessionStreamingState = {}
 	local terrain = workspace and workspace:FindFirstChild("Terrain")
+	local configuredTargetRadius = tonumber(
+		workspace and (workspace.StreamingTargetRadius or workspace.StreamingMinRadius)
+	)
+	if configuredTargetRadius and configuredTargetRadius > 0 then
+		AreaOfInterest.SetDefaultRadius(configuredTargetRadius)
+	end
 	local humanoidRootDebugAt = {}
 	local remoteFunctionRequestId = 0
 	local pendingRemoteFunctionInvocations = {}
@@ -89,6 +113,8 @@ function Server.init(context)
 	local initialSyncCompleted = {}
 
 	local readySessions = {}
+	local replicatedWorkspaceBaseplate = nil
+	local RUNTIME_MUTATION_SUPPRESS_KEY = "__replicatorSuppressRuntimeMutation"
 
 	local function isRuntimeCreateSuppressed()
 		if game.GetMetadata == nil then
@@ -96,6 +122,33 @@ function Server.init(context)
 		end
 
 		return (game:GetMetadata("__replicatorSuppressRuntimeCreate") or 0) > 0
+	end
+
+	local function isRuntimeMutationSuppressed()
+		if game.GetMetadata == nil then
+			return false
+		end
+
+		return (game:GetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY) or 0) > 0
+	end
+
+	local function beginRuntimeMutationSuppression()
+		if game.GetMetadata == nil or game.SetMetadata == nil then
+			return false
+		end
+
+		local count = game:GetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY) or 0
+		game:SetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY, count + 1)
+		return true
+	end
+
+	local function endRuntimeMutationSuppression(applied)
+		if not applied or game.GetMetadata == nil or game.SetMetadata == nil then
+			return
+		end
+
+		local count = math.max((game:GetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY) or 0) - 1, 0)
+		game:SetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY, count)
 	end
 
 	local function isSessionEligibleForLiveCreate(session)
@@ -299,6 +352,19 @@ function Server.init(context)
 	end
 
 	local function enqueueTerrainPayload(session, kind, payload)
+		if payload == nil then
+			return
+		end
+		if type(payload) == "table" and next(payload) == nil then
+			return
+		end
+		if type(payload) == "string" and #payload == 0 then
+			return
+		end
+		if type(payload) == "buffer" and buffer.len(payload) == 0 then
+			return
+		end
+
 		local queue = getTerrainQueue(session)
 		if not queue then
 			return
@@ -346,8 +412,23 @@ function Server.init(context)
 
 	local function assignNetworkId(object)
 		if object.NetworkId ~= nil then
-			if type(object.NetworkId) == "number" and object.NetworkId >= nextNetId then
-				nextNetId = object.NetworkId + 1
+			if type(object.NetworkId) == "number" then
+				local occupied = lookup[object.NetworkId]
+				if occupied ~= nil and occupied ~= object then
+					while lookup[nextNetId] ~= nil do
+						nextNetId += 1
+					end
+					warn(
+						`[Replicator][Server] NetworkId collision for {object.ClassName}:{object.Name} requested={object.NetworkId} occupiedBy={occupied.ClassName}:{occupied.Name} reassigned={nextNetId}`
+					)
+					object.NetworkId = nextNetId
+					nextNetId += 1
+					return
+				end
+
+				if object.NetworkId >= nextNetId then
+					nextNetId = object.NetworkId + 1
+				end
 			end
 			return
 		end
@@ -367,6 +448,9 @@ function Server.init(context)
 		elseif object.ClassName == "CoreGui" then
 			object.NetworkId = 5
 		else
+			while lookup[nextNetId] ~= nil do
+				nextNetId += 1
+			end
 			object.NetworkId = nextNetId
 			nextNetId += 1
 		end
@@ -406,19 +490,267 @@ function Server.init(context)
 		end
 	end
 
+	local function getSessionStreamState(session)
+		if not session or not session.key then
+			return nil
+		end
+
+		local state = sessionStreamingState[session.key]
+		if not state then
+			state = {
+				roots = {},
+				netIds = {},
+			}
+			sessionStreamingState[session.key] = state
+		end
+
+		return state
+	end
+
+	local function clearSessionStreamState(session)
+		if session and session.key then
+			sessionStreamingState[session.key] = nil
+		end
+	end
+
+	local function unmarkNetIdFromAllSessions(netId)
+		if netId == nil then
+			return
+		end
+
+		for _, state in pairs(sessionStreamingState) do
+			state.roots[netId] = nil
+			state.netIds[netId] = nil
+		end
+	end
+
+	local function chunkCoordFromValue(value)
+		return math.floor((value or 0) * streamChunkSizeInv)
+	end
+
+	local function chunkKeyFromCoords(x, y, z)
+		return `{x}|{y}|{z}`
+	end
+
+	local function chunkKeyFromPosition(position)
+		if type(position) ~= "table" then
+			return nil
+		end
+
+		return chunkKeyFromCoords(
+			chunkCoordFromValue(position.X),
+			chunkCoordFromValue(position.Y),
+			chunkCoordFromValue(position.Z)
+		)
+	end
+
+	local function removeRootFromChunk(root, chunkKey)
+		if not root or not chunkKey then
+			return
+		end
+
+		local bucket = streamChunks[chunkKey]
+		if not bucket then
+			return
+		end
+
+		bucket[root] = nil
+		if next(bucket) == nil then
+			streamChunks[chunkKey] = nil
+		end
+	end
+
+	local function isStreamRoot(root)
+		if not root then
+			return false
+		end
+
+		if root.Parent ~= workspace or root.CanReplicate == false or root.NetworkId == nil then
+			return false
+		end
+
+		if AreaOfInterest.IsGlobalEntity(root) then
+			return false
+		end
+
+		return true
+	end
+
+	local function unregisterStreamRoot(root)
+		if not root then
+			return
+		end
+
+		streamRoots[root] = nil
+		streamRootsWithoutChunk[root] = nil
+		removeRootFromChunk(root, streamRootChunkKey[root])
+		streamRootChunkKey[root] = nil
+	end
+
+	local function refreshStreamRootChunk(root)
+		if not isStreamRoot(root) then
+			unregisterStreamRoot(root)
+			return
+		end
+
+		streamRoots[root] = true
+
+		local previousChunkKey = streamRootChunkKey[root]
+		local position = networkOwnership.GetWorldPosition(root)
+		local nextChunkKey = chunkKeyFromPosition(position)
+
+		if not nextChunkKey then
+			if previousChunkKey then
+				removeRootFromChunk(root, previousChunkKey)
+				streamRootChunkKey[root] = nil
+			end
+			streamRootsWithoutChunk[root] = true
+			return
+		end
+
+		streamRootsWithoutChunk[root] = nil
+		if previousChunkKey == nextChunkKey then
+			return
+		end
+
+		removeRootFromChunk(root, previousChunkKey)
+		streamRootChunkKey[root] = nextChunkKey
+
+		local nextBucket = streamChunks[nextChunkKey]
+		if not nextBucket then
+			nextBucket = {}
+			streamChunks[nextChunkKey] = nextBucket
+		end
+		nextBucket[root] = true
+	end
+
+	local function registerStreamRoot(root)
+		if not root then
+			return
+		end
+
+		refreshStreamRootChunk(root)
+	end
+
+	local function refreshAllStreamRoots()
+		for root in pairs(streamRoots) do
+			refreshStreamRootChunk(root)
+		end
+	end
+
+	local function markSessionRootStreamed(session, root, shallowOnly)
+		if not session or not root then
+			return
+		end
+
+		local state = getSessionStreamState(session)
+		if not state then
+			return
+		end
+
+		local rootNetId = root.NetworkId
+		if rootNetId ~= nil then
+			state.roots[rootNetId] = root
+			state.netIds[rootNetId] = true
+		end
+
+		if shallowOnly == true then
+			return
+		end
+
+		visitTree(root, function(object)
+			local netId = object.NetworkId
+			if netId ~= nil and object.CanReplicate ~= false then
+				state.netIds[netId] = true
+			end
+		end)
+	end
+
+	local function unmarkSessionRootStreamed(session, root)
+		if not session or not root then
+			return
+		end
+
+		local state = getSessionStreamState(session)
+		if not state then
+			return
+		end
+
+		local rootNetId = root.NetworkId
+		if rootNetId ~= nil then
+			state.roots[rootNetId] = nil
+			state.netIds[rootNetId] = nil
+		end
+
+		visitTree(root, function(object)
+			local netId = object.NetworkId
+			if netId ~= nil then
+				state.netIds[netId] = nil
+			end
+		end)
+	end
+
+	local function markBatchStreamedForSession(session, batch)
+		for _, root in ipairs(batch or {}) do
+			markSessionRootStreamed(session, root, batch.__shallowRoot == true)
+		end
+	end
+
+	local function shouldSuppressDuplicateWorkspaceBaseplate(object)
+		if object == nil or object.CanReplicate == false then
+			return false
+		end
+		if object.Parent ~= workspace or object.Name ~= "Baseplate" then
+			return false
+		end
+
+		if
+			replicatedWorkspaceBaseplate
+			and replicatedWorkspaceBaseplate ~= object
+			and replicatedWorkspaceBaseplate.Parent == workspace
+			and replicatedWorkspaceBaseplate.CanReplicate ~= false
+		then
+			return true
+		end
+
+		replicatedWorkspaceBaseplate = object
+		return false
+	end
+
 	local function trackObject(object)
+		if shouldSuppressDuplicateWorkspaceBaseplate(object) then
+			object.CanReplicate = false
+			warn(
+				`[Replicator][Server] Suppressing duplicate Workspace Baseplate from replication: {object.ClassName}:{object.Name}#{object.NetworkId or "?"}`
+			)
+			return
+		end
+
 		assignNetworkId(object)
 		lookup[object.NetworkId] = object
 		if stateRegistry.ResolveAdapter(object) then
 			trackedStateObjects[object.NetworkId] = object
 		end
+
+		if object.Parent == workspace then
+			registerStreamRoot(object)
+		end
 	end
 
 	local function untrackObject(object)
+		if streamRoots[object] or object.Parent == workspace then
+			unregisterStreamRoot(object)
+		end
+
+		if object == replicatedWorkspaceBaseplate then
+			replicatedWorkspaceBaseplate = nil
+		end
+
 		if object.NetworkId ~= nil then
 			lookup[object.NetworkId] = nil
 			trackedStateObjects[object.NetworkId] = nil
 			objectStateHistory[object.NetworkId] = nil
+			unmarkNetIdFromAllSessions(object.NetworkId)
 		end
 	end
 
@@ -490,6 +822,12 @@ function Server.init(context)
 					if root == nil or controller == nil then
 						unregisterOwnershipRoot(object)
 					end
+				end
+			elseif prop == "Parent" then
+				if object.Parent == workspace then
+					registerStreamRoot(object)
+				elseif streamRoots[object] then
+					unregisterStreamRoot(object)
 				end
 			end
 			queuePatch(object, prop, value)
@@ -636,6 +974,32 @@ function Server.init(context)
 			and type(object:GetAttribute("__characterUserId")) == "number"
 	end
 
+	local function shouldReplicateNetIdToSession(session, netId)
+		if
+			not AreaOfInterest.ShouldReplicateNetId(
+				session,
+				netId,
+				lookup,
+				networkOwnership.GetWorldPosition,
+				networkOwnership
+			)
+		then
+			return false
+		end
+
+		if not session or not session.key or initialSyncCompleted[session.key] ~= true then
+			return true
+		end
+
+		local object = lookup[netId]
+		if object and AreaOfInterest.IsGlobalEntity(object) then
+			return true
+		end
+
+		local state = getSessionStreamState(session)
+		return state and state.netIds[netId] == true or false
+	end
+
 	local function sendPatchEntries(recipient, entries)
 		if #entries == 0 then
 			return
@@ -658,15 +1022,7 @@ function Server.init(context)
 		local entriesBySession = {}
 		for _, entry in ipairs(entries) do
 			for _, session in ipairs(sessions) do
-				if
-					AreaOfInterest.ShouldReplicateNetId(
-						session,
-						entry.object,
-						lookup,
-						networkOwnership.GetWorldPosition,
-						networkOwnership
-					)
-				then
+				if shouldReplicateNetIdToSession(session, entry.object) then
 					local sessionEntries = entriesBySession[session]
 					if not sessionEntries then
 						sessionEntries = {}
@@ -733,6 +1089,15 @@ function Server.init(context)
 			table.insert(pendingBatches, batch)
 		end
 
+		local function queueShallowRoot(root)
+			if not root then
+				return
+			end
+			local batch = { root }
+			batch.__shallowRoot = true
+			queueBatch(batch)
+		end
+
 		local function getTreeCount(object)
 			if not object then
 				return 0
@@ -754,6 +1119,50 @@ function Server.init(context)
 				end
 			end
 			return children
+		end
+
+		local function serializeShallowRoot(root)
+			if not root then
+				return nil
+			end
+
+			local suppressionApplied = beginRuntimeMutationSuppression()
+			local children = root:GetChildren()
+			local detached = {}
+			mutedObjects[root] = (mutedObjects[root] or 0) + 1
+
+			for _, child in ipairs(children) do
+				mutedObjects[child] = (mutedObjects[child] or 0) + 1
+				table.insert(detached, child)
+			end
+
+			local ok, result = pcall(function()
+				for _, child in ipairs(detached) do
+					child.Parent = nil
+				end
+				return serializeObjects({ root })
+			end)
+
+			for _, child in ipairs(detached) do
+				child.Parent = root
+				mutedObjects[child] -= 1
+				if mutedObjects[child] <= 0 then
+					mutedObjects[child] = nil
+				end
+			end
+
+			mutedObjects[root] -= 1
+			if mutedObjects[root] <= 0 then
+				mutedObjects[root] = nil
+			end
+			endRuntimeMutationSuppression(suppressionApplied)
+
+			if not ok then
+				warn(`[Replicator][Server] serializeShallowRoot failed for {describeObject(root)}: {result}`)
+				return nil
+			end
+
+			return result
 		end
 
 		local function queueBalancedBatches(objects)
@@ -779,6 +1188,10 @@ function Server.init(context)
 		end
 
 		local function preSplitBatch(batch)
+			if batch.__shallowRoot then
+				return false
+			end
+
 			local totalTreeCount = 0
 			local passthrough = {}
 			local didSplit = false
@@ -795,6 +1208,7 @@ function Server.init(context)
 						logReplicationDiagnostic(
 							`sendBatch pre-split-root reason={reasonLabel} root={describeObject(object)} tree={treeCount} children={#children}`
 						)
+						queueShallowRoot(object)
 						queueBalancedBatches(children)
 					else
 						table.insert(passthrough, object)
@@ -929,7 +1343,7 @@ function Server.init(context)
 			)
 			debugTrace(`sendBatch reason={reason or "unspecified"} serializing size={#batch}`)
 			local serializeStartedAt = os.clock()
-			local serialized = serializeObjects(batch)
+			local serialized = batch.__shallowRoot and serializeShallowRoot(batch[1]) or serializeObjects(batch)
 			local batchSerializeSeconds = os.clock() - serializeStartedAt
 			logReplicationDiagnostic(
 				`sendBatch serialized reason={reasonLabel} roots={#batch} ok={serialized ~= nil} serializeSeconds={formatSeconds(
@@ -974,6 +1388,10 @@ function Server.init(context)
 			-- Keep reliable Create payloads under a safe ceiling to avoid massive
 			-- fragmentation storms that can starve ACK/control traffic.
 			local payloadBytes = buffer.len(serialized)
+			if payloadBytes <= 0 then
+				debugTrace(`sendBatch reason={reason or "unspecified"} skipped empty serialized payload`)
+				return
+			end
 			totalPayloadBytes += payloadBytes
 			if payloadBytes > largestPayloadBytes then
 				largestPayloadBytes = payloadBytes
@@ -983,7 +1401,11 @@ function Server.init(context)
 				debugTrace(
 					`sendBatch reason={reason or "unspecified"} oversize bytes={payloadBytes} limit={MAX_CREATE_PAYLOAD_BYTES} batch={#batch}`
 				)
-				if #batch == 1 and isCharacterModel(batch[1]) then
+				if batch.__shallowRoot then
+					warn(
+						`[Replicator][Server] sendCreate: shallow root {describeObject(batch[1])} serialized to {payloadBytes} bytes over limit {MAX_CREATE_PAYLOAD_BYTES}; sending intact`
+					)
+				elseif #batch == 1 and isCharacterModel(batch[1]) then
 					debugTrace(
 						`sendBatch reason={reason or "unspecified"} keeping oversized character model {batch[1].Name} intact`
 					)
@@ -1022,6 +1444,7 @@ function Server.init(context)
 							logReplicationDiagnostic(
 								`sendBatch split-root reason={reasonLabel} root={describeObject(root)} bytes={payloadBytes} children={#splitChildren}`
 							)
+							queueShallowRoot(root)
 							queueBatch(splitChildren)
 							return
 						end
@@ -1053,6 +1476,7 @@ function Server.init(context)
 					payload,
 					true
 				)
+				markBatchStreamedForSession(recipient, batch)
 			else
 				if not waitForCreateBackpressure(relevantSessions) then
 					return
@@ -1064,6 +1488,9 @@ function Server.init(context)
 					payload,
 					true
 				)
+				for _, session in ipairs(relevantSessions) do
+					markBatchStreamedForSession(session, batch)
+				end
 			end
 
 			batchesSent += 1
@@ -1121,6 +1548,7 @@ function Server.init(context)
 		local seen = {}
 		local seenNetIds = {}
 		local seenWorkspaceSingletons = {}
+		local seenWorkspaceBaseplate = false
 		local workspaceSingletonClasses = {
 			Terrain = true,
 		}
@@ -1132,6 +1560,15 @@ function Server.init(context)
 			end
 			if seenNetIds[object.NetworkId] then
 				return
+			end
+			if object.Parent == workspaceInst and object.Name == "Baseplate" then
+				if seenWorkspaceBaseplate then
+					logReplicationDiagnostic(
+						`collectInitialRoots: skipping duplicate Workspace Baseplate root {describeObject(object)}`
+					)
+					return
+				end
+				seenWorkspaceBaseplate = true
 			end
 			if object.Parent == workspaceInst and workspaceSingletonClasses[object.ClassName] then
 				if seenWorkspaceSingletons[object.ClassName] then
@@ -1257,26 +1694,47 @@ function Server.init(context)
 
 	local function sendRemove(netId, object)
 		local payload = { object = netId }
-		-- AoI-filtered remove: only notify sessions that had this entity in range.
-		-- We still need to send to everyone if the object has no position (global entity)
-		-- or if we can't determine its position (already destroyed).
-		if object and not AreaOfInterest.IsGlobalEntity(object) then
-			local relevantSessions = AreaOfInterest.GetRelevantSessions(
-				object,
-				networkService:GetSessions(),
-				networkOwnership.GetWorldPosition,
-				networkOwnership
-			)
-			networkService:SendToMultipleClients(
-				relevantSessions,
-				Protocol.Channels.Replication,
-				Protocol.Kinds.Remove,
-				payload,
-				true
-			)
-		else
+
+		if not object or AreaOfInterest.IsGlobalEntity(object) then
 			networkService:Broadcast(Protocol.Channels.Replication, Protocol.Kinds.Remove, payload, true)
+			return
 		end
+
+		local recipientSet = {}
+		local recipients = {}
+
+		for _, session in ipairs(networkService:GetSessions()) do
+			local streamState = getSessionStreamState(session)
+			if streamState and streamState.netIds[netId] == true then
+				recipientSet[session] = true
+			end
+		end
+
+		local relevantSessions = AreaOfInterest.GetRelevantSessions(
+			object,
+			networkService:GetSessions(),
+			networkOwnership.GetWorldPosition,
+			networkOwnership
+		)
+		for _, session in ipairs(relevantSessions) do
+			recipientSet[session] = true
+		end
+
+		for session in pairs(recipientSet) do
+			table.insert(recipients, session)
+		end
+
+		if #recipients == 0 then
+			return
+		end
+
+		networkService:SendToMultipleClients(
+			recipients,
+			Protocol.Channels.Replication,
+			Protocol.Kinds.Remove,
+			payload,
+			true
+		)
 	end
 
 	local function sendTerrainSnapshot(recipient)
@@ -1386,6 +1844,21 @@ function Server.init(context)
 				end
 			end
 		end
+
+		local aoiFilteredRoots = {}
+		for _, root in ipairs(rootsToReplicate) do
+			if
+				AreaOfInterest.ShouldReplicateToSession(
+					session,
+					root,
+					networkOwnership.GetWorldPosition,
+					networkOwnership
+				)
+			then
+				table.insert(aoiFilteredRoots, root)
+			end
+		end
+		rootsToReplicate = aoiFilteredRoots
 		logReplicationDiagnostic(
 			`Initial sync {session.key}: filtered roots={#rootsToReplicate}/{#initialRoots} missingOnly={clientNetIds ~= nil} seconds={formatSeconds(
 				os.clock() - filterStartedAt
@@ -1686,6 +2159,13 @@ function Server.init(context)
 	end
 
 	game.DescendantAdded:Connect(function(object)
+		if isRuntimeMutationSuppressed() then
+			debugTrace(
+				`DescendantAdded mutation-suppressed root={object.ClassName}:{object.Name} netId={tostring(object.NetworkId)}`
+			)
+			return
+		end
+
 		if object.ClassName == "Camera" then
 			return
 		end
@@ -1723,6 +2203,13 @@ function Server.init(context)
 	end)
 
 	game.DescendantRemoving:Connect(function(object)
+		if isRuntimeMutationSuppressed() then
+			debugTrace(
+				`DescendantRemoving mutation-suppressed root={object.ClassName}:{object.Name} netId={tostring(object.NetworkId)}`
+			)
+			return
+		end
+
 		if object.NetworkId == nil then
 			return
 		end
@@ -1753,6 +2240,7 @@ function Server.init(context)
 		readySessions[session.key] = nil
 		pendingInitialInventorySync[session.key] = nil
 		initialSyncCompleted[session.key] = nil
+		clearSessionStreamState(session)
 		clearTerrainQueue(session)
 		antiCheat:ClearSession(session)
 		AreaOfInterest.UnregisterSession(session)
@@ -2325,13 +2813,7 @@ function Server.init(context)
 				if latestTickSequence > clientAckTick then
 					-- AoI filter: skip snapshots for objects outside this session's range
 					if
-						not AreaOfInterest.ShouldReplicateNetId(
-							session,
-							netId,
-							lookup,
-							networkOwnership.GetWorldPosition,
-							networkOwnership
-						)
+						not shouldReplicateNetIdToSession(session, netId)
 					then
 						continue
 					end
@@ -2354,16 +2836,11 @@ function Server.init(context)
 			end
 
 			local lastOwnedSequence = session.lastAppliedOwnedStateSequence or 0
-			local shouldSend = false
-			if numStates > 0 then
-				shouldSend = ticksSinceLastSent >= SNAPSHOT_MIN_SEND_INTERVAL_TICKS
-			elseif SNAPSHOT_IDLE_KEEPALIVE_TICKS > 0 then
-				shouldSend = ticksSinceLastSent >= SNAPSHOT_IDLE_KEEPALIVE_TICKS
-			else
-				shouldSend = false
+			if numStates == 0 then
+				continue
 			end
 
-			if not shouldSend then
+			if ticksSinceLastSent < SNAPSHOT_MIN_SEND_INTERVAL_TICKS then
 				continue
 			end
 
@@ -2374,7 +2851,7 @@ function Server.init(context)
 				tick = tick,
 				baseTick = clientAckTick,
 				lastProcessedOwnedStateSequence = lastOwnedSequence,
-				states = if numStates > 0 then changedStates else {},
+				states = changedStates,
 			}, false)
 		end
 	end
@@ -2387,6 +2864,113 @@ function Server.init(context)
 				if position then
 					AreaOfInterest.UpdateSessionPosition(session, position)
 				end
+			end
+		end
+	end
+
+	local function gatherTargetStreamRootsForSession(session)
+		local targetsByNetId = {}
+
+		local sessionPosition = AreaOfInterest.GetSessionPosition(session)
+		if sessionPosition then
+			local radius = AreaOfInterest.GetSessionRadius(session)
+			local chunkRadius = math.max(1, math.ceil(radius * streamChunkSizeInv) + 1)
+			local chunkX = chunkCoordFromValue(sessionPosition.X)
+			local chunkY = chunkCoordFromValue(sessionPosition.Y)
+			local chunkZ = chunkCoordFromValue(sessionPosition.Z)
+
+			for x = chunkX - chunkRadius, chunkX + chunkRadius do
+				for y = chunkY - chunkRadius, chunkY + chunkRadius do
+					for z = chunkZ - chunkRadius, chunkZ + chunkRadius do
+						local bucket = streamChunks[chunkKeyFromCoords(x, y, z)]
+						if bucket then
+							for root in pairs(bucket) do
+								if isStreamRoot(root) then
+									targetsByNetId[root.NetworkId] = root
+								end
+							end
+						end
+					end
+				end
+			end
+		else
+			for root in pairs(streamRoots) do
+				if isStreamRoot(root) then
+					targetsByNetId[root.NetworkId] = root
+				end
+			end
+		end
+
+		for root in pairs(streamRootsWithoutChunk) do
+			if isStreamRoot(root) then
+				targetsByNetId[root.NetworkId] = root
+			end
+		end
+
+		if session and session.player then
+			for root in pairs(ownershipRoots) do
+				local authorityRoot = networkOwnership.GetAuthorityRoot(root) or root
+				if
+					authorityRoot
+					and authorityRoot.NetworkId ~= nil
+					and isStreamRoot(authorityRoot)
+					and networkOwnership.IsOwnedByPlayer(authorityRoot, session.player)
+				then
+					targetsByNetId[authorityRoot.NetworkId] = authorityRoot
+				end
+			end
+		end
+
+		for netId, root in pairs(targetsByNetId) do
+			if
+				not AreaOfInterest.ShouldReplicateToSession(
+					session,
+					root,
+					networkOwnership.GetWorldPosition,
+					networkOwnership
+				)
+			then
+				targetsByNetId[netId] = nil
+			end
+		end
+
+		return targetsByNetId
+	end
+
+	local function reconcileStreamingRegions()
+		refreshAllStreamRoots()
+
+		for _, session in ipairs(networkService:GetSessions()) do
+			if not session or not session.key or not readySessions[session.key] or initialSyncCompleted[session.key] ~= true then
+				continue
+			end
+
+			local streamState = getSessionStreamState(session)
+			local targetRootsByNetId = gatherTargetStreamRootsForSession(session)
+			local enteringRoots = {}
+			local exitingRoots = {}
+
+			for netId, root in pairs(targetRootsByNetId) do
+				if streamState.roots[netId] == nil then
+					table.insert(enteringRoots, root)
+				end
+			end
+
+			for netId, root in pairs(streamState.roots) do
+				if targetRootsByNetId[netId] == nil then
+					table.insert(exitingRoots, root)
+				end
+			end
+
+			if #enteringRoots > 0 then
+				sendCreate(session, enteringRoots, "stream_enter")
+			end
+
+			for _, root in ipairs(exitingRoots) do
+				if root and root.NetworkId ~= nil then
+					sendRemoveToSession(session, root.NetworkId)
+				end
+				unmarkSessionRootStreamed(session, root)
 			end
 		end
 	end
@@ -2407,6 +2991,9 @@ function Server.init(context)
 				end)
 			end
 			measureTickStep("updateAoIPositions", updateAoIPositions)
+			if tick % STREAM_RECONCILE_INTERVAL_TICKS == 0 then
+				measureTickStep("reconcileStreamingRegions", reconcileStreamingRegions)
+			end
 			measureTickStep("applyPendingOwnedStateBatches", applyPendingOwnedStateBatches)
 			measureTickStep("flushDirtyPatches", flushDirtyPatches)
 			measureTickStep("flushTerrainChunkUpdates", flushTerrainChunkUpdates)

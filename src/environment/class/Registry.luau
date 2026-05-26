@@ -143,6 +143,10 @@ function registry.new(class, renderer, datamodel, force)
 	return instance
 end
 
+function registry.InitCallbackClass(clone, classname, renderer, datamodel) 
+	return initializeInstance(clone, classname, renderer, datamodel, false)
+end
+
 Instance.SetCloneInitializer(function(source, clone)
 	local context = rawget(source, "_classContext")
 	if not context then

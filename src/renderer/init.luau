@@ -20,6 +20,9 @@ local utils = require("@bufferutils")
 local r3d = require("@r3d")
 local rlib = r3d.lib
 
+local cachedMousePos = Vector2.new(0, 0)
+local cachedMouseDelta = Vector2.new(0, 0)
+
 -- TYPES
 export type KiRendConf = {
 	width: number,
@@ -77,16 +80,12 @@ function KiRend.new(config: KiRendConf)
 	end
 	lib.SetExitKey(0)
 
-	print("gonna init twin")
 	ok, err = pcall(rlib.R3D_Init, config.width, config.height)
-	print("finished init")
 	if not ok then
 		error("Failed to initialize R3D: " .. tostring(err))
 	end
 	pcall(rlib.R3D_SetUpscaleMode, 1)
 	pcall(rlib.R3D_SetTextureWrap, raylib.const.TextureWrap.TEXTURE_WRAP_REPEAT)
-
-	print(1)
 
 	local lastRenderWidth, lastRenderHeight = config.width, config.height
 	local requested3DRenderScale = math.clamp(config.renderScale or 1, 0.1, 1)
@@ -98,8 +97,6 @@ function KiRend.new(config: KiRendConf)
 
 	local sortedPoolCache = {}
 	local sortedPoolDirty = {}
-
-	print(2)
 
 	local function getSortedPool(pool)
 		if sortedPoolCache[pool] and not sortedPoolDirty[pool] then
@@ -228,7 +225,7 @@ function KiRend.new(config: KiRendConf)
 		UIRT = nil,
 
 		DrawFps = true,
-		ShowPerfOverlay = false,
+		ShowPerfOverlay = true,
 		PerfStats = perf_stats,
 		Internal3DRenderScale = actual3DRenderScale,
 		Max3DRenderPixels = max3DRenderPixels,
@@ -853,15 +850,26 @@ function KiRend.new(config: KiRendConf)
 		end
 		for i = 1, draw_calls_count do
 			local d = renderer_draw_calls[i]
-			d.mesh = nil; d.material = nil; d.matrix = nil; d.Begin = nil; d.End = nil
+			d.mesh = nil
+			d.material = nil
+			d.matrix = nil
+			d.Begin = nil
+			d.End = nil
 		end
 		for i = 1, instanced_draw_calls_count do
 			local d = renderer_instanced_draw_calls[i]
-			d.mesh = nil; d.material = nil; d.instances = nil; d.Begin = nil; d.End = nil
+			d.mesh = nil
+			d.material = nil
+			d.instances = nil
+			d.Begin = nil
+			d.End = nil
 		end
 		for i = 1, decal_draw_calls_count do
 			local d = renderer_decal_draw_calls[i]
-			d.decal = nil; d.transform = nil; d.Begin = nil; d.End = nil
+			d.decal = nil
+			d.transform = nil
+			d.Begin = nil
+			d.End = nil
 		end
 		draw_calls_count = 0
 		instanced_draw_calls_count = 0
@@ -1004,8 +1012,12 @@ function KiRend.new(config: KiRendConf)
 		local mousePos = lib.GetMousePosition()
 		local delta = lib.GetMouseDelta()
 
-		renderer_mousedata.position = Vector2.new(mousePos.x, mousePos.y)
-		renderer_mousedata.delta = Vector2.new(delta.x, delta.y)
+		cachedMousePos.x = mousePos.x
+		cachedMousePos.y = mousePos.y
+		cachedMouseDelta.x = delta.x
+		cachedMouseDelta.y = delta.y
+		renderer_mousedata.position = cachedMousePos
+		renderer_mousedata.delta = cachedMouseDelta
 		renderer_mousedata.mouse_wheel_move = lib.GetMouseWheelMove()
 		renderer_mousedata.mouse_wheel_delta = lib.GetMouseDelta()
 		renderer_mousedata.is_cursor_hidden = lib.IsCursorHidden() == 1

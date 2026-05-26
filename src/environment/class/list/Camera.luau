@@ -25,6 +25,15 @@ return {
 	singleton = true,
 	callback = function(instance, renderer)
 		if cameraSingleton and not cameraSingleton.Destroyed then
+			if cameraSingleton.CFrame == nil or cameraSingleton.CFrame.Position == nil then
+				cameraSingleton.CFrame = propTable.CFrame
+			end
+			if cameraSingleton.FieldOfView == nil then
+				cameraSingleton.FieldOfView = propTable.FieldOfView
+			end
+			if cameraSingleton.CameraType == nil then
+				cameraSingleton.CameraType = propTable.CameraType
+			end
 			return cameraSingleton
 		end
 
@@ -48,9 +57,16 @@ return {
 
 		local function syncRaylibCamera()
 			local camCF = instance.CFrame
+			if camCF == nil or camCF.Position == nil then
+				camCF = propTable.CFrame
+				if camCF == nil or camCF.Position == nil then
+					return
+				end
+				instance.CFrame = camCF
+			end
 			local rollRad = math.rad(instance.Roll or 0)
 
-			instance.Position = instance.CFrame.Position
+			instance.Position = camCF.Position
 			local dpiScale = lib.GetWindowScaleDPI()
 			instance.ViewportSize = Vector2.new(lib.GetRenderWidth() / dpiScale.x, lib.GetRenderHeight() / dpiScale.y)
 

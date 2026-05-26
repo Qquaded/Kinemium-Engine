@@ -19,7 +19,6 @@ local BLACKLISTED_TYPES = {
 	["buffer"] = true,
 }
 
--- Pre-build a fast set of property names to skip during serialization.
 local SKIP_PROPS = {
 	Parent = true,
 	Children = true,
@@ -29,9 +28,6 @@ local SKIP_PROPS = {
 	tags = true,
 	attributes = true,
 	_childByName = true,
-	-- Humanoid runtime state  contains live Part references that cause
-	-- CyclicReference errors in the thread encoder. These are rebuilt
-	-- on the client via RestoreRig / inferRigDescriptorFromCharacter.
 	RigBindings = true,
 	RigParts = true,
 	RigPartIndex = true,
@@ -41,7 +37,6 @@ local SKIP_PROPS = {
 	PoseOffsets = true,
 	StateMachine = true,
 	Animator = true,
-	-- Signal objects  runtime only, never serialized
 	Died = true,
 	HealthChanged = true,
 	MoveToFinished = true,
@@ -58,7 +53,6 @@ local SKIP_PROPS = {
 	CrouchStarted = true,
 	CrouchEnded = true,
 	Dashed = true,
-	-- Instance signals  runtime only
 	ChildAdded = true,
 	ChildRemoved = true,
 	DescendantAdded = true,
@@ -67,7 +61,6 @@ local SKIP_PROPS = {
 	AncestryChanged = true,
 	Changed = true,
 	Destroying = true,
-	-- Other instance internals
 	NetworkOwner = true,
 	NetworkOwnerType = true,
 	CanReplicate = true,
@@ -102,9 +95,6 @@ local TYPE_DESERIALIZERS = {
 		return item
 	end,
 	Content = function(v)
-		-- Content payloads from imported blobs may arrive either as a raw URI
-		-- string, an instance reference, or a typed Content table. Normalize to
-		-- the engine-friendly shape to avoid warning spam and heavy log churn.
 		if type(v) ~= "table" then
 			return v
 		end

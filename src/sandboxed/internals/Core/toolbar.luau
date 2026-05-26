@@ -132,7 +132,7 @@ local fileMenu = gui.menu({
 				{
 					label = "Export as Executable",
 					onClick = function()
-						print("Export as Executable")
+						fileService.ExportGameAsExecutable(ishared.GameName or "KinemiumProject")
 					end,
 				},
 

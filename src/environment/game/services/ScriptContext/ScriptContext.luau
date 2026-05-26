@@ -17,6 +17,53 @@ export type LanguageRuntime = {
 
 ScriptContext.InitRenderer = function(renderer, signal, datamodel)
 	local requiredCache = {}
+	local REQUIRE_LOADING = {}
+	local REQUIRE_NIL = {}
+
+	local function hasExplicitNilReturn(source)
+		if type(source) ~= "string" then
+			return false
+		end
+
+		local withoutTrailingWhitespace = source:gsub("%s+$", "")
+		return withoutTrailingWhitespace:match("return%s+nil%s*$") ~= nil
+			or withoutTrailingWhitespace:match("return%s+nil%s*::") ~= nil
+	end
+
+	local function hasReturnStatement(source)
+		if type(source) ~= "string" then
+			return false
+		end
+
+		return source:match("^%s*return[%s%(]") ~= nil or source:match("\n%s*return[%s%(]") ~= nil
+	end
+
+	local function tryResolveModuleScript(target)
+		if type(target) ~= "table" then
+			return nil
+		end
+
+		if target.ClassName == "ModuleScript" then
+			return target
+		end
+
+		if target.FindFirstChild then
+			local initModule = target:FindFirstChild("init") or target:FindFirstChild("Init")
+			if initModule and initModule.ClassName == "ModuleScript" then
+				return initModule
+			end
+		end
+
+		return nil
+	end
+
+	local function getModuleStackId(moduleScript)
+		local fullName = moduleScript.Name
+		if moduleScript.GetFullName then
+			fullName = moduleScript:GetFullName()
+		end
+		return `{fullName}#{moduleScript.UniqueId}`
+	end
 
 	task.spawn(function()
 		local function getserv(service)
@@ -49,31 +96,36 @@ ScriptContext.InitRenderer = function(renderer, signal, datamodel)
 								return
 							end
 
-							if target.ClassName ~= "ModuleScript" then
+							local moduleScript = tryResolveModuleScript(target)
+							if not moduleScript then
 								print(
 									`require: cannot require {target.ClassName} '{target.Name}'; expected ModuleScript`,
 									2
 								)
 								return
 							end
+							target = moduleScript
 
-							if requiredCache[target] then
-								return requiredCache[target]
+							local cached = requiredCache[target]
+							if cached == REQUIRE_NIL then
+								return nil
 							end
-
-							if requiredCache[target] == false then
+							if cached == REQUIRE_LOADING then
 								print(`require: circular dependency detected on '{target.Name}'`, 2)
 								return
 							end
+							if cached ~= nil then
+								return cached
+							end
 
-							requiredCache[target] = false
+							requiredCache[target] = REQUIRE_LOADING
 
 							local source = target.Source
 							local success, result, id, thread, getResult
 							if source and type(source) == "string" then
 								id, success, result, thread, getResult = kilang:execute(
 									source,
-									{ StackId = target.Name },
+									{ StackId = getModuleStackId(target) },
 									{
 										script = target,
 										src = target,
@@ -85,18 +137,34 @@ ScriptContext.InitRenderer = function(renderer, signal, datamodel)
 
 							if getResult then
 								success, result = getResult()
+								if id then
+									kilang:remove(id)
+								end
 							end
 
-							if thread and result ~= nil then
+							if thread then
 								-- save thread
 								if not activeThreads["Luau"] then
 									activeThreads["Luau"] = {}
 								end
-								activeThreads["Luau"][scriptObject.UniqueId] = thread
+								activeThreads["Luau"][target.UniqueId] = thread
 							end
 
-							if result == nil then
-								print(`require: ModuleScript '{target.Name}' did not return a value`, 2)
+							if success == false then
+								requiredCache[target] = nil
+								print(`require: ModuleScript '{target.Name}' failed: {tostring(result)}`, 2)
+								return
+							end
+
+							if result == nil and not hasExplicitNilReturn(source) then
+								requiredCache[target] = REQUIRE_NIL
+								if not hasReturnStatement(source) then
+									print(`require: ModuleScript '{target.Name}' did not return a value`, 2)
+								end
+								return nil
+							elseif result == nil then
+								requiredCache[target] = REQUIRE_NIL
+								return nil
 							end
 
 							requiredCache[target] = result

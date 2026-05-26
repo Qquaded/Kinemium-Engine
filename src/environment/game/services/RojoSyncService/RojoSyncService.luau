@@ -1,10 +1,13 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
+local net = zune.net
 
 local RojoSyncService = Instance.new("RojoSyncService")
 RojoSyncService.ExplorerHidden = true
 
+local Registry = require("@InstanceRegistry")
+
 local isConnected = false
+local rootInstanceId = nil
 local sessionId = nil
 local messageCursor = -1
 local socket = nil
@@ -59,19 +62,36 @@ RojoSyncService.InitRenderer = function(renderer, renderer_signal, game)
 			return nil
 		end
 
+		local function normalizeId(id)
+			if type(id) == "string" then
+				return id:gsub("-", "")
+			end
+			return id
+		end
+
 		local function constructInstance(id, parent, patchAdded)
-			local virtualInstance = patchAdded[id]
+			local virtualInstance = patchAdded[id] or patchAdded[normalizeId(id)]
 			if not virtualInstance then
 				return
 			end
 
-			local className = virtualInstance.ClassName
-			local inst = Instance.new(className)
-			inst.Name = virtualInstance.Name
-			inst.Parent = parent
+			local nid = normalizeId(id)
+			local inst = instanceMap.fromIds[nid]
 
-			instanceMap.fromIds[id] = inst
-			instanceMap.fromInstances[inst] = id
+			if inst == nil then
+				local className = virtualInstance.ClassName
+				local ok, created = pcall(Instance.new, className)
+				if not ok or created == nil then
+					return
+				end
+
+				pcall(Registry.InitCallbackClass, created, className, renderer, game)
+				inst = created
+				inst.Name = virtualInstance.Name
+				inst.Parent = parent
+				instanceMap.fromIds[nid] = inst
+				instanceMap.fromInstances[inst] = nid
+			end
 
 			if virtualInstance.Properties then
 				for propName, propValue in pairs(virtualInstance.Properties) do
@@ -86,21 +106,107 @@ RojoSyncService.InitRenderer = function(renderer, renderer_signal, game)
 
 			if virtualInstance.Children then
 				for _, childId in ipairs(virtualInstance.Children) do
-					constructInstance(childId, inst, patchAdded)
+					constructInstance(normalizeId(childId), inst, patchAdded)
 				end
 			end
 
 			return inst
 		end
 
+		local SERVICE_CLASSES = {
+			"Workspace", "Players", "Lighting", "ReplicatedStorage", "ReplicatedFirst",
+			"ServerScriptService", "ServerStorage", "StarterGui", "StarterPack",
+			"StarterPlayer", "SoundService", "Teams", "TextChatService",
+			"TweenService", "RunService", "UserInputService", "HttpService",
+			"CollectionService", "DataStoreService", "PathfindingService",
+			"PhysicsService", "ChatService",
+		}
+
+		local function applyFullSnapshot(instances)
+			-- Destroy only non-service, non-game instances
+			for _, inst in pairs(instanceMap.fromIds) do
+				if inst ~= game then
+					local ok, cls = pcall(function() return inst.ClassName end)
+					local isService = false
+					if ok then
+						for _, sc in ipairs(SERVICE_CLASSES) do
+							if sc == cls then
+								isService = true
+								break
+							end
+						end
+					end
+					if not isService then
+						pcall(function() inst:Destroy() end)
+					end
+				end
+			end
+
+			local normRoot = normalizeId(rootInstanceId)
+			instanceMap.fromIds = { [normRoot] = game }
+			instanceMap.fromInstances = { [game] = normRoot }
+
+			-- Build a normalized-key copy of instances so lookups always work
+			local normInstances = {}
+			if type(instances) == "table" then
+				for k, v in pairs(instances) do
+					normInstances[normalizeId(k)] = v
+				end
+			end
+
+			-- Pre-seed known services so constructInstance reuses singletons
+			for nid, vInst in pairs(normInstances) do
+				if nid ~= normRoot and vInst.ClassName then
+					for _, sc in ipairs(SERVICE_CLASSES) do
+						if sc == vInst.ClassName then
+							local ok, svc = pcall(function() return game:GetService(sc) end)
+							if ok and svc then
+								instanceMap.fromIds[nid] = svc
+								instanceMap.fromInstances[svc] = nid
+							end
+							break
+						end
+					end
+				end
+			end
+
+			local rootSnap = normInstances[normRoot]
+			if rootSnap and rootSnap.Children then
+				for _, childId in ipairs(rootSnap.Children) do
+					constructInstance(normalizeId(childId), game, normInstances)
+				end
+			end
+		end
+
+		local function fetchReadSnapshot(baseUrl)
+			if rootInstanceId == nil then
+				return nil
+			end
+
+			local ok, readRes = pcall(net.http.request, baseUrl .. "/api/read/" .. tostring(rootInstanceId), {
+				headers = { ["Accept"] = "application/json" },
+			})
+			
+			if not ok or not readRes or not readRes.ok then
+				return nil
+			end
+
+			local readSuccess, readData = pcall(HttpService.JSONDecode, HttpService, readRes.body)
+			if not readSuccess or type(readData) ~= "table" then
+				return nil
+			end
+
+			return readData
+		end
+
 		local function applyPatch(patch)
 			-- Handle Removed
 			if patch.removed then
 				for _, id in ipairs(patch.removed) do
-					local inst = instanceMap.fromIds[id]
+					local inst = instanceMap.fromIds[normalizeId(id)]
 					if inst then
 						inst:Destroy()
-						instanceMap.fromIds[id] = nil
+						instanceMap.fromIds[normalizeId(id)] = nil
 						instanceMap.fromInstances[inst] = nil
 					end
 				end
@@ -108,14 +214,17 @@ RojoSyncService.InitRenderer = function(renderer, renderer_signal, game)
 
 			-- Handle Added
 			if patch.added then
+				local normAdded = {}
 				for id, virtualInstance in pairs(patch.added) do
+					normAdded[normalizeId(id)] = virtualInstance
+				end
+				for id, virtualInstance in pairs(normAdded) do
 					if not instanceMap.fromIds[id] then
-						local parentInst = instanceMap.fromIds[virtualInstance.Parent]
-						-- Only construct if it's the root of an addition tree
-						local isChildOfAddition = patch.added[virtualInstance.Parent] ~= nil
+						local parentInst = instanceMap.fromIds[normalizeId(virtualInstance.Parent)]
+						local isChildOfAddition = normAdded[normalizeId(virtualInstance.Parent)] ~= nil
 						if not isChildOfAddition then
 							if parentInst then
-								constructInstance(id, parentInst, patch.added)
+								constructInstance(id, parentInst, normAdded)
 							end
 						end
 					end
@@ -125,7 +234,7 @@ RojoSyncService.InitRenderer = function(renderer, renderer_signal, game)
 			-- Handle Updated
 			if patch.updated then
 				for _, update in ipairs(patch.updated) do
-					local inst = instanceMap.fromIds[update.id]
+					local inst = instanceMap.fromIds[normalizeId(update.id)]
 					if inst then
 						if update.changedName then
 							inst.Name = update.changedName
@@ -146,123 +255,164 @@ RojoSyncService.InitRenderer = function(renderer, renderer_signal, game)
 		end
 
 		function RojoSyncService:Connect(port)
-			print("Warning: Rojo support is still being worked on, For now it does not work. Wow!")
 			if isConnected then
-				return
+				return true
 			end
 			port = port or 3487
 
 			local baseUrl = "http://localhost:" .. tostring(port)
+			local wsBaseUrl = "ws://localhost:" .. tostring(port)
 
 			print("RojoSyncService: Connecting to " .. baseUrl)
 
-			print(1)
-			-- 1. Initialize session
-			local _, res = HttpService:GetAsync(baseUrl .. "/api/rojo", { ["Accept"] = "application/json" })
-			print(res.Ok)
-			if not res.Ok then
+			if socket then
+				pcall(function()
+					if socket.close then
+						socket:close(1000)
+					elseif socket.Destroy then
+						socket:Destroy()
+					end
+				end)
+				socket = nil
+			end
+
+			local ok, res = pcall(net.http.request, baseUrl .. "/api/rojo", {
+				headers = { ["Accept"] = "application/json" },
+			})
+			if not ok or not res or not res.ok then
 				print("RojoSyncService: Failed to connect to Rojo server.")
 				return false
 			end
 
-			local success, serverInfo = pcall(HttpService.JSONDecode, HttpService, res.Body)
-			print(2, res.Ok)
+			local success, serverInfo = pcall(HttpService.JSONDecode, HttpService, res.body)
 			if not success then
 				print("RojoSyncService: Failed to decode JSON from /api/rojo")
 				return false
 			end
 
+			rootInstanceId = serverInfo.rootInstanceId
 			sessionId = serverInfo.sessionId
-
-			-- 2. Read initial tree
-			local readUrl = baseUrl .. "/api/read/" .. serverInfo.rootInstanceId
-			local _, readRes = HttpService:GetAsync(readUrl, { ["Accept"] = "application/json" })
-
-			print(readRes.Ok, 3)
-
-			if readRes.Ok then
-				local readSuccess, readData = pcall(HttpService.JSONDecode, HttpService, readRes.Body)
-				print(readData)
-				if readSuccess then
-					messageCursor = readData.messageCursor
-
-					instanceMap.fromIds[serverInfo.rootInstanceId] = game
-					instanceMap.fromInstances[game] = serverInfo.rootInstanceId
-
-					local rootSnap = readData.instances[serverInfo.rootInstanceId]
-					task.spawn(function()
-						if rootSnap and rootSnap.Children then
-							for _, childId in ipairs(rootSnap.Children) do
-								print(childId)
-								constructInstance(childId, game, readData.instances)
-							end
-						end
-					end)
-				end
+			if rootInstanceId == nil then
+				print("RojoSyncService: Missing rootInstanceId in /api/rojo response")
+				return false
 			end
+
+			local readData = fetchReadSnapshot(baseUrl)
+			if not readData then
+				print("RojoSyncService: Failed to fetch initial snapshot from /api/read")
+				return false
+			end
+
+			messageCursor = tonumber(readData.messageCursor) or -1
+
+			applyFullSnapshot(readData.instances)
 
 			print("Finished making instances")
 
-			-- 3. Connect Websocket
-			isConnected = true
-			print("RojoSyncService: Connected (polling mode)")
+			local function resyncFromRead(reason)
+				local data = fetchReadSnapshot(baseUrl)
+				if not data then
+					print("RojoSyncService: Failed to resync snapshot (" .. tostring(reason) .. ")")
+					return false
+				end
+				messageCursor = tonumber(data.messageCursor) or messageCursor
+				applyFullSnapshot(data.instances)
+				print("RojoSyncService: Resynced from /api/read (cursor " .. tostring(messageCursor) .. ")")
+				return true
+			end
 
-			task.spawn(function()
-				while isConnected do
-					task.wait(1)
+			local function applyMessageEntry(entry)
+				if type(entry) ~= "table" then
+					return false
+				end
 
-					print("Syncing")
+				if entry.removed ~= nil or entry.added ~= nil or entry.updated ~= nil then
+					applyPatch(entry)
+					return true
+				end
 
-					local _, pollRes = HttpService:GetAsync(baseUrl .. "/api/read/" .. serverInfo.rootInstanceId)
-					if not pollRes.Ok then
-						print("RojoSyncService: Lost connection to Rojo")
-						isConnected = false
-						break
-					end
+				return false
+			end
 
-					print(pollRes.Ok)
+			local function handleSocketMessage(rawMessage)
+				local decodedOk, packet = pcall(HttpService.JSONDecode, HttpService, rawMessage)
+				if not decodedOk or type(packet) ~= "table" then
+					print("RojoSyncService: Failed to decode websocket message")
+					return
+				end
 
-					local ok, data = pcall(HttpService.JSONDecode, HttpService, pollRes.Body)
-					if ok and data.messageCursor ~= messageCursor then
-						messageCursor = data.messageCursor
-
-						print(messageCursor)
-
-						-- Clear and rebuild changed instances
-						-- Simple approach: full resync
-						for id, inst in pairs(instanceMap.fromIds) do
-							task.spawn(function()
-								if inst ~= game then
-									pcall(function()
-										inst:Destroy()
-									end)
-								end
-							end)
-						end
-						instanceMap.fromIds = { [serverInfo.rootInstanceId] = game }
-						instanceMap.fromInstances = { [game] = serverInfo.rootInstanceId }
-
-						local rootSnap = data.instances[serverInfo.rootInstanceId]
-						task.spawn(function()
-							if rootSnap and rootSnap.Children then
-								for _, childId in ipairs(rootSnap.Children) do
-									print(childId)
-									constructInstance(childId, game, data.instances)
-								end
-							end
-						end)
-
-						print("RojoSyncService: Synced (cursor " .. messageCursor .. ")")
+				-- If the session changed (Rojo restarted), do a full resync
+				if packet.sessionId ~= nil and packet.sessionId ~= sessionId then
+					print("RojoSyncService: Session changed, resyncing...")
+					sessionId = packet.sessionId
+					local resynced = resyncFromRead("session-change")
+					if not resynced then
+						return
 					end
 				end
-			end)
+
+				if packet.packetType ~= "messages" then
+					if packet.packetType == "reset" then
+						resyncFromRead("reset")
+					end
+					return
+				end
+
+				local body = packet.body
+				if type(body) ~= "table" then
+					return
+				end
+
+				if body.messageCursor ~= nil then
+					messageCursor = tonumber(body.messageCursor) or messageCursor
+				end
+
+				for _, message in ipairs(body.messages or {}) do
+					if not applyMessageEntry(message) and type(message) == "table" then
+						for _, nested in ipairs(message) do
+							applyMessageEntry(nested)
+						end
+					end
+				end
+			end
+
+			local wsUrl = wsBaseUrl .. "/api/socket/" .. tostring(messageCursor)
+			local socketOk, openedSocket = pcall(net.http.websocket, wsUrl, {
+				timeout = -1,
+
+				message = function(self, msg)
+					handleSocketMessage(msg)
+					return true
+				end,
+				close = function(self, code)
+					print("RojoSyncService: Websocket closed (" .. tostring(code) .. ")")
+					isConnected = false
+					socket = nil
+					return true
+				end,
+			})
+
+			if not socketOk or not openedSocket then
+				print("RojoSyncService: Failed to open websocket")
+				return false
+			end
+
+			socket = openedSocket
+			isConnected = true
+			print("RojoSyncService: Connected (websocket mode)")
 
 			return true
 		end
 
 		function RojoSyncService:Disconnect()
 			if socket then
-				socket:Destroy()
+				pcall(function()
+					if socket.close then
+						socket:close(1000)
+					elseif socket.Destroy then
+						socket:Destroy()
+					end
+				end)
 				socket = nil
 			end
 			isConnected = false

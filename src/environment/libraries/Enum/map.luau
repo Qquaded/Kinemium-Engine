@@ -434,6 +434,23 @@ enumTable.Font = {
 	Unknown = "Unknown",
 }
 
+enumTable.FontStyle = {
+	Normal = 0,
+	Italic = 1,
+}
+
+enumTable.FontWeight = {
+	Thin = 100,
+	ExtraLight = 200,
+	Light = 300,
+	Regular = 400,
+	Medium = 500,
+	SemiBold = 600,
+	Bold = 700,
+	ExtraBold = 800,
+	Heavy = 900,
+}
+
 enumTable.MultiplayerMode = {
 	None = 0,
 	Singleplayer = 1,
@@ -482,6 +499,19 @@ enumTable.TextTruncate = {
 	Head = 1,
 	Tail = 2,
 	Line = 3,
+	AtEnd = 1,
+}
+
+enumTable.LeftRight = {
+	Left = 0,
+	Center = 1,
+	Right = 2,
+}
+
+enumTable.TopBottom = {
+	Top = 0,
+	Center = 1,
+	Bottom = 2,
 }
 
 enumTable.Dimension = {
@@ -509,6 +539,47 @@ enumTable.VerticalAlignment = {
 	Top = 0,
 	Center = 1,
 	Bottom = 2,
+}
+
+enumTable.ScreenInsets = {
+	None = 0,
+	CoreUISafeInsets = 1,
+	DeviceSafeInsets = 2,
+	TopbarSafeInsets = 3,
+}
+
+enumTable.ResamplerMode = {
+	Default = 0,
+	Pixelated = 1,
+}
+
+enumTable.ResampleMode = enumTable.ResamplerMode
+
+enumTable.ScrollBarInset = {
+	None = 0,
+	ScrollBar = 1,
+	Always = 2,
+}
+
+enumTable.SelectionBehavior = {
+	Escape = 0,
+	Stop = 1,
+}
+
+enumTable.UIFlexMode = {
+	None = 0,
+	Grow = 1,
+	Shrink = 2,
+	Fill = 3,
+	Custom = 4,
+}
+
+enumTable.ItemLineAlignment = {
+	Automatic = 0,
+	Start = 1,
+	Center = 2,
+	End = 3,
+	Stretch = 4,
 }
 
 enumTable.Style = {
@@ -623,6 +694,8 @@ enumTable.ScaleType = {
 	Stretch = 0,
 	Fit = 1,
 	Crop = 2,
+	Tile = 3,
+	Slice = 4,
 }
 
 enumTable.ConstraintType = {

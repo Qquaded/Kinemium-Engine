@@ -12,64 +12,26 @@ export type KinemiumPlaceFile = {
 	ToExe: (string) -> (),
 }
 
-local sArgs = {
-	"-s",
-	"src/main.luau",
-	"src/environment/*",
-	"src/environment/class/**",
-	"src/environment/classlibs/**",
-	"src/environment/datatypes/**",
-	"src/environment/libraries/**",
-
-	"src/environment/game/services/Workspace/**",
-	"src/environment/game/services/*/*",
-	"src/environment/game/*",
-	"src/environment/game/runtime/*",
-
-	"src/modules/**/*.luau*",
-	"src/renderer/**/*.luau*",
-	"src/sandboxed/**",
-	"src/runtime/**/*.luau*",
-	"src/external/**/*.luau*",
-	"src/objects/**",
-	"src/libs/**",
-	"src/**",
-	"src/external/signal.luau",
+local buildNames = {
+	["windows"] = "windows_x86-64",
+	["macos"] = "macos_x86-64",
+	["linux"] = "debian_x86-64",
+	["freebsd"] = "freebsd_x86-64",
 }
 
-local function build(placeFile)
-	local args = {
-		"bundle",
-		"--compression=zstd",
-		"-f",
-		"./**/.luauurc",
-		"src/assets/**",
-		"src/assets/images/**",
-		"src/assets/icon/**",
-		"src/assets/materials/**",
-		"src/assets/meshes/**",
-		"src/assets/fonts/**",
-		"src/assets/sky/**",
-		"src/projects.toml",
-		"src/assets/sounds/**",
-		"src/assets/videos/**",
-	}
+local serde = zune.serde
 
-	if placeFile then
-		table.insert(args, placeFile)
-	end
-	for _, line in pairs(sArgs) do
-		table.insert(args, line)
-	end
-	table.insert(args, "--out=./build/KinemiumRuntime.exe")
-	print(args)
+local defaultFlags = {
+	["default"] = {
+		"client",
+		"offline",
+		"no_multiplayer",
+	},
+}
 
-	local res = process.run(fs.getExePath(), args)
-	print("Building")
-
-	if not res.ok then
-		error(`\n- {res.stderr}`)
-	end
+local function buildEngine()
+	local res = process.run(fs.getExePath(), { "run", "build" })
+	return res
 end
 
 local function loop(path)
@@ -121,7 +83,7 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 					end)
 				end
 
-				build()
+				buildEngine()
 
 				return wrapper
 			end
@@ -146,7 +108,7 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				fs.writeFile("./build/" .. pathName, serialized)
 
 				function wrapper:ToExe()
-					build("./build/" .. pathName)
+					buildEngine()
 				end
 
 				return wrapper
@@ -200,6 +162,24 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				end
 			end
 			return false
+		end,
+
+		ExportGameAsExecutable = function(gameName)
+			local result = buildEngine()
+
+			local platform = buildNames[zune.platform.os]
+			local buildFolder = `./build/{platform}`
+			local exportedFolder = buildFolder .. "/exported"
+
+			fs.makeDir(exportedFolder)
+
+			-- write engine flags file, this will determine what flags the engine is gonna
+			-- startup with
+			fs.writeFile(exportedFolder .. "/flags.toml", serde.toml.encode(defaultFlags))
+
+			KineFileService.ExportGameAsFile(exportedFolder, "obj")
+
+			return true
 		end,
 	})
 end

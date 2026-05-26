@@ -21,6 +21,8 @@ local DEFAULT_IGNORE = {
 }
 
 local activeState = nil
+local closeRequestConnection = nil
+local shutdownHookBound = false
 local registerManagedInstance
 local disconnectSyncListeners
 local deleteRecursive
@@ -652,7 +654,7 @@ local function getBackupInstances(datamodel)
 	return saved
 end
 
-local function saveProjectBackup(state)
+local function saveProjectBackup(state, reason)
 	if not state or state.active ~= true then
 		return nil
 	end
@@ -670,7 +672,40 @@ local function saveProjectBackup(state)
 	fs.writeFile(backupPath, serialized)
 	state.lastBackupPath = backupPath
 	state.lastBackupAt = os.time()
+	state.lastBackupReason = reason or "interval"
 	return backupPath
+end
+
+local function saveProjectBackupSafe(state, reason)
+	if not state or state.active ~= true then
+		return nil
+	end
+
+	local isCloseSave = reason == "close_request" or reason == "shutdown_hook" or reason == "stop_syncing"
+	if isCloseSave and state.closeRequestBackupSaved then
+		return state.lastBackupPath
+	end
+
+	local ok, result = pcall(saveProjectBackup, state, reason)
+	if not ok then
+		state.lastError = tostring(result)
+		warn(`[ProjectSync] Backup failed ({reason or "manual"}): {state.lastError}`)
+		return nil
+	end
+
+	if isCloseSave and result ~= nil then
+		state.closeRequestBackupSaved = true
+	end
+
+	return result
+end
+
+local function saveActiveProjectBackup(reason)
+	if not activeState or activeState.active ~= true then
+		return nil
+	end
+
+	return saveProjectBackupSafe(activeState, reason)
 end
 
 local function getLatestBackupPath(projectPath)
@@ -692,20 +727,47 @@ local function getLatestBackupPath(projectPath)
 	return latest and fs.path.join(backupsPath, latest.name) or nil
 end
 
+local function shouldPreserveRuntimeChild(target, child)
+	if not target or not child then
+		return false
+	end
+
+	if target.ClassName == "Workspace" and child.ClassName == "Camera" then
+		return true
+	end
+
+	return false
+end
+
 local function restoreBackupInstance(datamodel, instance)
 	local target = datamodel:FindFirstChild(instance.Name)
 	if target then
 		for _, child in ipairs(target:GetChildren()) do
-			if child:GetAttribute(ATTR_PROJECT) == nil then
+			if child:GetAttribute(ATTR_PROJECT) == nil and not shouldPreserveRuntimeChild(target, child) then
 				child:Destroy()
 			end
 		end
 
 		for _, child in ipairs(instance:GetChildren()) do
+			if shouldPreserveRuntimeChild(target, child) then
+				child:Destroy()
+				continue
+			end
 			child.Parent = target
 		end
 
 		instance:Destroy()
+
+		if target.ClassName == "Workspace" and target.Camera == nil then
+			for _, child in ipairs(target:GetChildren()) do
+				if child.ClassName == "Camera" then
+					pcall(function()
+						target.Camera = child
+					end)
+					break
+				end
+			end
+		end
 	else
 		instance.Parent = datamodel
 	end
@@ -761,11 +823,7 @@ local function startBackupLoop(state)
 				break
 			end
 
-			local ok, err = pcall(saveProjectBackup, state)
-			if not ok then
-				state.lastError = tostring(err)
-				warn(`[ProjectSync] Backup failed: {state.lastError}`)
-			end
+			saveProjectBackupSafe(state, "interval")
 		end
 	end)
 end
@@ -1074,6 +1132,21 @@ registerManagedInstance = function(state, pointerName, instance, sourcePath, rel
 end
 
 ProjectSyncService.InitRenderer = function(renderer, renderer_signal, game)
+	if not shutdownHookBound and renderer and renderer.Hook and renderer.Hook.new then
+		shutdownHookBound = true
+		renderer.Hook.new("Shutdown", function()
+			saveActiveProjectBackup("shutdown_hook")
+		end)
+	end
+
+	if closeRequestConnection == nil and renderer_signal and renderer_signal.Connect then
+		closeRequestConnection = renderer_signal:Connect(function(route)
+			if route == "CloseRequested" or route == "ShutdownRequested" then
+				saveActiveProjectBackup("close_request")
+			end
+		end)
+	end
+
 	ProjectSyncService:SetProperties({
 		StartSyncing = function(self, projectPath, options)
 			if not projectPath or projectPath == "" then
@@ -1103,6 +1176,8 @@ ProjectSyncService.InitRenderer = function(renderer, renderer_signal, game)
 				backupTask = nil,
 				lastBackupPath = nil,
 				lastBackupAt = nil,
+				lastBackupReason = nil,
+				closeRequestBackupSaved = false,
 				syncingFromDisk = false,
 				lastError = nil,
 				lastReason = "start",
@@ -1158,6 +1233,7 @@ ProjectSyncService.InitRenderer = function(renderer, renderer_signal, game)
 			end
 
 			local state = activeState
+			saveProjectBackupSafe(state, "stop_syncing")
 			activeState = nil
 			stopState(state, clearManaged == true)
 			return snapshotState(state)

@@ -702,6 +702,12 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 	local reusableCustomMatData = { material = nil }
 	local function queueSinglePartDraw(part, r3dAABB)
+		local cf = part and part.CFrame
+		local size = part and part.Size
+		if not cf or cf.ToRaylibMatrixScale == nil or not size or size.X == nil or size.Y == nil or size.Z == nil then
+			return
+		end
+
 		local isMeshPart = part:IsA("MeshPart")
 		local shapeName = part.Shape and part.Shape.Value
 		local materialName = part.Material and part.Material.Value
@@ -745,7 +751,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		local matrix = rawget(part, "__cachedMatrix")
 		local isMatrixDirty = rawget(part, "__matrixDirty")
 		if not matrix or isMatrixDirty then
-			matrix = part.CFrame:ToRaylibMatrixScale(part.Size, raylib.structs)
+			matrix = cf:ToRaylibMatrixScale(size, raylib.structs)
 			rawset(part, "__cachedMatrix", matrix)
 			rawset(part, "__matrixDirty", false)
 		end
@@ -784,7 +790,6 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 			buffer.writei32(tmpMaterial, OFF_MATERIAL_CULL_MODE, R3D_CULL_BACK)
 
-			local size = part.Size
 			buffer.writef32(tmpMaterial, OFF_MATERIAL_UVSCALE, size.X)
 			buffer.writef32(tmpMaterial, OFF_MATERIAL_UVSCALE + 4, size.Z)
 
@@ -806,6 +811,35 @@ Workspace.InitRenderer = function(renderer, signal, game)
 	local globalColorBuffer = buffer.create(1024 * INSTANCE_COLOR_STRIDE)
 	local globalBufferCapacity = 1024
 
+	local function compactBatchParts(parts)
+		local writeIndex = 1
+		for i = 1, #parts do
+			local part = parts[i]
+			local cf = part and part.CFrame
+			local size = part and part.Size
+			if
+				part
+				and not part.Destroyed
+				and cf
+				and cf.Position
+				and cf.ToQuaternion ~= nil
+				and size
+				and size.X ~= nil
+				and size.Y ~= nil
+				and size.Z ~= nil
+			then
+				parts[writeIndex] = part
+				writeIndex += 1
+			end
+		end
+
+		for i = writeIndex, #parts do
+			parts[i] = nil
+		end
+
+		return writeIndex - 1
+	end
+
 	local function ensureGlobalBufferCapacity(count)
 		if count > globalBufferCapacity then
 			local newCapacity = count * 2
@@ -818,8 +852,9 @@ Workspace.InitRenderer = function(renderer, signal, game)
 	end
 
 	local function uploadBatchInstances(batch)
-		local count = #batch.parts
+		local count = compactBatchParts(batch.parts)
 		if count <= 0 then
+			batch.count = 0
 			return false
 		end
 
@@ -1023,8 +1058,21 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			-- skip this part if one with the same shape already exists.
 			do
 				local cf = part.CFrame
-				local pos = cf.Position
 				local sz = part.Size
+				if
+					not cf
+					or not cf.Position
+					or cf.ToQuaternion == nil
+					or not sz
+					or sz.X == nil
+					or sz.Y == nil
+					or sz.Z == nil
+				then
+					rawset(part, "__workspaceDuplicate", true)
+					continue
+				end
+
+				local pos = cf.Position
 				local qx, qy, qz, qw = cf:ToQuaternion()
 				-- Normalise quaternion sign so q and -q hash identically.
 				if qw < 0 then
@@ -1165,9 +1213,11 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		for _, part in ipairs(chunk.parts) do
 			if not rawget(part, "__workspaceDuplicate") then
 				local sz = part.Size
-				local pm = math.max(sz.X, sz.Y, sz.Z)
-				if pm > maxPS then
-					maxPS = pm
+				if sz and sz.X ~= nil and sz.Y ~= nil and sz.Z ~= nil then
+					local pm = math.max(sz.X, sz.Y, sz.Z)
+					if pm > maxPS then
+						maxPS = pm
+					end
 				end
 			end
 		end
@@ -1190,7 +1240,9 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				table.sort(batch.parts, function(a, b)
 					local sa = a.Size
 					local sb = b.Size
-					return math.max(sa.X, sa.Y, sa.Z) > math.max(sb.X, sb.Y, sb.Z)
+					local ma = (sa and sa.X ~= nil and sa.Y ~= nil and sa.Z ~= nil) and math.max(sa.X, sa.Y, sa.Z) or 0
+					local mb = (sb and sb.X ~= nil and sb.Y ~= nil and sb.Z ~= nil) and math.max(sb.X, sb.Y, sb.Z) or 0
+					return ma > mb
 				end)
 
 				-- Precompute per-LOD-level instance counts.
@@ -1200,7 +1252,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				local countLOD1 = n -- default: all parts pass LOD1
 				for j = 1, n do
 					local sz = batch.parts[j].Size
-					if math.max(sz.X, sz.Y, sz.Z) < lod1Size then
+					if not sz or sz.X == nil or sz.Y == nil or sz.Z == nil or math.max(sz.X, sz.Y, sz.Z) < lod1Size then
 						countLOD1 = j - 1
 						break
 					end
@@ -1209,7 +1261,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				local countLOD2 = 0
 				for j = 1, countLOD1 do
 					local sz = batch.parts[j].Size
-					if math.max(sz.X, sz.Y, sz.Z) < lod2Size then
+					if not sz or sz.X == nil or sz.Y == nil or sz.Z == nil or math.max(sz.X, sz.Y, sz.Z) < lod2Size then
 						break
 					end
 					countLOD2 = j
@@ -1218,7 +1270,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				local countLOD3 = 0
 				for j = 1, countLOD2 do
 					local sz = batch.parts[j].Size
-					if math.max(sz.X, sz.Y, sz.Z) < lod3Size then
+					if not sz or sz.X == nil or sz.Y == nil or sz.Z == nil or math.max(sz.X, sz.Y, sz.Z) < lod3Size then
 						break
 					end
 					countLOD3 = j
@@ -1269,6 +1321,11 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			return
 		end
 
+		local cameraCF = Kinemium_camera.CFrame
+		if not cameraCF or cameraCF.Position == nil or cameraCF.GetLookVector == nil then
+			return
+		end
+
 		local forceDirty = false
 		if
 			Workspace.UseGpuInstancing ~= lastUseGpuInstancing
@@ -1279,8 +1336,8 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			forceDirty = true
 		end
 
-		local camPos = Kinemium_camera.CFrame.Position
-		local camLook = Kinemium_camera.CFrame:GetLookVector()
+		local camPos = cameraCF.Position
+		local camLook = cameraCF:GetLookVector()
 		local refreshDistance = Workspace.VisibilityRefreshDistance or 0
 		local refreshDistanceSq = refreshDistance * refreshDistance
 		local refreshDotThreshold = Workspace.VisibilityRefreshDotThreshold or 0.9925
@@ -1317,7 +1374,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			-- This replaces per-chunk atan2/asin with five dot products per chunk.
 			local frustum = nil
 			if Workspace.EnableViewFrustumCulling then
-				local cf = Kinemium_camera.CFrame
+				local cf = cameraCF
 				local forward = cf:GetLookVector()
 				local right = cf:GetRightVector()
 				local up = cf:GetUpVector()
@@ -1451,7 +1508,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				local part = chunk.singleParts[singleIndex]
 				if lodMinSize > 0 then
 					local sz = part.Size
-					if math.max(sz.X, sz.Y, sz.Z) < lodMinSize then
+					if not sz or sz.X == nil or sz.Y == nil or sz.Z == nil or math.max(sz.X, sz.Y, sz.Z) < lodMinSize then
 						continue
 					end
 				end

@@ -14,8 +14,25 @@ end
 if zune.platform.os == "windows" then
 	require("@vcredistInstaller")
 end
+
+local auto_flags = {}
+
 local httpServerViewer = require("@httpServerViewer")
 local filesystem = require("@filesystem")
+
+if filesystem.exists("./exported") then
+	local read = filesystem.read("./exported/flags.toml")
+	if read then
+		local flags_toml = zune.serde.toml.decode(read)
+		if flags_toml then
+			local default = flags_toml.default
+
+			for _, flag in pairs(default) do
+				auto_flags[flag] = 1
+			end
+		end
+	end
+end
 
 filesystem.createFolder(".", ".temp")
 filesystem.createFolder(".", "plugins")
@@ -57,6 +74,9 @@ end
 _G.task = zune.task
 
 _G.FlagExists = function(flag)
+	if auto_flags[flag] then
+		return true
+	end
 	local args = zune.process.args
 	for _, v in pairs(args) do
 		if v == "--" .. flag then

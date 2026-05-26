@@ -2,12 +2,13 @@ local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
 
 local GNS
+local defaultNetworkStack
 local gnsOk, gnsResult = pcall(require, "@gns")
 if gnsOk then
-	GNS = gnsResult
+	defaultNetworkStack = gnsResult
 else
 	print("[NetworkService] GNS failed to load, falling back to KiNet: " .. tostring(gnsResult))
-	GNS = require("@KiNet")
+	defaultNetworkStack = require("@KiNet")
 end
 
 local Protocol = require("./Protocol")
@@ -21,6 +22,241 @@ local NetworkService = Instance.new("NetworkService")
 NetworkService.ExplorerHidden = true
 
 local task = zune.task
+
+local function makeNoNetworkStack()
+	local server = {}
+	local client = {}
+
+	function server:Init(address, port)
+		self.Address = address or "0.0.0.0"
+		self.Port = port or 0
+		self.Socket = nil
+		return nil
+	end
+
+	function server:Listen() end
+	function server:Send()
+		return false
+	end
+	function server:SendAll()
+		return false
+	end
+	function server:SendFiltered()
+		return false
+	end
+	function server:IsClientConnected()
+		return false
+	end
+	function server:GetClientStats()
+		return nil
+	end
+	function server:Shutdown() end
+	function server:OnClientConnectionRequest(callback)
+		self._onClientConnectionRequest = callback
+	end
+	function server:OnRecieve(callback)
+		self._onRecieve = callback
+	end
+	function server:OnClientRemoved(callback)
+		self._onClientRemoved = callback
+	end
+	function server:OnPreAuthMessage(callback)
+		self._onPreAuthMessage = callback
+	end
+
+	function client:Init(address, port, authToken)
+		self.ServerAddress = address or "127.0.0.1"
+		self.ServerPort = port or 0
+		self.AuthToken = authToken
+		self.Socket = nil
+		return nil
+	end
+
+	function client:Listen() end
+	function client:Connect() end
+	function client:StartHeartbeat() end
+	function client:Send()
+		return false
+	end
+	function client:Disconnect() end
+	function client:OnRecieve(callback)
+		self._onRecieve = callback
+	end
+	function client:OnShutdown(callback)
+		self._onShutdown = callback
+	end
+
+	return {
+		Name = "None",
+		MultiplayerEnabled = false,
+		Replicate = false,
+		Server = server,
+		Client = client,
+	}
+end
+
+local networkStacks = {}
+local activeNetworkStackName = nil
+local activeNetworkStack = nil
+local rebindActiveNetworkStack = nil
+local mappedNetworkStackFunctionNames = {}
+local overriddenNetworkStackFunctions = {}
+local protectedNetworkStackFunctionNames = {
+	GetPrimaryNetworkName = true,
+	GetPrimaryNetworkStack = true,
+	GetPrimaryNetworkStackName = true,
+	GetRegisteredNetworkStacks = true,
+	RegisterNetwork = true,
+	RegisterNetworkStack = true,
+	RegisterStack = true,
+	SetNetworkStack = true,
+	SetPrimaryNetwork = true,
+	SetPrimaryNetworkStack = true,
+	DisableMultiplayer = true,
+}
+
+local function callOptional(target, methodName, ...)
+	if target and type(target[methodName]) == "function" then
+		return pcall(target[methodName], target, ...)
+	end
+	return true, nil
+end
+
+local function copyNetworkStackMap(source)
+	local copy = {}
+	for key, value in pairs(source or {}) do
+		copy[key] = value
+	end
+	return copy
+end
+
+local function setNetworkStackProperties()
+	NetworkService._props.GNS = activeNetworkStack
+	NetworkService._props.NetworkStack = activeNetworkStack
+	NetworkService._props.ActiveNetworkStackName = activeNetworkStackName
+	NetworkService._props.Replicate = activeNetworkStack and activeNetworkStack.Replicate ~= false
+end
+
+local function unmapNetworkStackFunctions()
+	for name in pairs(mappedNetworkStackFunctionNames) do
+		NetworkService._props[name] = overriddenNetworkStackFunctions[name]
+	end
+	mappedNetworkStackFunctionNames = {}
+	overriddenNetworkStackFunctions = {}
+end
+
+local function mapNetworkStackFunctions(stack)
+	for name, value in pairs(stack or {}) do
+		if type(value) == "function" and not protectedNetworkStackFunctionNames[name] then
+			overriddenNetworkStackFunctions[name] = NetworkService._props[name]
+			NetworkService._props[name] = value
+			mappedNetworkStackFunctionNames[name] = true
+		end
+	end
+end
+
+function NetworkService:RegisterNetworkStack(name, stack)
+	if type(name) == "table" and stack == nil then
+		stack = name
+		name = stack.Name or stack.name
+	end
+
+	if type(name) ~= "string" or name == "" then
+		warn("[NetworkService] RegisterNetworkStack requires a non-empty stack name")
+		return false
+	end
+	if type(stack) ~= "table" then
+		warn(`[NetworkService] RegisterNetworkStack({name}) requires a table`)
+		return false
+	end
+
+	networkStacks[name] = stack
+	stack.Name = stack.Name or name
+	return true
+end
+
+NetworkService.RegisterNetwork = NetworkService.RegisterNetworkStack
+NetworkService.RegisterStack = NetworkService.RegisterNetworkStack
+
+function NetworkService:SetPrimaryNetworkStack(nameOrStack, optionalName)
+	local name = nameOrStack
+	local stack = nil
+
+	if type(nameOrStack) == "table" then
+		stack = nameOrStack
+		name = optionalName or stack.Name or stack.name or "Custom"
+		self:RegisterNetworkStack(name, stack)
+	else
+		stack = networkStacks[name]
+	end
+
+	if not stack then
+		warn("[NetworkService] Attempted to set unknown network stack: " .. tostring(name))
+		return false
+	end
+
+	if activeNetworkStack == stack and activeNetworkStackName == name then
+		return true
+	end
+
+	local oldStack = activeNetworkStack
+	if oldStack then
+		unmapNetworkStackFunctions()
+		callOptional(oldStack, "Unload")
+		callOptional(oldStack.Client, "Disconnect")
+		callOptional(oldStack.Server, "Shutdown")
+	end
+
+	activeNetworkStackName = name
+	activeNetworkStack = stack
+	GNS = stack
+	setNetworkStackProperties()
+	mapNetworkStackFunctions(stack)
+
+	if stack.Load then
+		local ok, err = pcall(stack.Load, stack, NetworkService)
+		if not ok then
+			warn(`[NetworkService] Network stack {name} Load failed: {tostring(err)}`)
+		end
+	end
+
+	if rebindActiveNetworkStack then
+		rebindActiveNetworkStack()
+	end
+
+	NetworkService.IsClientConnected = false
+	print("[NetworkService] Active network stack set to: " .. tostring(name))
+	return true
+end
+
+NetworkService.SetPrimaryNetwork = NetworkService.SetPrimaryNetworkStack
+NetworkService.SetNetworkStack = function(self, stack, name)
+	return self:SetPrimaryNetworkStack(stack, name)
+end
+
+function NetworkService:GetPrimaryNetworkStackName()
+	return activeNetworkStackName
+end
+
+NetworkService.GetPrimaryNetworkName = NetworkService.GetPrimaryNetworkStackName
+
+function NetworkService:GetPrimaryNetworkStack()
+	return activeNetworkStack
+end
+
+function NetworkService:GetRegisteredNetworkStacks()
+	return copyNetworkStackMap(networkStacks)
+end
+
+function NetworkService:DisableMultiplayer()
+	return self:SetPrimaryNetworkStack("None")
+end
+
+NetworkService:RegisterNetworkStack("Default", defaultNetworkStack)
+local noNetworkStack = makeNoNetworkStack()
+NetworkService:RegisterNetworkStack("None", noNetworkStack)
+NetworkService:RegisterNetworkStack("Disabled", noNetworkStack)
+NetworkService:SetPrimaryNetworkStack("Default")
 
 local tickSignal = signal.new()
 local clientConnectedSignal = signal.new()
@@ -486,29 +722,50 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				`[NetworkService] Network simulation enabled: lag={networkSimulation.lagMs}ms jitter={networkSimulation.jitterMs}ms loss={networkSimulation.lossPercent}% dropReliable={networkSimulation.dropReliable}`
 			)
 		end
+		local requestedNetworkStack = GetFlagValue("network_stack") or GetFlagValue("networkStack")
+		if requestedNetworkStack then
+			NetworkService:SetPrimaryNetworkStack(requestedNetworkStack)
+		end
+		if FlagExists("disable_multiplayer") or FlagExists("disable_networking") or FlagExists("no_multiplayer") then
+			NetworkService:SetPrimaryNetworkStack("None")
+		end
 
 		local function sendToClient(recipient, channel, kind, payload, reliable)
 			sendEnvelope(function(client, envelope, shouldBeReliable)
-				if GNS.Server.IsClientConnected and not GNS.Server:IsClientConnected(client) then
+				local server = GNS and GNS.Server
+				if not server or type(server.Send) ~= "function" then
 					return false
 				end
-				return GNS.Server:Send(client, envelope, shouldBeReliable)
+				if server.IsClientConnected and not server:IsClientConnected(client) then
+					return false
+				end
+				return server:Send(client, envelope, shouldBeReliable)
 			end, recipient, channel, kind, payload, reliable)
 		end
 
 		local function broadcast(channel, kind, payload, reliable)
 			sendEnvelope(function(envelope, shouldBeReliable)
-				return GNS.Server:SendAll(envelope, shouldBeReliable)
+				local server = GNS and GNS.Server
+				if not server or type(server.SendAll) ~= "function" then
+					return false
+				end
+				return server:SendAll(envelope, shouldBeReliable)
 			end, nil, channel, kind, payload, reliable)
 		end
 
 		local function broadcastFiltered(channel, kind, payload, reliable, filterFn)
+			local server = GNS and GNS.Server
+			if not server or type(server.SendFiltered) ~= "function" then
+				return false
+			end
+
 			local envelope = Protocol.MakeEnvelope(channel, kind, payload, currentTick)
 			envelope.reliable = reliable == true
-			local sent = GNS.Server:SendFiltered(envelope, reliable == true, filterFn)
+			local sent = server:SendFiltered(envelope, reliable == true, filterFn)
 			if sent ~= false then
 				recordTraffic("sent", envelope, reliable == true)
 			end
+			return sent
 		end
 
 		local function sendToMultipleClients(sessions, channel, kind, payload, reliable)
@@ -518,46 +775,72 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end
 
 		local function sendToServer(channel, kind, payload, reliable)
-			if not NetworkService.IsClientConnected or not GNS.Client.Socket then
+			local client = GNS and GNS.Client
+			if not client or type(client.Send) ~= "function" then
+				return false
+			end
+			if not NetworkService.IsClientConnected and not client.Socket and client.IsConnected ~= true then
 				return
 			end
 			sendEnvelope(function(envelope, shouldBeReliable)
-				return GNS.Client:Send(envelope, shouldBeReliable)
+				return client:Send(envelope, shouldBeReliable)
 			end, nil, channel, kind, payload, reliable)
 		end
 
 		function NetworkService:StartServer(address, port, allowedTokens)
-			GNS.Server:Init(address, port, allowedTokens)
+			local server = GNS and GNS.Server
+			if activeNetworkStack and activeNetworkStack.MultiplayerEnabled == false then
+				return false
+			end
+			if not server or type(server.Init) ~= "function" or type(server.Listen) ~= "function" then
+				warn("[NetworkService] Active network stack does not provide Server:Init and Server:Listen")
+				return false
+			end
+			server:Init(address, port, allowedTokens)
 			previewStartedAt = os.time()
-			GNS.Server:Listen()
+			server:Listen()
+			return true
 		end
 
 		function NetworkService:StartClient(address, port, authToken)
-			GNS.Client:Init(address, port, authToken)
+			local client = GNS and GNS.Client
+			if activeNetworkStack and activeNetworkStack.MultiplayerEnabled == false then
+				return false
+			end
+			if not client or type(client.Init) ~= "function" or type(client.Listen) ~= "function" then
+				warn("[NetworkService] Active network stack does not provide Client:Init and Client:Listen")
+				return false
+			end
+			client:Init(address, port, authToken)
 
-			GNS.Client:OnRecieve(function(addr, msg)
-				if msg.type == "AUTH_SUCCESS" then
-					NetworkService.IsClientConnected = true
-					return
-				end
+			if type(client.OnRecieve) == "function" then
+				client:OnRecieve(function(addr, msg)
+					if msg.type == "AUTH_SUCCESS" then
+						NetworkService.IsClientConnected = true
+						return
+					end
 
-				if msg.type == "AUTH_FAILED" or msg.type == "DISCONNECT" or msg.type == "SHUTDOWN" then
-					NetworkService.IsClientConnected = false
-					disconnectedSignal:Fire(msg.reason or msg.type)
-					return
-				end
+					if msg.type == "AUTH_FAILED" or msg.type == "DISCONNECT" or msg.type == "SHUTDOWN" then
+						NetworkService.IsClientConnected = false
+						disconnectedSignal:Fire(msg.reason or msg.type)
+						return
+					end
 
-				dispatchPacket(nil, msg)
-			end)
+					dispatchPacket(nil, msg)
+				end)
+			end
 
-			GNS.Client:OnShutdown(function()
-				if NetworkService.IsClientConnected then
-					NetworkService.IsClientConnected = false
-					disconnectedSignal:Fire("Connection Lost")
-				end
-			end)
+			if type(client.OnShutdown) == "function" then
+				client:OnShutdown(function()
+					if NetworkService.IsClientConnected then
+						NetworkService.IsClientConnected = false
+						disconnectedSignal:Fire("Connection Lost")
+					end
+				end)
+			end
 
-			GNS.Client:Listen()
+			client:Listen()
+			return true
 		end
 
 		local function isCharacterModelForPlayer(model, payload)
@@ -750,124 +1033,141 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end)
 		end)
 
-		GNS.Server:OnClientConnectionRequest(function(client, clientData)
-			local name = clientData and clientData.name
-			local userId = clientData and clientData.id
-			local clientAddr = `{client.address}:{client.port}`
-			local key = clientKey(client)
-
-			if not clientData then
-				warn(
-					`[NetworkService] Connection from {clientAddr} rejected: no clientData payload (client may not have called Connect() with auth data)`
-				)
-				return
-			end
-			if not name then
-				warn(`[NetworkService] Connection from {clientAddr} rejected: missing 'name' in clientData`)
-				return
-			end
-			if not userId then
-				warn(`[NetworkService] Connection from {clientAddr} rejected: missing 'id' in clientData`)
-				return
-			end
-			if sessionsByUserId[userId] then
-				warn(
-					`[NetworkService] Connection from {clientAddr} rejected: userId {userId} ({name}) is already connected`
-				)
+		rebindActiveNetworkStack = function()
+			local server = GNS and GNS.Server
+			if not server then
 				return
 			end
 
-			print(`[NetworkService] Connection accepted from {clientAddr} ({key}): name={name}, userId={userId}`)
+			if type(server.OnClientConnectionRequest) == "function" then
+				server:OnClientConnectionRequest(function(client, clientData)
+					local name = clientData and clientData.name
+					local userId = clientData and clientData.id
+					local clientAddr = `{client.address}:{client.port}`
+					local key = clientKey(client)
 
-			local session = {
-				key = key,
-				client = client,
-				address = client.address,
-				port = client.port,
-				name = name,
-				userId = userId,
-				connectedAt = os.time(),
-				lastInputSequence = 0,
-				lastAppliedInputSequence = 0,
-				lastAcknowledgedInputSequence = -1,
-			}
+					if not clientData then
+						warn(
+							`[NetworkService] Connection from {clientAddr} rejected: no clientData payload (client may not have called Connect() with auth data)`
+						)
+						return
+					end
+					if not name then
+						warn(`[NetworkService] Connection from {clientAddr} rejected: missing 'name' in clientData`)
+						return
+					end
+					if not userId then
+						warn(`[NetworkService] Connection from {clientAddr} rejected: missing 'id' in clientData`)
+						return
+					end
+					if sessionsByUserId[userId] then
+						warn(
+							`[NetworkService] Connection from {clientAddr} rejected: userId {userId} ({name}) is already connected`
+						)
+						return
+					end
 
-			sessionsByKey[session.key] = session
-			sessionsByUserId[userId] = session
+					print(`[NetworkService] Connection accepted from {clientAddr} ({key}): name={name}, userId={userId}`)
 
-			attachPlayerSession(datamodel, session)
+					local session = {
+						key = key,
+						client = client,
+						address = client.address,
+						port = client.port,
+						name = name,
+						userId = userId,
+						connectedAt = os.time(),
+						lastInputSequence = 0,
+						lastAppliedInputSequence = 0,
+						lastAcknowledgedInputSequence = -1,
+					}
 
-			local existingPlayers = {}
-			for _, otherSession in pairs(sessionsByKey) do
-				if otherSession.userId ~= session.userId then
-					table.insert(existingPlayers, {
-						name = otherSession.name,
-						id = otherSession.userId,
-					})
-				end
+					sessionsByKey[session.key] = session
+					sessionsByUserId[userId] = session
+
+					attachPlayerSession(datamodel, session)
+
+					local existingPlayers = {}
+					for _, otherSession in pairs(sessionsByKey) do
+						if otherSession.userId ~= session.userId then
+							table.insert(existingPlayers, {
+								name = otherSession.name,
+								id = otherSession.userId,
+							})
+						end
+					end
+
+					sendToClient(session, Protocol.Channels.Control, Protocol.Kinds.PlayerProfile, {
+						name = session.name,
+						id = session.userId,
+						existingPlayers = existingPlayers,
+					}, true)
+
+					for _, otherSession in pairs(sessionsByKey) do
+						if otherSession.userId ~= session.userId then
+							sendToClient(otherSession, Protocol.Channels.Control, Protocol.Kinds.PlayerJoined, {
+								name = session.name,
+								id = session.userId,
+							}, true)
+						end
+					end
+
+					clientConnectedSignal:Fire(session, session.player)
+				end)
 			end
 
-			sendToClient(session, Protocol.Channels.Control, Protocol.Kinds.PlayerProfile, {
-				name = session.name,
-				id = session.userId,
-				existingPlayers = existingPlayers,
-			}, true)
+			if type(server.OnRecieve) == "function" then
+				server:OnRecieve(function(addr, msg)
+					local key = clientKey(addr)
+					local session = sessionsByKey[key]
 
-			for _, otherSession in pairs(sessionsByKey) do
-				if otherSession.userId ~= session.userId then
-					sendToClient(otherSession, Protocol.Channels.Control, Protocol.Kinds.PlayerJoined, {
+					if session and not RateLimiter.Allow(key) then
+						return
+					end
+
+					dispatchPacket(session, msg)
+				end)
+			end
+
+			if type(server.OnClientRemoved) == "function" then
+				server:OnClientRemoved(function(addr)
+					local key = clientKey(addr)
+					local session = sessionsByKey[key]
+					if not session then
+						return
+					end
+
+					sessionsByKey[key] = nil
+					sessionsByUserId[session.userId] = nil
+					cleanupPlayerSession(datamodel, session)
+
+					broadcast(Protocol.Channels.Control, Protocol.Kinds.PlayerLeft, {
 						name = session.name,
 						id = session.userId,
 					}, true)
-				end
+
+					clientRemovedSignal:Fire(session)
+				end)
 			end
 
-			clientConnectedSignal:Fire(session, session.player)
-		end)
-
-		GNS.Server:OnRecieve(function(addr, msg)
-			local key = clientKey(addr)
-			local session = sessionsByKey[key]
-
-			if session and not RateLimiter.Allow(key) then
-				return
+			if type(server.OnPreAuthMessage) == "function" then
+				server:OnPreAuthMessage(function(addr, msg)
+					return ServerPreview.HandleRequest(server.Socket, addr, msg, {
+						datamodel = datamodel,
+						sessions = sessionsByKey,
+						previewData = previewMetadata,
+						address = server.Address,
+						port = server.Port,
+						tickRate = tickRate,
+						currentTick = currentTick,
+						startedAt = previewStartedAt,
+						requiresAuth = false,
+					})
+				end)
 			end
+		end
 
-			dispatchPacket(session, msg)
-		end)
-
-		GNS.Server:OnClientRemoved(function(addr)
-			local key = clientKey(addr)
-			local session = sessionsByKey[key]
-			if not session then
-				return
-			end
-
-			sessionsByKey[key] = nil
-			sessionsByUserId[session.userId] = nil
-			cleanupPlayerSession(datamodel, session)
-
-			broadcast(Protocol.Channels.Control, Protocol.Kinds.PlayerLeft, {
-				name = session.name,
-				id = session.userId,
-			}, true)
-
-			clientRemovedSignal:Fire(session)
-		end)
-
-		GNS.Server:OnPreAuthMessage(function(addr, msg)
-			return ServerPreview.HandleRequest(GNS.Server.Socket, addr, msg, {
-				datamodel = datamodel,
-				sessions = sessionsByKey,
-				previewData = previewMetadata,
-				address = GNS.Server and GNS.Server.Address,
-				port = GNS.Server and GNS.Server.Port,
-				tickRate = tickRate,
-				currentTick = currentTick,
-				startedAt = previewStartedAt,
-				requiresAuth = false,
-			})
-		end)
+		rebindActiveNetworkStack()
 
 		local authToken = GetFlagValue("auth_token")
 		local allowedTokens = authToken and { authToken } or {}
@@ -879,7 +1179,22 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			data = { name = userName, id = userId }
 		end
 
-		if IsServer then
+		local multiplayerEnabled = not (activeNetworkStack and activeNetworkStack.MultiplayerEnabled == false)
+		local autoStartEnabled = multiplayerEnabled and not (activeNetworkStack and activeNetworkStack.AutoStart == false)
+		local function connectClient(data)
+			local client = GNS and GNS.Client
+			if not client then
+				return
+			end
+			if type(client.Connect) == "function" then
+				client:Connect(data)
+			end
+			if type(client.StartHeartbeat) == "function" then
+				client:StartHeartbeat()
+			end
+		end
+
+		if autoStartEnabled and IsServer then
 			local port = tonumber(GetFlagValue("port"))
 			local address = GetFlagValue("address")
 			if port and address then
@@ -889,35 +1204,28 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				connectedTo = { "0.0.0.0", 1234 }
 				NetworkService:StartServer("0.0.0.0", 1234, allowedTokens)
 			end
-		elseif IsClient then
+		elseif autoStartEnabled and IsClient then
 			local port = tonumber(GetFlagValue("port"))
 			local address = GetFlagValue("address")
 			if port and address then
 				connectedTo = { address, port }
 				NetworkService:StartClient(address, port, authToken)
-				GNS.Client:Connect(data)
-				GNS.Client:StartHeartbeat()
+				connectClient(data)
 			else
 				connectedTo = { "127.0.0.1", 1234 }
 				NetworkService:StartClient("127.0.0.1", 1234, authToken)
-				GNS.Client:Connect(data)
-				GNS.Client:StartHeartbeat()
+				connectClient(data)
 			end
-		elseif FlagExists("live") then
+		elseif autoStartEnabled and FlagExists("live") then
 			NetworkService:StartServer("0.0.0.0", 1234, allowedTokens)
 			connectedTo = { "127.0.0.1", 1234 }
 			NetworkService:StartClient("127.0.0.1", 1234, authToken)
-			GNS.Client:Connect(data)
-			GNS.Client:StartHeartbeat()
+			connectClient(data)
 		end
 
 		table.insert(datamodel.ShutdownCallbacks, function()
-			if GNS.Client then
-				GNS.Client:Disconnect()
-			end
-			if GNS.Server then
-				GNS.Server:Shutdown()
-			end
+			callOptional(GNS and GNS.Client, "Disconnect")
+			callOptional(GNS and GNS.Server, "Shutdown")
 			RpcService.Clear()
 		end)
 
@@ -929,8 +1237,9 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				task.wait(HEARTBEAT_INTERVAL)
 				if IsServer then
 					for key, session in pairs(sessionsByKey) do
-						if session.client then
-							local stats = GNS.Server:GetClientStats(session.client)
+						local server = GNS and GNS.Server
+						if session.client and server and type(server.GetClientStats) == "function" then
+							local stats = server:GetClientStats(session.client)
 							if stats and stats.pendingReliable and stats.pendingReliable > 256 then
 								warn(
 									`[NetworkService] Heartbeat: peer {key} has {stats.pendingReliable} pending reliable messages`
@@ -971,8 +1280,10 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			Success = true,
 			IsClientConnected = false,
 			GNS = GNS,
+			NetworkStack = activeNetworkStack,
+			ActiveNetworkStackName = activeNetworkStackName,
 			Protocol = Protocol,
-			Replicate = true,
+			Replicate = activeNetworkStack and activeNetworkStack.Replicate ~= false,
 			Tick = tickSignal,
 			ClientConnected = clientConnectedSignal,
 			ClientRemoved = clientRemovedSignal,
@@ -985,6 +1296,17 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			RpcService = RpcService,
 			NetworkAttributes = NetworkAttributes,
 			RateLimiter = RateLimiter,
+			RegisterNetworkStack = NetworkService.RegisterNetworkStack,
+			RegisterNetwork = NetworkService.RegisterNetworkStack,
+			RegisterStack = NetworkService.RegisterNetworkStack,
+			SetPrimaryNetworkStack = NetworkService.SetPrimaryNetworkStack,
+			SetPrimaryNetwork = NetworkService.SetPrimaryNetworkStack,
+			SetNetworkStack = NetworkService.SetNetworkStack,
+			GetPrimaryNetworkStackName = NetworkService.GetPrimaryNetworkStackName,
+			GetPrimaryNetworkName = NetworkService.GetPrimaryNetworkStackName,
+			GetPrimaryNetworkStack = NetworkService.GetPrimaryNetworkStack,
+			GetRegisteredNetworkStacks = NetworkService.GetRegisteredNetworkStacks,
+			DisableMultiplayer = NetworkService.DisableMultiplayer,
 			RegisterMessageHandler = function(self, channel, kind, callback)
 				return registerMessageHandler(channel, kind, callback)
 			end,
@@ -1091,6 +1413,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				sendToClient(recipient, Protocol.Channels.Message, Protocol.Kinds.Rpc, envelope, reliable ~= false)
 			end,
 		})
+		setNetworkStackProperties()
 	end)
 end
 
