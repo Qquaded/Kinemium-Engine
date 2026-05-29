@@ -1,5 +1,6 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local GNS
 local defaultNetworkStack
@@ -20,6 +21,7 @@ local NetworkAttributes = require("./NetworkAttributes")
 
 local NetworkService = Instance.new("NetworkService")
 NetworkService.ExplorerHidden = true
+NetworkService._Intents = Enum.PluginIntents.Network
 
 local task = zune.task
 
@@ -1067,7 +1069,9 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 						return
 					end
 
-					print(`[NetworkService] Connection accepted from {clientAddr} ({key}): name={name}, userId={userId}`)
+					print(
+						`[NetworkService] Connection accepted from {clientAddr} ({key}): name={name}, userId={userId}`
+					)
 
 					local session = {
 						key = key,
@@ -1180,7 +1184,8 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end
 
 		local multiplayerEnabled = not (activeNetworkStack and activeNetworkStack.MultiplayerEnabled == false)
-		local autoStartEnabled = multiplayerEnabled and not (activeNetworkStack and activeNetworkStack.AutoStart == false)
+		local autoStartEnabled = multiplayerEnabled
+			and not (activeNetworkStack and activeNetworkStack.AutoStart == false)
 		local function connectClient(data)
 			local client = GNS and GNS.Client
 			if not client then
@@ -1229,8 +1234,6 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			RpcService.Clear()
 		end)
 
-		-- Heartbeat system: check connection health every 10 seconds
-		-- Based on Polytoria's heartbeat timer (NetworkService.cs:42, 102)
 		local HEARTBEAT_INTERVAL = 10
 		task.spawn(function()
 			while datamodelRef ~= nil do

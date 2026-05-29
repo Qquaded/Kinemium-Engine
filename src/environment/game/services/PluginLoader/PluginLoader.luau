@@ -1,7 +1,6 @@
 local Instance = require("@Instance")
 
 local serde = zune.serde
-local ffi = zune.ffi
 local fs = zune.fs
 local libzip = require("@zip")
 
@@ -9,6 +8,7 @@ local Enum = require("@EnumMap")
 
 local PluginLoader = Instance.new("PluginLoader")
 PluginLoader.ExplorerHidden = true
+PluginLoader._PluginAccess = false
 
 local Schema = require("@Schema")
 
@@ -90,6 +90,7 @@ local plugin_schema = Schema.new({
 	})),
 	dependencies = Schema.optional(Schema.record(Schema.string())),
 	permissions = Schema.optional(Schema.arrayOf(Schema.string())),
+	intents = Schema.optional(Schema.arrayOf(Schema.string())),
 })
 
 local loadedPlugins = {}
@@ -144,6 +145,13 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 
 				local plugin_id = json.id
 				local plugin_boot = json.main
+				local plugin_intents = json.intents
+
+				local resolved_intents = {}
+
+				for i, intent in pairs(plugin_intents) do
+					resolved_intents[i] = Enum.PluginIntents[intent]
+				end
 
 				if loadedPlugins[plugin_id] then
 					print("Plugin already loaded")
@@ -227,6 +235,8 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 							return files[fileName]
 						end,
 						require = plugin_require,
+						ThreadPluginIntents = resolved_intents,
+						PluginId = plugin_id,
 					})
 
 					return success, result

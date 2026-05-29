@@ -1,3 +1,4 @@
+-- description: "Represents a BallSocketConstraint in the environment."
 local _Vector3 = require("@Vector3")
 local _signal = require("@Kinemium.signal")
 local _state = require("@State")
@@ -20,12 +21,16 @@ local propTable = {
 return {
 	class = "BallSocketConstraint",
 
+	-- description: "Initializes the BallSocketConstraint instance."
+	-- args: "instance: table, renderer: number, datamodel: table"
+	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		local KinemiumPhysicsService = datamodel:GetService("UnifiedPhysicsService")
 		instance:SetProperties(propTable)
 
 		local _activeConstraint = nil
 
+		-- description: "Cleans up the resources."
 		local function cleanup()
 			if _activeConstraint then
 				local jolt = KinemiumPhysicsService.jolt
@@ -36,6 +41,7 @@ return {
 			end
 		end
 
+		-- description: "Rebuilds the state."
 		local function rebuild()
 			cleanup()
 
@@ -71,6 +77,8 @@ return {
 
 			_activeConstraint = KinemiumPhysicsService.CreateBallSocket(part0, part1, wPos0, wPos1)
 
+			-- description: "Ons part changed."
+			-- args: "prop: any"
 			local function onPartChanged(prop)
 				if prop == "Anchored" then
 					task.defer(rebuild)
@@ -89,6 +97,7 @@ return {
 			end
 		end
 
+		-- description: "Draws the visual representation."
 		local function drawGizmo()
 			if not instance.Visible then
 				return

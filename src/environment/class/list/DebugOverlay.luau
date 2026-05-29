@@ -1,3 +1,4 @@
+-- description: "Represents a DebugOverlay in the environment."
 local raylib = require("@raylib")
 local lib = raylib.lib
 local structs = raylib.structs
@@ -14,6 +15,9 @@ local propTable = {
 return {
 	class = "DebugOverlay",
 
+	-- description: "Initializes the DebugOverlay instance."
+	-- args: "instance: table, renderer: number, datamodel: table"
+	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		instance:SetProperties(propTable)
 

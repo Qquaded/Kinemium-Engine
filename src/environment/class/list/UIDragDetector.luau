@@ -1,3 +1,4 @@
+-- description: "Represents an UIDragDetector in the environment."
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
 local UDim2 = require("@UDim2")
@@ -9,6 +10,9 @@ local arect = aereon.rect()
 
 local ZERO_V2 = Vector2.new(0, 0)
 
+-- description: "Gets the ParentMetrics."
+-- args: "parent: table"
+-- returns: "any"
 local function getParentMetrics(parent)
 	local parentAbsPos = ZERO_V2
 	local parentSize = ZERO_V2
@@ -43,7 +47,12 @@ local propTable = {
 return {
 	class = "UIDragDetector",
 
+	-- description: "Initializes the UIDragDetector instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
+		-- description: "Renders the component."
+		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		propTable.render = function(lib, object, dt, structs, renderer)
 			if object.Parent then
 				local adornee = object.Parent
@@ -115,6 +124,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the UIDragDetector class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

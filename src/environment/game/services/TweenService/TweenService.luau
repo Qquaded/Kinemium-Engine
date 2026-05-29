@@ -4,6 +4,7 @@ local Enum = require("@EnumMap")
 
 local TweenService = Instance.new("TweenService")
 TweenService.ExplorerHidden = true
+TweenService._Intents = Enum.PluginIntents.Graphics
 
 local TweenCompleted = signal.new()
 local activeTweens = {}

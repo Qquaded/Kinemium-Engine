@@ -1,3 +1,4 @@
+-- description: "Represents a GuiObject in the environment."
 local Color3 = require("@Color3")
 local Enum = require("@EnumMap")
 local TweenInfo = require("@TweenInfo")
@@ -12,6 +13,8 @@ local SQUIRCLE_SEGMENTS = 10
 local ZERO_V = vector.create(0, 0, 0)
 local MAX_AUTOMATIC_SIZE_DEPTH = 8
 
+-- description: "Resolves u dim2."
+-- args: "val: number, parentDim: any"
 local function resolveUDim2(val, parentDim)
 	if val then
 		if val.ToPixels then
@@ -25,6 +28,8 @@ local function resolveUDim2(val, parentDim)
 	return ZERO_V
 end
 
+-- description: "Resolves blend mode."
+-- args: "raylib: number, value: number"
 local function resolveBlendMode(raylib, value)
 	if type(value) == "number" then
 		return value
@@ -50,6 +55,9 @@ local function resolveBlendMode(raylib, value)
 	return raylib.const.BlendMode.BLEND_ALPHA
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, cx: number, cy: number, radius: number, angleStart: any, angleEnd: any, color: number"
+-- returns: "boolean"
 local function drawCornerArc(lib, cx, cy, radius, angleStart, angleEnd, color)
 	for i = 0, CORNER_SEGMENTS - 1 do
 		local a1 = angleStart + (angleEnd - angleStart) * (i / CORNER_SEGMENTS)
@@ -63,6 +71,9 @@ local function drawCornerArc(lib, cx, cy, radius, angleStart, angleEnd, color)
 	end
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, x: number, y: number, w: number, h: number, tl: any, tr: number, bl: any, br: number, color: number"
+-- returns: "boolean"
 local function drawRoundedRectangleEx(lib, x, y, w, h, tl, tr, bl, br, color)
 	local minDim = math.min(w, h)
 	local maxR = minDim / 2
@@ -105,6 +116,9 @@ local function drawRoundedRectangleEx(lib, x, y, w, h, tl, tr, bl, br, color)
 	end
 end
 
+-- description: "Resolves automatic size axes."
+-- args: "mode: string"
+-- returns: "boolean"
 local function resolveAutomaticSizeAxes(mode)
 	if mode == Enum.AutomaticSize.XY then
 		return true, true
@@ -126,6 +140,8 @@ local function resolveAutomaticSizeAxes(mode)
 	return false, false
 end
 
+-- description: "Resolves padding bounds."
+-- args: "object: table, parentSize: number"
 local function resolvePaddingBounds(object, parentSize)
 	local left, right, top, bottom = 0, 0, 0, 0
 
@@ -142,6 +158,9 @@ local function resolvePaddingBounds(object, parentSize)
 	return left, right, top, bottom
 end
 
+-- description: "Gets the ContentMetrics."
+-- args: "object: table, size: number"
+-- returns: "any"
 local function getContentMetrics(object, size)
 	if not object or object.BaseClass == "UIContainer" then
 		return ZERO_V, size
@@ -152,6 +171,8 @@ local function getContentMetrics(object, size)
 		vector.create(math.max(0, size.X - left - right), math.max(0, size.Y - top - bottom), 0)
 end
 
+-- description: "Precomputes layout children."
+-- args: "object: table, lib: number, dt: number, structs: table, renderer: number"
 local function precomputeLayoutChildren(object, lib, dt, structs, renderer)
 	if not lib then
 		return
@@ -166,6 +187,8 @@ local function precomputeLayoutChildren(object, lib, dt, structs, renderer)
 	end
 end
 
+-- description: "Calculates resolved size."
+-- args: "object: table, parentSize: number, lib: number, dt: number, structs: table, renderer: number, depth: number"
 local function calculateResolvedSize(object, parentSize, lib, dt, structs, renderer, depth)
 	local size = resolveUDim2(object.Size, parentSize)
 	local autoX, autoY = resolveAutomaticSizeAxes(object.AutomaticSize)
@@ -216,6 +239,9 @@ local function calculateResolvedSize(object, parentSize, lib, dt, structs, rende
 	return vector.create(autoX and math.max(0, maxX) or size.X, autoY and math.max(0, maxY) or size.Y, 0)
 end
 
+-- description: "Gets the AbsoluteSize."
+-- args: "object: table, lib: number, dt: number, structs: table, renderer: number, depth: number"
+-- returns: "Vector3"
 local function GetAbsoluteSize(object, lib, dt, structs, renderer, depth)
 	if object.BaseClass == "UIContainer" then
 		return vector.create(object.Size.X.Offset, object.Size.Y.Offset, 0)
@@ -226,6 +252,9 @@ local function GetAbsoluteSize(object, lib, dt, structs, renderer, depth)
 	return calculateResolvedSize(object, parentContentSize, lib, dt, structs, renderer, depth)
 end
 
+-- description: "Gets the AbsoluteDrawPos."
+-- args: "object: table, lib: number, dt: number, structs: table, renderer: number, depth: number"
+-- returns: "Vector3"
 local function getAbsoluteDrawPos(object, lib, dt, structs, renderer, depth)
 	if object.BaseClass == "UIContainer" then
 		return object.RenderOffset
@@ -259,6 +288,8 @@ local function getAbsoluteDrawPos(object, lib, dt, structs, renderer, depth)
 	return drawPos
 end
 
+-- description: "Ises mouse in rect."
+-- args: "mousePos: any, drawPos: any, size: number"
 local function isMouseInRect(mousePos, drawPos, size)
 	return mousePos.X >= drawPos.X
 		and mousePos.X <= drawPos.X + size.X
@@ -266,6 +297,8 @@ local function isMouseInRect(mousePos, drawPos, size)
 		and mousePos.Y <= drawPos.Y + size.Y
 end
 
+-- description: "Calculates draw params."
+-- args: "object: table, lib: number, dt: number, structs: table, renderer: number, depth: number"
 local function calculateDrawParams(object, lib, dt, structs, renderer, depth)
 	local parentSize = GetAbsoluteSize(object.Parent, lib, dt, structs, renderer, (depth or 0) + 1)
 	local _, parentContentSize = getContentMetrics(object.Parent, parentSize)
@@ -294,6 +327,9 @@ local function calculateDrawParams(object, lib, dt, structs, renderer, depth)
 	return drawPos, size
 end
 
+-- description: "Resolves gui point."
+-- args: "point: any"
+-- returns: "boolean"
 local function resolveGuiPoint(point)
 	if type(point) ~= "table" then
 		return nil
@@ -316,6 +352,9 @@ local function resolveGuiPoint(point)
 	return Vector2.new(x, y)
 end
 
+-- description: "Gets the GuiMetrics."
+-- args: "object: table"
+-- returns: "boolean"
 local function getGuiMetrics(object)
 	if object.AbsolutePosition and object.AbsoluteSize then
 		local pos = object.AbsolutePosition
@@ -331,6 +370,9 @@ local function getGuiMetrics(object)
 	return Vector2.new(drawPos.X, drawPos.Y), Vector2.new(size.X, size.Y)
 end
 
+-- description: "Gets the GuiTweenRegistry."
+-- args: "object: table"
+-- returns: "boolean"
 local function getGuiTweenRegistry(object)
 	local registry = rawget(object, "_GuiTweenRegistry")
 	if not registry then
@@ -340,6 +382,9 @@ local function getGuiTweenRegistry(object)
 	return registry
 end
 
+-- description: "Ises tween busy."
+-- args: "tween: table"
+-- returns: "boolean"
 local function isTweenBusy(tween)
 	if not tween then
 		return false
@@ -348,6 +393,9 @@ local function isTweenBusy(tween)
 	return tween.PlaybackState ~= Enum.PlaybackState.Completed and tween.PlaybackState ~= Enum.PlaybackState.Cancelled
 end
 
+-- description: "Plaies gui tween."
+-- args: "object: table, propertyNames: any, properties: table, easingDirection: string, easingStyle: string, duration: number, override: any, callback: function"
+-- returns: "boolean"
 local function playGuiTween(
 	object,
 	propertyNames,
@@ -398,12 +446,18 @@ local function playGuiTween(
 	return true, tween
 end
 
+-- description: "Resolves corner radii."
+-- args: "corner: number, minDim: any"
 local function resolveCornerRadii(corner, minDim)
 	local base = corner.CornerRadius.Scale * minDim + corner.CornerRadius.Offset
+	-- description: "Ises default corner value."
+	-- args: "prop: any"
 	local function isDefaultCornerValue(prop)
 		return prop and prop.Scale == 0 and prop.Offset == 15
 	end
 
+	-- description: "Resolves."
+	-- args: "prop: any"
 	local function resolve(prop)
 		if prop and not isDefaultCornerValue(prop) then
 			local v = prop.Scale * minDim + prop.Offset
@@ -419,6 +473,8 @@ local function resolveCornerRadii(corner, minDim)
 
 	local uniform = tl == tr and tl == bl and tl == br
 
+	-- description: "Ises different."
+	-- args: "prop: any"
 	local function isDifferent(prop)
 		return prop and not isDefaultCornerValue(prop)
 	end
@@ -431,6 +487,8 @@ local function resolveCornerRadii(corner, minDim)
 	return tl, tr, bl, br, base, useIndividual
 end
 
+-- description: "Appends point."
+-- args: "points: any, x: number, y: number"
 local function appendPoint(points, x, y)
 	local last = points[#points]
 	if last and math.abs(last.X - x) < 0.01 and math.abs(last.Y - y) < 0.01 then
@@ -440,6 +498,8 @@ local function appendPoint(points, x, y)
 	table.insert(points, vector.create(x, y, 0))
 end
 
+-- description: "Appends squircle arc."
+-- args: "points: any, cx: number, cy: number, radius: number, sx: number, sy: number, angleStart: any, angleEnd: any, exponent: number, skipFirst: any"
 local function appendSquircleArc(points, cx, cy, radius, sx, sy, angleStart, angleEnd, exponent, skipFirst)
 	if radius <= 0 then
 		return
@@ -458,6 +518,9 @@ local function appendSquircleArc(points, cx, cy, radius, sx, sy, angleStart, ang
 	end
 end
 
+-- description: "Builds squircle points."
+-- args: "x: number, y: number, w: number, h: number, tl: any, tr: number, bl: any, br: number, exponent: number"
+-- returns: "number"
 local function buildSquirclePoints(x, y, w, h, tl, tr, bl, br, exponent)
 	local points = {}
 	local maxR = math.min(w, h) / 2
@@ -483,6 +546,9 @@ local function buildSquirclePoints(x, y, w, h, tl, tr, bl, br, exponent)
 	return points
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, x: number, y: number, w: number, h: number, tl: any, tr: number, bl: any, br: number, exponent: number, color: number"
+-- returns: "number"
 local function drawSquircleFilled(lib, x, y, w, h, tl, tr, bl, br, exponent, color)
 	local points = buildSquirclePoints(x, y, w, h, tl, tr, bl, br, exponent)
 	local center = vector.create(x + w * 0.5, y + h * 0.5, 0)
@@ -493,6 +559,9 @@ local function drawSquircleFilled(lib, x, y, w, h, tl, tr, bl, br, exponent, col
 	end
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, x: number, y: number, w: number, h: number, tl: any, tr: number, bl: any, br: number, exponent: number, thickness: number, color: number"
+-- returns: "number"
 local function drawSquircleOutline(lib, x, y, w, h, tl, tr, bl, br, exponent, thickness, color)
 	local points = buildSquirclePoints(x, y, w, h, tl, tr, bl, br, exponent)
 
@@ -502,6 +571,9 @@ local function drawSquircleOutline(lib, x, y, w, h, tl, tr, bl, br, exponent, th
 	end
 end
 
+-- description: "Gets the RoundedHorizontalInset."
+-- args: "localY: number, height: number, radius: number, exponent: number"
+-- returns: "number"
 local function getRoundedHorizontalInset(localY, height, radius, exponent)
 	if radius <= 0 then
 		return 0
@@ -510,6 +582,9 @@ local function getRoundedHorizontalInset(localY, height, radius, exponent)
 	local curveExponent = math.max(2, exponent or 2)
 	local normalizedPower = 2 / curveExponent
 
+	-- description: "Edges inset."
+	-- args: "distanceToEdge: any"
+	-- returns: "number"
 	local function edgeInset(distanceToEdge)
 		if distanceToEdge >= radius then
 			return 0
@@ -530,6 +605,8 @@ local function getRoundedHorizontalInset(localY, height, radius, exponent)
 	return 0
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, structs: table, object: table, shadow: number, drawPos: any, size: number, corner: number, squircle: any"
 local function drawShadow(lib, structs, object, shadow, drawPos, size, corner, squircle)
 	if not shadow or shadow.Enabled == false then
 		return
@@ -621,6 +698,8 @@ local function drawShadow(lib, structs, object, shadow, drawPos, size, corner, s
 	end
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, structs: table, object: table, modifier: number, x: number, y: number, w: number, h: number, color: number"
 local function drawShapeFill(lib, structs, object, modifier, x, y, w, h, color)
 	if w <= 0 or h <= 0 then
 		return
@@ -649,6 +728,8 @@ local function drawShapeFill(lib, structs, object, modifier, x, y, w, h, color)
 	end
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, structs: table, object: table, modifier: number, x: number, y: number, w: number, h: number, thickness: number, color: number"
 local function drawShapeOutline(lib, structs, object, modifier, x, y, w, h, thickness, color)
 	if w <= 0 or h <= 0 then
 		return
@@ -673,6 +754,8 @@ local function drawShapeOutline(lib, structs, object, modifier, x, y, w, h, thic
 	end
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, structs: table, object: table, glow: number, drawPos: any, size: number, shapeModifier: number"
 local function drawGlow(lib, structs, object, glow, drawPos, size, shapeModifier)
 	if not glow or glow.Enabled == false then
 		return
@@ -709,6 +792,8 @@ local function drawGlow(lib, structs, object, glow, drawPos, size, shapeModifier
 	lib.EndBlendMode()
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, structs: table, object: table, vignette: any, drawPos: any, size: number, shapeModifier: number"
 local function drawVignette(lib, structs, object, vignette, drawPos, size, shapeModifier)
 	if not vignette or vignette.Enabled == false then
 		return
@@ -747,6 +832,8 @@ local function drawVignette(lib, structs, object, vignette, drawPos, size, shape
 	end
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, structs: table, object: table, bevel: any, drawPos: any, size: number, shapeModifier: number"
 local function drawBevel(lib, structs, object, bevel, drawPos, size, shapeModifier)
 	if not bevel or bevel.Enabled == false then
 		return
@@ -787,6 +874,8 @@ local function drawBevel(lib, structs, object, bevel, drawPos, size, shapeModifi
 	end
 end
 
+-- description: "Draws the visual representation."
+-- args: "lib: number, raylib: number, ripple: any, object: table, drawPos: any, size: number, dt: number"
 local function drawRipple(lib, raylib, ripple, object, drawPos, size, dt)
 	if not ripple or ripple.Enabled == false then
 		return
@@ -861,13 +950,22 @@ local propTable = {
 	ZIndex = 1,
 	AnchorPoint = ZERO_V,
 	MouseIsInObject = false,
+	-- description: "Gets the Bounds."
+	-- args: "self: table"
+	-- returns: "boolean"
 	GetBounds = function(self)
 		return getGuiMetrics(self)
 	end,
+	-- description: "Gets the Center."
+	-- args: "self: table"
+	-- returns: "boolean"
 	GetCenter = function(self)
 		local pos, size = getGuiMetrics(self)
 		return Vector2.new(pos.X + size.X * 0.5, pos.Y + size.Y * 0.5)
 	end,
+	-- description: "Ises point inside."
+	-- args: "self: table, point: any"
+	-- returns: "boolean"
 	IsPointInside = function(self, point)
 		local resolvedPoint = resolveGuiPoint(point)
 		if not resolvedPoint then
@@ -880,6 +978,9 @@ local propTable = {
 			and resolvedPoint.Y >= pos.Y
 			and resolvedPoint.Y <= pos.Y + size.Y
 	end,
+	-- description: "Gets the RelativePoint."
+	-- args: "self: table, point: any"
+	-- returns: "any"
 	GetRelativePoint = function(self, point)
 		local resolvedPoint = resolveGuiPoint(point)
 		if not resolvedPoint then
@@ -889,6 +990,8 @@ local propTable = {
 		local pos = getGuiMetrics(self)
 		return Vector2.new(resolvedPoint.X - pos.X, resolvedPoint.Y - pos.Y)
 	end,
+	-- description: "Cancels gui tweens."
+	-- args: "self: table"
 	CancelGuiTweens = function(self)
 		local registry = rawget(self, "_GuiTweenRegistry")
 		if not registry then
@@ -903,6 +1006,8 @@ local propTable = {
 			end
 		end
 	end,
+	-- description: "Tweens position."
+	-- args: "self: table, endPosition: any, easingDirection: string, easingStyle: string, time: number, override: any, callback: function"
 	TweenPosition = function(self, endPosition, easingDirection, easingStyle, time, override, callback)
 		return playGuiTween(
 			self,
@@ -915,6 +1020,8 @@ local propTable = {
 			callback
 		)
 	end,
+	-- description: "Tweens size."
+	-- args: "self: table, endSize: number, easingDirection: string, easingStyle: string, time: number, override: any, callback: function"
 	TweenSize = function(self, endSize, easingDirection, easingStyle, time, override, callback)
 		return playGuiTween(
 			self,
@@ -927,6 +1034,8 @@ local propTable = {
 			callback
 		)
 	end,
+	-- description: "Tweens size and position."
+	-- args: "self: table, endSize: number, endPosition: any, easingDirection: string, easingStyle: string, time: number, override: any, callback: function"
 	TweenSizeAndPosition = function(self, endSize, endPosition, easingDirection, easingStyle, time, override, callback)
 		return playGuiTween(
 			self,
@@ -940,6 +1049,8 @@ local propTable = {
 		)
 	end,
 
+	-- description: "Renders the component."
+	-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 	render = function(lib, object, dt, structs, renderer)
 		if not object.Visible then
 			return
@@ -1099,6 +1210,7 @@ local propTable = {
 	end,
 }
 
+-- description: "Creates signals."
 local function createSignals()
 	return {
 		MouseEnter = signal.new(),
@@ -1120,10 +1232,14 @@ return {
 	resolveBlendMode = resolveBlendMode,
 	render = propTable.render,
 
+	-- description: "Ises parent gui container."
+	-- args: "object: table"
 	IsParentGuiContainer = function(object)
 		return object.Parent.BaseClass == "UIContainer"
 	end,
 
+	-- description: "Renders the component."
+	-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 	renderChildren = function(lib, object, dt, structs, renderer)
 		local mask = object:FindFirstChildOfClass("UIMask")
 		local blend = object:FindFirstChildOfClass("UIBlend")
@@ -1170,6 +1286,8 @@ return {
 		end
 	end,
 
+	-- description: "Calculates positions."
+	-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 	calculatePositions = function(lib, object, dt, structs, renderer)
 		local drawPos, size = calculateDrawParams(object, lib, dt, structs, renderer)
 		local mousePos = vector.create(lib.GetMouseX(), lib.GetMouseY(), 0)
@@ -1190,6 +1308,9 @@ return {
 		return drawPos, size
 	end,
 
+	-- description: "Initializes the GuiObject instance."
+	-- args: "instance: table, renderer: number"
+	-- returns: "table"
 	callback = function(instance, renderer)
 		local signals = createSignals()
 		for k, v in pairs(signals) do
@@ -1200,6 +1321,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the GuiObject class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		local signals = createSignals()
 		for k, v in pairs(signals) do

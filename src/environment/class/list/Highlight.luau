@@ -1,3 +1,4 @@
+-- description: "Represents a Highlight in the environment."
 local Color3 = require("@Color3")
 local raylib = require("@raylib")
 
@@ -11,6 +12,9 @@ local propTable = {
 
 return {
 	class = "Highlight",
+	-- description: "Initializes the Highlight instance."
+	-- args: "instance: table, renderer: number, datamodel: table"
+	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		renderer.Pool.new("gizmo", function()
 			local adornee = instance.Adornee
@@ -34,6 +38,8 @@ return {
 		instance:SetProperties(propTable)
 		return instance
 	end,
+	-- description: "Inherits the properties of the Highlight class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

@@ -1,3 +1,4 @@
+-- description: "Represents a RodConstraint in the environment."
 local Color3 = require("@Color3")
 local NetworkOwnership = require("../../game/services/ReplicatorService/NetworkOwnership")
 
@@ -17,12 +18,16 @@ local propTable = {
 return {
 	class = "RodConstraint",
 
+	-- description: "Initializes the RodConstraint instance."
+	-- args: "instance: table, renderer: number, datamodel: table"
+	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		local KinemiumPhysicsService = datamodel:GetService("UnifiedPhysicsService")
 		instance:SetProperties(propTable)
 
 		local _activeConstraint = nil
 
+		-- description: "Cleans up the resources."
 		local function cleanup()
 			if _activeConstraint and KinemiumPhysicsService then
 				KinemiumPhysicsService.jolt.lib.JPH_PhysicsSystem_RemoveConstraint(
@@ -33,6 +38,7 @@ return {
 			end
 		end
 
+		-- description: "Rebuilds the state."
 		local function rebuild()
 			cleanup()
 
@@ -68,6 +74,8 @@ return {
 
 			_activeConstraint = KinemiumPhysicsService.CreateRod(part0, part1, wPos0, wPos1, instance.Length)
 
+			-- description: "Ons part changed."
+			-- args: "prop: any"
 			local function onPartChanged(prop)
 				if prop == "Anchored" then
 					task.defer(rebuild)
@@ -77,6 +85,7 @@ return {
 			part1.Changed:Connect(onPartChanged)
 		end
 
+		-- description: "Draws the visual representation."
 		local function drawGizmo()
 			if not instance.Visible or not instance.Attachment0 or not instance.Attachment1 then
 				return
@@ -113,6 +122,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the RodConstraint class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

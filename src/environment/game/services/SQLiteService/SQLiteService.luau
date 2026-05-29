@@ -1,7 +1,9 @@
 local Instance = require("@Instance")
+local Enum = require("@EnumMap")
 
 local SQLiteService = Instance.new("SQLiteBaseService")
 SQLiteService.ExplorerHidden = true
+SQLiteService._Intents = Enum.PluginIntents.Filesystem
 
 local SQLiteBases = {}
 

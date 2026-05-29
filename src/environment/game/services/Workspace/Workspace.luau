@@ -2,6 +2,9 @@ local Instance = require("@Instance")
 local Vector3 = require("@Vector3")
 local Workspace = Instance.new("Workspace")
 local Enum = require("@EnumMap")
+
+Workspace._Intents = Enum.PluginIntents.Graphics
+
 local pool = {}
 local renderablePool = {}
 local RaycastResult = require("@RaycastResult")
@@ -1508,7 +1511,13 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				local part = chunk.singleParts[singleIndex]
 				if lodMinSize > 0 then
 					local sz = part.Size
-					if not sz or sz.X == nil or sz.Y == nil or sz.Z == nil or math.max(sz.X, sz.Y, sz.Z) < lodMinSize then
+					if
+						not sz
+						or sz.X == nil
+						or sz.Y == nil
+						or sz.Z == nil
+						or math.max(sz.X, sz.Y, sz.Z) < lodMinSize
+					then
 						continue
 					end
 				end

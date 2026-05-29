@@ -1,7 +1,9 @@
 local Instance = require("@Instance")
+local Enum = require("@EnumMap")
 
 local KineFileService = Instance.new("KineFileService")
 KineFileService.ExplorerHidden = true
+KineFileService._Intents = Enum.PluginIntents.Filesystem
 
 local zembed = require("@zembed")
 local fs = zune.fs

@@ -1,3 +1,4 @@
+-- description: "Represents a SurfaceGui in the environment."
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
 local UDim2 = require("@UDim2")
@@ -28,6 +29,9 @@ local propTable = {
 	BaseClass = "UIContainer",
 }
 
+-- description: "Gets the Adornee."
+-- args: "instance: table"
+-- returns: "number"
 local function getAdornee(instance)
 	if instance.Adornee then
 		return instance.Adornee
@@ -35,6 +39,9 @@ local function getAdornee(instance)
 	return instance.Parent
 end
 
+-- description: "Gets the FaceSize."
+-- args: "size: number, face: any"
+-- returns: "number"
 local function getFaceSize(size, face)
 	if face == Enum.NormalId.Front or face == Enum.NormalId.Back then
 		return size.X, size.Y
@@ -46,6 +53,9 @@ local function getFaceSize(size, face)
 	return 1, 1
 end
 
+-- description: "Gets the FaceCorners."
+-- args: "cf: CFrame, size: number, face: any"
+-- returns: "any"
 local function getFaceCorners(cf, size, face)
 	local hX = size.X * 0.5
 	local hY = size.Y * 0.5
@@ -86,6 +96,8 @@ local function getFaceCorners(cf, size, face)
 	return Vector3.new(0, 0, 0), Vector3.new(0, 0, 0), Vector3.new(0, 0, 0), Vector3.new(0, 0, 0)
 end
 
+-- description: "Resolves texture source."
+-- args: "instance: table"
 local function resolveTextureSource(instance)
 	if type(instance.Texture) == "table" and instance.Texture.ClassName == "EditableImage" then
 		return instance.Texture
@@ -96,6 +108,8 @@ local function resolveTextureSource(instance)
 	return nil
 end
 
+-- description: "Loads texture from path."
+-- args: "path: number"
 local function loadTextureFromPath(path)
 	if type(path) ~= "string" or path == "" then
 		return nil
@@ -116,6 +130,8 @@ local function loadTextureFromPath(path)
 	return nil
 end
 
+-- description: "Loads texture from editable."
+-- args: "editableImage: any"
 local function loadTextureFromEditable(editableImage)
 	if not editableImage or not editableImage._image then
 		return nil
@@ -135,6 +151,9 @@ end
 return {
 	class = "SurfaceGui",
 
+	-- description: "Initializes the SurfaceGui instance."
+	-- args: "instance: table, renderer: number, datamodel: table"
+	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		instance:SetProperties(propTable)
 
@@ -150,6 +169,8 @@ return {
 		local staticTexture = nil
 		local lastTextureSource = nil
 
+		-- description: "Resets render texture."
+		-- args: "width: number, height: number"
 		local function resetRenderTexture(width, height)
 			local w = math.max(1, math.floor(width or 1))
 			local h = math.max(1, math.floor(height or 1))
@@ -164,6 +185,8 @@ return {
 			lib.SetTextureWrap(tex, const.TextureWrap.TEXTURE_WRAP_CLAMP)
 		end
 
+		-- description: "Gets the CanvasSize."
+		-- returns: "Vector3"
 		local function getCanvasSize()
 			local w, h = 800, 600
 			if instance.SizingMode == Enum.SurfaceGuiSizingMode.FixedSize then
@@ -180,6 +203,8 @@ return {
 			return w, h
 		end
 
+		-- description: "Syncs texture."
+		-- args: "force: any"
 		local function syncTexture(force)
 			if _G.IsHeadless then
 				return
@@ -360,6 +385,7 @@ return {
 			end
 		end)
 
+		-- description: "Instance.s get relative mouse position."
 		instance.GetRelativeMousePosition = function()
 			local adornee = getAdornee(instance)
 			if not adornee or not adornee.CFrame or not adornee.Size then
@@ -402,6 +428,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the SurfaceGui class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

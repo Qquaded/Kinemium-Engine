@@ -1,3 +1,4 @@
+-- description: "Represents a SSAOEffect in the environment."
 local propTable = {
 	SampleCount = 16,
 	Intensity = 5,
@@ -12,6 +13,9 @@ local propTable = {
 return {
 	class = "SSAOEffect",
 
+	-- description: "Initializes the SSAOEffect instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		local r3d = require("@r3d")
 
@@ -44,6 +48,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the SSAOEffect class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

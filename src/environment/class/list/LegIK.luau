@@ -1,3 +1,4 @@
+-- description: "Represents a LegIK in the environment."
 -- LegIK.lua
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
@@ -6,6 +7,8 @@ local Enum = require("@Enum")
 local ZERO = Vector3.new(0, 0, 0)
 local RAY_DOWN = Vector3.new(0, -1, 0)
 
+-- description: "Solves two bone."
+-- args: "root: any, target: table, poleHint: any, upperLen: any, lowerLen: any"
 local function solveTwoBone(root, target, poleHint, upperLen, lowerLen)
 	local toTarget = target - root
 	local dist = math.clamp(toTarget:Magnitude(), 0.001, upperLen + lowerLen - 0.001)
@@ -41,6 +44,9 @@ local propTable = {
 
 return {
 	class = "LegIK",
+	-- description: "Initializes the LegIK instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
@@ -55,6 +61,7 @@ return {
 		rawset(instance, "_stepTarget", {})
 
 		-- Reset all foot state (call when character respawns / teleports)
+		-- description: "Resets."
 		function instance:Reset()
 			rawset(self, "_measured", false)
 			rawset(self, "_upperLen", { LeftLeg = 1, RightLeg = 1 })
@@ -66,6 +73,7 @@ return {
 			rawset(self, "_stepTarget", {})
 		end
 
+		-- description: "_measures bones."
 		function instance:_measureBones()
 			if rawget(self, "_measured") then
 				return
@@ -102,6 +110,8 @@ return {
 
 		-- Returns a pose table to merge into the animator pose.
 		-- Call this from humanoid:SetIKCallback or a pose layer.
+		-- description: "Steps."
+		-- args: "dt: number, animContext: table"
 		function instance:Step(dt, animContext)
 			if self.Enabled == false then
 				return {}
@@ -240,6 +250,8 @@ return {
 
 		-- Convenience: wires itself directly into the humanoid's IK callback.
 		-- Call once after parenting; call again if the humanoid changes.
+		-- description: "Attaches."
+		-- args: "humanoid: string"
 		function instance:Attach(humanoid)
 			self.Humanoid = humanoid
 			self:Reset()
@@ -260,6 +272,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the LegIK class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

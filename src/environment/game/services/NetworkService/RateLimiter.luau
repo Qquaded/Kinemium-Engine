@@ -1,6 +1,3 @@
--- RateLimiter: Sliding-window per-peer rate limiter for Kinemium networking
--- Based on Polytoria's per-peer rate limiting approach (NetworkService.cs:82-84)
-
 local RateLimiter = {}
 
 local WINDOW_SECONDS = 1

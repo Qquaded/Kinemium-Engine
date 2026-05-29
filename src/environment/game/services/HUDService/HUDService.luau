@@ -1,8 +1,10 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local HUDService = Instance.new("HUDService")
 HUDService.ExplorerHidden = true
+HUDService._Intents = Enum.PluginIntents.UI
 
 HUDService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	local pendingActions = {}

@@ -1,7 +1,6 @@
 local Instance = require("@Instance")
 local NavMesh = require("@Navmesh")
 local Enum = require("@EnumMap")
-local task = zune.task
 
 local PathfindingService = Instance.new("PathfindingService")
 PathfindingService.ExplorerHidden = true
@@ -34,8 +33,6 @@ PathfindingService.Initenvironment = function(environment, datamodel)
 	PathfindingService:SetProperties({
 		CreatePath = function(self, agentParameters)
 			agentParameters = agentParameters or {}
-			local agentRadius = agentParameters.AgentRadius or 2
-			local agentHeight = agentParameters.AgentHeight or 5
 
 			local pathObj = {}
 			pathObj.Status = Enum.PathStatus.NoPath

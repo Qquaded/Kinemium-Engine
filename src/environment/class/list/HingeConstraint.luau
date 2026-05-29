@@ -1,3 +1,4 @@
+-- description: "Represents a HingeConstraint in the environment."
 local _Vector3 = require("@Vector3")
 local Enum = require("@EnumMap")
 local _signal = require("@Kinemium.signal")
@@ -34,12 +35,16 @@ local propTable = {
 return {
 	class = "HingeConstraint",
 
+	-- description: "Initializes the HingeConstraint instance."
+	-- args: "instance: table, renderer: number, datamodel: table"
+	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		local KinemiumPhysicsService = datamodel:GetService("UnifiedPhysicsService")
 		instance:SetProperties(propTable)
 
 		local _activeConstraint = nil
 
+		-- description: "Cleans up the resources."
 		local function cleanup()
 			if _activeConstraint then
 				KinemiumPhysicsService.jolt.lib.JPH_PhysicsSystem_RemoveConstraint(
@@ -50,6 +55,7 @@ return {
 			end
 		end
 
+		-- description: "Rebuilds the state."
 		local function rebuild()
 			cleanup()
 
@@ -113,6 +119,8 @@ return {
 				-- Re-apply motor state when a connected body becomes dynamic.
 				-- Jolt silently ignores motor state on static bodies; once unanchored
 				-- we must push the motor settings + state again.
+				-- description: "Ons part changed."
+				-- args: "property: number"
 				local function onPartChanged(property)
 					if property == "Anchored" then
 						task.defer(function()
@@ -132,6 +140,7 @@ return {
 			end
 		end
 
+		-- description: "Updates actuator."
 		function instance:UpdateActuator()
 			if not _activeConstraint then
 				return
@@ -162,6 +171,7 @@ return {
 			end
 		end
 
+		-- description: "Updates limits."
 		function instance:UpdateLimits()
 			if not _activeConstraint then
 				return
@@ -179,6 +189,7 @@ return {
 			end
 		end
 
+		-- description: "Draws the visual representation."
 		local function drawGizmo()
 			if not instance.Visible then
 				return
@@ -202,6 +213,8 @@ return {
 			local wPerp0 = wAxis0:Cross(wNormal0):Unit() -- The other axis in the plane
 
 			local color = instance.Color
+			-- description: "Tos raylib color."
+			-- args: "c: any, a: number"
 			local function toRaylibColor(c, a)
 				return raylib.structs.Color:new({ r = c.R * 255, g = c.G * 255, b = c.B * 255, a = a or 255 })
 			end
@@ -339,6 +352,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the HingeConstraint class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

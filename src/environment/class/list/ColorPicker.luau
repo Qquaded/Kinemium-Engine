@@ -1,3 +1,4 @@
+-- description: "Represents a ColorPicker in the environment."
 local GuiObject = require("@GuiObject")
 local raylib = require("@Raylib")
 local aereon = require("@Aereon")
@@ -28,7 +29,12 @@ GuiObject.inherit(propTable)
 return {
 	class = "ColorPicker",
 
+	-- description: "Initializes the ColorPicker instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
+		-- description: "Resolves font."
+		-- args: "fontEnum: number"
 		local function resolveFont(fontEnum)
 			local name = fontEnum.Value
 			local resolvedFont = renderer.Font.Get(name) or defaultFont
@@ -40,6 +46,8 @@ return {
 			y = 0,
 			width = 200,
 			height = 250,
+			-- description: "Ons changed."
+			-- args: "color: number, alpha: number"
 			onChanged = function(color, alpha)
 				local selected = Color4.new(color.R, color.G, color.B, alpha)
 				instance.SelectedColor = selected
@@ -47,6 +55,8 @@ return {
 			end,
 		})
 
+		-- description: "Renders the component."
+		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		propTable.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -72,6 +82,8 @@ return {
 		instance:SetProperties(propTable)
 		return instance
 	end,
+	-- description: "Inherits the properties of the ColorPicker class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

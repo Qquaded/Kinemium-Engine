@@ -1,3 +1,4 @@
+-- description: "Represents a SSREffect in the environment."
 local propTable = {
 	MaxRaySteps = 64,
 	BinarySteps = 5,
@@ -13,6 +14,9 @@ local propTable = {
 return {
 	class = "SSREffect",
 
+	-- description: "Initializes the SSREffect instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		local r3d = require("@r3d")
 
@@ -47,6 +51,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the SSREffect class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

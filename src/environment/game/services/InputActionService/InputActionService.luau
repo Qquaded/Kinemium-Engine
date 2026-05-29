@@ -8,6 +8,7 @@ local Enum = require("@EnumMap")
 local InputActionService = Instance.new("InputActionService")
 local inputActions = {} -- [actionName] = { inputs?, callback?, values = { [player] = value } }
 InputActionService.ExplorerHidden = true
+InputActionService._Intents = Enum.PluginIntents.Input
 
 local ActionBegan = signal.new()
 local ActionEnded = signal.new()

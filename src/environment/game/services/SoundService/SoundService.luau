@@ -1,8 +1,10 @@
 local Instance = require("@Instance")
 local raylib = require("@raylib")
+local Enum = require("@EnumMap")
 
 local SoundService = Instance.new("SoundService")
 SoundService.ExplorerHidden = true
+SoundService._Intents = Enum.PluginIntents.Audio
 
 SoundService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	SoundService.GlobalVolume = 1.0

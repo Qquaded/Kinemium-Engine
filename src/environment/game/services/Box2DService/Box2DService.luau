@@ -1,9 +1,11 @@
 local Instance = require("@Instance")
 local UDim2 = require("@UDim2")
+local Enum = require("@Enum")
 local task = zune.task
 
 local Box2DService = Instance.new("Box2DService")
 Box2DService.ExplorerHidden = true
+Box2DService._Intents = Enum.PluginIntents.Physics
 
 local bufferUtils = require("@bufferUtils")
 local box2d = require("@box2d")

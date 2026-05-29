@@ -16,6 +16,7 @@ local runtimeGame = nil
 Players.PlayerAdded = signal.new()
 Players.MaxPlayers = 20
 Players.PlayerRemoving = signal.new()
+Players._Intents = Enum.PluginIntents.Network
 
 local playerRegistry = {}
 Players.Players = playerRegistry
@@ -129,7 +130,11 @@ Players.InitRenderer = function(renderer, signal, game)
 		})
 		CharacterModel.PrimaryPart = humanoid.RootPart
 		CharacterModel.Parent = datamodel.Workspace
-		print(`[Players] Character model created for {player.Name}: {CharacterModel.Name}, PrimaryPart={tostring(CharacterModel.PrimaryPart)}`)
+		print(
+			`[Players] Character model created for {player.Name}: {CharacterModel.Name}, PrimaryPart={tostring(
+				CharacterModel.PrimaryPart
+			)}`
+		)
 		print(`[Players]   Humanoid={tostring(humanoid)}, RootPart={tostring(humanoid.RootPart)}`)
 		print(`[Players]   Character parent: {tostring(CharacterModel.Parent and CharacterModel.Parent.Name)}`)
 

@@ -1,9 +1,5 @@
--- NetworkAttributes: NetRpc and SyncVar attribute definitions for Kinemium networking
--- Based on Polytoria's NetworkAttributes.cs:14-63
-
 local NetworkAttributes = {}
 
--- Authority modes for RPC calls (Polytoria's AuthorMode)
 NetworkAttributes.AuthorMode = {
 	Server = "Server",
 	Authority = "Authority",

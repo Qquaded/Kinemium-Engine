@@ -1,5 +1,6 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local LogService = Instance.new("LogService")
 LogService.ExplorerHidden = true
@@ -10,6 +11,10 @@ local BeforeLog = signal.new()
 local logs = {}
 
 LogService.InitRenderer = function(renderer, renderer_signal)
+	-- this service reminds me of a devforum post called LogBuddy, ahh good times...
+	-- anyway theres no suitable intent so i just put intent here
+	LogService._Intents = Enum.PluginIntents.Input
+
 	LogService:SetProperties({
 		ClearOutput = function()
 			table.clear(logs)

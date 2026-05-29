@@ -1,5 +1,4 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
 
 local ReplicatedStorage = Instance.new("ReplicatedStorage")
 

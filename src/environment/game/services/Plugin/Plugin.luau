@@ -3,8 +3,11 @@ local aereon = require("@Aereon")
 local raylib = require("@raylib")
 local Color3 = require("@Color3")
 local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local Plugin = Instance.new("Plugin")
+Plugin._Intents = Enum.PluginIntents.UI
+
 local lib = raylib.lib
 local structs = raylib.structs
 local arect = require("@arect")

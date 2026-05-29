@@ -1,3 +1,4 @@
+-- description: "Represents an UIPadding in the environment."
 local UDim2 = require("@UDim2")
 local UDim = require("@UDim")
 local Vector2 = require("@Vector2")
@@ -16,6 +17,8 @@ local propTable = {
 	_CachedResolved = nil,
 }
 
+-- description: "Resolves legacy padding side."
+-- args: "padding: number, primaryKey: number, secondaryKey: number"
 local function resolveLegacyPaddingSide(padding, primaryKey, secondaryKey)
 	local side = padding and padding[primaryKey]
 	if side then
@@ -25,6 +28,8 @@ local function resolveLegacyPaddingSide(padding, primaryKey, secondaryKey)
 	return padding and padding[secondaryKey] or UDim.new(0, 0)
 end
 
+-- description: "Resolves padding side."
+-- args: "instance: table, propertyName: string, primaryKey: number, secondaryKey: number"
 local function resolvePaddingSide(instance, propertyName, primaryKey, secondaryKey)
 	local explicit = instance[propertyName]
 	if explicit ~= nil then
@@ -34,6 +39,8 @@ local function resolvePaddingSide(instance, propertyName, primaryKey, secondaryK
 	return resolveLegacyPaddingSide(instance.Padding, primaryKey, secondaryKey)
 end
 
+-- description: "Props table: get resolved padding."
+-- args: "parentSize: number"
 function propTable:GetResolvedPadding(parentSize)
 	local cachedSize = self._CachedParentSize
 	local cachedResolved = self._CachedResolved
@@ -68,22 +75,29 @@ function propTable:GetResolvedPadding(parentSize)
 	return resolved
 end
 
+-- description: "Props table: get inner size."
+-- args: "containerSize: number"
 function propTable:GetInnerSize(containerSize)
 	local p = self:GetResolvedPadding(containerSize)
 
 	return Vector2.new(math.max(0, containerSize.X - p.Horizontal), math.max(0, containerSize.Y - p.Vertical))
 end
 
+-- description: "Props table: get offset."
 function propTable:GetOffset()
 	local p = self._CachedResolved
 	return Vector2.new(p.Left, p.Top)
 end
 
+-- description: "Props table: apply to position."
+-- args: "pos: Vector3"
 function propTable:ApplyToPosition(pos)
 	local p = self._CachedResolved
 	return pos + Vector2.new(p.Left, p.Top)
 end
 
+-- description: "Gets the All."
+-- args: "container: number"
 function propTable.GetAll(container)
 	local out = {}
 
@@ -96,6 +110,8 @@ function propTable.GetAll(container)
 	return out
 end
 
+-- description: "Resolves all."
+-- args: "container: number, containerSize: number"
 function propTable.ResolveAll(container, containerSize)
 	local total = {
 		Left = 0,
@@ -119,12 +135,16 @@ function propTable.ResolveAll(container, containerSize)
 	return total
 end
 
+-- description: "Gets the TotalInnerSize."
+-- args: "container: number, containerSize: number"
 function propTable.GetTotalInnerSize(container, containerSize)
 	local p = propTable.ResolveAll(container, containerSize)
 
 	return Vector2.new(math.max(0, containerSize.X - p.Horizontal), math.max(0, containerSize.Y - p.Vertical))
 end
 
+-- description: "Gets the TotalOffset."
+-- args: "container: number, containerSize: number"
 function propTable.GetTotalOffset(container, containerSize)
 	local p = propTable.ResolveAll(container, containerSize)
 	return Vector2.new(p.Left, p.Top)
@@ -132,9 +152,13 @@ end
 
 return {
 	class = "UIPadding",
+	-- description: "Renders the component."
 	render = function()
 		-- no render; purely layout modifier
 	end,
+	-- description: "Initializes the UIPadding instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance

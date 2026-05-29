@@ -1,16 +1,12 @@
-local signal = require("@Kinemium.signal")
 local Instance = require("@Instance")
-local encoder = require("./_encoder")
 local Registry = require("@InstanceRegistry")
-
-local serde = zune.serde
-local zstd = serde.zstd
 
 local Enum = require("@EnumMap")
 local Datatypes = require("@Kinemium.datatypes.get")
 
 local SerializationService = Instance.new("SerializationService")
 SerializationService.ExplorerHidden = true
+SerializationService._Intents = Enum.PluginIntents.Serialization
 
 local BLACKLISTED_TYPES = {
 	["function"] = true,

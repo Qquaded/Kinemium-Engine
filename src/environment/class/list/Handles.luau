@@ -1,3 +1,4 @@
+-- description: "Represents a Handles in the environment."
 local Color3 = require("@Color3")
 local signal = require("@kinemium.signal")
 local Enum = require("@EnumMap")
@@ -29,6 +30,9 @@ local propTable = {
 return {
 	class = "Handles",
 
+	-- description: "Initializes the Handles instance."
+	-- args: "instance: table, renderer: number"
+	-- returns: "table"
 	callback = function(instance, renderer)
 		local gizmo = require("@gizmo")
 
@@ -75,6 +79,8 @@ return {
 			end
 		end)
 
+		-- description: "Renders the component."
+		-- args: "handles: table, renderer: number, datamodel: table"
 		propTable.render = function(handles, renderer, datamodel)
 			if handles.Adornee then
 				local part = handles.Adornee
@@ -148,6 +154,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the Handles class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

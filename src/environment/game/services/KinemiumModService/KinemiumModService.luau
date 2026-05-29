@@ -1,5 +1,5 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 export type KinemiumMod = {
 	Name: string,
@@ -16,9 +16,8 @@ local namespaces = {}
 
 local KinemiumModService = Instance.new("KinemiumModService")
 KinemiumModService.ExplorerHidden = true
+KinemiumModService._Intents = Enum.PluginIntents.Threading
 
-local ModAdded = signal.new()
-local ModRemoved = signal.new()
 local mods_cache = {}
 
 KinemiumModService.InitRenderer = function(renderer, renderer_signal)
@@ -43,10 +42,7 @@ KinemiumModService.InitRenderer = function(renderer, renderer_signal)
 		end,
 
 		luau = {
-			run = function(code)
-				-- dont ask why i added that number
-				-- it was totally random
-			end,
+			NewVM = function(options, environment) end,
 		},
 	})
 

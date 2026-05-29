@@ -1,3 +1,4 @@
+-- description: "Represents a FogEffect in the environment."
 local Color3 = require("@Color3")
 local Enum = require("@EnumMap")
 
@@ -16,6 +17,9 @@ local propTable = {
 return {
 	class = "FogEffect",
 
+	-- description: "Initializes the FogEffect instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		local r3d = require("@r3d")
 
@@ -52,6 +56,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the FogEffect class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

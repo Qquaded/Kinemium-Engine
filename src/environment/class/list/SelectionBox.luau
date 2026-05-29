@@ -1,3 +1,4 @@
+-- description: "Represents a SelectionBox in the environment."
 local Color3 = require("@Color3")
 
 local propTable = {
@@ -14,12 +15,17 @@ local propTable = {
 return {
 	class = "SelectionBox",
 
+	-- description: "Initializes the SelectionBox instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the SelectionBox class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

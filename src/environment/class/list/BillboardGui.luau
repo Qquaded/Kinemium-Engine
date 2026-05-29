@@ -1,3 +1,4 @@
+-- description: "Represents a BillboardGui in the environment."
 local Vector2 = require("@Vector2")
 
 local Vector3 = require("@Vector3")
@@ -46,6 +47,8 @@ local propTable = {
 
 
 
+-- description: "Gets the ReferenceSize."
+-- returns: "Vector3"
 local function getReferenceSize()
 
 	return Vector2.new(lib.GetRenderWidth(), lib.GetRenderHeight())
@@ -54,6 +57,9 @@ end
 
 
 
+-- description: "Gets the SizePixels."
+-- args: "instance: table"
+-- returns: "any"
 local function getSizePixels(instance)
 
 	if not instance.Size then
@@ -72,6 +78,9 @@ end
 
 
 
+-- description: "Gets the Adornee."
+-- args: "instance: table"
+-- returns: "any"
 local function getAdornee(instance)
 
 	if instance.Adornee then
@@ -86,6 +95,9 @@ end
 
 
 
+-- description: "Gets the WorldPosition."
+-- args: "adornee: any, offsetLocal: Vector3, offsetWorld: Vector3"
+-- returns: "Vector3"
 local function getWorldPosition(adornee, offsetLocal, offsetWorld)
 
 	if not adornee then
@@ -144,6 +156,9 @@ return {
 
 
 
+	-- description: "Initializes the BillboardGui instance."
+	-- args: "instance: table, renderer: number, datamodel: table"
+	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 
 		instance:SetProperties(propTable)
@@ -170,6 +185,8 @@ return {
 
 
 
+		-- description: "Resets render texture."
+		-- args: "width: number, height: number"
 		local function resetRenderTexture(width, height)
 
 			local w = math.max(1, math.floor(width or 1))
@@ -430,6 +447,8 @@ return {
 
 
 
+	-- description: "Inherits the properties of the BillboardGui class."
+	-- args: "tble: table"
 	inherit = function(tble)
 
 		for prop, val in pairs(propTable) do

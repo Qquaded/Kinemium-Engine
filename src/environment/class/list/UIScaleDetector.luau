@@ -1,3 +1,4 @@
+-- description: "Represents an UIScaleDetector in the environment."
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
 local UDim2 = require("@UDim2")
@@ -33,6 +34,9 @@ local CURSORS = {
 	R = raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_EW,
 }
 
+-- description: "Gets the ParentMetrics."
+-- args: "parent: table"
+-- returns: "any"
 local function getParentMetrics(parent)
 	local parentAbsPos = ZERO_V2
 	local parentSize = ZERO_V2
@@ -57,6 +61,9 @@ local function getParentMetrics(parent)
 end
 
 -- Returns the absolute rect for a given handle key on the adornee
+-- description: "Gets the HandleRect."
+-- args: "key: number, absPos: any, absSize: number"
+-- returns: "any"
 local function getHandleRect(key, absPos, absSize)
 	local cx, cy
 
@@ -106,7 +113,12 @@ local propTable = {
 return {
 	class = "UIScaleDetector",
 
+	-- description: "Initializes the UIScaleDetector instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
+		-- description: "Renders the component."
+		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		propTable.render = function(lib, object, dt, structs, renderer)
 			if not object.Parent then
 				return
@@ -245,6 +257,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the UIScaleDetector class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

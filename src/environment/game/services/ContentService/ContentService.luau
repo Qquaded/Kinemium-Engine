@@ -14,7 +14,10 @@ api:
 local Instance = require("@Instance")
 
 local ContentService = Instance.new("GuiStackService")
+local Enum = require("@EnumMap")
+
 ContentService.ExplorerHidden = true
+ContentService._Intents = Enum.PluginIntents.Network
 
 local net = zune.net
 local fs = zune.fs

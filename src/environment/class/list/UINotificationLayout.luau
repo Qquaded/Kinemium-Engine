@@ -1,3 +1,4 @@
+-- description: "Represents an UINotificationLayout in the environment."
 local Enum = require("@EnumMap")
 local UDim2 = require("@UDim2")
 local UDim = require("@UDim")
@@ -22,6 +23,9 @@ local propTable = {
 
 	_notifications = nil, -- internal list, initialized on first render
 
+	-- description: "Renders the component."
+	-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
+	-- returns: "number"
 	render = function(lib, object, dt, structs, renderer)
 		if not object.Enabled then
 			return
@@ -44,6 +48,9 @@ local propTable = {
 		local isRight = anchor == Enum.NotificationAnchor.TopRight or anchor == Enum.NotificationAnchor.BottomRight
 		local isBottom = anchor == Enum.NotificationAnchor.BottomLeft or anchor == Enum.NotificationAnchor.BottomRight
 
+		-- description: "Eases."
+		-- args: "t: any, style: string"
+		-- returns: "number"
 		local function ease(t, style)
 			if style == Enum.EasingStyle.Linear then
 				return t
@@ -165,6 +172,8 @@ local propTable = {
 
 local api = {}
 
+-- description: "Api.s push."
+-- args: "layoutObject: table, frame: table, options: table"
 function api.Push(layoutObject, frame, options)
 	options = options or {}
 	local notifications = rawget(layoutObject, "_notifications")
@@ -184,6 +193,8 @@ function api.Push(layoutObject, frame, options)
 	})
 end
 
+-- description: "Api.s dismiss."
+-- args: "layout: any, frame: table"
 function api.Dismiss(layout, frame)
 	local notifications = rawget(layout, "_notifications")
 	if not notifications then
@@ -198,6 +209,8 @@ function api.Dismiss(layout, frame)
 	end
 end
 
+-- description: "Api.s dismiss all."
+-- args: "layout: any"
 function api.DismissAll(layout)
 	local notifications = rawget(layout, "_notifications")
 	if not notifications then
@@ -216,18 +229,26 @@ return {
 	class = "UINotificationLayout",
 	render = propTable.render,
 	api = api,
+	-- description: "Initializes the UINotificationLayout instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
 		local completedSignal = Signal.new()
 		rawset(instance, "_completedSignal", completedSignal)
 
+		-- description: "Instance.s push."
+		-- args: "frame: table, options: table"
 		instance.Push = function(frame, options)
 			api.Push(instance, frame, options)
 		end
+		-- description: "Instance.s dismiss."
+		-- args: "frame: table"
 		instance.Dismiss = function(frame)
 			api.Dismiss(instance, frame)
 		end
+		-- description: "Instance.s dismiss all."
 		instance.DismissAll = function()
 			api.DismissAll(instance)
 		end

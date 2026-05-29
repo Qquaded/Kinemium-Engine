@@ -1,6 +1,9 @@
 local Instance = require("@Instance")
+local Enum = require("@EnumMap")
+
 local UnifiedPhysicsService = Instance.new("UnifiedPhysicsService")
 UnifiedPhysicsService.ExplorerHidden = true
+UnifiedPhysicsService._Intents = Enum.PluginIntents.Physics
 
 local engines = {}
 local activeEngineName = nil

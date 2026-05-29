@@ -1,3 +1,4 @@
+-- description: "Represents a Camera in the environment."
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")
@@ -23,6 +24,9 @@ local cameraSingleton = nil
 return {
 	class = "Camera",
 	singleton = true,
+	-- description: "Initializes the Camera instance."
+	-- args: "instance: table, renderer: number"
+	-- returns: "table"
 	callback = function(instance, renderer)
 		if cameraSingleton and not cameraSingleton.Destroyed then
 			if cameraSingleton.CFrame == nil or cameraSingleton.CFrame.Position == nil then
@@ -55,6 +59,7 @@ return {
 
 		instance._raylibcam = camera
 
+		-- description: "Syncs raylib camera."
 		local function syncRaylibCamera()
 			local camCF = instance.CFrame
 			if camCF == nil or camCF.Position == nil then
@@ -106,6 +111,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the Camera class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

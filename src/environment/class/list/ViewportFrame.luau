@@ -1,3 +1,4 @@
+-- description: "Represents a ViewportFrame in the environment."
 local Frame = require("@Frame")
 local GuiObject = require("@GuiObject")
 local raylib = require("@raylib")
@@ -11,6 +12,7 @@ local sharedMeshlib = nil
 local sharedPreloadedMeshes = nil
 local sharedWorkspace = nil
 
+-- description: "Ensures preloaded."
 local function ensurePreloaded()
 	if sharedPreloadedMeshes or not sharedMeshlib then
 		return
@@ -18,6 +20,8 @@ local function ensurePreloaded()
 	sharedPreloadedMeshes = sharedMeshlib.PreloadStandardMeshes()
 end
 
+-- description: "Resets render texture."
+-- args: "object: table, width: number, height: number"
 local function resetRenderTexture(object, width, height)
 	local w = math.max(1, math.floor(width or 1))
 	local h = math.max(1, math.floor(height or 1))
@@ -33,6 +37,9 @@ local function resetRenderTexture(object, width, height)
 	raylib.lib.SetTextureWrap(tex, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
 end
 
+-- description: "Gets the RenderableMesh."
+-- args: "part: any"
+-- returns: "any"
 local function getRenderableMesh(part)
 	if part:IsA("MeshPart") then
 		if part.MeshObject and part.MeshObject._meshgenHandle then
@@ -47,6 +54,8 @@ local function getRenderableMesh(part)
 	return meshData and meshData[2] or nil
 end
 
+-- description: "Builds material."
+-- args: "part: any"
 local function buildMaterial(part)
 	local materialName = part.Material and part.Material.Value
 	local matData = nil
@@ -90,10 +99,15 @@ Frame.inherit(propTable)
 
 return {
 	class = "ViewportFrame",
+	-- description: "Initializes the ViewportFrame instance."
+	-- args: "instance: table, renderer: number, datamodel: table"
+	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		sharedMeshlib = sharedMeshlib or (renderer and renderer.Mesh or nil)
 		sharedWorkspace = sharedWorkspace or (datamodel and datamodel.Workspace or nil)
 
+		-- description: "Renders the component."
+		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		propTable.render = function(lib, object, dt, structs, renderer)
 			if not object.Visible then
 				return
@@ -176,6 +190,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the ViewportFrame class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			if tble[prop] then

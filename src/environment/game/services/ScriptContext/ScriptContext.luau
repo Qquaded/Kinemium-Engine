@@ -1,12 +1,10 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
+local kilang = require("@kilang")
 
 local ScriptContext = Instance.new("ScriptContext")
 ScriptContext.ExplorerHidden = true
-
-local kilang = require("@kilang")
-
-local Enum = require("@EnumMap")
+ScriptContext._Intents = Enum.PluginIntents.Threading
 
 local activeThreads = {}
 

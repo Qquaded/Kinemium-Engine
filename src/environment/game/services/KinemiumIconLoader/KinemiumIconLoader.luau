@@ -1,12 +1,11 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local fs = zune.fs
-local ffi = zune.ffi
-local mem = zune.mem
-
 local KinemiumIconLoader = Instance.new("KinemiumIconLoader")
 KinemiumIconLoader.ExplorerHidden = true
+KinemiumIconLoader._Intents = Enum.PluginIntents.UI
+
 local raylib = require("@raylib")
 local lib = raylib.lib
 

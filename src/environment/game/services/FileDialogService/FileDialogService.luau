@@ -1,8 +1,10 @@
 local Instance = require("@Instance")
 local BufferUtils = require("@bufferutils")
+local Enum = require("@EnumMap")
 
 local FileDialogService = Instance.new("FileDialogService")
 FileDialogService.ExplorerHidden = true
+FileDialogService._Intents = Enum.PluginIntents.Filesystem
 
 local ffi = zune.ffi
 

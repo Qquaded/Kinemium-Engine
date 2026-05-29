@@ -3,7 +3,6 @@ if RunService:IsServer() then
 	return
 end
 
-local rlservice = game:GetService("KinemiumRaylib")
 local raylib = require("@raylib")
 local MouseCursor = require("@Kinemium.MouseCursor")
 local lib = raylib.lib

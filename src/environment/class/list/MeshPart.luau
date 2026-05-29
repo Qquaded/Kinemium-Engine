@@ -1,3 +1,4 @@
+-- description: "Represents a MeshPart in the environment."
 local Vector3 = require("@Vector3")
 local Part = require("./Part")
 local Enum = require("@EnumMap")
@@ -21,11 +22,16 @@ Part.inherit(propTable)
 return {
 	class = "MeshPart",
 
+	-- description: "Initializes the MeshPart instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 		instance:SetMetadata("IsMovable", true)
 
 		local KinemiumPhysicsService = game and game:GetService("UnifiedPhysicsService") or nil
+		-- description: "Instance.s apply impulse."
+		-- args: "self: table, v: Vector3"
 		instance.ApplyImpulse = function(self, v)
 			if KinemiumPhysicsService then
 				KinemiumPhysicsService.ApplyImpulse(instance, v)
@@ -36,6 +42,8 @@ return {
 
 		local syncingTransform = false
 
+		-- description: "Syncs from c frame."
+		-- args: "cf: CFrame"
 		local function syncFromCFrame(cf)
 			if not cf or not cf.Position then
 				return
@@ -50,6 +58,8 @@ return {
 			props.Rotation = props.Orientation
 		end
 
+		-- description: "Syncs from position."
+		-- args: "position: Vector3"
 		local function syncFromPosition(position)
 			if not position then
 				return
@@ -80,6 +90,7 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the MeshPart class."
 	inherit = function()
 		return propTable
 	end,

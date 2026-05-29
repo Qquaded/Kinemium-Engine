@@ -1,7 +1,6 @@
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Player = Players.LocalPlayer
 
 repeat
 	task.wait()
@@ -20,8 +19,6 @@ repeat
 until ishared.EscapeMenu_Signal
 
 export type SignalObject = typeof(Signal.new())
-
-local signal: SignalObject = ishared.EscapeMenu_Signal
 
 local screenGui = CoreGui.KinemiumCoreGui
 local manager = ishared.ReactPointer

@@ -1,7 +1,9 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
 local ChatService = Instance.new("ChatService")
+local Enum = require("@EnumMap")
 ChatService.ExplorerHidden = true
+ChatService._Intents = Enum.PluginIntents.UI
 
 ChatService.InitRenderer = function(renderer, renderer_signal)
 	ChatService:SetProperties({

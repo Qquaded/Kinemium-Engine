@@ -1,3 +1,4 @@
+-- description: "Represents a Checkbox in the environment."
 local GuiObject = require("@GuiObject")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
@@ -25,6 +26,9 @@ GuiObject.inherit(propTable)
 return {
 	class = "UICheckbox",
 
+	-- description: "Initializes the Checkbox instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		local onValueChanged = signal.new()
 		local checkbox = gui.checkbox({
@@ -32,6 +36,8 @@ return {
 			y = 0,
 			size = 20,
 			value = instance.Value,
+			-- description: "Ons changed."
+			-- args: "value: number"
 			onChanged = function(value)
 				instance.Value = value
 				onValueChanged:Fire(value)
@@ -42,6 +48,8 @@ return {
 		instance.OnValueChanged = onValueChanged
 		instance._checkbox = checkbox
 
+		-- description: "Instance.renders."
+		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		instance.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -60,6 +68,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the Checkbox class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

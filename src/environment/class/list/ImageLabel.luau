@@ -1,3 +1,4 @@
+-- description: "Represents an ImageLabel in the environment."
 local Vector2 = require("@Vector2")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
@@ -29,6 +30,8 @@ local propTable = {
 	_cached = nil,
 }
 
+-- description: "Renders the component."
+-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 propTable.render = function(lib, object, dt, structs, renderer)
 	if not roundedShader then
 		roundedShader = lib.LoadShader(nil, zembed.AssetPath("kineasset://shaders/rounded.fs"))
@@ -149,6 +152,9 @@ GuiObject.inherit(propTable)
 return {
 	class = "ImageLabel",
 	render = propTable.render,
+	-- description: "Initializes the ImageLabel instance."
+	-- args: "instance: table, renderer: number"
+	-- returns: "table"
 	callback = function(instance, renderer)
 		if type(instance.Image) == "string" and not _G.IsHeadless then
 			instance._cached = lib.LoadTexture(zembed.AssetPath(instance.Image))
@@ -188,6 +194,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the ImageLabel class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

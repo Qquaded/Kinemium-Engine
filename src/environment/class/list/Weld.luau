@@ -1,3 +1,4 @@
+-- description: "Represents a Weld in the environment."
 local a = require("../../game/services/ReplicatorService/NetworkOwnership")
 
 local b = {
@@ -12,11 +13,15 @@ local b = {
 return {
 	class = "Weld",
 
+	-- description: "Initializes the Weld instance."
+	-- args: "c: any, d: any, e: any"
+	-- returns: "table"
 	callback = function(c, d, e)
 		local f = e:GetService("UnifiedPhysicsService")
 
 		c:SetProperties(b)
 
+		-- description: "Rebuilds the state."
 		local function rebuild()
 			if c._active then
 				local g = f.jolt
@@ -39,6 +44,7 @@ return {
 			end
 
 			local g = 0
+			-- description: "Tries create."
 			local function tryCreate()
 				if not c.Part0 or not c.Part1 or not c.Enabled then
 					return
@@ -73,6 +79,8 @@ return {
 		return c
 	end,
 
+	-- description: "Inherits the properties of the Weld class."
+	-- args: "c: any"
 	inherit = function(c)
 		for d, e in pairs(b) do
 			c[d] = e

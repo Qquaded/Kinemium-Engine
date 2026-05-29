@@ -1,6 +1,9 @@
 local Instance = require("@Instance")
 local BlobLoader = Instance.new("BlobLoader")
+local Enum = require("@EnumMap")
+
 BlobLoader.ExplorerHidden = true
+BlobLoader._Intents = Enum.PluginIntents.FFI
 
 BlobLoader.InitRenderer = function(renderer, renderer_signal, datamodel)
 	local function byteAt(data, index)
@@ -157,7 +160,9 @@ BlobLoader.InitRenderer = function(renderer, renderer_signal, datamodel)
 			-- is discarded without destroying the real one.
 			local singletonChildren = MERGE_SINGLETON_CHILDREN[targetRoot.ClassName]
 			local childName = child.Name
-			local existing = singletonChildren and singletonChildren[child.ClassName] and targetRoot:FindFirstChild(childName)
+			local existing = singletonChildren
+				and singletonChildren[child.ClassName]
+				and targetRoot:FindFirstChild(childName)
 			if existing and existing.ClassName == child.ClassName then
 				if child.ClassName ~= "Camera" then
 					mergeProps(child, existing)
@@ -225,7 +230,11 @@ BlobLoader.InitRenderer = function(renderer, renderer_signal, datamodel)
 						if root.ClassName == "DataModel" then
 							for _, serviceSnapshot in ipairs(root:GetChildren()) do
 								if not mergeServiceSnapshot(serviceSnapshot) then
-									log("BlobLoader: no live service found for '" .. tostring(serviceSnapshot.Name) .. "'")
+									log(
+										"BlobLoader: no live service found for '"
+											.. tostring(serviceSnapshot.Name)
+											.. "'"
+									)
 								end
 							end
 						else

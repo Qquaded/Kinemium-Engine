@@ -1,7 +1,9 @@
 local Instance = require("@Instance")
+local Enum = require("@EnumMap")
 
 local ProjectLoaderService = Instance.new("LogService")
 ProjectLoaderService.ExplorerHidden = true
+ProjectLoaderService._Intents = Enum.PluginIntents.Filesystem
 
 local serde = zune.serde
 

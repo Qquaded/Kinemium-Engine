@@ -1,3 +1,4 @@
+-- description: "Represents a Decal in the environment."
 local Vector3 = require("@Vector3")
 local Color3 = require("@Color3")
 local CFrame = require("@CFrame")
@@ -27,6 +28,9 @@ local propTable = {
 	FadeWidth = 0,
 }
 
+-- description: "Gets the FaceSize."
+-- args: "size: number, face: any"
+-- returns: "Vector3"
 local function getFaceSize(size, face)
 	if face == Enum.NormalId.Front or face == Enum.NormalId.Back then
 		return size.X, size.Y
@@ -37,6 +41,9 @@ local function getFaceSize(size, face)
 	end
 end
 
+-- description: "Gets the FaceCFrame."
+-- args: "cf: CFrame, size: number, face: any"
+-- returns: "CFrame"
 local function getFaceCFrame(cf, size, face)
 	local half = size * 0.5
 	local padding = 0.005 -- offset to prevent Z-fighting
@@ -56,6 +63,7 @@ local function getFaceCFrame(cf, size, face)
 	end
 end
 
+-- description: "Builds base decal."
 local function buildBaseDecal()
 	local decal = r3dstructs.R3D_Decal:new({})
 
@@ -92,6 +100,8 @@ local function buildBaseDecal()
 	return decal
 end
 
+-- description: "Resolves texture source."
+-- args: "instance: table"
 local function resolveTextureSource(instance)
 	if type(instance.ColorMapContent) == "table" and instance.ColorMapContent.ClassName == "EditableImage" then
 		return instance.ColorMapContent
@@ -108,6 +118,8 @@ local function resolveTextureSource(instance)
 	return nil
 end
 
+-- description: "Loads albedo map."
+-- args: "path: number, color: number"
 local function loadAlbedoMap(path, color)
 	if type(path) ~= "string" or path == "" then
 		return nil
@@ -128,6 +140,8 @@ local function loadAlbedoMap(path, color)
 	return nil
 end
 
+-- description: "Loads albedo map from editable."
+-- args: "editableImage: any, color: number"
 local function loadAlbedoMapFromEditable(editableImage, color)
 	if not editableImage or not editableImage._image then
 		return nil
@@ -158,12 +172,16 @@ local function loadAlbedoMapFromEditable(editableImage, color)
 	return nil
 end
 
+-- description: "Applies albedo color."
+-- args: "decal: any, color: number, transparency: number"
 local function applyAlbedoColor(decal, color, transparency)
 	local albedoColor = color:ToRaylib(transparency or 0)
 	local offset = r3dstructs.R3D_Decal:offset("albedo") + r3dstructs.R3D_AlbedoMap:offset("color")
 	buffer.copy(decal, offset, albedoColor, 0, structs.Color:size())
 end
 
+-- description: "Applies decal settings."
+-- args: "instance: table, decal: any"
 local function applyDecalSettings(instance, decal)
 	local normalThreshold = math.max(0, instance.NormalThreshold or 0)
 	local fadeWidth = math.max(0, instance.FadeWidth or 0)
@@ -172,6 +190,8 @@ local function applyDecalSettings(instance, decal)
 	buffer.writef32(decal, r3dstructs.R3D_Decal:offset("fadeWidth"), fadeWidth)
 end
 
+-- description: "Applies face offset."
+-- args: "cf: CFrame, offset: number"
 local function applyFaceOffset(cf, offset)
 	if type(offset) ~= "table" or not offset.__type then
 		return cf
@@ -188,6 +208,9 @@ end
 
 return {
 	class = "Decal",
+	-- description: "Initializes the Decal instance."
+	-- args: "instance: table, renderer: number"
+	-- returns: "table"
 	callback = function(instance, renderer)
 		instance:SetProperties(propTable)
 
@@ -196,6 +219,8 @@ return {
 		instance._decalHasMaps = false
 		instance._decalLastPath = nil
 
+		-- description: "Syncs albedo."
+		-- args: "force: any"
 		local function syncAlbedo(force)
 			if _G.IsHeadless then
 				return
@@ -316,6 +341,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the Decal class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

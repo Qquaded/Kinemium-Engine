@@ -1,8 +1,10 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local UserInputService = Instance.new("UserInputService")
 local Vector2 = require("@Vector2")
+UserInputService._Intents = Enum.PluginIntents.Input
 
 local InputBegan = signal.new()
 local InputEnded = signal.new()

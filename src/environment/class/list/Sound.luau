@@ -1,3 +1,4 @@
+-- description: "Represents a Sound in the environment."
 local Signal = require("@Kinemium.signal")
 local Enum = require("@EnumMap")
 local Vector3 = require("@Vector3")
@@ -15,7 +16,7 @@ local propTable = {
 	PlayOnRemove = false,
 	IsLoaded = false,
 	Name = "Sound",
-	AudioBackend = Enum.AudioBackend.Raudio,
+	AudioBackend = Enum.AudioBackend.RAUDIO,
 
 	IsStream = false,
 	SoundGroup = nil,
@@ -34,9 +35,13 @@ local propTable = {
 
 return {
 	class = "Sound",
+	-- description: "Initializes the Sound instance."
+	-- args: "instance: table, renderer: number"
+	-- returns: "table"
 	callback = function(instance, renderer)
 		instance:SetProperties(propTable)
 
+		-- description: "Updates volume."
 		local function updateVolume()
 			if not instance.IsLoaded then
 				return
@@ -50,6 +55,7 @@ return {
 			end
 		end
 
+		-- description: "Updates pitch."
 		local function updatePitch()
 			if not instance.IsLoaded then
 				return
@@ -61,6 +67,7 @@ return {
 			end
 		end
 
+		-- description: "Loads audio."
 		local function loadAudio()
 			if instance._raylibSound then
 				if instance.IsStream then
@@ -96,6 +103,8 @@ return {
 
 		loadAudio()
 
+		-- description: "Fades to."
+		-- args: "targetFade: any, duration: number"
 		local function fadeTo(targetFade, duration)
 			if duration and duration > 0 then
 				local startFade = instance._fadeVolume
@@ -119,6 +128,8 @@ return {
 			end
 		end
 
+		-- description: "Instance.s play."
+		-- args: "self: table, fadeDuration: number"
 		instance.Play = function(self, fadeDuration)
 			if self.IsLoaded and not self.Playing then
 				fadeTo(1.0, fadeDuration)
@@ -134,6 +145,8 @@ return {
 			end
 		end
 
+		-- description: "Instance.s stop."
+		-- args: "self: table, fadeDuration: number"
 		instance.Stop = function(self, fadeDuration)
 			if self.IsLoaded then
 				if fadeDuration and fadeDuration > 0 then
@@ -161,6 +174,8 @@ return {
 			end
 		end
 
+		-- description: "Instance.s pause."
+		-- args: "self: table, fadeDuration: number"
 		instance.Pause = function(self, fadeDuration)
 			if self.IsLoaded then
 				if fadeDuration and fadeDuration > 0 then
@@ -184,6 +199,8 @@ return {
 			end
 		end
 
+		-- description: "Instance.s resume."
+		-- args: "self: table, fadeDuration: number"
 		instance.Resume = function(self, fadeDuration)
 			if self.IsLoaded then
 				if self.IsStream then
@@ -211,6 +228,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the Sound class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

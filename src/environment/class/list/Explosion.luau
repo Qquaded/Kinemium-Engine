@@ -1,3 +1,4 @@
+-- description: "Represents an Explosion in the environment."
 local Color3 = require("@Color3")
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
@@ -12,6 +13,8 @@ local ParticleEmitter = require("./ParticleEmitter")
 
 --  Helpers
 
+-- description: "Nses."
+-- args: "...: any"
 local function ns(...)
 	local kps = {}
 	local args = { ... }
@@ -21,6 +24,8 @@ local function ns(...)
 	return NumberSequence.new(kps)
 end
 
+-- description: "Cses."
+-- args: "...: any"
 local function cs(...)
 	local kps = {}
 	local args = { ... }
@@ -51,6 +56,9 @@ local propTable = {
 return {
 	class = "Explosion",
 
+	-- description: "Initializes the Explosion instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -76,6 +84,7 @@ return {
 
 		--  Update helpers
 
+		-- description: "Updates flash."
 		local function updateFlash()
 			local r = math.max(0, instance.BlastRadius or 5)
 			local ts = math.max(0.001, instance.TimeScale or 1)
@@ -101,6 +110,7 @@ return {
 			flashEmitter.Acceleration = Vector3.new(0, 0, 0)
 		end
 
+		-- description: "Updates fire."
 		local function updateFire()
 			local r = math.max(0, instance.BlastRadius or 5)
 			local ts = math.max(0.001, instance.TimeScale or 1)
@@ -136,6 +146,7 @@ return {
 			fireEmitter.Acceleration = Vector3.new(0, inten * 4, 0)
 		end
 
+		-- description: "Updates smoke."
 		local function updateSmoke()
 			local r = math.max(0, instance.BlastRadius or 5)
 			local ts = math.max(0.001, instance.TimeScale or 1)
@@ -160,6 +171,7 @@ return {
 			smokeEmitter.Acceleration = Vector3.new(0, inten * 1.5, 0)
 		end
 
+		-- description: "Updates sparks."
 		local function updateSparks()
 			local r = math.max(0, instance.BlastRadius or 5)
 			local ts = math.max(0.001, instance.TimeScale or 1)
@@ -194,6 +206,7 @@ return {
 		updateSmoke()
 		updateSparks()
 
+		-- description: "Dos burst."
 		local function doBurst()
 			local r = math.max(1, instance.BlastRadius or 5)
 			flashEmitter:Emit(math.ceil(r * 1))
@@ -202,6 +215,8 @@ return {
 			sparkEmitter:Emit(math.ceil(r * 6))
 		end
 
+		-- description: "Instance.s explode."
+		-- args: "_: any"
 		instance.Explode = function(_)
 			doBurst()
 		end
@@ -240,6 +255,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the Explosion class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

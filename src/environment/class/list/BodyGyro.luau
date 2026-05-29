@@ -1,3 +1,4 @@
+-- description: "Represents a BodyGyro in the environment."
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 
@@ -14,11 +15,17 @@ local propTable = {
 return {
 	class = "BodyGyro",
 
+	-- description: "Initializes the BodyGyro instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
 		local PhysicsService = game:GetService("UnifiedPhysicsService")
 
+		-- description: "Shoulds apply physics."
+		-- args: "part: any"
+		-- returns: "boolean"
 		local function shouldApplyPhysics(part)
 			local replicator = game:GetService("ReplicatorService")
 			local ownership = replicator and replicator.NetworkOwnership or nil
@@ -67,6 +74,8 @@ return {
 			local D = instance.D
 			local maxT = instance.MaxTorque
 
+			-- description: "Clamps."
+			-- args: "v: Vector3, lo: any, hi: any"
 			local function clamp(v, lo, hi)
 				return math.max(lo, math.min(hi, v))
 			end
@@ -89,6 +98,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the BodyGyro class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

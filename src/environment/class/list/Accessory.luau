@@ -1,3 +1,4 @@
+-- description: "Represents an Accessory in the environment."
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")
@@ -48,6 +49,9 @@ local propTable = {
 return {
 	class = "Accessory",
 
+	-- description: "Initializes the Accessory instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -59,6 +63,7 @@ return {
 		attachment.Parent = instance
 
 		-- Helper: get the attachment child
+		-- description: "Gets the Attachment."
 		function instance:GetAttachment()
 			local att = self:FindFirstChild("Attachment")
 			if att and att.ClassName == "Attachment" then
@@ -68,6 +73,8 @@ return {
 		end
 
 		-- Helper: set the attachment offset CFrame
+		-- description: "Sets the AttachmentOffset."
+		-- args: "cf: CFrame"
 		function instance:SetAttachmentOffset(cf)
 			local att = self:GetAttachment()
 			if att then
@@ -76,6 +83,7 @@ return {
 		end
 
 		-- Helper: get the attachment offset CFrame
+		-- description: "Gets the AttachmentOffset."
 		function instance:GetAttachmentOffset()
 			local att = self:GetAttachment()
 			if att then
@@ -97,6 +105,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the Accessory class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

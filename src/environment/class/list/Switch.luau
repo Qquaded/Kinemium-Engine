@@ -1,3 +1,4 @@
+-- description: "Represents a Switch in the environment."
 local GuiObject = require("@GuiObject")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
@@ -21,6 +22,8 @@ local propTable = {
 	Visible = true,
 }
 
+-- description: "Renders the component."
+-- args: "lib: number, object: table, dt: number, structs: table, renderer: number, pos: Vector3, size: number"
 local function renderChildren(lib, object, dt, structs, renderer, pos, size)
 	for _, child in pairs(object:GetChildren()) do
 		if child.render then
@@ -36,6 +39,9 @@ GuiObject.inherit(propTable)
 return {
 	class = "UISwitch",
 
+	-- description: "Initializes the Switch instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		local onValueChanged = signal.new()
 		local switch = gui.switch({
@@ -44,6 +50,8 @@ return {
 			width = 60,
 			height = 30,
 			value = instance.Value,
+			-- description: "Ons changed."
+			-- args: "value: number"
 			onChanged = function(value)
 				instance.Value = value
 				onValueChanged:Fire(value)
@@ -54,6 +62,8 @@ return {
 		instance.OnValueChanged = onValueChanged
 		instance._switch = switch
 
+		-- description: "Instance.renders."
+		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		instance.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -76,6 +86,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the Switch class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

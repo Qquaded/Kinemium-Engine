@@ -1,5 +1,4 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
 local Enum = require("@Enum")
 
 local serde = zune.serde
@@ -7,6 +6,7 @@ local crypto = zune.crypto
 
 local EncodingService = Instance.new("EncodingService")
 EncodingService.ExplorerHidden = true
+EncodingService._Intents = Enum.PluginIntents.Serialization
 
 EncodingService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	EncodingService:SetProperties({

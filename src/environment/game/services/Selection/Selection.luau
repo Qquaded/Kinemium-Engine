@@ -1,6 +1,4 @@
 local Instance = require("@Instance")
-local Color3 = require("@Color3")
-local Vector3 = require("@Vector3")
 local signal = require("@Kinemium.signal")
 
 local Selection = Instance.new("Selection")

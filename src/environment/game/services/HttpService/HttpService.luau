@@ -1,9 +1,11 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
 local net = zune.net
+local Enum = require("@EnumMap")
 
 local HttpService = Instance.new("HttpService")
 HttpService.ExplorerHidden = true
+HttpService._Intents = Enum.PluginIntents.Network
 
 local msgpack = require("@msgpack")
 

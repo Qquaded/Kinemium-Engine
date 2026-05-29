@@ -1,3 +1,4 @@
+-- description: "Represents a SoftBody in the environment."
 local signal = require("@Kinemium.signal")
 
 local propTable = {
@@ -22,6 +23,9 @@ local propTable = {
 return {
 	class = "SoftBody",
 
+	-- description: "Initializes the SoftBody instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -32,6 +36,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the SoftBody class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

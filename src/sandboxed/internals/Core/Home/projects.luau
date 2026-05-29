@@ -20,7 +20,6 @@ local FileDialogService = game:GetService("FileDialogService")
 local ProjectSyncService = game:GetService("ProjectSyncService")
 local RBXModelImporter = game:GetService("RBXModelImporter")
 local project_prompt_active = false
-local current_place_imported = nil
 
 local fs = Filesystem
 
@@ -33,7 +32,6 @@ local defaultKinemiumIcon = "./src/assets/images/kinemium/KinemiumWhite.png"
 local logoIcon = KinemiumIconLoader.ToTexture(defaultKinemiumIcon)
 
 local SecondaryBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor
-local ThirdBackgroundColor = StudioThemeService.SelectedTheme.ThirdBackgroundColor
 local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
 KinemiumIconLoader.new("Add", "./src/assets/images/plus.png")

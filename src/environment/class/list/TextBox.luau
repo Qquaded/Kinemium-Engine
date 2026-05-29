@@ -1,3 +1,4 @@
+-- description: "Represents a TextBox in the environment."
 local Enum = require("@EnumMap")
 local logic = require("@Kinemium.2dinput")
 local GuiObject = require("@GuiObject")
@@ -113,6 +114,8 @@ GuiObject.inherit(propTable)
 
 local defaultFont = lib.GetFontDefault()
 
+-- description: "Renders the component."
+-- args: "_: any, object: table, dt: number, structs: table, renderer: number, datamodel: table"
 propTable.render = function(_, object, dt, structs, renderer, datamodel)
 	local framePos, frameSize = GuiObject.render(lib, object, dt, structs, renderer)
 
@@ -124,6 +127,8 @@ propTable.render = function(_, object, dt, structs, renderer, datamodel)
 		local ai = object._aereonInput
 		local SyntaxHighlighter = object:FindFirstChildOfClass("SyntaxHighlighter")
 
+		-- description: "Resolves font."
+		-- args: "fontEnum: number"
 		local function resolveFont(fontEnum)
 			local name = fontEnum.Value
 			local resolvedFont = renderer.Font.Get(name) or defaultFont
@@ -230,6 +235,9 @@ end
 
 return {
 	class = "TextBox",
+	-- description: "Initializes the TextBox instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		logic:SetupSignals(propTable)
 		instance:SetProperties(propTable)
@@ -323,34 +331,44 @@ return {
 			keyRepeatAcceleration = instance.KeyRepeatAcceleration,
 
 			-- Callbacks
+			-- description: "Ons change."
+			-- args: "text: string"
 			onChange = function(text)
 				instance.Text = text
 				if instance.OnChange then
 					instance.OnChange(text)
 				end
 			end,
+			-- description: "Ons submit."
+			-- args: "text: string"
 			onSubmit = function(text)
 				if instance.OnSubmit then
 					instance.OnSubmit(text)
 				end
 			end,
+			-- description: "Ons focus."
 			onFocus = function()
 				instance.Focused = true
 				if instance.OnFocus then
 					instance.OnFocus()
 				end
 			end,
+			-- description: "Ons blur."
 			onBlur = function()
 				instance.Focused = false
 				if instance.OnBlur then
 					instance.OnBlur()
 				end
 			end,
+			-- description: "Ons validation error."
+			-- args: "err: number"
 			onValidationError = function(err)
 				if instance.OnValidationError then
 					instance.OnValidationError(err)
 				end
 			end,
+			-- description: "Ons search."
+			-- args: "query: number, count: number"
 			onSearch = function(query, count)
 				if instance.OnSearch then
 					instance.OnSearch(query, count)
@@ -363,34 +381,44 @@ return {
 		end
 
 		instance.Changed:Connect(function(prop)
+			-- description: "Instance._aereons input.on change."
+			-- args: "text: string"
 			instance._aereonInput.onChange = function(text)
 				instance.Text = text
 				if instance.OnChange then
 					instance.OnChange(text)
 				end
 			end
+			-- description: "Instance._aereons input.on submit."
+			-- args: "text: string"
 			instance._aereonInput.onSubmit = function(text)
 				if instance.OnSubmit then
 					instance.OnSubmit(text)
 				end
 			end
+			-- description: "Instance._aereons input.on focus."
 			instance._aereonInput.onFocus = function()
 				instance.Focused = true
 				if instance.OnFocus then
 					instance.OnFocus()
 				end
 			end
+			-- description: "Instance._aereons input.on blur."
 			instance._aereonInput.onBlur = function()
 				instance.Focused = false
 				if instance.OnBlur then
 					instance.OnBlur()
 				end
 			end
+			-- description: "Instance._aereons input.on validation error."
+			-- args: "err: number"
 			instance._aereonInput.onValidationError = function(err)
 				if instance.OnValidationError then
 					instance.OnValidationError(err)
 				end
 			end
+			-- description: "Instance._aereons input.on search."
+			-- args: "query: number, count: number"
 			instance._aereonInput.onSearch = function(query, count)
 				if instance.OnSearch then
 					instance.OnSearch(query, count)
@@ -401,6 +429,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the TextBox class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			if tble[prop] then

@@ -1,3 +1,4 @@
+-- description: "Represents an UIAnchorLayout in the environment."
 local Vector2 = require("@Vector2")
 local Enum = require("@EnumMap")
 local UDim = require("@UDim")
@@ -23,6 +24,8 @@ local propTable = {
 	Name = "UIAnchorLayout",
 	Enabled = true,
 
+	-- description: "Renders the component."
+	-- args: "lib: number, object: table, dt: number, structs: table"
 	render = function(lib, object, dt, structs)
 		if not object.Enabled then
 			return
@@ -32,6 +35,9 @@ local propTable = {
 			return
 		end
 
+		-- description: "Gets the AbsoluteSize."
+		-- args: "obj: any"
+		-- returns: "Vector3"
 		local function GetAbsoluteSize(obj)
 			if obj.AbsoluteSize then
 				return obj.AbsoluteSize
@@ -61,6 +67,8 @@ local propTable = {
 		local effectiveHeight = math.max(0, parentSize.Y - totalPaddingY * 2)
 		local effectiveSize = Vector2.new(effectiveWidth, effectiveHeight)
 
+		-- description: "Resolves u dim."
+		-- args: "udim: any, axis: Vector3"
 		local function resolveUDim(udim, axis)
 			if not udim then
 				return nil
@@ -144,6 +152,9 @@ local propTable = {
 return {
 	class = "UIAnchorLayout",
 	render = propTable.render,
+	-- description: "Initializes the UIAnchorLayout instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance

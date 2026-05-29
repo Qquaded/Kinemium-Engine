@@ -225,7 +225,7 @@ function KiRend.new(config: KiRendConf)
 		UIRT = nil,
 
 		DrawFps = true,
-		ShowPerfOverlay = true,
+		ShowPerfOverlay = false,
 		PerfStats = perf_stats,
 		Internal3DRenderScale = actual3DRenderScale,
 		Max3DRenderPixels = max3DRenderPixels,

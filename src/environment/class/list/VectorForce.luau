@@ -1,3 +1,4 @@
+-- description: "Represents a VectorForce in the environment."
 local Vector3 = require("@Vector3")
 local Enum = require("@EnumMap")
 
@@ -18,11 +19,17 @@ local propTable = {
 return {
 	class = "VectorForce",
 
+	-- description: "Initializes the VectorForce instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
 		local PhysicsService = game:GetService("UnifiedPhysicsService")
 
+		-- description: "Shoulds apply physics."
+		-- args: "part: any"
+		-- returns: "boolean"
 		local function shouldApplyPhysics(part)
 			local replicator = game:GetService("ReplicatorService")
 			local ownership = replicator and replicator.NetworkOwnership or nil
@@ -46,6 +53,7 @@ return {
 			return players.LocalPlayer ~= nil and players.LocalPlayer == part.NetworkOwner
 		end
 
+		-- description: "Updates arrow."
 		local function updateArrow()
 			if not instance.Enabled or not instance.Attachment0 then
 				return
@@ -106,6 +114,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the VectorForce class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

@@ -1,3 +1,4 @@
+-- description: "Represents a Seat in the environment."
 local Part = require("./Part")
 
 local propTable = {
@@ -8,6 +9,9 @@ local propTable = {
 
 return {
 	class = "Seat",
+	-- description: "Initializes the Seat instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		Part.callback(instance, renderer, game)
 		for prop, val in pairs(propTable) do
@@ -30,6 +34,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the Seat class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		Part.inherit(tble)
 		for prop, val in pairs(propTable) do

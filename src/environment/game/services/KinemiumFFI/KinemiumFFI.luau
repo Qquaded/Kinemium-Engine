@@ -1,16 +1,15 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
 local Enum = require("@EnumMap")
 
 local KinemiumFFI = Instance.new("KinemiumFFI")
 KinemiumFFI.ExplorerHidden = true
+KinemiumFFI._Intents = Enum.PluginIntents.FFI
 
 local fs = zune.fs
 local ffi = zune.ffi
 
 KinemiumFFI.InitRenderer = function(renderer, renderer_signal)
 	KinemiumFFI:SetProperties({
-
 		GetLib = function()
 			return ffi
 		end,

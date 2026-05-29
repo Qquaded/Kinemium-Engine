@@ -1,3 +1,4 @@
+-- description: "Represents a Dropdown in the environment."
 local GuiObject = require("@GuiObject")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
@@ -27,6 +28,8 @@ local propTable = {
 	Visible = true,
 }
 
+-- description: "Renders the component."
+-- args: "lib: number, object: table, dt: number, structs: table, renderer: number, pos: Vector3, size: number"
 local function renderChildren(lib, object, dt, structs, renderer, pos, size)
 	for _, child in pairs(object:GetChildren()) do
 		if child.render then
@@ -37,6 +40,8 @@ local function renderChildren(lib, object, dt, structs, renderer, pos, size)
 	end
 end
 
+-- description: "Sanitizes options."
+-- args: "options: table"
 local function sanitizeOptions(options)
 	local sanitized = {}
 	for _, option in ipairs(type(options) == "table" and options or {}) do
@@ -55,6 +60,9 @@ GuiObject.inherit(propTable)
 return {
 	class = "UIDropdown",
 
+	-- description: "Initializes the Dropdown instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		local onSelectionChanged = signal.new()
 		local dropdown = gui.dropdown({
@@ -64,6 +72,8 @@ return {
 			height = 36,
 			options = sanitizeOptions(instance.Options),
 			selectedIndex = instance.SelectedIndex,
+			-- description: "Ons select."
+			-- args: "index: number, option: any"
 			onSelect = function(index, option)
 				instance.SelectedIndex = index
 				instance.SelectedOption = option
@@ -75,6 +85,8 @@ return {
 		instance.OnSelectionChanged = onSelectionChanged
 		instance._dropdown = dropdown
 
+		-- description: "Instance.renders."
+		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		instance.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -112,6 +124,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the Dropdown class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

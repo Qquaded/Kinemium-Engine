@@ -1,3 +1,4 @@
+-- description: "Represents an EditableMesh in the environment."
 local Vector3 = require("@Vector3")
 local Vector2 = require("@Vector2")
 local Color3 = require("@Color3")
@@ -16,6 +17,9 @@ local propTable = {
 return {
 	class = "EditableMesh",
 
+	-- description: "Initializes the EditableMesh instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -42,6 +46,8 @@ return {
 		instance._meshgenHandle = nil
 		instance._geometryDirty = true
 
+		-- description: "Builds raw geometry."
+		-- args: "self: table"
 		local function buildRawGeometry(self)
 			local rawVertices = {}
 			local indices = {}
@@ -87,6 +93,7 @@ return {
 			return rawVertices, indices
 		end
 
+		-- description: "Notifies linked mesh parts."
 		local function notifyLinkedMeshParts()
 			local workspace = game and game.Workspace or nil
 			if not workspace or not renderer or not renderer.EventBus then
@@ -100,6 +107,9 @@ return {
 			end
 		end
 
+		-- description: "Adds vertex."
+		-- args: "p: Vector3"
+		-- returns: "number"
 		function instance:AddVertex(p: Vector3): number
 			local id = self._nextVertexId
 			self._nextVertexId += 1
@@ -108,6 +118,9 @@ return {
 			return id
 		end
 
+		-- description: "Adds normal."
+		-- args: "normal: Vector3"
+		-- returns: "number"
 		function instance:AddNormal(normal: Vector3?): number
 			local id = self._nextNormalId
 			self._nextNormalId += 1
@@ -115,6 +128,9 @@ return {
 			return id
 		end
 
+		-- description: "Adds u v."
+		-- args: "uv: Vector2"
+		-- returns: "number"
 		function instance:AddUV(uv: Vector2): number
 			local id = self._nextUVId
 			self._nextUVId += 1
@@ -122,6 +138,9 @@ return {
 			return id
 		end
 
+		-- description: "Adds color."
+		-- args: "color: Color3, alpha: number"
+		-- returns: "number"
 		function instance:AddColor(color: Color3, alpha: number): number
 			local id = self._nextColorId
 			self._nextColorId += 1
@@ -129,6 +148,9 @@ return {
 			return id
 		end
 
+		-- description: "Adds triangle."
+		-- args: "vertexId0: number, vertexId1: number, vertexId2: number"
+		-- returns: "number"
 		function instance:AddTriangle(vertexId0: number, vertexId1: number, vertexId2: number): number
 			local id = self._nextFaceId
 			self._nextFaceId += 1
@@ -137,6 +159,8 @@ return {
 			return id
 		end
 
+		-- description: "Sets the Position."
+		-- args: "vertexId: number, p: Vector3"
 		function instance:SetPosition(vertexId: number, p: Vector3)
 			if self._vertices[vertexId] then
 				self._vertices[vertexId] = p
@@ -144,10 +168,15 @@ return {
 			end
 		end
 
+		-- description: "Gets the Position."
+		-- args: "vertexId: number"
+		-- returns: "Vector3"
 		function instance:GetPosition(vertexId: number): Vector3
 			return self._vertices[vertexId] or Vector3.new()
 		end
 
+		-- description: "Sets the Normal."
+		-- args: "normalId: number, normal: Vector3"
 		function instance:SetNormal(normalId: number, normal: Vector3)
 			if self._normals[normalId] then
 				self._normals[normalId] = normal
@@ -155,10 +184,15 @@ return {
 			end
 		end
 
+		-- description: "Gets the Normal."
+		-- args: "normalId: number"
+		-- returns: "Vector3"
 		function instance:GetNormal(normalId: number): Vector3?
 			return self._normals[normalId]
 		end
 
+		-- description: "Sets the UV."
+		-- args: "uvId: number, uv: Vector2"
 		function instance:SetUV(uvId: number, uv: Vector2)
 			if self._uvs[uvId] then
 				self._uvs[uvId] = uv
@@ -166,32 +200,47 @@ return {
 			end
 		end
 
+		-- description: "Gets the UV."
+		-- args: "uvId: number"
+		-- returns: "Vector2"
 		function instance:GetUV(uvId: number): Vector2?
 			return self._uvs[uvId]
 		end
 
+		-- description: "Sets the Color."
+		-- args: "colorId: number, color: Color3"
 		function instance:SetColor(colorId: number, color: Color3)
 			if self._colors[colorId] then
 				self._colors[colorId].color = color
 			end
 		end
 
+		-- description: "Sets the ColorAlpha."
+		-- args: "colorId: number, alpha: number"
 		function instance:SetColorAlpha(colorId: number, alpha: number)
 			if self._colors[colorId] then
 				self._colors[colorId].alpha = alpha
 			end
 		end
 
+		-- description: "Gets the Color."
+		-- args: "colorId: number"
+		-- returns: "Color3"
 		function instance:GetColor(colorId: number): Color3?
 			local c = self._colors[colorId]
 			return c and c.color or nil
 		end
 
+		-- description: "Gets the ColorAlpha."
+		-- args: "colorId: number"
+		-- returns: "number"
 		function instance:GetColorAlpha(colorId: number): number?
 			local c = self._colors[colorId]
 			return c and c.alpha or nil
 		end
 
+		-- description: "Sets the VertexFaceColor."
+		-- args: "vertexId: number, faceId: number, colorId: number"
 		function instance:SetVertexFaceColor(vertexId: number, faceId: number, colorId: number)
 			if not self._vertexFaceColors[vertexId] then
 				self._vertexFaceColors[vertexId] = {}
@@ -199,6 +248,8 @@ return {
 			self._vertexFaceColors[vertexId][faceId] = colorId
 		end
 
+		-- description: "Sets the VertexFaceNormal."
+		-- args: "vertexId: number, faceId: number, normalId: number"
 		function instance:SetVertexFaceNormal(vertexId: number, faceId: number, normalId: number)
 			if not self._vertexFaceNormals[vertexId] then
 				self._vertexFaceNormals[vertexId] = {}
@@ -207,6 +258,8 @@ return {
 			self._geometryDirty = true
 		end
 
+		-- description: "Sets the VertexFaceUV."
+		-- args: "vertexId: number, faceId: number, uvId: number"
 		function instance:SetVertexFaceUV(vertexId: number, faceId: number, uvId: number)
 			if not self._vertexFaceUVs[vertexId] then
 				self._vertexFaceUVs[vertexId] = {}
@@ -215,18 +268,28 @@ return {
 			self._geometryDirty = true
 		end
 
+		-- description: "Gets the VertexFaceColor."
+		-- args: "vertexId: number, faceId: number"
+		-- returns: "number"
 		function instance:GetVertexFaceColor(vertexId: number, faceId: number): number
 			return self._vertexFaceColors[vertexId] and self._vertexFaceColors[vertexId][faceId] or 0
 		end
 
+		-- description: "Gets the VertexFaceNormal."
+		-- args: "vertexId: number, faceId: number"
+		-- returns: "number"
 		function instance:GetVertexFaceNormal(vertexId: number, faceId: number): number
 			return self._vertexFaceNormals[vertexId] and self._vertexFaceNormals[vertexId][faceId] or 0
 		end
 
+		-- description: "Gets the VertexFaceUV."
+		-- args: "vertexId: number, faceId: number"
+		-- returns: "number"
 		function instance:GetVertexFaceUV(vertexId: number, faceId: number): number
 			return self._vertexFaceUVs[vertexId] and self._vertexFaceUVs[vertexId][faceId] or 0
 		end
 
+		-- description: "Gets the Vertices."
 		function instance:GetVertices(): { number }
 			local arr = {}
 			for id in pairs(self._vertices) do
@@ -235,6 +298,7 @@ return {
 			return arr
 		end
 
+		-- description: "Gets the Normals."
 		function instance:GetNormals(): { number }
 			local arr = {}
 			for id in pairs(self._normals) do
@@ -243,6 +307,7 @@ return {
 			return arr
 		end
 
+		-- description: "Gets the UVs."
 		function instance:GetUVs(): { number }
 			local arr = {}
 			for id in pairs(self._uvs) do
@@ -251,6 +316,7 @@ return {
 			return arr
 		end
 
+		-- description: "Gets the Colors."
 		function instance:GetColors(): { number }
 			local arr = {}
 			for id in pairs(self._colors) do
@@ -259,6 +325,7 @@ return {
 			return arr
 		end
 
+		-- description: "Gets the Faces."
 		function instance:GetFaces(): { number }
 			local arr = {}
 			for id in pairs(self._faces) do
@@ -267,11 +334,15 @@ return {
 			return arr
 		end
 
+		-- description: "Gets the FaceVertices."
+		-- args: "faceId: number"
 		function instance:GetFaceVertices(faceId: number): { number }
 			local f = self._faces[faceId]
 			return f and { f[1], f[2], f[3] } or {}
 		end
 
+		-- description: "Sets the FaceColors."
+		-- args: "faceId: number, ids: { number }"
 		function instance:SetFaceColors(faceId: number, ids: { number })
 			local f = self._faces[faceId]
 			if f and #ids == 3 then
@@ -281,6 +352,8 @@ return {
 			end
 		end
 
+		-- description: "Sets the FaceNormals."
+		-- args: "faceId: number, ids: { number }"
 		function instance:SetFaceNormals(faceId: number, ids: { number })
 			local f = self._faces[faceId]
 			if f and #ids == 3 then
@@ -290,6 +363,8 @@ return {
 			end
 		end
 
+		-- description: "Sets the FaceUVs."
+		-- args: "faceId: number, ids: { number }"
 		function instance:SetFaceUVs(faceId: number, ids: { number })
 			local f = self._faces[faceId]
 			if f and #ids == 3 then
@@ -299,6 +374,8 @@ return {
 			end
 		end
 
+		-- description: "Gets the FaceColors."
+		-- args: "faceId: number"
 		function instance:GetFaceColors(faceId: number): { number }
 			local f = self._faces[faceId]
 			if not f then
@@ -311,6 +388,8 @@ return {
 			}
 		end
 
+		-- description: "Gets the FaceNormals."
+		-- args: "faceId: number"
 		function instance:GetFaceNormals(faceId: number): { number }
 			local f = self._faces[faceId]
 			if not f then
@@ -323,6 +402,8 @@ return {
 			}
 		end
 
+		-- description: "Gets the FaceUVs."
+		-- args: "faceId: number"
 		function instance:GetFaceUVs(faceId: number): { number }
 			local f = self._faces[faceId]
 			if not f then
@@ -334,19 +415,28 @@ return {
 				self:GetVertexFaceUV(f[3], faceId),
 			}
 		end
+		-- description: "Removes face."
+		-- args: "faceId: number"
 		function instance:RemoveFace(faceId: number)
 			self._faces[faceId] = nil
 			self._geometryDirty = true
 		end
 
+		-- description: "Removes unused."
 		function instance:RemoveUnused(): { any }
 			return {}
 		end
 
+		-- description: "Ids debug string."
+		-- args: "id: number"
+		-- returns: "string"
 		function instance:IdDebugString(id: number): string
 			return tostring(id)
 		end
 
+		-- description: "Finds closest vertex."
+		-- args: "toThisPoint: Vector3"
+		-- returns: "number"
 		function instance:FindClosestVertex(toThisPoint: Vector3): number
 			local closestId = 0
 			local closestDist = math.huge
@@ -360,6 +450,8 @@ return {
 			return closestId
 		end
 
+		-- description: "Finds vertices within sphere."
+		-- args: "center: Vector3, radius: number"
 		function instance:FindVerticesWithinSphere(center: Vector3, radius: number): { number }
 			local res = {}
 			for id, pos in pairs(self._vertices) do
@@ -370,6 +462,8 @@ return {
 			return res
 		end
 
+		-- description: "Gets the Center."
+		-- returns: "Vector3"
 		function instance:GetCenter(): Vector3
 			local count = 0
 			local sum = Vector3.new()
@@ -380,6 +474,8 @@ return {
 			return count > 0 and (sum / count) or Vector3.new()
 		end
 
+		-- description: "Gets the Size."
+		-- returns: "Vector3"
 		function instance:GetSize(): Vector3
 			local min = Vector3.new(math.huge, math.huge, math.huge)
 			local max = Vector3.new(-math.huge, -math.huge, -math.huge)
@@ -392,6 +488,8 @@ return {
 			return count > 0 and (max - min) or Vector3.new()
 		end
 
+		-- description: "Gets the AdjacentFaces."
+		-- args: "faceId: number"
 		function instance:GetAdjacentFaces(faceId: number): { number }
 			local f = self._faces[faceId]
 			if not f then
@@ -421,6 +519,8 @@ return {
 			return res
 		end
 
+		-- description: "Gets the AdjacentVertices."
+		-- args: "vertexId: number"
 		function instance:GetAdjacentVertices(vertexId: number): { number }
 			local adjSet = {}
 			for _, face in pairs(self._faces) do
@@ -443,6 +543,9 @@ return {
 			return res
 		end
 
+		-- description: "Gets the VertexFaces."
+		-- args: "vertexId: number"
+		-- returns: "number"
 		function instance:GetVertexFaces(vertexId: number): { number }
 			local res = {}
 			for fid, face in pairs(self._faces) do
@@ -453,6 +556,9 @@ return {
 			return res
 		end
 
+		-- description: "Adds bone."
+		-- args: "boneProperties: any"
+		-- returns: "number"
 		function instance:AddBone(boneProperties: any): number
 			local id = self._nextBoneId
 			self._nextBoneId += 1
@@ -465,6 +571,8 @@ return {
 			return id
 		end
 
+		-- description: "Gets the Bones."
+		-- returns: "number"
 		function instance:GetBones(): { number }
 			local arr = {}
 			for id in pairs(self._bones) do
@@ -473,22 +581,37 @@ return {
 			return arr
 		end
 
+		-- description: "Gets the BoneName."
+		-- args: "boneId: number"
+		-- returns: "number"
 		function instance:GetBoneName(boneId: number): string
 			return self._bones[boneId] and self._bones[boneId].name or ""
 		end
 
+		-- description: "Gets the BoneCFrame."
+		-- args: "boneId: number"
+		-- returns: "number"
 		function instance:GetBoneCFrame(boneId: number): CFrame
 			return self._bones[boneId] and self._bones[boneId].cframe or CFrame.new()
 		end
 
+		-- description: "Gets the BoneIsVirtual."
+		-- args: "boneId: number"
+		-- returns: "number"
 		function instance:GetBoneIsVirtual(boneId: number): boolean
 			return self._bones[boneId] and self._bones[boneId].isVirtual or false
 		end
 
+		-- description: "Gets the BoneParent."
+		-- args: "boneId: number"
+		-- returns: "number"
 		function instance:GetBoneParent(boneId: number): number
 			return self._bones[boneId] and self._bones[boneId].parent or 0
 		end
 
+		-- description: "Gets the BoneByName."
+		-- args: "boneName: string"
+		-- returns: "number"
 		function instance:GetBoneByName(boneName: string): number
 			for id, b in pairs(self._bones) do
 				if b.name == boneName then
@@ -498,34 +621,46 @@ return {
 			return 0
 		end
 
+		-- description: "Sets the BoneName."
+		-- args: "boneId: number, name: string"
 		function instance:SetBoneName(boneId: number, name: string)
 			if self._bones[boneId] then
 				self._bones[boneId].name = name
 			end
 		end
 
+		-- description: "Sets the BoneCFrame."
+		-- args: "boneId: number, cframe: CFrame"
 		function instance:SetBoneCFrame(boneId: number, cframe: CFrame)
 			if self._bones[boneId] then
 				self._bones[boneId].cframe = cframe
 			end
 		end
 
+		-- description: "Sets the BoneIsVirtual."
+		-- args: "boneId: number, virtual: boolean"
 		function instance:SetBoneIsVirtual(boneId: number, virtual: boolean)
 			if self._bones[boneId] then
 				self._bones[boneId].isVirtual = virtual
 			end
 		end
 
+		-- description: "Sets the BoneParent."
+		-- args: "boneId: number, parentId: number"
 		function instance:SetBoneParent(boneId: number, parentId: number)
 			if self._bones[boneId] then
 				self._bones[boneId].parent = parentId
 			end
 		end
 
+		-- description: "Removes bone."
+		-- args: "boneId: number"
 		function instance:RemoveBone(boneId: number)
 			self._bones[boneId] = nil
 		end
 
+		-- description: "Sets the VertexBones."
+		-- args: "vertexId: number, boneIDs: { number }"
 		function instance:SetVertexBones(vertexId: number, boneIDs: { number })
 			if not self._vertexBones[vertexId] then
 				self._vertexBones[vertexId] = { boneIds = {}, boneWeights = {} }
@@ -533,6 +668,8 @@ return {
 			self._vertexBones[vertexId].boneIds = boneIDs
 		end
 
+		-- description: "Sets the VertexBoneWeights."
+		-- args: "vertexId: number, boneWeights: { number }"
 		function instance:SetVertexBoneWeights(vertexId: number, boneWeights: { number })
 			if not self._vertexBones[vertexId] then
 				self._vertexBones[vertexId] = { boneIds = {}, boneWeights = {} }
@@ -540,10 +677,14 @@ return {
 			self._vertexBones[vertexId].boneWeights = boneWeights
 		end
 
+		-- description: "Gets the VertexBones."
+		-- args: "vertexId: number"
 		function instance:GetVertexBones(vertexId: number): { number }
 			return self._vertexBones[vertexId] and self._vertexBones[vertexId].boneIds or {}
 		end
 
+		-- description: "Gets the VertexBoneWeights."
+		-- args: "vertexId: number"
 		function instance:GetVertexBoneWeights(vertexId: number): { number }
 			return self._vertexBones[vertexId] and self._vertexBones[vertexId].boneWeights or {}
 		end
@@ -554,6 +695,8 @@ return {
 		--   generateTangents boolean – auto-generate tangents (default: false)
 		--   weld            boolean  – deduplicate vertices (default: false)
 		--   weldTolerance   number
+		-- description: "Triangulates."
+		-- args: "opts: any"
 		function instance:Triangulate(opts: any?)
 			local rawVertices, indices = buildRawGeometry(self)
 
@@ -600,6 +743,8 @@ return {
 			notifyLinkedMeshParts()
 		end
 
+		-- description: "Flushes if dirty."
+		-- args: "opts: any"
 		function instance:FlushIfDirty(opts: any?)
 			if self._geometryDirty then
 				self:Triangulate(opts)
@@ -607,6 +752,8 @@ return {
 		end
 
 		-- axis: 'x' | 'y' | 'z'   scale/offset: {u, v} tables (optional)
+		-- description: "Applies u v projection."
+		-- args: "axis: string, scale: { number }, offset: { number }"
 		function instance:ApplyUVProjection(axis: string?, scale: { number }?, offset: { number }?)
 			local vertList = {}
 			local idToIdx = {}
@@ -634,6 +781,8 @@ return {
 			self._geometryDirty = true
 		end
 
+		-- description: "Recalculates normals."
+		-- args: "smooth: boolean"
 		function instance:RecalculateNormals(smooth: boolean?)
 			local rawVertices, indices = buildRawGeometry(self)
 			if #rawVertices == 0 then
@@ -670,6 +819,9 @@ return {
 			self._geometryDirty = true
 		end
 
+		-- description: "Merges vertices."
+		-- args: "mergeTolerance: number"
+		-- returns: "any"
 		function instance:MergeVertices(mergeTolerance: number): any
 			local rawVertices, indices = buildRawGeometry(self)
 			if #rawVertices == 0 then
@@ -686,6 +838,8 @@ return {
 			self._geometryDirty = true
 			return remap
 		end
+		-- description: "Gets the FacesWithColor."
+		-- args: "colorId: number"
 		function instance:GetFacesWithColor(colorId: number): { number }
 			local res = {}
 			for faceId, face in pairs(self._faces) do
@@ -700,6 +854,8 @@ return {
 			return res
 		end
 
+		-- description: "Gets the FacesWithNormal."
+		-- args: "normalId: number"
 		function instance:GetFacesWithNormal(normalId: number): { number }
 			local res = {}
 			for faceId, face in pairs(self._faces) do
@@ -714,6 +870,8 @@ return {
 			return res
 		end
 
+		-- description: "Gets the FacesWithUV."
+		-- args: "uvId: number"
 		function instance:GetFacesWithUV(uvId: number): { number }
 			local res = {}
 			for faceId, face in pairs(self._faces) do
@@ -728,6 +886,8 @@ return {
 			return res
 		end
 
+		-- description: "Gets the VerticesWithColor."
+		-- args: "colorId: number"
 		function instance:GetVerticesWithColor(colorId: number): { number }
 			local res = {}
 			for vid, fcs in pairs(self._vertexFaceColors) do
@@ -741,6 +901,8 @@ return {
 			return res
 		end
 
+		-- description: "Gets the VerticesWithNormal."
+		-- args: "normalId: number"
 		function instance:GetVerticesWithNormal(normalId: number): { number }
 			local res = {}
 			for vid, fcs in pairs(self._vertexFaceNormals) do
@@ -754,6 +916,8 @@ return {
 			return res
 		end
 
+		-- description: "Gets the VerticesWithUV."
+		-- args: "uvId: number"
 		function instance:GetVerticesWithUV(uvId: number): { number }
 			local res = {}
 			for vid, fcs in pairs(self._vertexFaceUVs) do
@@ -767,13 +931,19 @@ return {
 			return res
 		end
 
+		-- description: "Gets the FacesWithAttribute."
+		-- args: "_id: number"
 		function instance:GetFacesWithAttribute(_id: number): { number }
 			return {}
 		end
+		-- description: "Gets the VerticesWithAttribute."
+		-- args: "_id: number"
 		function instance:GetVerticesWithAttribute(_id: number): { number }
 			return {}
 		end
 
+		-- description: "Raycasts local."
+		-- args: "origin: Vector3, direction: Vector3"
 		function instance:RaycastLocal(origin: Vector3, direction: Vector3)
 			local minT = math.huge
 			local closestHit = nil
@@ -816,6 +986,9 @@ return {
 			return nil
 		end
 
+		-- description: "Finds closest point on surface."
+		-- args: "point: Vector3"
+		-- returns: "number"
 		function instance:FindClosestPointOnSurface(point: Vector3)
 			local closestP = nil
 			local closestDist = math.huge
@@ -838,6 +1011,9 @@ return {
 						local pp = point - n * t
 
 						-- Barycentric check
+						-- description: "Baries."
+						-- args: "p: any, a: number, b: number, c: any"
+						-- returns: "number"
 						local function bary(p, a, b, c)
 							local v0b = b - a
 							local v1b = c - a
@@ -890,6 +1066,7 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the EditableMesh class."
 	inherit = function()
 		return propTable
 	end,

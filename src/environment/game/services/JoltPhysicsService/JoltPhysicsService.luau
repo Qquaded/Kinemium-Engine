@@ -14,6 +14,7 @@ local NetworkOwnership = require("../ReplicatorService/NetworkOwnership")
 
 local KinemiumPhysicsService = Instance.new("KinemiumPhysicsService")
 KinemiumPhysicsService.ExplorerHidden = true
+KinemiumPhysicsService._Intents = Enum.PluginIntents.Physics
 
 local bodiesMap = {} -- Part -> BodyID (uint32)
 local movingBodiesMap = {} -- Part -> BodyID for kinematic/dynamic bodies

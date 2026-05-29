@@ -4,6 +4,7 @@ local Enum = require("@EnumMap")
 local RollbackEngine = require("./RollbackEngine")
 
 local RunService = Instance.new("RunService")
+RunService._Intents = Enum.PluginIntents.Threading
 
 local RenderStepped = signal.new()
 local Heartbeat = signal.new()

@@ -34,7 +34,6 @@ Protocol.Kinds = {
 	OwnershipImpact = "ownership_impact",
 	SnapshotAck = "snapshot_ack",
 
-	-- Polytoria-style RPC and replication kinds
 	Rpc = "rpc",
 	ReplicateChunk = "replicate_chunk",
 	RuntimeReplicate = "runtime_replicate",

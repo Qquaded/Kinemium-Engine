@@ -1,3 +1,4 @@
+-- description: "Represents an UIProgressBar in the environment."
 local GuiObject = require("@GuiObject")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
@@ -23,6 +24,9 @@ GuiObject.inherit(propTable)
 return {
 	class = "UIProgressBar",
 
+	-- description: "Initializes the UIProgressBar instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		local progressBar = gui.progressBar({
 			x = 0,
@@ -35,6 +39,8 @@ return {
 		instance:SetProperties(propTable)
 		instance._progressBar = progressBar
 
+		-- description: "Instance.renders."
+		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		instance.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -58,6 +64,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the UIProgressBar class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

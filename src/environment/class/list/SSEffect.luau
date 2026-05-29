@@ -1,3 +1,4 @@
+-- description: "Represents a SSEffect in the environment."
 local ffi = zune.ffi
 
 local propTable = {
@@ -10,12 +11,17 @@ local propTable = {
 return {
 	class = "SSEffect",
 
+	-- description: "Initializes the SSEffect instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		local r3d = require("@r3d")
 		local rlib: any = r3d.lib
 
 		instance:SetProperties(propTable)
 
+		-- description: "Sets the Uniform."
+		-- args: "name: string, value: number, isFloat: boolean"
 		function instance:SetUniform(name, value, isFloat)
 			if instance._r3dshader then
 				local valBuffer
@@ -99,12 +105,15 @@ return {
 			end
 		end
 
+		-- description: "Sets the Texture."
+		-- args: "name: string, textureObj: any"
 		function instance:SetTexture(name, textureObj)
 			if instance._r3dshader then
 				rlib.R3D_SetScreenShaderSampler(instance._r3dshader, name, textureObj)
 			end
 		end
 
+		-- description: "Adds to pipeline."
 		function instance:AddToPipeline()
 			if not instance._r3dshader then
 				return
@@ -132,6 +141,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the SSEffect class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

@@ -1,23 +1,11 @@
--- RpcService: High-performance RPC dispatch system for Kinemium networking
--- Based on Polytoria's RPC system (NetworkService.cs:38, 200-242)
--- Uses a cached dispatch mechanism to avoid overhead at runtime
-
 local NetworkAttributes = require("./NetworkAttributes")
-local Protocol = require("./Protocol")
 
 local RpcService = {}
 
--- RPC dispatch cache: stores compiled handler references for each RPC method
--- Equivalent to Polytoria's _rpcDispatchCache (NetworkService.cs:38)
 local rpcDispatchCache = {}
 local rpcRegistry = {}
 local nextRpcId = 1
 
--- Register an RPC method with its attribute configuration
--- target: the object/table that owns the method
--- methodName: the name of the method
--- attribute: a NetRpc attribute from NetworkAttributes.NetRpc()
--- handler: the actual function to invoke
 function RpcService.Register(target, methodName, attribute, handler)
 	if not NetworkAttributes.IsNetRpc(attribute) then
 		warn(`[RpcService] Cannot register '{methodName}': invalid NetRpc attribute`)
@@ -66,12 +54,6 @@ function RpcService.Unregister(rpcId)
 	return true
 end
 
--- Validate authority for RPC execution
--- Based on Polytoria's ValidateAuthority (NetworkService.cs:228-242)
--- localPeerId: the peer ID of this instance (1 = server)
--- senderPeerId: the peer ID of the sender
--- authorityPeerId: the peer ID of the object's authority owner
--- attribute: the NetRpc attribute
 function RpcService.ValidateAuthority(localPeerId, senderPeerId, authorityPeerId, attribute)
 	local mode = attribute.AuthorMode
 

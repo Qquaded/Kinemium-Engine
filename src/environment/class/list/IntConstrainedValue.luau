@@ -1,3 +1,4 @@
+-- description: "Represents an IntConstrainedValue in the environment."
 local propTable = {
 	Name = "IntConstrainedValue",
 	Value = 0,
@@ -7,6 +8,9 @@ local propTable = {
 
 return {
 	class = "IntConstrainedValue",
+	-- description: "Initializes the IntConstrainedValue instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		instance.Changed:Connect(function(property)
@@ -26,6 +30,8 @@ return {
 		end)
 		return instance
 	end,
+	-- description: "Inherits the properties of the IntConstrainedValue class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

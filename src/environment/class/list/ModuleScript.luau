@@ -1,3 +1,4 @@
+-- description: "Represents a ModuleScript in the environment."
 local Enum = require("@EnumMap")
 
 local propTable = {
@@ -11,11 +12,16 @@ local propTable = {
 
 return {
 	class = "ModuleScript",
+	-- description: "Initializes the ModuleScript instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the ModuleScript class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

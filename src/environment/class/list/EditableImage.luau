@@ -1,3 +1,4 @@
+-- description: "Represents an EditableImage in the environment."
 local Vector2 = require("@Vector2")
 local _Color3 = require("@Color3")
 local _Enum = require("@EnumMap")
@@ -15,6 +16,9 @@ local propTable = {
 return {
 	class = "EditableImage",
 
+	-- description: "Initializes the EditableImage instance."
+	-- args: "instance: table, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -42,6 +46,7 @@ return {
 			end
 		end)
 
+		-- description: "Cleans up the resources."
 		function instance:Destroy()
 			if self._image then
 				rlib.UnloadImage(self._image)
@@ -53,6 +58,8 @@ return {
 			self._texture = nil
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "center: Vector2, radius: number, color: any, transparency: number, combineType: string"
 		function instance:DrawCircle(center: Vector2, radius: number, color: any, transparency: number, combineType)
 			local a = math.clamp(math.floor(255 * (1 - (transparency or 0))), 0, 255)
 			local rcol = ColorStruct:new({ r = color.R * 255, g = color.G * 255, b = color.B * 255, a = a })
@@ -60,6 +67,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "position: Vector2, size: Vector2, color: any, transparency: number, combineType: string"
 		function instance:DrawRectangle(position: Vector2, size: Vector2, color: any, transparency: number, combineType)
 			local a = math.clamp(math.floor(255 * (1 - (transparency or 0))), 0, 255)
 			local rcol = ColorStruct:new({ r = color.R * 255, g = color.G * 255, b = color.B * 255, a = a })
@@ -73,6 +82,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "p1: Vector2, p2: Vector2, color: any, transparency: number, combineType: string"
 		function instance:DrawLine(p1: Vector2, p2: Vector2, color: any, transparency: number, combineType)
 			local a = math.clamp(math.floor(255 * (1 - (transparency or 0))), 0, 255)
 			local rcol = ColorStruct:new({ r = color.R * 255, g = color.G * 255, b = color.B * 255, a = a })
@@ -80,6 +91,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "position: Vector2, imageInstance: any, combineType: string"
 		function instance:DrawImage(position: Vector2, imageInstance: any, combineType)
 			if imageInstance and imageInstance._image then
 				local srcRec = RectangleStruct:new({
@@ -99,6 +112,8 @@ return {
 			end
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "position: Vector2, scale: Vector2, rotation: number, imageInstance: any, options: any"
 		function instance:DrawImageTransformed(
 			position: Vector2,
 			scale: Vector2,
@@ -127,6 +142,8 @@ return {
 			end
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "mesh: any, projection: any, brushConfig: any"
 		function instance:DrawImageProjected(mesh: any, projection: any, brushConfig: any)
 			if mesh and mesh.class == "EditableMesh" and projection and brushConfig then
 				local faces = mesh:GetFaces()
@@ -160,6 +177,9 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Reads pixels buffer."
+		-- args: "position: Vector2, size: Vector2"
+		-- returns: "buffer"
 		function instance:ReadPixelsBuffer(position: Vector2, size: Vector2): buffer
 			local reqW = math.floor(size.X)
 			local reqH = math.floor(size.Y)
@@ -183,17 +203,22 @@ return {
 			return b
 		end
 
+		-- description: "Sharpens."
 		function instance:Sharpen()
 			rlib.SetTextureFilter(instance._texture, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
 			rlib.SetTextureWrap(instance._texture, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
 			rlib.GenTextureMipmaps(instance._texture)
 		end
 
+		-- description: "Writes pixels buffer."
+		-- args: "position: Vector2, size: Vector2, buf: buffer"
 		function instance:WritePixelsBuffer(position: Vector2, size: Vector2, buf: buffer)
 			-- stub
 			self._dirty = true
 		end
 
+		-- description: "Clears."
+		-- args: "color: any, transparency: number"
 		function instance:Clear(color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -206,10 +231,14 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Fills."
+		-- args: "color: any, transparency: number"
 		function instance:Fill(color: any, transparency: number)
 			self:Clear(color, transparency)
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "position: Vector2, size: Vector2, color: any, transparency: number, thickness: number"
 		function instance:DrawRectangleOutline(
 			position: Vector2,
 			size: Vector2,
@@ -248,21 +277,27 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Rotates."
+		-- args: "angle: number"
 		function instance:Rotate(angle: number)
 			rlib.ImageRotate(self._image, angle)
 			self._dirty = true
 		end
 
+		-- description: "Flips horizontal."
 		function instance:FlipHorizontal()
 			rlib.ImageFlipHorizontal(self._image)
 			self._dirty = true
 		end
 
+		-- description: "Flips vertical."
 		function instance:FlipVertical()
 			rlib.ImageFlipVertical(self._image)
 			self._dirty = true
 		end
 
+		-- description: "Flips."
+		-- args: "horizontal: boolean, vertical: boolean"
 		function instance:Flip(horizontal: boolean, vertical: boolean)
 			if horizontal then
 				self:FlipHorizontal()
@@ -272,6 +307,8 @@ return {
 			end
 		end
 
+		-- description: "Crops."
+		-- args: "position: Vector2, size: Vector2"
 		function instance:Crop(position: Vector2, size: Vector2)
 			local rec = RectangleStruct:new({
 				x = position.X,
@@ -283,12 +320,17 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Resizes."
+		-- args: "newSize: Vector2"
 		function instance:Resize(newSize: Vector2)
 			rlib.ImageResize(self._image, newSize.X, newSize.Y)
 			self.Size = newSize
 			self._dirty = true
 		end
 
+		-- description: "Gets the PixelColor."
+		-- args: "position: Vector2"
+		-- returns: "any"
 		function instance:GetPixelColor(position: Vector2): any
 			local x = math.floor(position.X)
 			local y = math.floor(position.Y)
@@ -305,6 +347,8 @@ return {
 			return _Color3.new(1, 1, 1)
 		end
 
+		-- description: "Sets the PixelColor."
+		-- args: "position: Vector2, color: any, transparency: number"
 		function instance:SetPixelColor(position: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -314,32 +358,42 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Blurs."
+		-- args: "strength: number"
 		function instance:Blur(strength: number)
 			strength = math.max(1, math.floor(strength or 1))
 			rlib.ImageBlurGaussian(self._image, strength)
 			self._dirty = true
 		end
 
+		-- description: "Applies grayscale."
 		function instance:ApplyGrayscale()
 			rlib.ImageColorGrayscale(self._image)
 			self._dirty = true
 		end
 
+		-- description: "Applies invert."
 		function instance:ApplyInvert()
 			rlib.ImageColorInvert(self._image)
 			self._dirty = true
 		end
 
+		-- description: "Applies contrast."
+		-- args: "contrast: number"
 		function instance:ApplyContrast(contrast: number)
 			rlib.ImageColorContrast(self._image, contrast)
 			self._dirty = true
 		end
 
+		-- description: "Applies brightness."
+		-- args: "brightness: number"
 		function instance:ApplyBrightness(brightness: number)
 			rlib.ImageColorBrightness(self._image, brightness)
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "fromPos: Vector2, toPos: Vector2, color1: any, color2: any, transparency: number"
 		function instance:DrawGradient(fromPos: Vector2, toPos: Vector2, color1: any, color2: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -350,31 +404,40 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Exports to file."
+		-- args: "filepath: string"
 		function instance:ExportToFile(filepath: string)
 			local success = rlib.ExportImage(self._image, filepath)
 			return success
 		end
 
+		-- description: "Gets the Dimensions."
 		function instance:GetDimensions()
 			return Vector2.new(self.Size.X, self.Size.Y)
 		end
 
+		-- description: "Gets the Area."
 		function instance:GetArea()
 			return self.Size.X * self.Size.Y
 		end
 
+		-- description: "Ises dirty."
 		function instance:IsDirty()
 			return self._dirty
 		end
 
+		-- description: "Marks dirty."
 		function instance:MarkDirty()
 			self._dirty = true
 		end
 
+		-- description: "Clears dirty."
 		function instance:ClearDirty()
 			self._dirty = false
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "position: Vector2, color: any, transparency: number"
 		function instance:DrawPixel(position: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -383,6 +446,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "p1: Vector2, p2: Vector2, thickness: number, color: any, transparency: number"
 		function instance:DrawLineEx(p1: Vector2, p2: Vector2, thickness: number, color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -391,6 +456,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "center: Vector2, radius: number, color: any, transparency: number"
 		function instance:DrawCircleLines(center: Vector2, radius: number, color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -399,6 +466,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "position: Vector2, size: Vector2, color: any, transparency: number"
 		function instance:DrawRectangleV(position: Vector2, size: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -407,6 +476,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "position: Vector2, size: Vector2, thickness: number, color: any, transparency: number"
 		function instance:DrawRectangleLines(
 			position: Vector2,
 			size: Vector2,
@@ -423,6 +494,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "v1: Vector2, v2: Vector2, v3: Vector2, color: any, transparency: number"
 		function instance:DrawTriangle(v1: Vector2, v2: Vector2, v3: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -431,6 +504,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "v1: Vector2, v2: Vector2, v3: Vector2, color1: any, color2: any, color3: any, transparency: number"
 		function instance:DrawTriangleEx(
 			v1: Vector2,
 			v2: Vector2,
@@ -449,6 +524,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "v1: Vector2, v2: Vector2, v3: Vector2, color: any, transparency: number"
 		function instance:DrawTriangleLines(v1: Vector2, v2: Vector2, v3: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -457,6 +534,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "text: string, position: Vector2, fontSize: number, color: any, transparency: number"
 		function instance:DrawText(text: string, position: Vector2, fontSize: number, color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -465,6 +544,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Draws the visual representation."
+		-- args: "font: any, text: string, position: Vector2, fontSize: number, spacing: number, color: any, transparency: number"
 		function instance:DrawTextEx(
 			font: any,
 			text: string,
@@ -481,6 +562,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Colors replace."
+		-- args: "oldColor: any, newColor: any"
 		function instance:ColorReplace(oldColor: any, newColor: any)
 			local c1 = ColorStruct:new({ r = oldColor.R * 255, g = oldColor.G * 255, b = oldColor.B * 255, a = 255 })
 			local c2 = ColorStruct:new({ r = newColor.R * 255, g = newColor.G * 255, b = newColor.B * 255, a = 255 })
@@ -488,6 +571,8 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Alphas mask."
+		-- args: "alphaMaskImage: any"
 		function instance:AlphaMask(alphaMaskImage: any)
 			if alphaMaskImage and alphaMaskImage._image then
 				rlib.ImageAlphaMask(self._image, alphaMaskImage._image)
@@ -495,11 +580,15 @@ return {
 			end
 		end
 
+		-- description: "Alphas crop."
+		-- args: "alphaThreshold: number"
 		function instance:AlphaCrop(alphaThreshold: number)
 			rlib.ImageAlphaCrop(self._image, alphaThreshold)
 			self._dirty = true
 		end
 
+		-- description: "Alphas clear."
+		-- args: "color: any, transparency: number"
 		function instance:AlphaClear(color: any, transparency: number)
 			transparency = transparency or 0
 			local a = math.clamp(math.floor(255 * (1 - transparency)), 0, 255)
@@ -508,16 +597,20 @@ return {
 			self._dirty = true
 		end
 
+		-- description: "Alphas premultiply."
 		function instance:AlphaPremultiply()
 			rlib.ImageAlphaPremultiply(self._image)
 			self._dirty = true
 		end
 
+		-- description: "Dithers."
+		-- args: "rBpp: number, gBpp: number, bBpp: number, aBpp: number"
 		function instance:Dither(rBpp: number, gBpp: number, bBpp: number, aBpp: number)
 			rlib.ImageDither(self._image, rBpp, gBpp, bBpp, aBpp)
 			self._dirty = true
 		end
 
+		-- description: "Gets the ImageAlphaBorder."
 		function instance:GetImageAlphaBorder()
 			return rlib.GetImageAlphaBorder(self._image)
 		end
@@ -525,6 +618,7 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the EditableImage class."
 	inherit = function()
 		return propTable
 	end,

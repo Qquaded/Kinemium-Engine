@@ -8,11 +8,8 @@ local Lighting = Instance.new("Lighting")
 local Color3 = require("@Color3")
 local r3d = require("@r3d")
 local rlib = r3d.lib
-
-local DAY_TOP = Color3.new(0.090196, 0.6, 0.839216)
-local NIGHT_TOP = Color3.fromRGB(10, 15, 35)
-
 local Stars = {}
+local Enum = require("@EnumMap")
 
 local STAR_COUNT = 3000
 local STAR_RADIUS = 1000
@@ -109,6 +106,8 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 			return t
 		end,
 	})
+
+	Lighting._Intents = Enum.PluginIntents.Graphics
 
 	local unload = loadSky("kineasset://sky/test/images/sky.png")
 	setAllEnvironmentEffects()

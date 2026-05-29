@@ -1,3 +1,4 @@
+-- description: "Represents a SSGIEffect in the environment."
 local propTable = {
 	SampleCount = 2,
 	MaxRaySteps = 32,
@@ -15,6 +16,9 @@ local propTable = {
 return {
 	class = "SSGIEffect",
 
+	-- description: "Initializes the SSGIEffect instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		local r3d = require("@r3d")
 
@@ -53,6 +57,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the SSGIEffect class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

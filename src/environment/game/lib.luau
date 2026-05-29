@@ -36,7 +36,7 @@ function DataModel.new(RENDERER, ...)
 	self.Stop3DInput = false
 	self.ShutdownCallbacks = {}
 	self.Loaded = false
-	self.MultiplayerMode = Enum.MultiplayerMode.MultiPlayer
+	self.MultiplayerMode = Enum.MultiplayerMode.Multiplayer
 
 	self.Services = {}
 
@@ -157,6 +157,30 @@ function DataModel.new(RENDERER, ...)
 		then
 			error("Permission denied for getting service " .. v)
 			return nil
+		end
+
+		if callerEnv.ThreadPluginIntents then
+			if service._PluginAccess == false then
+				print("Plugins do not have access to " .. service.Name)
+				return
+			end
+			if service._Intents then
+				local hasIntent = false
+				for _, intent in pairs(callerEnv.ThreadPluginIntents) do
+					if intent.Value == service._Intents.Value then
+						hasIntent = true
+						break
+					end
+				end
+				if not hasIntent then
+					print(
+						"Plugin does not have required intent: ",
+						service._Intents,
+						`\n- Service tried to access {service.Name}\n- Plugin ID: {callerEnv.PluginId}`
+					)
+					return
+				end
+			end
 		end
 
 		return service

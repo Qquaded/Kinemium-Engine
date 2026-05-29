@@ -1,3 +1,4 @@
+-- description: "Represents a ProximityPrompt in the environment."
 local Enum = require("@EnumMap")
 local Vector2 = require("@Vector2")
 local signal = require("@Kinemium.signal")
@@ -23,6 +24,9 @@ local propTable = {
 return {
 	class = "ProximityPrompt",
 
+	-- description: "Initializes the ProximityPrompt instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
@@ -38,6 +42,8 @@ return {
 		return instance
 	end,
 
+	-- description: "Inherits the properties of the ProximityPrompt class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

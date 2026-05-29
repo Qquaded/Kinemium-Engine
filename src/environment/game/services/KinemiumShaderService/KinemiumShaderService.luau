@@ -1,7 +1,9 @@
 local Instance = require("@Instance")
+local Enum = require("@EnumMap")
 
 local KinemiumShaderService = Instance.new("KinemiumShaderService")
 KinemiumShaderService.ExplorerHidden = true
+KinemiumShaderService._Intents = Enum.PluginIntents.Graphics
 
 local r3d = require("@r3d")
 local raylib = require("@raylib")

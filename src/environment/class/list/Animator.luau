@@ -1,5 +1,8 @@
+-- description: "Represents an Animator in the environment."
 local signal = require("@Kinemium.signal")
 
+-- description: "Copies."
+-- args: "tbl: table"
 local function copy(tbl)
 	local out = {}
 	for k, v in pairs(tbl or {}) do
@@ -8,6 +11,8 @@ local function copy(tbl)
 	return out
 end
 
+-- description: "Merges pose."
+-- args: "basePose: any, layerPose: any"
 local function mergePose(basePose, layerPose)
 	if type(layerPose) ~= "table" then
 		return basePose
@@ -44,6 +49,9 @@ local propTable = {
 
 return {
 	class = "Animator",
+	-- description: "Initializes the Animator instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		-- Create fresh per-instance values so they are never shared across instances.
@@ -51,30 +59,42 @@ return {
 		instance.PoseLayers = {}
 		instance.State = {}
 
+		-- description: "Sets the PoseProvider."
+		-- args: "provider: number"
 		function instance:SetPoseProvider(provider)
 			instance.PoseProvider = provider
 		end
 
+		-- description: "Adds pose layer."
+		-- args: "name: string, layer: number"
 		function instance:AddPoseLayer(name, layer)
 			local layers = copy(instance.PoseLayers)
 			layers[name] = layer
 			instance.PoseLayers = layers
 		end
 
+		-- description: "Removes pose layer."
+		-- args: "name: string"
 		function instance:RemovePoseLayer(name)
 			local layers = copy(instance.PoseLayers)
 			layers[name] = nil
 			instance.PoseLayers = layers
 		end
 
+		-- description: "Sets the DefaultProvider."
+		-- args: "provider: number"
 		function instance:SetDefaultProvider(provider)
 			instance.DefaultProvider = provider
 		end
 
+		-- description: "Resets clock."
+		-- args: "value: number"
 		function instance:ResetClock(value)
 			instance.Clock = value or 0
 		end
 
+		-- description: "Advances."
+		-- args: "dt: number"
 		function instance:Advance(dt)
 			dt = type(dt) == "number" and dt or 0
 			local newClock = (instance.Clock or 0) + dt * (instance.SpeedScale or 1)
@@ -82,17 +102,23 @@ return {
 			return newClock
 		end
 
+		-- description: "Sets the StateValue."
+		-- args: "key: number, value: number"
 		function instance:SetStateValue(key, value)
 			local stateTable = copy(instance.State)
 			stateTable[key] = value
 			instance.State = stateTable
 		end
 
+		-- description: "Gets the StateValue."
+		-- args: "key: number"
 		function instance:GetStateValue(key)
 			local stateTable = instance.State or {}
 			return stateTable[key]
 		end
 
+		-- description: "Gets the Pose."
+		-- args: "target: table, context: table"
 		function instance:GetPose(target, context)
 			local pose = instance._cachedPose
 			if not pose then
@@ -129,6 +155,8 @@ return {
 			return pose
 		end
 
+		-- description: "Steps animation."
+		-- args: "target: table, context: table"
 		function instance:StepAnimation(target, context)
 			local runtimeContext
 			if type(context) == "table" then
@@ -153,6 +181,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the Animator class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

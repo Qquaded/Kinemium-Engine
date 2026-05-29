@@ -11,6 +11,22 @@ enumTable.KinemiumDownscaleMode = {
 	Box = 3,
 }
 
+enumTable.PluginIntents = {
+	Filesystem = 1,
+	FFI = 2,
+	Sound = 3,
+	Graphics = 4,
+	UI = 5,
+	Input = 6,
+	Threading = 7,
+	Network = 8,
+	Audio = 9,
+	Rendering = 10,
+	Physics = 11,
+	Serialization = 13,
+	Debugging = 14,
+}
+
 enumTable.KinemiumUpscaleMode = {
 	Nearest = 1,
 	Linear = 2,
@@ -225,6 +241,8 @@ enumTable.KeyCode = {
 	RightSuper = 347,
 
 	Apps = 348,
+
+	ButtonX = 349,
 }
 
 enumTable.GraphicsLevel = {
@@ -454,6 +472,7 @@ enumTable.FontWeight = {
 enumTable.MultiplayerMode = {
 	None = 0,
 	Singleplayer = 1,
+	Multiplayer = 2,
 }
 
 enumTable.Language = {

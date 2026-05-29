@@ -1,3 +1,4 @@
+-- description: "Represents a Humanoid in the environment."
 local Instance = require("@Instance")
 local CFrame = require("@CFrame")
 local Color3 = require("@Color3")
@@ -12,14 +13,20 @@ local ZERO = Vector3.new(0, 0, 0)
 local LOOK = Vector3.new(0, 0, -1)
 local ID = CFrame.new()
 
+-- description: "Ises vec3."
+-- args: "v: Vector3"
 local function isVec3(v)
 	return type(v) == "table" and type(v.Magnitude) == "function"
 end
 
+-- description: "Ises c f."
+-- args: "v: Vector3"
 local function isCF(v)
 	return type(v) == "table" and type(v.ToTable) == "function"
 end
 
+-- description: "Flats."
+-- args: "v: Vector3"
 local function flat(v)
 	if not isVec3(v) then
 		return ZERO, false
@@ -32,6 +39,8 @@ local function flat(v)
 	return f / m, true
 end
 
+-- description: "Copies."
+-- args: "tbl: table"
 local function copy(tbl)
 	local out = {}
 	for k, v in pairs(tbl or {}) do
@@ -40,6 +49,7 @@ local function copy(tbl)
 	return out
 end
 
+-- description: "Signalses."
 local function signals()
 	return {
 		Died = signal.new(),
@@ -61,6 +71,7 @@ local function signals()
 	}
 end
 
+-- description: "Propses."
 local function props()
 	local s = signals()
 	return {
@@ -153,6 +164,8 @@ local function props()
 	}
 end
 
+-- description: "Controllers."
+-- returns: "boolean"
 local function controller()
 	local ray = RaycastParams.new()
 	ray.FilterType = Enum.RaycastFilterType.Exclude
@@ -182,6 +195,9 @@ local function controller()
 	}
 end
 
+-- description: "Characters of."
+-- args: "h: number"
+-- returns: "boolean"
 local function characterOf(h)
 	local c = h.Character
 	if c and c.Parent ~= nil then
@@ -195,6 +211,9 @@ local function characterOf(h)
 	return nil
 end
 
+-- description: "Owners root."
+-- args: "h: number"
+-- returns: "boolean"
 local function ownerRoot(h)
 	local c = characterOf(h)
 	if c and c.FindFirstChildOfClass and c:FindFirstChildOfClass("NetworkController") then
@@ -203,6 +222,9 @@ local function ownerRoot(h)
 	return h.RootPart
 end
 
+-- description: "Locals owner."
+-- args: "h: number, game: table"
+-- returns: "boolean"
 local function localOwner(h, game)
 	if IsClient ~= true or not game or not game.GetService then
 		return false
@@ -225,6 +247,9 @@ local function localOwner(h, game)
 	return char ~= nil and char.Name == lp.Name
 end
 
+-- description: "Shoulds simulate."
+-- args: "h: number, game: table"
+-- returns: "boolean"
 local function shouldSimulate(h, game)
 	local target = ownerRoot(h)
 	local isLocalOwner = localOwner(h, game)
@@ -241,6 +266,9 @@ local function shouldSimulate(h, game)
 	return isLocalOwner == true
 end
 
+-- description: "Cans sim."
+-- args: "h: number"
+-- returns: "boolean"
 local function canSim(h)
 	if h.ControllerEnabled == false or h.PlatformStand == true or h.Health <= 0 then
 		return false
@@ -249,6 +277,9 @@ local function canSim(h)
 	return true
 end
 
+-- description: "Stances offset."
+-- args: "h: number"
+-- returns: "boolean"
 local function stanceOffset(h)
 	if h.Dashing then
 		return h.DashFocusOffset
@@ -262,6 +293,9 @@ end
 
 local humanoidDebugAt = setmetatable({}, { __mode = "k" })
 
+-- description: "Shoulds log humanoid root."
+-- args: "root: any, interval: number"
+-- returns: "boolean"
 local function shouldLogHumanoidRoot(root, interval)
 	if root == nil then
 		return false
@@ -283,6 +317,9 @@ local function shouldLogHumanoidRoot(root, interval)
 	return true
 end
 
+-- description: "Formats debug vec3."
+-- args: "v: Vector3"
+-- returns: "string"
 local function formatDebugVec3(v)
 	if type(v) ~= "table" or type(v.X) ~= "number" then
 		return "nil"
@@ -291,6 +328,8 @@ local function formatDebugVec3(v)
 	return `({string.format("%.2f", v.X)}, {string.format("%.2f", v.Y)}, {string.format("%.2f", v.Z)})`
 end
 
+-- description: "Speeds mul."
+-- args: "h: number"
 local function speedMul(h)
 	local m = 1
 	for _, v in pairs(h.SpeedModifiers or {}) do
@@ -306,6 +345,8 @@ local function speedMul(h)
 	return math.max(m, 0)
 end
 
+-- description: "Marks rig part."
+-- args: "part: any, isRoot: boolean"
 local function markRigPart(part, isRoot)
 	if not part or part.SetAttribute == nil then
 		return
@@ -316,6 +357,8 @@ local function markRigPart(part, isRoot)
 	part:SetAttribute("__humanoidRigSkipOwnedState", isRoot ~= true)
 end
 
+-- description: "Parts for."
+-- args: "name: string, parent: table, spec: any, isRoot: boolean, createInstance: table"
 local function partFor(name, parent, spec, isRoot, createInstance)
 	local existing = spec.Part ~= nil
 	local part = spec.Part or createInstance("Part")
@@ -349,6 +392,8 @@ local function partFor(name, parent, spec, isRoot, createInstance)
 	return part
 end
 
+-- description: "Builds rig."
+-- args: "parent: table, bindings: any, createInstance: table"
 local function buildRig(parent, bindings, createInstance)
 	local built, parts, chains, index = {}, {}, {}, {}
 	for bindName, spec in pairs(bindings or {}) do
@@ -399,6 +444,8 @@ local function buildRig(parent, bindings, createInstance)
 	return built, parts, chains, index
 end
 
+-- description: "Encodes rig descriptor."
+-- args: "descriptor: number"
 local function encodeRigDescriptor(descriptor)
 	if type(descriptor) ~= "table" then
 		return nil
@@ -431,6 +478,8 @@ local function encodeRigDescriptor(descriptor)
 	return ok and encoded or nil
 end
 
+-- description: "Decodes rig descriptor."
+-- args: "rawDescriptor: number"
 local function decodeRigDescriptor(rawDescriptor)
 	local descriptor = rawDescriptor
 	if type(rawDescriptor) == "string" then
@@ -477,6 +526,8 @@ local function decodeRigDescriptor(rawDescriptor)
 	return normalized
 end
 
+-- description: "Exports rig descriptor."
+-- args: "root: any, bindings: any"
 local function exportRigDescriptor(root, bindings)
 	local descriptor = {
 		RootPartName = root and root.Name or "HumanoidRootPart",
@@ -504,6 +555,8 @@ local function exportRigDescriptor(root, bindings)
 	return encodeRigDescriptor(descriptor)
 end
 
+-- description: "Defaults rig."
+-- args: "options: table"
 local function defaultRig(options)
 	options = options or {}
 	local shirt = options.ShirtColor or Color3.fromRGB(196, 40, 28)
@@ -565,6 +618,8 @@ local function defaultRig(options)
 	}
 end
 
+-- description: "Infers rig descriptor from character."
+-- args: "char: number, root: any"
 local function inferRigDescriptorFromCharacter(char, root)
 	if not char or char.FindFirstChild == nil then
 		return nil
@@ -600,6 +655,8 @@ local function inferRigDescriptorFromCharacter(char, root)
 	}
 end
 
+-- description: "Syncs root."
+-- args: "h: number"
 local function syncRoot(h)
 	local root = h.RootPart
 	if not root or root.Parent == nil then
@@ -620,6 +677,8 @@ local function syncRoot(h)
 	c.lookXZ = ok and look or LOOK
 end
 
+-- description: "Segs pose."
+-- args: "pose: any, name: string, i: any"
 local function segPose(pose, name, i)
 	if isCF(pose) then
 		return pose
@@ -640,11 +699,15 @@ local function segPose(pose, name, i)
 	return ID
 end
 
+-- description: "Poses offset."
+-- args: "h: number, bindingName: string, segName: string, i: any"
 local function poseOffset(h, bindingName, segName, i)
 	local offsets = h.PoseOffsets and h.PoseOffsets[bindingName] or nil
 	return segPose(offsets, segName, i)
 end
 
+-- description: "Applies pose."
+-- args: "h: number, rootCF: any, pose: any"
 local function applyPose(h, rootCF, pose)
 	local c = rawget(h, "_humanoidController")
 	if not c then
@@ -685,6 +748,9 @@ local function applyPose(h, rootCF, pose)
 	end
 end
 
+-- description: "Sets the State."
+-- args: "h: number, c: any, nextState: table"
+-- returns: "boolean"
 local function setState(h, c, nextState)
 	if c.state == nextState then
 		return
@@ -704,6 +770,9 @@ local function setState(h, c, nextState)
 	end
 end
 
+-- description: "Updates stance."
+-- args: "h: number"
+-- returns: "boolean"
 local function updateStance(h)
 	local nextStance = "default"
 	if h.SeatPart ~= nil then
@@ -722,10 +791,16 @@ local function updateStance(h)
 	end
 end
 
+-- description: "Ises seated."
+-- args: "h: number"
+-- returns: "boolean"
 local function isSeated(h)
 	return h.SeatPart ~= nil
 end
 
+-- description: "Reports speed."
+-- args: "h: number, c: any, speed: boolean"
+-- returns: "boolean"
 local function reportSpeed(h, c, speed)
 	if math.abs(speed - c.lastSpeed) <= 0.05 then
 		return
@@ -734,6 +809,9 @@ local function reportSpeed(h, c, speed)
 	h.Running:Fire(speed)
 end
 
+-- description: "Restores rig from descriptor."
+-- args: "h: number, c: any"
+-- returns: "boolean"
 local function restoreRigFromDescriptor(h, c)
 	if not c or c.restoringRig == true then
 		return false
@@ -820,6 +898,8 @@ local function restoreRigFromDescriptor(h, c)
 	return success
 end
 
+-- description: "Humanoids default pose."
+-- args: "animator: number, humanoid: string, context: table"
 local function humanoidDefaultPose(animator, humanoid, context)
 	context = context or {}
 
@@ -991,6 +1071,8 @@ local function humanoidDefaultPose(animator, humanoid, context)
 	return pose
 end
 
+-- description: "Configures animator."
+-- args: "animator: number, autoEnableDefaults: any"
 local function configureAnimator(animator, autoEnableDefaults)
 	if not animator or animator.ClassName ~= "Animator" then
 		return nil
@@ -1013,6 +1095,9 @@ local function configureAnimator(animator, autoEnableDefaults)
 	return animator
 end
 
+-- description: "Gets the Animator."
+-- args: "h: number, createIfMissing: number, createInstance: table"
+-- returns: "any"
 local function getAnimator(h, createIfMissing, createInstance)
 	local animator = h.Animator
 	if animator and animator.Parent ~= nil and animator.ClassName == "Animator" then
@@ -1041,10 +1126,16 @@ end
 
 return {
 	class = "Humanoid",
+	-- description: "Initializes the Humanoid instance."
+	-- args: "h: number, renderer: number, game: table"
+	-- returns: "table"
 	callback = function(h, renderer, game)
 		local InputActionService = require("../../game/services/InputActionService/InputActionService")
 		local RollbackEngine = require("../../game/services/RunService/RollbackEngine")
 
+		-- description: "Gets the AssociatedPlayer."
+		-- args: "humanoid: string"
+		-- returns: "any"
 		local function getAssociatedPlayer(humanoid)
 			local char = humanoid.Parent
 			if char and char.ClassName == "Model" then
@@ -1063,10 +1154,14 @@ return {
 
 		h:SetProperties(props())
 
+		-- description: "Gets the Registry."
+		-- returns: "any"
 		local function getRegistry()
 			return require("@Kinemium.registry")
 		end
 
+		-- description: "Creates object."
+		-- args: "className: string"
 		local function createObject(className)
 			local registry = getRegistry()
 			if registry and registry.new then
@@ -1078,6 +1173,8 @@ return {
 			return Instance.new(className)
 		end
 
+		-- description: "Binds."
+		-- args: "def: any"
 		local function bind(def)
 			local char = def.Character or characterOf(h)
 			if not char or char.ClassName ~= "Model" then
@@ -1118,36 +1215,50 @@ return {
 			return char
 		end
 
+		-- description: "H:s bind rig."
+		-- args: "def: any"
 		function h:BindRig(def)
 			return bind(def or {})
 		end
 
+		-- description: "H:s build rig."
+		-- args: "def: any"
 		function h:BuildRig(def)
 			return bind(def or {})
 		end
 
+		-- description: "H:s create default rig."
+		-- args: "options: table"
 		function h:CreateDefaultRig(options)
 			local def = defaultRig(options)
 			def.Character = options and options.Character or characterOf(self)
 			return bind(def)
 		end
 
+		-- description: "H:s restore rig."
 		function h:RestoreRig()
 			return restoreRigFromDescriptor(self, c)
 		end
 
+		-- description: "H:s get rig part."
+		-- args: "name: string"
 		function h:GetRigPart(name)
 			return (self.RigPartIndex and self.RigPartIndex[name]) or (self.RigParts and self.RigParts[name]) or nil
 		end
 
+		-- description: "H:s get rig chain."
+		-- args: "name: string"
 		function h:GetRigChain(name)
 			return self.RigChains and self.RigChains[name] or nil
 		end
 
+		-- description: "H:s get rig bindings."
 		function h:GetRigBindings()
 			return self.RigBindings or {}
 		end
 
+		-- description: "H:s set animator."
+		-- args: "animatorOrProvider: number"
 		function h:SetAnimator(animatorOrProvider)
 			if type(animatorOrProvider) == "function" then
 				local animator = getAnimator(self, true, createObject)
@@ -1165,30 +1276,40 @@ return {
 			return nil
 		end
 
+		-- description: "H:s set pose offset."
+		-- args: "name: string, offset: number"
 		function h:SetPoseOffset(name, offset)
 			local t = copy(self.PoseOffsets)
 			t[name] = offset
 			self.PoseOffsets = t
 		end
 
+		-- description: "H:s clear pose offset."
+		-- args: "name: string"
 		function h:ClearPoseOffset(name)
 			local t = copy(self.PoseOffsets)
 			t[name] = nil
 			self.PoseOffsets = t
 		end
 
+		-- description: "H:s set speed modifier."
+		-- args: "key: number, mult: any"
 		function h:SetSpeedModifier(key, mult)
 			local t = copy(self.SpeedModifiers)
 			t[key] = mult
 			self.SpeedModifiers = t
 		end
 
+		-- description: "H:s remove speed modifier."
+		-- args: "key: number"
 		function h:RemoveSpeedModifier(key)
 			local t = copy(self.SpeedModifiers)
 			t[key] = nil
 			self.SpeedModifiers = t
 		end
 
+		-- description: "H:s set i k callback."
+		-- args: "source: any, callback: function"
 		function h:SetIKCallback(source, callback)
 			if type(source) == "function" and callback == nil then
 				rawset(self, "_ikCallback", source)
@@ -1199,10 +1320,13 @@ return {
 			end
 		end
 
+		-- description: "H:s get effective walk speed."
 		function h:GetEffectiveWalkSpeed()
 			return self.WalkSpeed * speedMul(self)
 		end
 
+		-- description: "H:s set sprinting."
+		-- args: "on: any"
 		function h:SetSprinting(on)
 			on = on == true
 			if self.Sprinting == on then
@@ -1217,6 +1341,8 @@ return {
 			updateStance(self)
 		end
 
+		-- description: "H:s set crouching."
+		-- args: "on: any"
 		function h:SetCrouching(on)
 			on = on == true
 			if self.Crouching == on then
@@ -1231,10 +1357,13 @@ return {
 			updateStance(self)
 		end
 
+		-- description: "H:s toggle crouch."
 		function h:ToggleCrouch()
 			self:SetCrouching(not self.Crouching)
 		end
 
+		-- description: "H:s equip tool."
+		-- args: "tool: any"
 		function h:EquipTool(tool)
 			if not tool or tool.ClassName ~= "Tool" then
 				return
@@ -1278,6 +1407,7 @@ return {
 			weld.Parent = rightArm
 		end
 
+		-- description: "H:s unequip tools."
 		function h:UnequipTools()
 			local char = characterOf(self)
 			if not char then
@@ -1313,6 +1443,8 @@ return {
 		--- character model and its CFrame is updated every tick by applyPose,
 		--- following the body part named by `accessory.AttachmentPoint`.
 		--- The Attachment child on the Accessory describes the local offset.
+		-- description: "H:s add accessory."
+		-- args: "accessory: number"
 		function h:AddAccessory(accessory)
 			if not accessory or accessory.ClassName ~= "Accessory" then
 				return
@@ -1353,6 +1485,9 @@ return {
 		end
 
 		--- Removes a previously added Accessory from the character.
+		-- description: "H:s remove accessory."
+		-- args: "accessory: number"
+		-- returns: "boolean"
 		function h:RemoveAccessory(accessory)
 			if not accessory then
 				return
@@ -1374,6 +1509,8 @@ return {
 		end
 
 		--- Returns a list of all currently tracked Accessory instances.
+		-- description: "H:s get accessories."
+		-- returns: "boolean"
 		function h:GetAccessories()
 			local result = {}
 			local ctrl = rawget(self, "_humanoidController")
@@ -1387,10 +1524,16 @@ return {
 			return result
 		end
 
+		-- description: "H:s move."
+		-- args: "dir: number"
+		-- returns: "boolean"
 		function h:Move(dir)
 			self.MoveDirection = dir or ZERO
 		end
 
+		-- description: "H:s move relative."
+		-- args: "localDir: number, ref: any"
+		-- returns: "boolean"
 		function h:MoveRelative(localDir, ref)
 			if type(ref) == "table" and ref.CFrame then
 				ref = ref.CFrame
@@ -1408,28 +1551,42 @@ return {
 			self.MoveDirection = r * localDir.X + f * -localDir.Z
 		end
 
+		-- description: "H:s face."
+		-- args: "dir: number"
+		-- returns: "boolean"
 		function h:Face(dir)
 			local f, ok = flat(dir)
 			self.FacingDirection = ok and f or nil
 		end
 
+		-- description: "H:s clear facing direction."
+		-- returns: "boolean"
 		function h:ClearFacingDirection()
 			self.FacingDirection = nil
 		end
 
+		-- description: "H:s stop."
+		-- returns: "boolean"
 		function h:Stop()
 			self.MoveDirection = ZERO
 		end
 
+		-- description: "H:s request jump."
+		-- returns: "boolean"
 		function h:RequestJump()
 			self.Jump = true
 			c.jumpQueuedTime = os.clock()
 		end
 
+		-- description: "H:s can dash."
+		-- returns: "boolean"
 		function h:CanDash()
 			return os.clock() >= c.dashCooldownUntil
 		end
 
+		-- description: "H:s dash."
+		-- args: "dir: number"
+		-- returns: "boolean"
 		function h:Dash(dir)
 			local now = os.clock()
 			if now < c.dashCooldownUntil then
@@ -1448,18 +1605,22 @@ return {
 			return true
 		end
 
+		-- description: "H:s get state."
 		function h:GetState()
 			return c.state
 		end
 
+		-- description: "H:s get root c frame."
 		function h:GetRootCFrame()
 			return self.RootPart and self.RootPart.CFrame or CFrame.new()
 		end
 
+		-- description: "H:s get look vector."
 		function h:GetLookVector()
 			return c.lookXZ
 		end
 
+		-- description: "H:s get focus position."
 		function h:GetFocusPosition()
 			if not self.RootPart then
 				return self.FocusOffset + self.CameraOffset + stanceOffset(self)
@@ -1503,6 +1664,8 @@ return {
 		if run then
 			local workspace = game:GetService("Workspace")
 
+			-- description: "Steps humanoid."
+			-- args: "dt: number"
 			local function stepHumanoid(dt)
 				dt = math.min(dt or 0, 0.1)
 				local authoritative = shouldSimulate(h, game) == true
@@ -1997,6 +2160,8 @@ return {
 
 		return h
 	end,
+	-- description: "Inherits the properties of the Humanoid class."
+	-- args: "t: any"
 	inherit = function(t)
 		for k, v in pairs(props()) do
 			t[k] = v

@@ -1,7 +1,9 @@
 local Instance = require("@Instance")
+local Enum = require("@EnumMap")
 
 local Process = Instance.new("Process")
 Process.ExplorerHidden = true
+Process._Intents = Enum.PluginIntents.Graphics
 
 Process.InitRenderer = function(renderer, renderer_signal)
 	Process:SetProperties({

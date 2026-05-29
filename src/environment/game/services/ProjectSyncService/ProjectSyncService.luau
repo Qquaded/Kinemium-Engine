@@ -3,6 +3,7 @@ local Enum = require("@EnumMap")
 
 local ProjectSyncService = Instance.new("LogService")
 ProjectSyncService.ExplorerHidden = true
+ProjectSyncService._Intents = Enum.PluginIntents.Filesystem
 
 local toml = zune.serde.toml
 local fs = zune.fs
@@ -46,23 +47,25 @@ local function resolvePath(root, path)
 	return current
 end
 
+-- all luau for now
+
 local serverExts = {
 	[".server.luau"] = Enum.Language.Luau,
-	[".server.ts"] = Enum.Language.JavaScript,
-	[".server.py"] = Enum.Language.Python,
-	[".server.wasm"] = Enum.Language.WASM,
+	[".server.ts"] = Enum.Language.Luau,
+	[".server.py"] = Enum.Language.Luau,
+	[".server.wasm"] = Enum.Language.Luau,
 }
 local clientExts = {
 	[".client.luau"] = Enum.Language.Luau,
-	[".client.ts"] = Enum.Language.JavaScript,
-	[".client.py"] = Enum.Language.Python,
-	[".client.wasm"] = Enum.Language.WASM,
+	[".client.ts"] = Enum.Language.Luau,
+	[".client.py"] = Enum.Language.Luau,
+	[".client.wasm"] = Enum.Language.Luau,
 }
 local moduleExts = {
 	[".luau"] = Enum.Language.Luau,
-	[".ts"] = Enum.Language.JavaScript,
-	[".py"] = Enum.Language.Python,
-	[".wasm"] = Enum.Language.WASM,
+	[".ts"] = Enum.Language.Luau,
+	[".py"] = Enum.Language.Luau,
+	[".wasm"] = Enum.Language.Luau,
 }
 
 local function makeScript(scriptType, name, source, language, runContext)

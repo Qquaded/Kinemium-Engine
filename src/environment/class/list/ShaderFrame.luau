@@ -1,3 +1,4 @@
+-- description: "Represents a ShaderFrame in the environment."
 local GuiObject = require("@GuiObject")
 local raylib = require("@raylib")
 
@@ -10,6 +11,8 @@ local propTable = {
 
 GuiObject.inherit(propTable)
 
+-- description: "Clamps."
+-- args: "value: number, minValue: number, maxValue: number"
 local function clamp(value, minValue, maxValue)
 	if value < minValue then
 		return minValue
@@ -20,6 +23,8 @@ local function clamp(value, minValue, maxValue)
 	return value
 end
 
+-- description: "Renders the component."
+-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 propTable.render = function(lib, object, dt, structs, renderer)
 	if not object.Visible then
 		return
@@ -75,10 +80,15 @@ end
 return {
 	class = "ShaderFrame",
 	render = propTable.render,
+	-- description: "Initializes the ShaderFrame instance."
+	-- args: "instance: table, renderer: number"
+	-- returns: "table"
 	callback = function(instance, renderer)
 		instance:SetProperties(propTable)
 		return instance
 	end,
+	-- description: "Inherits the properties of the ShaderFrame class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

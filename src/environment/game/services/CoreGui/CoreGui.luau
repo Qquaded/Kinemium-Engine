@@ -1,6 +1,8 @@
 local Instance = require("@Instance")
+local Enum = require("@EnumMap")
 
 local CoreGui = Instance.new("CoreGui")
+CoreGui._Intents = Enum.PluginIntents.UI
 
 CoreGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 	CoreGui:SetProperties({

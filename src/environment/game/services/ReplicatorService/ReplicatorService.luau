@@ -1,7 +1,9 @@
 local Instance = require("@Instance")
+local Enum = require("@EnumMap")
 
 local ReplicatorService = Instance.new("ReplicatorService")
 ReplicatorService.ExplorerHidden = true
+ReplicatorService._Intents = Enum.PluginIntents.Network
 
 local Server = require("./_Server")
 local Client = require("./_Client")

@@ -1,8 +1,10 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local KinemiumFontService = Instance.new("KinemiumFontService")
 KinemiumFontService.ExplorerHidden = true
+KinemiumFontService._Intents = Enum.PluginIntents.UI
 
 local FontRemoved = signal.new()
 local FontAdded = signal.new()

@@ -1,3 +1,4 @@
+-- description: "Represents a DOFEffect in the environment."
 local propTable = {
 	Mode = 1, -- R3D_DOF_ENABLED
 	FocusPoint = 10.0,
@@ -11,6 +12,9 @@ local propTable = {
 return {
 	class = "DOFEffect",
 
+	-- description: "Initializes the DOFEffect instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		local r3d = require("@r3d")
 
@@ -39,6 +43,8 @@ return {
 
 		return instance
 	end,
+	-- description: "Inherits the properties of the DOFEffect class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

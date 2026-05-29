@@ -11,7 +11,7 @@ local rlservice = game:GetService("KinemiumRaylib")
 local raylib = require("@raylib")
 local lib = raylib.lib
 local renderer = rlservice.GetRenderer()
-local aereon = import("@Aereon")
+local aereon = require("@Aereon")
 local gui = aereon.gui
 
 local KinemiumFontService = game:GetService("KinemiumFontService")
@@ -70,9 +70,7 @@ nav = gui.navigation({
 })
 
 nav.addItem("home", "icon", "Projects", KinemiumIconLoader.ToTexture("./src/assets/images/home.png"))
-nav.addItem("compass", "icon", "Explore", KinemiumIconLoader.ToTexture("./src/assets/images/compass.png"))
 nav.addItem("settings", "icon", "Settings", KinemiumIconLoader.ToTexture("./src/assets/images/settings.png"))
-nav.addItem("credits", "icon", "Credits", KinemiumIconLoader.ToTexture("./src/assets/images/info.png"))
 nav.addItem("marketplace", "icon", "Marketplace", KinemiumIconLoader.ToTexture("./src/assets/images/marketplace.png"))
 nav.addItem("marketplace", "icon", "API", KinemiumIconLoader.ToTexture("./src/assets/images/api.png"))
 nav.addItem(

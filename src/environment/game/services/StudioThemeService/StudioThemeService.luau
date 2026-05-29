@@ -2,9 +2,11 @@ local Instance = require("@Instance")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
 local Vector2 = require("@Vector2")
+local Enum = require("@EnumMap")
 
 local StudioThemeService = Instance.new("StudioThemeService")
 StudioThemeService.ExplorerHidden = true
+StudioThemeService._Intents = Enum.PluginIntents.UI
 
 StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	local themes = {

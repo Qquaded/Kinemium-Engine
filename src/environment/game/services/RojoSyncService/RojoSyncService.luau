@@ -1,8 +1,10 @@
 local Instance = require("@Instance")
 local net = zune.net
+local Enum = require("@EnumMap")
 
 local RojoSyncService = Instance.new("RojoSyncService")
 RojoSyncService.ExplorerHidden = true
+RojoSyncService._Intents = Enum.PluginIntents.Filesystem
 
 local Registry = require("@InstanceRegistry")
 
@@ -114,19 +116,37 @@ RojoSyncService.InitRenderer = function(renderer, renderer_signal, game)
 		end
 
 		local SERVICE_CLASSES = {
-			"Workspace", "Players", "Lighting", "ReplicatedStorage", "ReplicatedFirst",
-			"ServerScriptService", "ServerStorage", "StarterGui", "StarterPack",
-			"StarterPlayer", "SoundService", "Teams", "TextChatService",
-			"TweenService", "RunService", "UserInputService", "HttpService",
-			"CollectionService", "DataStoreService", "PathfindingService",
-			"PhysicsService", "ChatService",
+			"Workspace",
+			"Players",
+			"Lighting",
+			"ReplicatedStorage",
+			"ReplicatedFirst",
+			"ServerScriptService",
+			"ServerStorage",
+			"StarterGui",
+			"StarterPack",
+			"StarterPlayer",
+			"SoundService",
+			"Teams",
+			"TextChatService",
+			"TweenService",
+			"RunService",
+			"UserInputService",
+			"HttpService",
+			"CollectionService",
+			"DataStoreService",
+			"PathfindingService",
+			"PhysicsService",
+			"ChatService",
 		}
 
 		local function applyFullSnapshot(instances)
 			-- Destroy only non-service, non-game instances
 			for _, inst in pairs(instanceMap.fromIds) do
 				if inst ~= game then
-					local ok, cls = pcall(function() return inst.ClassName end)
+					local ok, cls = pcall(function()
+						return inst.ClassName
+					end)
 					local isService = false
 					if ok then
 						for _, sc in ipairs(SERVICE_CLASSES) do
@@ -137,7 +157,9 @@ RojoSyncService.InitRenderer = function(renderer, renderer_signal, game)
 						end
 					end
 					if not isService then
-						pcall(function() inst:Destroy() end)
+						pcall(function()
+							inst:Destroy()
+						end)
 					end
 				end
 			end
@@ -159,7 +181,9 @@ RojoSyncService.InitRenderer = function(renderer, renderer_signal, game)
 				if nid ~= normRoot and vInst.ClassName then
 					for _, sc in ipairs(SERVICE_CLASSES) do
 						if sc == vInst.ClassName then
-							local ok, svc = pcall(function() return game:GetService(sc) end)
+							local ok, svc = pcall(function()
+								return game:GetService(sc)
+							end)
 							if ok and svc then
 								instanceMap.fromIds[nid] = svc
 								instanceMap.fromInstances[svc] = nid
@@ -186,7 +210,7 @@ RojoSyncService.InitRenderer = function(renderer, renderer_signal, game)
 			local ok, readRes = pcall(net.http.request, baseUrl .. "/api/read/" .. tostring(rootInstanceId), {
 				headers = { ["Accept"] = "application/json" },
 			})
-			
+
 			if not ok or not readRes or not readRes.ok then
 				return nil
 			end

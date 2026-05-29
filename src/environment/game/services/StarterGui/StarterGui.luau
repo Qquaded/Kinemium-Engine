@@ -1,5 +1,6 @@
 local Instance = require("@Instance")
 local StarterGui = Instance.new("StarterGui")
+local Enum = require("@EnumMap")
 
 StarterGui:SetProperties({
 	Enabled = true,
@@ -7,6 +8,8 @@ StarterGui:SetProperties({
 	ZIndexBehavior = "Sibling",
 	CoreGuiEnabled = true,
 })
+
+StarterGui._Intents = Enum.PluginIntents.UI
 
 StarterGui.InitRenderer = function(renderer, signal, datamodel)
 	task.spawn(function()

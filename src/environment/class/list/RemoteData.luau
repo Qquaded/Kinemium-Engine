@@ -1,7 +1,11 @@
+-- description: "Represents a RemoteData in the environment."
 local signal = require("@Kinemium.signal")
 
 return {
 	class = "RemoteData",
+	-- description: "Initializes the RemoteData instance."
+	-- args: "instance: table"
+	-- returns: "table"
 	callback = function(instance)
 		local dataChanged = signal.new()
 

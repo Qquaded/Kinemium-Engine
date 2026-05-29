@@ -1,3 +1,4 @@
+-- description: "Represents a CanvasGroup in the environment."
 local raylib = require("@raylib")
 local lib = raylib.lib
 local utils = require("@bufferutils")
@@ -13,6 +14,8 @@ local propTable = {
 	GroupTransparency = 0,
 }
 
+-- description: "Improves quality."
+-- args: "tex: number"
 local function improveQuality(tex)
 	local texture = utils.extract.texture(tex)
 	raylib.lib.SetTextureFilter(texture, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
@@ -22,6 +25,8 @@ end
 
 GuiObject.inherit(propTable)
 
+-- description: "Renders the component."
+-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 propTable.render = function(lib, object, dt, structs, renderer)
 	if raylib.lib.IsWindowResized() == 1 then
 		local dpiScale = lib.GetWindowScaleDPI()
@@ -68,6 +73,9 @@ end
 return {
 	class = "CanvasGroup",
 	render = propTable.render,
+	-- description: "Initializes the CanvasGroup instance."
+	-- args: "instance: table, renderer: number"
+	-- returns: "table"
 	callback = function(instance, renderer)
 		local dpiScale = lib.GetWindowScaleDPI()
 		local width, height = lib.GetRenderWidth() / dpiScale.x, lib.GetRenderHeight() / dpiScale.y
@@ -83,6 +91,8 @@ return {
 		end)
 		return instance
 	end,
+	-- description: "Inherits the properties of the CanvasGroup class."
+	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

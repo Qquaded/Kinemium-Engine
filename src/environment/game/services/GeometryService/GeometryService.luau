@@ -1,11 +1,11 @@
 local Instance = require("@Instance")
-local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local GeometryService = Instance.new("GeometryService")
 GeometryService.ExplorerHidden = true
+GeometryService._Intents = Enum.PluginIntents.Graphics
 
 GeometryService.InitRenderer = function(renderer, renderer_signal, datamodel)
-	local registry = require("@Kinemium.registry")
 	GeometryService:SetProperties({})
 end
 
