@@ -1,4 +1,4 @@
--- description: "Represents a ParticleEmitter2D in the environment."
+-- description: "Emits 2D particles in 2D space, Works if parented under a gui container."
 local Vector2 = require("@Vector2")
 local Color3 = require("@Color3")
 local Enum = require("@EnumMap")
@@ -14,9 +14,6 @@ local lib = raylib.lib
 local structs = raylib.structs
 local const = raylib.const
 
--- description: "Gets the Range."
--- args: "value: number, defaultMin: number, defaultMax: number"
--- returns: "number"
 local function getRange(value, defaultMin, defaultMax)
 	if type(value) == "number" then
 		return value, value
@@ -29,9 +26,6 @@ local function getRange(value, defaultMin, defaultMax)
 	return defaultMin, defaultMax
 end
 
--- description: "Randoms range."
--- args: "value: number, defaultMin: number, defaultMax: number"
--- returns: "number"
 local function randomRange(value, defaultMin, defaultMax)
 	local minVal, maxVal = getRange(value, defaultMin, defaultMax)
 	if minVal == nil or maxVal == nil then
@@ -43,9 +37,6 @@ local function randomRange(value, defaultMin, defaultMax)
 	return minVal + math.random() * (maxVal - minVal)
 end
 
--- description: "Clamp01s."
--- args: "v: Vector3"
--- returns: "number"
 local function clamp01(v)
 	if v < 0 then
 		return 0
@@ -56,9 +47,6 @@ local function clamp01(v)
 	return v
 end
 
--- description: "Evals number sequence."
--- args: "seq: any, t: any, fallback: any"
--- returns: "number"
 local function evalNumberSequence(seq, t, fallback)
 	if type(seq) == "number" then
 		return seq
@@ -69,9 +57,6 @@ local function evalNumberSequence(seq, t, fallback)
 	return fallback
 end
 
--- description: "Evals color sequence."
--- args: "seq: any, t: any, fallback: any"
--- returns: "number"
 local function evalColorSequence(seq, t, fallback)
 	if type(seq) == "table" and seq.Evaluate then
 		return seq:Evaluate(t)
@@ -82,9 +67,6 @@ local function evalColorSequence(seq, t, fallback)
 	return fallback
 end
 
--- description: "Gets the SpreadAngle."
--- args: "spread: any"
--- returns: "number"
 local function getSpreadAngle(spread)
 	if type(spread) == "number" then
 		return spread
@@ -95,9 +77,6 @@ local function getSpreadAngle(spread)
 	return 0
 end
 
--- description: "Resolves u i blend mode."
--- args: "value: number"
--- returns: "number"
 local function resolveUIBlendMode(value)
 	local v = value
 	if type(v) == "table" and v.Value ~= nil then
@@ -113,9 +92,6 @@ local function resolveUIBlendMode(value)
 	return const.BlendMode.BLEND_ALPHA
 end
 
--- description: "Gets the FlipbookMode."
--- args: "value: number"
--- returns: "number"
 local function getFlipbookMode(value)
 	if type(value) == "number" then
 		return value
@@ -126,9 +102,6 @@ local function getFlipbookMode(value)
 	return 0
 end
 
--- description: "Gets the EmissionDirection."
--- args: "direction: string"
--- returns: "any"
 local function getEmissionDirection(direction)
 	if direction == Enum.NormalId.Bottom then
 		return Vector2.new(0, 1)
@@ -144,7 +117,6 @@ local function getEmissionDirection(direction)
 	return Vector2.new(0, -1)
 end
 
--- description: "Builds default color."
 local function buildDefaultColor()
 	return ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
@@ -152,7 +124,6 @@ local function buildDefaultColor()
 	})
 end
 
--- description: "Builds default transparency."
 local function buildDefaultTransparency()
 	return NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
@@ -160,7 +131,6 @@ local function buildDefaultTransparency()
 	})
 end
 
--- description: "Builds default size."
 local function buildDefaultSize()
 	return NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
@@ -168,9 +138,6 @@ local function buildDefaultSize()
 	})
 end
 
--- description: "Gets the EnumValue."
--- args: "value: number, fallback: any"
--- returns: "any"
 local function getEnumValue(value, fallback)
 	if type(value) == "number" then
 		return value
@@ -181,8 +148,6 @@ local function getEnumValue(value, fallback)
 	return fallback
 end
 
--- description: "Rotates vector2."
--- args: "vec: any, degrees: number"
 local function rotateVector2(vec, degrees)
 	local angle = math.rad(degrees or 0)
 	local cosA = math.cos(angle)
@@ -190,13 +155,10 @@ local function rotateVector2(vec, degrees)
 	return Vector2.new(vec.X * cosA - vec.Y * sinA, vec.X * sinA + vec.Y * cosA)
 end
 
--- description: "Randoms sign."
 local function randomSign()
 	return math.random() * 2 - 1
 end
 
--- description: "Randoms point in shape."
--- args: "shapeValue: number, shapeSize: number, shapeThickness: number, emitFromEdge: any, shapeRotation: number"
 local function randomPointInShape(shapeValue, shapeSize, shapeThickness, emitFromEdge, shapeRotation)
 	local size = shapeSize or Vector2.new(0, 0)
 	local thickness = math.max(0, shapeThickness or 0)
@@ -297,9 +259,6 @@ local propTable = {
 return {
 	class = "UIParticleEmitter",
 
-	-- description: "Initializes the ParticleEmitter2D instance."
-	-- args: "instance: table, renderer: number"
-	-- returns: "table"
 	callback = function(instance, renderer)
 		instance:SetProperties(propTable)
 
@@ -315,7 +274,6 @@ return {
 		local flipbookFrame = 0
 		local flipbookDir = 1
 
-		-- description: "Updates texture."
 		local function updateTexture()
 			if texture then
 				lib.UnloadTexture(texture)
@@ -332,8 +290,6 @@ return {
 
 		updateTexture()
 
-		-- description: "Updates flipbook."
-		-- args: "dt: number"
 		local function updateFlipbook(dt)
 			local cols = math.max(1, tonumber(instance.FlipbookColumns) or 1)
 			local rows = math.max(1, tonumber(instance.FlipbookRows) or 1)
@@ -378,8 +334,6 @@ return {
 			end
 		end
 
-		-- description: "Emits particle."
-		-- args: "origin: any"
 		local function emitParticle(origin)
 			if activeCount >= instance.MaxParticles then
 				return
@@ -427,8 +381,8 @@ return {
 			}
 		end
 
-		-- description: "Instance.s emit."
-		-- args: "_: any, count: number"
+		-- description: "Emits a specified amount of particles"
+		-- args: "self: table, count: number"
 		instance.Emit = function(_, count)
 			local parent = instance.Parent
 			local origin = Vector2.new(0, 0)
@@ -447,8 +401,6 @@ return {
 			end
 		end
 
-		-- description: "Updates particles."
-		-- args: "dt: number"
 		local function updateParticles(dt)
 			local parent = instance.Parent
 			local origin = Vector2.new(0, 0)
@@ -601,8 +553,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the ParticleEmitter2D class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

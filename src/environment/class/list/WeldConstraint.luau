@@ -1,4 +1,4 @@
--- description: "Represents a WeldConstraint in the environment."
+-- description: "Creates a weld constraint between two parts."
 local NetworkOwnership = require("../../game/services/ReplicatorService/NetworkOwnership")
 
 local propTable = {
@@ -13,15 +13,11 @@ local propTable = {
 return {
 	class = "WeldConstraint",
 
-	-- description: "Initializes the WeldConstraint instance."
-	-- args: "instance: table, renderer: number, datamodel: table"
-	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		local KinemiumPhysicsService = datamodel:GetService("UnifiedPhysicsService")
 
 		instance:SetProperties(propTable)
 
-		-- description: "Rebuilds the state."
 		local function rebuild()
 			if instance._active then
 				local jolt = KinemiumPhysicsService.jolt
@@ -43,10 +39,7 @@ return {
 				return
 			end
 
-			-- Bodies may not exist yet if the parts just entered the world.
-			-- Retry via task.defer until both are registered, with a safety cap.
 			local retryCount = 0
-			-- description: "Tries create."
 			local function tryCreate()
 				if not instance.Part0 or not instance.Part1 or not instance.Enabled then
 					return
@@ -81,8 +74,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the WeldConstraint class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

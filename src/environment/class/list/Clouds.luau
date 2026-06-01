@@ -1,4 +1,4 @@
--- description: "Represents a Clouds in the environment."
+-- description: "Creates clouds in the Environment"
 local Color3 = require("@Color3")
 local propTable = {
 	Speed = 1,
@@ -9,12 +9,7 @@ local propTable = {
 return {
 	class = "Clouds",
 
-	-- description: "Initializes the Clouds instance."
-	-- args: "instance: table, renderer: number"
-	-- returns: "table"
 	callback = function(instance, renderer)
-		-- description: "Renders the component."
-		-- args: "effect: table, camera: number, lib: number"
 		propTable.render = function(effect, camera, lib) end
 
 		-- Handled by lighting
@@ -23,8 +18,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Clouds class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

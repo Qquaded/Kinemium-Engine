@@ -1,4 +1,4 @@
--- description: "Represents an UIRipple in the environment."
+-- description: "A GUI Effect class that works best under buttons like TextButton or ImageButton."
 local Color3 = require("@Color3")
 
 local propTable = {
@@ -16,15 +16,12 @@ local propTable = {
 
 return {
 	class = "UIRipple",
-	-- description: "Initializes the UIRipple instance."
-	-- args: "instance: table"
-	-- returns: "table"
+
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the UIRipple class."
-	-- args: "tble: table"
+
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

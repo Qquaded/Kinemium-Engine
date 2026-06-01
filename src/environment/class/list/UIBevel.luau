@@ -1,4 +1,4 @@
--- description: "Represents an UIBevel in the environment."
+-- description: "A bevel effect for UI elements."
 local Color3 = require("@Color3")
 
 local propTable = {
@@ -15,15 +15,10 @@ local propTable = {
 
 return {
 	class = "UIBevel",
-	-- description: "Initializes the UIBevel instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the UIBevel class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

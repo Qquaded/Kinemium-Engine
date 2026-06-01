@@ -1,4 +1,4 @@
--- description: "Represents a Stepper in the environment."
+-- description: "A progress indicator that displays a series of steps with visual feedback."
 local GuiObject = require("@GuiObject")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
@@ -27,9 +27,6 @@ GuiObject.inherit(propTable)
 return {
 	class = "UIStepper",
 
-	-- description: "Initializes the Stepper instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		local stepper = gui.stepper({
 			x = 0,
@@ -43,8 +40,6 @@ return {
 		instance:SetProperties(propTable)
 		instance._stepper = stepper
 
-		-- description: "Instance.renders."
-		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		instance.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -74,8 +69,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Stepper class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

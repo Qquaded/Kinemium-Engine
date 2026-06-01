@@ -1,4 +1,4 @@
--- description: "Represents an UIGraph in the environment."
+-- description: "A graph component for visualizing data."
 local UDim2 = require("@UDim2")
 local Color3 = require("@Color3")
 local Aereon = require("@Aereon")
@@ -32,9 +32,6 @@ local propTable = {
 
 return {
 	class = "UIGraph",
-	-- description: "Initializes the UIGraph instance."
-	-- args: "instance: table, renderer: number, datamodel: table"
-	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		local graph = gui.graph({
 			x = 0,
@@ -53,19 +50,14 @@ return {
 			max = propTable.Max, -- optional fixed max value
 		})
 
-		-- description: "Clears."
 		propTable.Clear = function()
 			graph.clear()
 		end
 
-		-- description: "Pushes."
-		-- args: "value: number"
 		propTable.Push = function(value)
 			graph.push(value)
 		end
 
-		-- description: "Renders the component."
-		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		propTable.render = function(lib, object, dt, structs, renderer)
 			local framePos, frameSize = GuiObject.calculatePositions(lib, object, dt, structs, renderer)
 			graph.set("obj_rect", arect.new(framePos.X, framePos.Y, frameSize.X, frameSize.Y))
@@ -88,8 +80,6 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the UIGraph class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

@@ -1,4 +1,4 @@
--- description: "Represents an UIAspectRatioConstraint in the environment."
+-- description: "A constraint that maintains a specific aspect ratio for a UI element."
 local propTable = {
 	Name = "UIAspectRatioConstraint",
 	BaseClass = "Kinemium.uimodifier",
@@ -10,9 +10,6 @@ local propTable = {
 
 return {
 	class = "UIAspectRatioConstraint",
-	-- description: "Initializes the UIAspectRatioConstraint instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
@@ -20,8 +17,6 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the UIAspectRatioConstraint class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

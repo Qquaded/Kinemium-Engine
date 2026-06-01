@@ -1,4 +1,4 @@
--- description: "Represents an UIFlowLayout in the environment."
+-- description: "A flow layout manager for UI elements."
 local Vector2 = require("@Vector2")
 
 local Enum = require("@EnumMap")
@@ -6,25 +6,14 @@ local Enum = require("@EnumMap")
 local UDim = require("@UDim")
 
 local propTable = {
-
 	FillDirection = Enum.FillDirection.Horizontal,
-
 	Padding = UDim.new(0, 5),
-
 	SortOrder = Enum.SortOrder.LayoutOrder,
-
 	HorizontalAlignment = Enum.HorizontalAlignment.Left,
-
 	VerticalAlignment = Enum.VerticalAlignment.Top,
-
 	ItemAlignment = Enum.VerticalAlignment.Top, -- Alignment of items within a row/column
-
 	Enabled = true,
-
 	Name = "UIFlowLayout",
-
-	-- description: "Renders the component."
-	-- args: "lib: number, object: table, dt: number, structs: table"
 	render = function(lib, object, dt, structs)
 		if not object.Enabled then
 			return
@@ -36,9 +25,6 @@ local propTable = {
 			return
 		end
 
-		-- description: "Gets the AbsoluteSize."
-		-- args: "obj: any"
-		-- returns: "Vector3"
 		local function GetAbsoluteSize(obj)
 			if obj.AbsoluteSize then
 				return obj.AbsoluteSize
@@ -68,8 +54,7 @@ local propTable = {
 		end
 
 		local containerSize =
-			
-Vector2.new(math.max(0, parentSize.X - paddingX * 2), math.max(0, parentSize.Y - paddingY * 2))
+			Vector2.new(math.max(0, parentSize.X - paddingX * 2), math.max(0, parentSize.Y - paddingY * 2))
 
 		local children = {}
 
@@ -88,9 +73,7 @@ Vector2.new(math.max(0, parentSize.X - paddingX * 2), math.max(0, parentSize.Y -
 		local paddingPx = object.Padding.Scale
 				* (object.FillDirection == Enum.FillDirection.Vertical and containerSize.Y or containerSize.X)
 			+ object.Padding.Offset
-
 		local rows = {}
-
 		local currentRow = { children = {}, size = Vector2.new(0, 0) }
 
 		table.insert(rows, currentRow)
@@ -216,14 +199,8 @@ Vector2.new(math.max(0, parentSize.X - paddingX * 2), math.max(0, parentSize.Y -
 }
 
 return {
-
 	class = "UIFlowLayout",
-
 	render = propTable.render,
-
-	-- description: "Initializes the UIFlowLayout instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 

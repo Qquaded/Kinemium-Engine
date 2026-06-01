@@ -1,4 +1,4 @@
--- description: "Represents a Part in the environment."
+-- description: "A basic 3D primitive used for physics, collision, and world building."
 local Vector3 = require("@Vector3")
 local Color3 = require("@Color3")
 local CFrame = require("@CFrame")
@@ -50,17 +50,12 @@ local propTable = {
 return {
 	class = "Part",
 
-	-- description: "Initializes the Part instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetMetadata("IsMovable", true)
 
 		local KinemiumPhysicsService = game:GetService("UnifiedPhysicsService")
 		local syncingTransform = false
 
-		-- description: "Syncs from c frame."
-		-- args: "cf: CFrame"
 		local function syncFromCFrame(cf)
 			if not cf or not cf.Position then
 				return
@@ -77,8 +72,6 @@ return {
 			props.Rotation = props.Orientation
 		end
 
-		-- description: "Syncs from position."
-		-- args: "position: Vector3"
 		local function syncFromPosition(position)
 			if not position then
 				return
@@ -92,7 +85,7 @@ return {
 			props.CFrame = props.CFrame:WithPosition(position)
 		end
 
-		-- description: "Applies impulse."
+		-- description: "Applies physics impulse."
 		-- args: "self: table, v: Vector3"
 		propTable.ApplyImpulse = function(self, v)
 			if KinemiumPhysicsService then
@@ -125,8 +118,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Part class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			if not tble[prop] then

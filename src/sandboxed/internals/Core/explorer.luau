@@ -85,6 +85,18 @@ local lastClicked = nil
 local activeAddMenu = nil
 local yOffset = 0
 local windowObject = nil
+local dragInstance = nil
+local isDragging = false
+local dragMouseStart = nil
+local dragTargetInstance = nil
+local DRAG_THRESHOLD = 5
+local dropAnimInstance = nil
+local dropAnimStart = 0
+local dropAnimFromX = 0
+local dropAnimFromY = 0
+local dropAnimToX = nil
+local dropAnimToY = nil
+local DROP_ANIM_DURATION = 0.3
 local arect = require("@arect")
 local textbox = aereon.textbox(Theme, game)
 
@@ -600,6 +612,22 @@ local function hasSelectedDescendant(instance)
 	return false
 end
 
+local function canReparent(instance, newParent)
+	if instance == newParent then
+		return false
+	end
+	if instance.BaseClass == "Singleton" then
+		return false
+	end
+	local ok, result = pcall(function()
+		return newParent:IsDescendantOf(instance)
+	end)
+	if ok and result then
+		return false
+	end
+	return true
+end
+
 local function isRectVisible(rect, windowRect)
 	return rect.x + rect.width >= windowRect.x
 		and rect.x <= windowRect.x + windowRect.width
@@ -639,6 +667,7 @@ local function handleSelection(instance, rectData, mousePos)
 		or rl.IsMouseButtonPressed(0) ~= 1
 		or ContextMenuOpen
 		or addMenuOpenBool
+		or isDragging
 	then
 		return
 	end
@@ -1008,6 +1037,9 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 	if isSearching and not matchesSearch(instance, searchQuery, searchFilterMode) then
 		return
 	end
+	if isDragging and instance == dragInstance then
+		return
+	end
 
 	local children = instance:GetChildren()
 	local hasChildren = #children > 0
@@ -1024,6 +1056,13 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 
 	-- Early culling check (only skip drawing, still process height/children)
 	local isVisible = isRectVisible(rectData, windowRect)
+
+	-- While dragging, detect drop target
+	if isDragging and dragInstance ~= instance and canReparent(dragInstance, instance) then
+		if isMouseInRect(rectData, mousePos) then
+			dragTargetInstance = instance
+		end
+	end
 
 	if isVisible then
 		-- Draw simple vertical guide line for hierarchy
@@ -1042,11 +1081,21 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 		-- Determine visual state
 		local isHovered = isMouseInRect(rectData, mousePos)
 		local isSelected = Selection.IsSelected(instance)
-		local transparency = isSelected and 0 or (isHovered and 0.5 or 1)
-		local color = isSelected and Color3.new(0, 0.533333, 1) or Color3.new()
+		local isDragSource = isDragging and dragInstance == instance
+		local isDropTarget = isDragging and dragTargetInstance == instance
+		local transparency = isSelected and 0 or (isDragSource and 0.6 or (isHovered and 0.5 or 1))
+		local color = isSelected and Color3.new(0, 0.533333, 1)
+			or (isDropTarget and Color3.new(0, 0.7, 0.3))
+			or Color3.new()
 
 		-- Draw node background
 		rl.DrawRectangleRounded(structs.Rectangle:new(rectData), 0.5, 20, color:ToRaylib(transparency))
+
+		-- Record drop animation target position
+		if dropAnimInstance == instance and dropAnimStart > 0 then
+			dropAnimToX = rectData.x
+			dropAnimToY = rectData.y
+		end
 
 		if not loadedIcon[instance.ClassName] then
 			local svg = KinemiumIconLoader.Get(instance.ClassName .. ".png")
@@ -1076,7 +1125,7 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 		-- Draw text
 		rl.DrawTextEx(vend, instance.Name, vector.create(btnX + 28, btnY + 5), 18, 1, ThemeColors.text)
 
-		if isHovered then
+		if isHovered and not isDragging then
 			local addData = { x = toggleX - 50, y = btnY + 2, width = iconSize, height = iconSize }
 
 			rl.DrawTexturePro(
@@ -1138,6 +1187,12 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 					end
 				end
 			end
+		end
+
+		-- Record drag source on mouse press
+		if isHovered and rl.IsMouseButtonPressed(0) == 1 and not addMenuOpenBool and not ContextMenuOpen then
+			dragInstance = instance
+			dragMouseStart = mousePos
 		end
 
 		-- Handle selection
@@ -1244,10 +1299,59 @@ explorerWindow.stepped = function(windowData)
 	end
 
 	if windowData._scrollArea then
-		windowData._scrollArea.set("enabled", not addMenuOpenBool)
+		windowData._scrollArea.set("enabled", not addMenuOpenBool and not isDragging)
 	end
 
+	-- Drag and drop lifecycle
 	local mousePos = rl.GetMousePosition()
+
+	-- Start drag when mouse moves beyond threshold while held
+	if not isDragging and dragInstance and rl.IsMouseButtonDown(0) == 1 then
+		local dx = mousePos.x - dragMouseStart.x
+		local dy = mousePos.y - dragMouseStart.y
+		if math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD then
+			if dragInstance.BaseClass ~= "Singleton" then
+				isDragging = true
+			end
+		end
+	end
+
+	-- End drag on mouse release
+	if isDragging and rl.IsMouseButtonReleased(0) == 1 then
+		if dragInstance and dragTargetInstance then
+			local ok = pcall(function()
+				dragInstance.Parent = dragTargetInstance
+			end)
+			if ok then
+				expanded[dragTargetInstance] = true
+				dropAnimInstance = dragInstance
+				dropAnimStart = os.clock()
+				dropAnimFromX = mousePos.x - NODE_WIDTH / 2
+				dropAnimFromY = mousePos.y - NODE_HEIGHT / 2
+				dropAnimToX = nil
+				dropAnimToY = nil
+			end
+		end
+		isDragging = false
+		dragInstance = nil
+		dragMouseStart = nil
+		dragTargetInstance = nil
+	end
+
+	-- Clear drag state if mouse button released without dragging
+	if not isDragging and dragInstance and rl.IsMouseButtonReleased(0) == 1 then
+		dragInstance = nil
+		dragMouseStart = nil
+	end
+
+	-- Update drop animation
+	if dropAnimStart > 0 then
+		local elapsed = os.clock() - dropAnimStart
+		if elapsed > DROP_ANIM_DURATION then
+			dropAnimStart = 0
+			dropAnimInstance = nil
+		end
+	end
 	local titleBarH = windowData._titleBarH or 28
 	local windowRect = {
 		x = windowData.x,
@@ -1335,6 +1439,73 @@ explorerWindow.stepped = function(windowData)
 	end
 
 	rl.EndScissorMode()
+
+	-- Draw dragged item following mouse
+	if isDragging and dragInstance then
+		local dragW = NODE_WIDTH
+		local dragH = NODE_HEIGHT
+		local dragX = mousePos.x - dragW / 2
+		local dragY = mousePos.y - dragH / 2
+
+		rl.DrawRectangleRounded(
+			structs.Rectangle:new({ x = dragX, y = dragY, width = dragW, height = dragH }),
+			0.5,
+			20,
+			Color3.new(0, 0.533333, 1):ToRaylib(0.25)
+		)
+
+		local icon = loadedIcon[dragInstance.ClassName] or notfound_tex
+		local iconSize = dragH - 4
+		rl.DrawTexturePro(
+			icon.texture,
+			structs.Rectangle:new({ x = 0, y = 0, width = icon.x, height = icon.y }),
+			structs.Rectangle:new({ x = dragX + 2, y = dragY + 2, width = iconSize, height = iconSize }),
+			vector.create(0, 0),
+			0,
+			ThemeColors.image
+		)
+
+		rl.DrawTextEx(vend, dragInstance.Name, vector.create(dragX + 28, dragY + 5), 18, 1, ThemeColors.text)
+	end
+
+	-- Draw drop animation (lerp from drop position to tree position)
+	if dropAnimStart > 0 and dropAnimToX and dropAnimToY and dropAnimInstance then
+		local progress = math.min((os.clock() - dropAnimStart) / DROP_ANIM_DURATION, 1)
+		local t = progress * progress * (3 - 2 * progress)
+		local animW = NODE_WIDTH
+		local animH = NODE_HEIGHT
+		local animX = dropAnimFromX + (dropAnimToX - dropAnimFromX) * t
+		local animY = dropAnimFromY + (dropAnimToY - dropAnimFromY) * t
+		local bgAlpha = 0.3 + 0.7 * progress
+		local fgAlpha = progress
+
+		rl.DrawRectangleRounded(
+			structs.Rectangle:new({ x = animX, y = animY, width = animW, height = animH }),
+			0.5,
+			20,
+			Color3.new(0, 0.533333, 1):ToRaylib(bgAlpha)
+		)
+
+		local icon = loadedIcon[dropAnimInstance.ClassName] or notfound_tex
+		local iconSize = animH - 4
+		rl.DrawTexturePro(
+			icon.texture,
+			structs.Rectangle:new({ x = 0, y = 0, width = icon.x, height = icon.y }),
+			structs.Rectangle:new({ x = animX + 2, y = animY + 2, width = iconSize, height = iconSize }),
+			vector.create(0, 0),
+			0,
+			Color3.new(1, 1, 1):ToRaylib(fgAlpha)
+		)
+
+		rl.DrawTextEx(
+			vend,
+			dropAnimInstance.Name,
+			vector.create(animX + 28, animY + 5),
+			18,
+			1,
+			Color3.new(1, 1, 1):ToRaylib(fgAlpha)
+		)
+	end
 
 	windowData._contentHeight = yOffset + 100
 

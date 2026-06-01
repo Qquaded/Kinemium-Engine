@@ -1,4 +1,4 @@
--- description: "Represents an ImageButton in the environment."
+-- description: "A clickable 2D button that displays an image."
 local ImageLabel = require("@ImageLabel")
 local GuiObject = require("@GuiObject")
 local logic = require("@Kinemium.2dbutton")
@@ -13,7 +13,6 @@ local buttonProps = {
 
 ImageLabel.inherit(buttonProps)
 
--- description: "Creates signals."
 local function createSignals()
 	return {
 		MouseButton1Click = signal.new(),
@@ -25,8 +24,6 @@ local function createSignals()
 	}
 end
 
--- description: "Buttons props.render."
--- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 buttonProps.render = function(lib, object, dt, structs, renderer)
 	local framePos, frameSize, texture = ImageLabel.render(lib, object, dt, structs, renderer)
 	if not object.Visible or not framePos or not frameSize then
@@ -41,9 +38,7 @@ end
 
 return {
 	class = "ImageButton",
-	-- description: "Initializes the ImageButton instance."
-	-- args: "instance: table, renderer: number"
-	-- returns: "table"
+
 	callback = function(instance, renderer)
 		ImageLabel.callback(instance, renderer)
 
@@ -54,8 +49,7 @@ return {
 		instance:SetProperties(buttonProps)
 		return instance
 	end,
-	-- description: "Inherits the properties of the ImageButton class."
-	-- args: "tble: table"
+
 	inherit = function(tble)
 		ImageLabel.inherit(tble)
 

@@ -1,4 +1,4 @@
--- description: "Represents a Beam in the environment."
+-- description: "Draws a visual beam between two attachments, supporting curves, textures, and color effects."
 local ColorSequence = require("@ColorSequence")
 local Color3 = require("@Color3")
 local NumberSequence = require("@NumberSequence")
@@ -27,18 +27,12 @@ local propTable = {
 
 return {
 	class = "Beam",
-
-	-- description: "Initializes the Beam instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Beam class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

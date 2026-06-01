@@ -1,4 +1,4 @@
--- description: "Represents an UIStackLayout in the environment."
+-- description: "A modifier class that stacks GUI elements in a vertical or horizontal layout."
 local Vector2 = require("@Vector2")
 local Enum = require("@EnumMap")
 local UDim2 = require("@UDim2")
@@ -21,8 +21,6 @@ local propTable = {
 	-- Offset applied between each layer (creates a "fanned" effect when > 0)
 	LayerOffset = UDim2.new(0, 0, 0, 0),
 
-	-- description: "Renders the component."
-	-- args: "lib: number, object: table, dt: number, structs: table"
 	render = function(lib, object, dt, structs)
 		if not object.Enabled then
 			return
@@ -32,9 +30,6 @@ local propTable = {
 			return
 		end
 
-		-- description: "Gets the AbsoluteSize."
-		-- args: "obj: any"
-		-- returns: "Vector3"
 		local function GetAbsoluteSize(obj)
 			if obj.AbsoluteSize then
 				return obj.AbsoluteSize
@@ -121,9 +116,6 @@ local propTable = {
 return {
 	class = "UIStackLayout",
 	render = propTable.render,
-	-- description: "Initializes the UIStackLayout instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance

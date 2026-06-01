@@ -21,6 +21,7 @@
         "repr": "./src/modules/repr",
         "Color3": "./src/environment/datatypes/Color3",
         "Humanoid": "./src/environment/class/list/Humanoid",
+        "assetsaver": "./src/modules/assetsaver",
         "syntax_highlighter": "./src/modules/Aereon/ide/syntax",
         "zip": "./src/modules/zip",
         "syntax_autocomplete": "./src/modules/Aereon/ide/autocomplete",

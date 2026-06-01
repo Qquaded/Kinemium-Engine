@@ -1,4 +1,4 @@
--- description: "Represents a Motor6D in the environment."
+-- description: "Deprecated version of HingeConstraint"
 local propTable = {
 	Name = "Motor6D",
 	BaseClass = "Kinemium.weld",
@@ -10,9 +10,6 @@ local propTable = {
 
 return {
 	class = "Motor6D",
-	-- description: "Initializes the Motor6D instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
@@ -20,8 +17,7 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the Motor6D class."
-	-- args: "tble: table"
+
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

@@ -1,4 +1,4 @@
--- description: "Represents an Atmosphere in the environment."
+-- description: `You know i would put something here but you know what? "The Atmosphere object pushes Roblox closer toward realistic environments where sunlight scatters in different ways depending on density and other air particle ..." my ass, For gods sake go get a job for once, Anyway an atmosphere object makes the environment "more realistic" or something, Often parented under Lighting.`
 local Color3 = require("@Color3")
 
 local propTable = {
@@ -15,15 +15,11 @@ local propTable = {
 
 return {
 	class = "Atmosphere",
-	-- description: "Initializes the Atmosphere instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the Atmosphere class."
-	-- args: "tble: table"
+
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

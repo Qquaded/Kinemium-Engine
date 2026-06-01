@@ -1,4 +1,4 @@
--- description: "Represents a SurfaceLight in the environment."
+-- description: "A light that emits from a surface."
 local a = require("@Vector3")
 local b = require("@Color3")
 local c = require("@EnumMap")
@@ -23,9 +23,7 @@ local f = {
 
 return {
 	class = "SurfaceLight",
-	-- description: "Initializes the SurfaceLight instance."
-	-- args: "g: number, h: number, i: any"
-	-- returns: "table"
+
 	callback = function(g, h, i)
 		g:SetProperties(f)
 
@@ -99,8 +97,7 @@ return {
 
 		return g
 	end,
-	-- description: "Inherits the properties of the SurfaceLight class."
-	-- args: "g: number"
+
 	inherit = function(g)
 		for h, i in pairs(f) do
 			g[h] = i

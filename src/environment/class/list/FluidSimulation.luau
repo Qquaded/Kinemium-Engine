@@ -1,30 +1,4 @@
--- description: "Represents a FluidSimulation in the environment."
--- FluidSimulation.luau
--- A physically simulated fluid that uses a 2D cellular-automaton grid to model
--- water flow, container filling, and leaking through drain connections.
---
--- ARCHITECTURE
---   SimGrid  – coarse NxN grid (default 16×16) tracking water height per column.
---              Updated every frame with a pressure-equalisation flow algorithm.
---   VisMesh  – fine NxN mesh (default 32×32) that bilinearly samples SimGrid
---              and adds a sine-wave ripple overlay for surface detail.
---   Drains   – explicit connections between two FluidSimulations; water flows
---              when the source level exceeds the drain threshold.
---   Buoyancy – per-frame per-part impulse proportional to submerged fraction.
---
--- QUICK START
---   local water = Instance.new("FluidSimulation")
---   water.Position   = Vector3.new(0, 1, 0)
---   water.Size       = Vector3.new(20, 4, 20)
---   water.WaterLevel = 0.7          -- fill to 70%
---   water.Parent     = workspace
---
---   -- Connect to a lower container so water leaks into it:
---   local pool = Instance.new("FluidSimulation")
---   pool.Position = Vector3.new(0, -3, 0)
---   pool.Size     = Vector3.new(10, 4, 10)
---   pool.Parent   = workspace
---   water:ConnectTo(pool, 0, 0, 0)  -- drain at centre, starts at floor level
+-- description: "Simulates and renders a deforming water surface with flow, drains, and buoyancy."
 
 local Vector3 = require("@Vector3")
 local Vector2 = require("@Vector2")
@@ -40,24 +14,14 @@ local raylib = require("@raylib")
 local lib = raylib.lib
 local ffi = zune.ffi
 
--- ============================================================================
--- Pointer helpers (for in-place vertex buffer mutation)
--- ============================================================================
-
 local U32_MOD = 4294967296
 
--- description: "Reads ptr64."
--- args: "buf: buffer, offset: number"
--- returns: "number"
 local function readPtr64(buf: buffer, offset: number): number
 	local lo = buffer.readu32(buf, offset)
 	local hi = buffer.readu32(buf, offset + 4)
 	return lo + hi * U32_MOD
 end
 
--- description: "Ptrs from struct field."
--- args: "structBuf: buffer, fieldOff: number"
--- returns: "number"
 local function ptrFromStructField(structBuf: buffer, fieldOff: number): any
 	local addr = readPtr64(structBuf, fieldOff)
 	if addr == 0 then
@@ -75,9 +39,6 @@ end
 -- Math helpers
 -- ============================================================================
 
--- description: "Normalize3s."
--- args: "x: number, y: number, z: number"
--- returns: "number"
 local function normalize3(x: number, y: number, z: number): (number, number, number)
 	local len = math.sqrt(x * x + y * y + z * z)
 	if len < 1e-8 then
@@ -87,18 +48,12 @@ local function normalize3(x: number, y: number, z: number): (number, number, num
 	return x * inv, y * inv, z * inv
 end
 
--- description: "Makes f32 buf."
--- args: "v: number"
--- returns: "buffer"
 local function makeF32Buf(v: number): buffer
 	local b = buffer.create(4)
 	buffer.writef32(b, 0, v)
 	return b
 end
 
--- description: "Makes vec2 buf."
--- args: "x: number, y: number"
--- returns: "buffer"
 local function makeVec2Buf(x: number, y: number): buffer
 	local b = buffer.create(8)
 	buffer.writef32(b, 0, x)
@@ -113,9 +68,6 @@ end
 
 local TWO_PI = math.pi * 2
 
--- description: "Waves displacement."
--- args: "x: number, z: number, t: number, waves: { any }"
--- returns: "number"
 local function waveDisplacement(x: number, z: number, t: number, waves: { any }): number
 	local y = 0
 	for i = 1, #waves do
@@ -127,8 +79,6 @@ local function waveDisplacement(x: number, z: number, t: number, waves: { any })
 	return y
 end
 
--- description: "Waves normal."
--- args: "x: number, z: number, t: number, waves: { any }"
 local function waveNormal(x: number, z: number, t: number, waves: { any }): (number, number, number)
 	local dydx, dydz = 0, 0
 	for i = 1, #waves do
@@ -185,7 +135,6 @@ local OFF_MAT_CULL = nil
 local OFF_MAT_SHADER = nil
 local SIZE_MAT = nil
 
--- description: "Ensures offsets."
 local function ensureOffsets()
 	if OFF_MAT_TRANSPARENCY then
 		return
@@ -262,9 +211,6 @@ local propTable = {
 return {
 	class = "FluidSimulation",
 
-	-- description: "Initializes the FluidSimulation instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -332,14 +278,10 @@ return {
 		-- SIMULATION GRID
 		-- ====================================================================
 
-		-- description: "Sims index."
-		-- args: "x: number, z: number"
-		-- returns: "number"
 		local function simIndex(x: number, z: number): number
 			return z * simW + x + 1
 		end
 
-		-- description: "Inits grid."
 		local function initGrid()
 			local level = math.clamp(instance.WaterLevel or 0.5, 0, 1) * instance.Size.Y
 			for z = 0, simH - 1 do
@@ -351,9 +293,6 @@ return {
 		end
 
 		-- Bilinear sample of the simulation grid at normalised coords (lx,lz in 0..1)
-		-- description: "Samples grid."
-		-- args: "lx: number, lz: number"
-		-- returns: "number"
 		local function sampleGrid(lx: number, lz: number): number
 			local gx = math.clamp(lx * (simW - 1), 0, simW - 1)
 			local gz = math.clamp(lz * (simH - 1), 0, simH - 1)
@@ -373,8 +312,6 @@ return {
 		end
 
 		-- Convert world XZ → normalised [0..1] grid coordinates
-		-- description: "Worlds to norm."
-		-- args: "wx: number, wz: number"
 		local function worldToNorm(wx: number, wz: number): (number, number)
 			local pos = instance.Position
 			local size = instance.Size
@@ -382,9 +319,6 @@ return {
 		end
 
 		-- Water surface Y at a world position (bilinear sim + wave overlay)
-		-- description: "Surfaces y at."
-		-- args: "wx: number, wz: number, t: number"
-		-- returns: "number"
 		local function surfaceYAt(wx: number, wz: number, t: number?): number
 			local pos = instance.Position
 			local size = instance.Size
@@ -401,8 +335,6 @@ return {
 		end
 
 		-- Total water volume in the sim (sum of all cell heights × cell area)
-		-- description: "Totals water."
-		-- returns: "number"
 		local function totalWater(): number
 			local sum = 0
 			for i = 1, simW * simH do
@@ -412,8 +344,6 @@ return {
 		end
 
 		--  Simulation step
-		-- description: "Steps simulation."
-		-- args: "dt: number"
 		local function stepSimulation(dt: number)
 			local maxH = instance.Size.Y
 			local flowFac = math.clamp((instance.FlowRate or 0.7) * dt * 18.0, 0, 0.48)
@@ -517,8 +447,6 @@ return {
 		-- DRAIN CONNECTIONS
 		-- ====================================================================
 
-		-- description: "Updates drains."
-		-- args: "dt: number"
 		local function updateDrains(dt: number)
 			if #drainConnections == 0 then
 				return
@@ -598,7 +526,6 @@ return {
 		-- VISUAL MESH BUILD & UPDATE
 		-- ====================================================================
 
-		-- description: "Builds wave config."
 		local function buildWaveConfig()
 			local dir = instance.WaveDirection or Vector2.new(1, 0)
 			local dx, dz = dir.X, dir.Y
@@ -638,8 +565,6 @@ return {
 			}
 		end
 
-		-- description: "Builds grid_vis."
-		-- args: "posX: number, posZ: number, halfW: number, halfL: any, resX: number, resZ: number"
 		local function buildGrid_vis(posX, posZ, halfW, halfL, resX, resZ)
 			local positions = table.create((resX + 1) * (resZ + 1))
 			local duX = 1.0 / resX
@@ -659,8 +584,6 @@ return {
 			return positions
 		end
 
-		-- description: "Builds indices_vis."
-		-- args: "resX: number, resZ: number"
 		local function buildIndices_vis(resX, resZ): { number }
 			local indices = table.create(resX * resZ * 6)
 			local stride = resX + 1
@@ -682,7 +605,6 @@ return {
 		end
 
 		--  Material creation
-		-- description: "Creates material."
 		local function createMaterial()
 			local base = rlib.R3D_GetDefaultMaterial()
 			local mat = buffer.create(SIZE_MAT)
@@ -704,7 +626,6 @@ return {
 		end
 
 		--  GPU mesh build/rebuild
-		-- description: "Builds mesh."
 		local function buildMesh()
 			if gpuMesh then
 				pcall(rlib.R3D_UnloadMesh, gpuMesh)
@@ -759,8 +680,6 @@ return {
 		end
 
 		--  Vertex deformation
-		-- description: "Updates mesh verts."
-		-- args: "t: number"
 		local function updateMeshVerts(t: number)
 			if not cpuMeshData or not gpuMesh or not offCached then
 				return
@@ -809,7 +728,6 @@ return {
 		end
 
 		--  Shader uniforms
-		-- description: "Syncs shader uniforms."
 		local function syncShaderUniforms()
 			if not surfaceShader then
 				return
@@ -832,7 +750,6 @@ return {
 		-- CONTAINER FITTING
 		-- ====================================================================
 
-		-- description: "Syncs to container."
 		local function syncToContainer()
 			if not instance.FitContainer then
 				return
@@ -875,8 +792,6 @@ return {
 		-- BUOYANCY
 		-- ====================================================================
 
-		-- description: "Runs buoyancy."
-		-- args: "dt: number"
 		local function runBuoyancy(dt: number)
 			if not instance.PhysicsEnabled then
 				return
@@ -986,12 +901,9 @@ return {
 
 		-- Internal fluid API table (used by drain connections)
 		instance._fluidAPI = {
-			-- description: "Avgs water."
 			avgWater = function()
 				return totalWater()
 			end,
-			-- description: "Adds water uniform."
-			-- args: "amount: number"
 			addWaterUniform = function(amount: number)
 				local perCell = amount / (simW * simH)
 				local maxH = instance.Size.Y
@@ -1002,8 +914,7 @@ return {
 			end,
 		}
 
-		--- Fill to a fractional level (0 = empty, 1 = full).
-		-- description: "Sets the WaterLevel."
+		-- description: "Sets every simulation cell to a fill level from 0 to 1."
 		-- args: "level: number"
 		function instance:SetWaterLevel(level: number)
 			local h = math.clamp(level, 0, 1) * self.Size.Y
@@ -1013,25 +924,20 @@ return {
 			wasEmpty = (h < 0.001)
 		end
 
-		--- Returns current average fill level (0–1).
-		-- description: "Gets the WaterLevel."
-		-- returns: "boolean"
+		-- description: "Returns the current average fill level from 0 to 1."
+		-- returns: "number"
 		function instance:GetWaterLevel(): number
 			return math.clamp(totalWater() / self.Size.Y, 0, 1)
 		end
 
-		--- Add water volume uniformly across the surface.
-		-- description: "Adds water."
+		-- description: "Adds water uniformly across the simulation surface."
 		-- args: "amount: number"
-		-- returns: "boolean"
 		function instance:AddWater(amount: number)
 			instance._fluidAPI.addWaterUniform(amount)
 		end
 
-		--- Remove water volume uniformly across the surface.
-		-- description: "Removes water."
+		-- description: "Removes water uniformly across the simulation surface."
 		-- args: "amount: number"
-		-- returns: "boolean"
 		function instance:RemoveWater(amount: number)
 			local perCell = amount / (simW * simH)
 			for i = 1, simW * simH do
@@ -1039,10 +945,8 @@ return {
 			end
 		end
 
-		--- Add water at a specific world XZ position (spreads outward naturally).
-		-- description: "Adds water at."
+		-- description: "Adds water to the simulation cell nearest a world-space XZ position."
 		-- args: "worldX: number, worldZ: number, amount: number"
-		-- returns: "boolean"
 		function instance:AddWaterAt(worldX: number, worldZ: number, amount: number)
 			local lx, lz = worldToNorm(worldX, worldZ)
 			local cx = math.floor(math.clamp(lx * (simW - 1), 0, simW - 1))
@@ -1053,10 +957,9 @@ return {
 			wasEmpty = false
 		end
 
-		--- Remove water at a specific world XZ position (drain / pump effect).
-		-- description: "Removes water at."
+		-- description: "Removes water from the simulation cell nearest a world-space XZ position and returns the amount removed."
 		-- args: "worldX: number, worldZ: number, amount: number"
-		-- returns: "boolean"
+		-- returns: "number"
 		function instance:RemoveWaterAt(worldX: number, worldZ: number, amount: number): number
 			local lx, lz = worldToNorm(worldX, worldZ)
 			local cx = math.floor(math.clamp(lx * (simW - 1), 0, simW - 1))
@@ -1068,17 +971,15 @@ return {
 			return take
 		end
 
-		--- Water surface Y at world XZ (includes simulation height + wave ripple).
-		-- description: "Gets the WaterHeight."
+		-- description: "Returns the water surface Y position at a world-space XZ position."
 		-- args: "worldX: number, worldZ: number"
-		-- returns: "boolean"
+		-- returns: "number"
 		function instance:GetWaterHeight(worldX: number, worldZ: number): number
 			return surfaceYAt(worldX, worldZ, lib.GetTime())
 		end
 
-		--- True when the world position is inside the water volume.
-		-- description: "Ises point submerged."
-		-- args: "worldPos: any"
+		-- description: "Returns whether a world-space point is inside the current water volume."
+		-- args: "worldPos: Vector3"
 		-- returns: "boolean"
 		function instance:IsPointSubmerged(worldPos: any): boolean
 			local pos = self.Position
@@ -1093,8 +994,7 @@ return {
 			return worldPos.Y <= h and worldPos.Y >= h - size.Y
 		end
 
-		--- Submerged fraction of a BasePart (0–1).
-		-- description: "Gets the SubmergedFraction."
+		-- description: "Returns how much of a part's height is submerged, from 0 to 1."
 		-- args: "part: any"
 		-- returns: "number"
 		function instance:GetSubmergedFraction(part: any): number
@@ -1110,11 +1010,8 @@ return {
 			return math.clamp((math.min(part.Position.Y + pH * 0.5, h) - bot) / pH, 0, 1)
 		end
 
-		--- Connect this simulation to another so water flows through when the
-		--- source level exceeds `thresholdH` (height above the source floor).
-		--- `flowMult` scales the flow rate (default 1.0).
-		-- description: "Connects to."
-		-- args: "targetSim: any, worldX: number, worldZ: number, thresholdH: number, flowMult: number"
+		-- description: "Connects this simulation to another so water can flow through a drain point."
+		-- args: "targetSim: any, worldX: number, worldZ: number, thresholdH: number?, flowMult: number?"
 		function instance:ConnectTo(
 			targetSim: any,
 			worldX: number,
@@ -1131,8 +1028,7 @@ return {
 			})
 		end
 
-		--- Disconnect all drain connections to a specific target.
-		-- description: "Disconnects."
+		-- description: "Removes all drain connections from this simulation to a target simulation."
 		-- args: "targetSim: any"
 		function instance:Disconnect(targetSim: any)
 			for i = #drainConnections, 1, -1 do
@@ -1142,8 +1038,7 @@ return {
 			end
 		end
 
-		--- Force-rebuild the mesh (call after bulk property changes).
-		-- description: "Rebuilds the state."
+		-- description: "Rebuilds the render mesh and resets the simulation grid when already initialized."
 		function instance:Rebuild()
 			buildMesh()
 			if simInitialised then
@@ -1255,8 +1150,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the FluidSimulation class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			if tble[prop] == nil then

@@ -32,9 +32,6 @@ end
 if FlagExists("headless") then
 	return
 end
-if FlagExists("client") then
-	return
-end
 
 local aereon = require("@Aereon")
 local gui = aereon.gui

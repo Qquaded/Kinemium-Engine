@@ -1,4 +1,4 @@
--- description: "Represents an Attachment in the environment."
+-- description: "Represents a 3d point in 3d space, Usually used for physics, particles, etc."
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 
@@ -23,12 +23,7 @@ local propTable = {
 return {
 	class = "Attachment",
 
-	-- description: "Initializes the Attachment instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
-		-- description: "Renders the component."
-		-- args: "part: any, camera: number, lib: number"
 		propTable.render = function(part, camera, lib) end
 
 		instance:SetProperties(propTable)
@@ -36,8 +31,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Attachment class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

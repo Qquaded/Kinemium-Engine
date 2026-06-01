@@ -1,4 +1,4 @@
--- description: "Represents an Actor in the environment."
+-- description: "An object that can be used for running tasks in parallel."
 local propTable = {
 	Name = "Actor",
 	BaseClass = "Model",
@@ -6,9 +6,7 @@ local propTable = {
 
 return {
 	class = "Actor",
-	-- description: "Initializes the Actor instance."
-	-- args: "instance: table"
-	-- returns: "table"
+
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
@@ -17,7 +15,7 @@ return {
 
 		local zune_task = zune and zune.task or _G.task
 
-		-- description: "Sends message."
+		-- description: "Sends a message to the actor's thread."
 		-- args: "topic: string, ...: any"
 		function instance:SendMessage(topic, ...)
 			if bindedToMessage[topic] then
@@ -44,8 +42,6 @@ return {
 			end
 		end
 
-		-- description: "Creates connection."
-		-- args: "list: table, topic: string, callback: function"
 		local function createConnection(list, topic, callback)
 			return {
 				-- description: "Disconnects."
@@ -86,8 +82,6 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the Actor class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

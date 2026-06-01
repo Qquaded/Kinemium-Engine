@@ -1,4 +1,4 @@
--- description: "Represents a ClickDetector in the environment."
+-- description: "Detects user clicks on a 3D object."
 local signal = require("@Kinemium.signal")
 
 local propTable = {
@@ -9,10 +9,6 @@ local propTable = {
 
 return {
 	class = "ClickDetector",
-
-	-- description: "Initializes the ClickDetector instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
@@ -26,8 +22,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the ClickDetector class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

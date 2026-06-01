@@ -1,4 +1,4 @@
--- description: "Represents a HingeConstraint in the environment."
+-- description: "Creates a hinge joint that allows rotation around one axis, like a door or wheel."
 local _Vector3 = require("@Vector3")
 local Enum = require("@EnumMap")
 local _signal = require("@Kinemium.signal")
@@ -35,16 +35,12 @@ local propTable = {
 return {
 	class = "HingeConstraint",
 
-	-- description: "Initializes the HingeConstraint instance."
-	-- args: "instance: table, renderer: number, datamodel: table"
-	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		local KinemiumPhysicsService = datamodel:GetService("UnifiedPhysicsService")
 		instance:SetProperties(propTable)
 
 		local _activeConstraint = nil
 
-		-- description: "Cleans up the resources."
 		local function cleanup()
 			if _activeConstraint then
 				KinemiumPhysicsService.jolt.lib.JPH_PhysicsSystem_RemoveConstraint(
@@ -55,7 +51,6 @@ return {
 			end
 		end
 
-		-- description: "Rebuilds the state."
 		local function rebuild()
 			cleanup()
 
@@ -352,8 +347,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the HingeConstraint class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

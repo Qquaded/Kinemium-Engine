@@ -10,6 +10,8 @@ local fs = zune.fs
 local process = zune.process
 local os = zune.platform.os
 
+local assetsaver = require("@assetsaver")
+
 export type KinemiumPlaceFile = {
 	ToExe: (string) -> (),
 }
@@ -70,8 +72,10 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			if zembed.IsEmbedded() then
 				return
 			end
+
 			local SerializationService = datamodel:GetService("SerializationService")
 			local serialized = SerializationService.SerializeInstancesAsync({ datamodel })
+
 			if serialized then
 				local wrapper = {}
 
@@ -89,7 +93,10 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 				return wrapper
 			end
+
+			return
 		end,
+
 		Save = function(pathName)
 			local SerializationService = datamodel:GetService("SerializationService")
 			local serialized = SerializationService.SerializeInstancesAsync({ datamodel })
@@ -167,11 +174,14 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end,
 
 		ExportGameAsExecutable = function(gameName)
-			local result = buildEngine()
+			local assets, old_props = assetsaver:GetGameAssets(datamodel)
+
+			buildEngine()
 
 			local platform = buildNames[zune.platform.os]
 			local buildFolder = `./build/{platform}`
 			local exportedFolder = buildFolder .. "/exported"
+			local game_folder_assets = buildFolder .. "/assets/game"
 
 			fs.makeDir(exportedFolder)
 
@@ -179,7 +189,25 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			-- startup with
 			fs.writeFile(exportedFolder .. "/flags.toml", serde.toml.encode(defaultFlags))
 
+			-- get assets
+
+			if assets then
+				fs.makeDir(game_folder_assets)
+
+				for path, buff in pairs(assets) do
+					-- write
+					local basename = zune.fs.path.basename(path)
+					fs.writeFile(game_folder_assets .. "/" .. basename, buff)
+				end
+			end
+
 			KineFileService.ExportGameAsFile(exportedFolder, "obj")
+
+			for object, props in pairs(old_props) do
+				for property, value in pairs(props) do
+					object[property] = value
+				end
+			end
 
 			return true
 		end,

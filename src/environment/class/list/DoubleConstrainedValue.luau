@@ -1,4 +1,4 @@
--- description: "Represents a DoubleConstrainedValue in the environment."
+-- description: "Contains a Double Constrained Value."
 local propTable = {
 	ConstrainedValue = 0,
 	MaxValue = 10,
@@ -8,9 +8,6 @@ local propTable = {
 
 return {
 	class = "DoubleConstrainedValue",
-	-- description: "Initializes the DoubleConstrainedValue instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		instance.Changed:Connect(function(property)
@@ -27,8 +24,6 @@ return {
 		end)
 		return instance
 	end,
-	-- description: "Inherits the properties of the DoubleConstrainedValue class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

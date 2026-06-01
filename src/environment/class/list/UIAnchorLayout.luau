@@ -1,7 +1,5 @@
--- description: "Represents an UIAnchorLayout in the environment."
+-- description: "Creates an anchor layout for UI elements."
 local Vector2 = require("@Vector2")
-local Enum = require("@EnumMap")
-local UDim = require("@UDim")
 
 -- UIAnchorLayout: each child declares its own anchor constraints via
 -- a UIAnchor modifier child, similar to CSS absolute positioning with
@@ -24,8 +22,6 @@ local propTable = {
 	Name = "UIAnchorLayout",
 	Enabled = true,
 
-	-- description: "Renders the component."
-	-- args: "lib: number, object: table, dt: number, structs: table"
 	render = function(lib, object, dt, structs)
 		if not object.Enabled then
 			return
@@ -35,9 +31,6 @@ local propTable = {
 			return
 		end
 
-		-- description: "Gets the AbsoluteSize."
-		-- args: "obj: any"
-		-- returns: "Vector3"
 		local function GetAbsoluteSize(obj)
 			if obj.AbsoluteSize then
 				return obj.AbsoluteSize
@@ -67,8 +60,6 @@ local propTable = {
 		local effectiveHeight = math.max(0, parentSize.Y - totalPaddingY * 2)
 		local effectiveSize = Vector2.new(effectiveWidth, effectiveHeight)
 
-		-- description: "Resolves u dim."
-		-- args: "udim: any, axis: Vector3"
 		local function resolveUDim(udim, axis)
 			if not udim then
 				return nil
@@ -82,7 +73,6 @@ local propTable = {
 				continue
 			end
 
-			-- Look for a UIAnchor modifier on this child
 			local anchor = child:FindFirstChildOfClass("UIAnchor")
 			if not anchor then
 				continue
@@ -93,7 +83,6 @@ local propTable = {
 			local childSize = child.Size:ToPixels(effectiveSize)
 			local posX, posY, sizeX, sizeY
 
-			-- Horizontal axis
 			local left = resolveUDim(anchor.AnchorLeft, "x")
 			local right = resolveUDim(anchor.AnchorRight, "x")
 			local centerX = anchor.CenterX
@@ -102,7 +91,6 @@ local propTable = {
 				sizeX = childSize.X
 				posX = totalPaddingX + (effectiveWidth - sizeX) * 0.5
 			elseif left ~= nil and right ~= nil then
-				-- Stretch between edges
 				posX = totalPaddingX + left
 				sizeX = math.max(0, effectiveWidth - left - right)
 			elseif left ~= nil then
@@ -112,12 +100,10 @@ local propTable = {
 				sizeX = childSize.X
 				posX = totalPaddingX + effectiveWidth - right - sizeX
 			else
-				-- No horizontal anchor: fall back to child's own Position.X
 				posX = totalPaddingX + child.Position.X.Scale * effectiveWidth + child.Position.X.Offset
 				sizeX = childSize.X
 			end
 
-			-- Vertical axis
 			local top = resolveUDim(anchor.AnchorTop, "y")
 			local bottom = resolveUDim(anchor.AnchorBottom, "y")
 			local centerY = anchor.CenterY
@@ -141,7 +127,6 @@ local propTable = {
 
 			rawset(child, "_LayoutRelativePosition", Vector2.new(posX, posY))
 
-			-- If size changed due to stretching, write it back so rendering uses it
 			if sizeX ~= childSize.X or sizeY ~= childSize.Y then
 				rawset(child, "AbsoluteSize", Vector2.new(sizeX, sizeY))
 			end
@@ -152,9 +137,6 @@ local propTable = {
 return {
 	class = "UIAnchorLayout",
 	render = propTable.render,
-	-- description: "Initializes the UIAnchorLayout instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance

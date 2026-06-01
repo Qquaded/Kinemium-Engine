@@ -1,4 +1,4 @@
--- description: "Represents a Highlight in the environment."
+-- description: "Highlights a 3d object with customizable color and transparency."
 local Color3 = require("@Color3")
 local raylib = require("@raylib")
 
@@ -12,9 +12,7 @@ local propTable = {
 
 return {
 	class = "Highlight",
-	-- description: "Initializes the Highlight instance."
-	-- args: "instance: table, renderer: number, datamodel: table"
-	-- returns: "table"
+
 	callback = function(instance, renderer, datamodel)
 		renderer.Pool.new("gizmo", function()
 			local adornee = instance.Adornee

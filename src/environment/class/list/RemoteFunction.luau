@@ -1,9 +1,6 @@
--- description: "Represents a RemoteFunction in the environment."
+-- description: "Allows clients and the server to invoke functions across the network and receive a response."
 return {
 	class = "RemoteFunction",
-	-- description: "Initializes the RemoteFunction instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties({
 			OnClientInvoke = nil,

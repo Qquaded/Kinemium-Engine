@@ -1,4 +1,4 @@
--- description: "Represents an UISquircle in the environment."
+-- description: "A modifier class that creates a squircle effect on a GUI element."
 local UDim = require("@UDim")
 
 local propTable = {
@@ -15,15 +15,10 @@ local propTable = {
 
 return {
 	class = "UISquircle",
-	-- description: "Initializes the UISquircle instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the UISquircle class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

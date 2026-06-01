@@ -1,4 +1,4 @@
--- description: "Represents a PrismaticConstraint in the environment."
+-- description: "Constrains two attachments to slide along a single axis."
 local _Vector3 = require("@Vector3")
 local Enum = require("@EnumMap")
 local _signal = require("@Kinemium.signal")

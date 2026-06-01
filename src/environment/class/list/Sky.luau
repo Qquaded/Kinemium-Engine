@@ -1,11 +1,8 @@
--- description: "Represents a Sky in the environment."
+-- description: "Creates a sky shader for custom rendering, Parented under lighting."
 local Color3 = require("@Color3")
 local Shader = require("@ShaderDatatype")
 local Vector3 = require("@Vector3")
 
--- Sun direction from clock time, matching Lighting's calculation
--- description: "Calculates sun direction."
--- args: "time: number, latitude: number"
 local function calculateSunDirection(time, latitude)
 	latitude = math.rad(latitude)
 	local declination = math.rad(23.45 * math.sin(math.rad(360 * (284 + time * 15) / 365)))
@@ -169,9 +166,6 @@ void fragment() {
 
 return {
 	class = "Sky",
-	-- description: "Initializes the Sky instance."
-	-- args: "instance: table, renderer: number, datamodel: table"
-	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		if IsServer then
 			return
@@ -232,8 +226,6 @@ return {
 			return instance
 		end
 
-		-- description: "Pushes uniforms."
-		-- args: "shader: number"
 		local function pushUniforms(shader)
 			local i = instance
 

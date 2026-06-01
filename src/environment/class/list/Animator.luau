@@ -1,4 +1,4 @@
--- description: "Represents an Animator in the environment."
+-- description: "Manages animation playback, blending, and control for animated objects."
 local signal = require("@Kinemium.signal")
 
 -- description: "Copies."
@@ -49,23 +49,19 @@ local propTable = {
 
 return {
 	class = "Animator",
-	-- description: "Initializes the Animator instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
-		-- Create fresh per-instance values so they are never shared across instances.
 		instance.AnimationPlayed = signal.new()
 		instance.PoseLayers = {}
 		instance.State = {}
 
-		-- description: "Sets the PoseProvider."
+		-- description: "Sets the Pose Provider."
 		-- args: "provider: number"
 		function instance:SetPoseProvider(provider)
 			instance.PoseProvider = provider
 		end
 
-		-- description: "Adds pose layer."
+		-- description: "Adds a pose layer."
 		-- args: "name: string, layer: number"
 		function instance:AddPoseLayer(name, layer)
 			local layers = copy(instance.PoseLayers)
@@ -73,7 +69,7 @@ return {
 			instance.PoseLayers = layers
 		end
 
-		-- description: "Removes pose layer."
+		-- description: "Removes a pose layer."
 		-- args: "name: string"
 		function instance:RemovePoseLayer(name)
 			local layers = copy(instance.PoseLayers)
@@ -81,7 +77,7 @@ return {
 			instance.PoseLayers = layers
 		end
 
-		-- description: "Sets the DefaultProvider."
+		-- description: "Sets the Default Provider."
 		-- args: "provider: number"
 		function instance:SetDefaultProvider(provider)
 			instance.DefaultProvider = provider
@@ -102,7 +98,7 @@ return {
 			return newClock
 		end
 
-		-- description: "Sets the StateValue."
+		-- description: "Sets the State Value."
 		-- args: "key: number, value: number"
 		function instance:SetStateValue(key, value)
 			local stateTable = copy(instance.State)
@@ -110,7 +106,7 @@ return {
 			instance.State = stateTable
 		end
 
-		-- description: "Gets the StateValue."
+		-- description: "Gets the Stat eValue."
 		-- args: "key: number"
 		function instance:GetStateValue(key)
 			local stateTable = instance.State or {}
@@ -181,8 +177,6 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the Animator class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

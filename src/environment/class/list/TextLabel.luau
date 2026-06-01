@@ -1,4 +1,4 @@
--- description: "Represents a TextLabel in the environment."
+-- description: "A 2D GUI component that displays text."
 local Vector2 = require("@Vector2")
 local UDim2 = require("@UDim2")
 local Frame = require("@Frame")
@@ -45,8 +45,6 @@ Frame.inherit(propTable)
 
 local defaultFont = lib.GetFontDefault()
 
--- description: "Renders the component."
--- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 propTable.render = function(lib, object, dt, structs, renderer)
 	local framePos, frameSize = GuiObject.render(lib, object, dt, structs, renderer)
 	if not object.Visible or not framePos or not frameSize then
@@ -78,15 +76,10 @@ end
 return {
 	class = "TextLabel",
 	render = propTable.render,
-	-- description: "Initializes the TextLabel instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the TextLabel class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

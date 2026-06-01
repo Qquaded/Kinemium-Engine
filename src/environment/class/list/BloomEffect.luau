@@ -1,4 +1,4 @@
--- description: "Represents a BloomEffect in the environment."
+-- description: "Creates bloom for the environment, Parented under Lighting."
 local Enum = require("@EnumMap")
 
 local propTable = {
@@ -15,10 +15,6 @@ local propTable = {
 
 return {
 	class = "BloomEffect",
-
-	-- description: "Initializes the BloomEffect instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		local r3d = require("@r3d")
 
@@ -51,8 +47,6 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the BloomEffect class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

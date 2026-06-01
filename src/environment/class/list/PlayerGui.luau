@@ -1,19 +1,18 @@
--- description: "Represents a PlayerGui in the environment."
+-- description: "A container that holds the graphical user interface objects for a player."
+--#༵༼༻══╡THE PLAYER GUI╞══༺༽#༵
+
 local propTable = {}
 
+-- #ོ༹ ྍྭ᳀══════༺༙༙༷ཿྎཬཱླྀ༒༙༙༙༵࿆ཪ༵࿆ ླྀ ༷ ༷ཿ༻༙༙༷࿆ ཾ═════╡⋅⋆THE CALLBACK∘⋆⋅╞═════༺༙༙༷ཿྎཬཱླྀ༒༙༙༙༵࿆ཪ༵࿆ ླྀ ༷ ༷ཿ༻༙༙༷࿆ ཾ═════᳀
 return {
 	class = "PlayerGui",
-	-- description: "Initializes the PlayerGui instance."
-	-- args: "instance: table, starterGui: table"
-	-- returns: "table"
 	callback = function(instance, starterGui)
 		return instance
 	end,
-	-- description: "Inherits the properties of the PlayerGui class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val
 		end
 	end,
 }
+-- #ོ༹ ྭྍ᳀══════━┈༺ཿཿ༻┈━═════╡⋅⋆∘THE ENDING∘⋆⋅╞═════━┈༺ཿཿཿ༻┈━═════᳀

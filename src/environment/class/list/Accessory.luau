@@ -1,4 +1,4 @@
--- description: "Represents an Accessory in the environment."
+-- description: "A customizable mesh you can place on a character."
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")
@@ -35,7 +35,6 @@ local propTable = {
 	AccessoryType = Enum.AccessoryType.Unknown,
 	AttachmentPoint = "Head",
 
-	-- Mesh properties (like MeshPart)
 	MeshObject = nil,
 	MeshScale = 1,
 	Size = Vector3.new(1, 1, 1),
@@ -49,9 +48,6 @@ local propTable = {
 return {
 	class = "Accessory",
 
-	-- description: "Initializes the Accessory instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -73,7 +69,7 @@ return {
 		end
 
 		-- Helper: set the attachment offset CFrame
-		-- description: "Sets the AttachmentOffset."
+		-- description: "Sets the attachment's offset"
 		-- args: "cf: CFrame"
 		function instance:SetAttachmentOffset(cf)
 			local att = self:GetAttachment()
@@ -83,7 +79,7 @@ return {
 		end
 
 		-- Helper: get the attachment offset CFrame
-		-- description: "Gets the AttachmentOffset."
+		-- description: "Gets the attachment's offset."
 		function instance:GetAttachmentOffset()
 			local att = self:GetAttachment()
 			if att then
@@ -92,7 +88,6 @@ return {
 			return CFrame.new(0, 0, 0)
 		end
 
-		-- When AccessoryType changes, update the default AttachmentPoint
 		instance.Changed:Connect(function(prop, value)
 			if prop == "AccessoryType" then
 				local defaultPoint = DEFAULT_ATTACHMENT_POINTS[value]
@@ -105,14 +100,11 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Accessory class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val
 		end
 	end,
 
-	-- Expose the default attachment point map for external use
 	DEFAULT_ATTACHMENT_POINTS = DEFAULT_ATTACHMENT_POINTS,
 }

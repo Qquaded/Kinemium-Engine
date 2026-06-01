@@ -538,6 +538,9 @@ function Client.init(context)
 
 			entry.object.NetworkId = entry.netId
 			lookup[entry.netId] = entry.object
+			injectRemoteEventHook(entry.object)
+			injectRemoteFunctionHook(entry.object)
+			injectRemoteDataHook(entry.object)
 		end
 	end
 
@@ -745,6 +748,10 @@ function Client.init(context)
 			if root then
 				humanoid.RootPart = root
 			end
+		end
+
+		if humanoid.RootPart and model.PrimaryPart ~= humanoid.RootPart then
+			model.PrimaryPart = humanoid.RootPart
 		end
 
 		if humanoid.RestoreRig then

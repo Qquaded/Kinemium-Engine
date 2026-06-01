@@ -1,4 +1,4 @@
--- description: "Represents a Trail in the environment."
+-- description: "Creates a visual trail effect that follows an object."
 local ColorSequence = require("@ColorSequence")
 local Color3 = require("@Color3")
 local NumberSequence = require("@NumberSequence")
@@ -24,9 +24,6 @@ local propTable = {
 return {
 	class = "Trail",
 
-	-- description: "Initializes the Trail instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
@@ -35,8 +32,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Trail class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

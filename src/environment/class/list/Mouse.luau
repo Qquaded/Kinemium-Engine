@@ -5,9 +5,6 @@ local Enum = require("@EnumMap")
 local Ray = require("@Ray")
 local signal = require("@Kinemium.signal")
 
--- description: "Raies intersect o b b."
--- args: "ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, part: any"
--- returns: "boolean"
 local function RayIntersectOBB(ox, oy, oz, dx, dy, dz, part)
 	local cx, cy, cz, r00, r01, r02, r10, r11, r12, r20, r21, r22 = part.CFrame:GetComponents()
 	local hx, hy, hz = part.Size.X * 0.5, part.Size.Y * 0.5, part.Size.Z * 0.5
@@ -113,7 +110,6 @@ end
 
 local raylib = require("@raylib")
 local MouseCursor = require("@Kinemium.MouseCursor")
-local lib = raylib.lib
 local r3d = require("@r3d")
 local rlib = r3d.lib
 local raycastMod = require("../../../modules/raycast")
@@ -157,14 +153,14 @@ local propTable = {
 		mouse.Icon = icon
 	end,
 
-	-- description: "Gets the ScreenPosition."
+	-- description: "Gets the Screen Position."
 	-- args: "mouse: any"
 	-- returns: "boolean"
 	GetScreenPosition = function(mouse)
 		return mouse.X, mouse.Y
 	end,
 
-	-- description: "Raycasts."
+	-- description: "Raycasts from 2d to 3d space."
 	-- args: "mouse: any, distance: number"
 	-- returns: "boolean"
 	Raycast = function(mouse, distance)
@@ -178,7 +174,7 @@ local propTable = {
 		return workspace:Raycast(unitRay.Origin, unitRay.Direction:Unit() * rayDistance)
 	end,
 
-	-- description: "Ises button down."
+	-- description: "Detects if button is down."
 	-- args: "mouse: any, button: table"
 	-- returns: "boolean"
 	IsButtonDown = function(mouse, button)
@@ -193,8 +189,6 @@ local propTable = {
 	Name = "Mouse",
 }
 
--- description: "Reads ray collision."
--- args: "buf: any"
 local function readRayCollision(buf)
 	--[[
 	local RayCollision = ffi.struct({
@@ -224,9 +218,6 @@ end
 return {
 	class = "Mouse",
 	non_creatable = true,
-	-- description: "Initializes the Mouse instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 		instance._workspace = game and game.Workspace
@@ -432,8 +423,7 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the Mouse class."
-	-- args: "tble: table"
+
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

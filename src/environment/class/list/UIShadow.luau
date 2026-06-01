@@ -1,4 +1,4 @@
--- description: "Represents an UIShadow in the environment."
+-- description: "A modifier class that adds a shadow effect to a GUI element."
 local Color3 = require("@Color3")
 local Vector2 = require("@Vector2")
 
@@ -15,15 +15,10 @@ local propTable = {
 
 return {
 	class = "UIShadow",
-	-- description: "Initializes the UIShadow instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the UIShadow class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

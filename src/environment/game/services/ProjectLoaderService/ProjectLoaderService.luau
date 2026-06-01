@@ -39,7 +39,7 @@ local function buildProjectConfig(name, iconPath, description)
 		sync = {
 			live = false,
 			debounce = 0.35,
-			ignore = { git = ".git", vscode = ".vscode", autosave = "autosave" },
+			ignore = { git = ".git", vscode = ".vscode" },
 		},
 		backups = {
 			interval = 300,
@@ -110,7 +110,6 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal)
 				fs.makeDir(path .. "/gui", true)
 				fs.makeDir(path .. "/objects", true)
 				fs.makeDir(path .. "/.vscode", true)
-				fs.makeDir(path .. "/autosave", true)
 
 				fs.writeFile(
 					path .. "/.vscode/settings.json",
@@ -123,7 +122,11 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal)
 				local encodedProject = serde.toml.encode(config)
 				fs.writeFile(kprojFile, encodedProject)
 			end)
-			print(success, result)
+
+			if not success then
+				print("Got error while making new project: " .. result)
+				return {}
+			end
 
 			return encoded
 		end,

@@ -196,7 +196,6 @@ return function(objects, data)
 			raylib.lib.DrawText(config.title, math.floor(textX), math.floor(bodyTop), 15, titleCol:ToRaylib(0))
 		end
 
-		-- description (word-wrapped)
 		local descY = bodyTop + 20
 		local descW = r.width - ICON_PAD * 2
 		local descSize = 11

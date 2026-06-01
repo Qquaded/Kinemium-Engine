@@ -1,4 +1,4 @@
--- description: "Represents a SpotLight in the environment."
+-- description: "A light source that emits light in a cone shape."
 local a = require("@Vector3")
 local b = require("@Color3")
 local c = require("@EnumMap")
@@ -23,9 +23,6 @@ local f = {
 
 return {
 	class = "SpotLight",
-	-- description: "Initializes the SpotLight instance."
-	-- args: "g: number, h: number, i: any"
-	-- returns: "table"
 	callback = function(g, h, i)
 		g:SetProperties(f)
 
@@ -99,8 +96,7 @@ return {
 
 		return g
 	end,
-	-- description: "Inherits the properties of the SpotLight class."
-	-- args: "g: number"
+
 	inherit = function(g)
 		for h, i in pairs(f) do
 			g[h] = i

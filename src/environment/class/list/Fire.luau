@@ -1,4 +1,4 @@
--- description: "Represents a Fire in the environment."
+-- description: "Creates a Fire particle in 3d space."
 local Color3 = require("@Color3")
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")

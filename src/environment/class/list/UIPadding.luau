@@ -1,4 +1,4 @@
--- description: "Represents an UIPadding in the environment."
+-- description: "Adds padding around child content."
 local UDim2 = require("@UDim2")
 local UDim = require("@UDim")
 local Vector2 = require("@Vector2")
@@ -17,8 +17,6 @@ local propTable = {
 	_CachedResolved = nil,
 }
 
--- description: "Resolves legacy padding side."
--- args: "padding: number, primaryKey: number, secondaryKey: number"
 local function resolveLegacyPaddingSide(padding, primaryKey, secondaryKey)
 	local side = padding and padding[primaryKey]
 	if side then
@@ -28,8 +26,6 @@ local function resolveLegacyPaddingSide(padding, primaryKey, secondaryKey)
 	return padding and padding[secondaryKey] or UDim.new(0, 0)
 end
 
--- description: "Resolves padding side."
--- args: "instance: table, propertyName: string, primaryKey: number, secondaryKey: number"
 local function resolvePaddingSide(instance, propertyName, primaryKey, secondaryKey)
 	local explicit = instance[propertyName]
 	if explicit ~= nil then
@@ -39,7 +35,7 @@ local function resolvePaddingSide(instance, propertyName, primaryKey, secondaryK
 	return resolveLegacyPaddingSide(instance.Padding, primaryKey, secondaryKey)
 end
 
--- description: "Props table: get resolved padding."
+-- description: "Gets the resolved padding."
 -- args: "parentSize: number"
 function propTable:GetResolvedPadding(parentSize)
 	local cachedSize = self._CachedParentSize
@@ -75,7 +71,7 @@ function propTable:GetResolvedPadding(parentSize)
 	return resolved
 end
 
--- description: "Props table: get inner size."
+-- description: "Get inner padding size."
 -- args: "containerSize: number"
 function propTable:GetInnerSize(containerSize)
 	local p = self:GetResolvedPadding(containerSize)
@@ -83,20 +79,20 @@ function propTable:GetInnerSize(containerSize)
 	return Vector2.new(math.max(0, containerSize.X - p.Horizontal), math.max(0, containerSize.Y - p.Vertical))
 end
 
--- description: "Props table: get offset."
+-- description: "Get cached offset padding (resolved)."
 function propTable:GetOffset()
 	local p = self._CachedResolved
 	return Vector2.new(p.Left, p.Top)
 end
 
--- description: "Props table: apply to position."
+-- description: "Applies position to padding"
 -- args: "pos: Vector3"
 function propTable:ApplyToPosition(pos)
 	local p = self._CachedResolved
 	return pos + Vector2.new(p.Left, p.Top)
 end
 
--- description: "Gets the All."
+-- description: "Gets all UIPadding objects in the container's children"
 -- args: "container: number"
 function propTable.GetAll(container)
 	local out = {}
@@ -110,7 +106,7 @@ function propTable.GetAll(container)
 	return out
 end
 
--- description: "Resolves all."
+-- description: "Resolves padding properties."
 -- args: "container: number, containerSize: number"
 function propTable.ResolveAll(container, containerSize)
 	local total = {
@@ -152,13 +148,9 @@ end
 
 return {
 	class = "UIPadding",
-	-- description: "Renders the component."
 	render = function()
 		-- no render; purely layout modifier
 	end,
-	-- description: "Initializes the UIPadding instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance

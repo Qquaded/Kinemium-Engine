@@ -1,4 +1,4 @@
--- description: "Represents a ScreenGui in the environment."
+-- description: "A GUI container that displays interface elements in screen space."
 local UDim2 = require("@UDim2")
 local Vector2 = require("@Vector2")
 
@@ -21,12 +21,7 @@ local proptble = {
 return {
 	class = "ScreenGui",
 
-	-- description: "Initializes the ScreenGui instance."
-	-- args: "instance: table, renderer: number"
-	-- returns: "table"
 	callback = function(instance, renderer)
-		-- description: "Proptble.renders."
-		-- args: "lib: number, instance: table, dt: number, structs: table, datamodel: table"
 		proptble.render = function(lib, instance, dt, structs, datamodel)
 			if not datamodel then
 				return

@@ -1,4 +1,4 @@
--- description: "Represents a TextButton in the environment."
+-- description: "A clickable 2D button that displays text."
 local logic = require("@Kinemium.2dbutton")
 
 local Frame = require("@Frame")
@@ -12,8 +12,6 @@ local propTable = {
 TextLabel.inherit(propTable)
 Frame.inherit(propTable)
 
--- description: "Renders the component."
--- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 propTable.render = function(lib, object, dt, structs, renderer)
 	local framePos, frameSize = TextLabel.render(lib, object, dt, structs, renderer)
 	if not object.Visible or not framePos or not frameSize then
@@ -27,9 +25,6 @@ end
 
 return {
 	class = "TextButton",
-	-- description: "Initializes the TextButton instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		logic:SetupSignals(propTable)
 
@@ -37,8 +32,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the TextButton class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			if tble[prop] then

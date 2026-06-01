@@ -1,4 +1,4 @@
--- description: "Represents a NetworkController in the environment."
+-- description: "Handles network ownership."
 local propTable = {
 	Enabled = true,
 	AutoAssignOwnership = true,
@@ -17,17 +17,12 @@ local propTable = {
 return {
 	class = "NetworkController",
 
-	-- description: "Initializes the NetworkController instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the NetworkController class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

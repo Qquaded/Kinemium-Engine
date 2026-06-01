@@ -1,10 +1,8 @@
--- description: "Represents an ArcHandles in the environment."
+-- description: "A 3d handle that can be rotated and appears under an Adornee."
 local Vector3 = require("@Vector3")
 local Color3 = require("@Color3")
-local CFrame = require("@CFrame")
-local Enum = require("@EnumMap")
 local raylib = require("@raylib")
-local lib, const, structs = raylib.lib, raylib.const, raylib.structs
+local lib, const = raylib.lib, raylib.const
 
 local propTable = {
 	Color = Color3.new(0.5, 0.5, 0.5),
@@ -13,14 +11,10 @@ local propTable = {
 	Name = "Handles",
 }
 
--- description: "Tos vector."
--- args: "v: Vector3"
 local function toVector(v)
 	return vector.create(v.X, v.Y, v.Z)
 end
 
--- description: "Draws the visual representation."
--- args: "center: number, radius: number, axis: Vector3, segments: number, color: number"
 local function drawArcRing(center, radius, axis, segments, color)
 	segments = segments or 64
 	local step = (math.pi * 2) / segments
@@ -52,12 +46,7 @@ end
 return {
 	class = "ArcHandles",
 
-	-- description: "Initializes the ArcHandles instance."
-	-- args: "instance: table, renderer: number"
-	-- returns: "table"
 	callback = function(instance, renderer)
-		-- description: "Renders the component."
-		-- args: "handles: table, renderer: number"
 		propTable.render = function(handles, renderer)
 			if handles.Adornee then
 				local part = handles.Adornee
@@ -79,8 +68,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the ArcHandles class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

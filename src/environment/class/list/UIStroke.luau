@@ -1,4 +1,4 @@
--- description: "Represents an UIStroke in the environment."
+-- description: "A modifier class that adds a stroke (border) effect to a GUI element."
 local Color3 = require("@Color3")
 
 local propTable = {
@@ -12,15 +12,10 @@ local propTable = {
 
 return {
 	class = "UIStroke",
-	-- description: "Initializes the UIStroke instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the UIStroke class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

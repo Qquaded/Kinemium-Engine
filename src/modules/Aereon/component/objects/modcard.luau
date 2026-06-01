@@ -784,8 +784,6 @@ return function(objects, data)
 
 		dt(bfnt, config.title, txtX, titleY, titleFS, C.text:ToRaylib(0), 0.82)
 
-		-- description (2-line wrap)
-
 		local descLines = wrapText(fnt, config.description, txtMaxW, descFS, 0.65)
 
 		for i = 1, math.min(#descLines, 2) do

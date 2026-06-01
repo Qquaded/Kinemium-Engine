@@ -791,6 +791,9 @@ function Server.init(context)
 		if not Shared.ShouldReplicatePropertyForObject(object, prop) then
 			return
 		end
+		if type(value) == "function" then
+			return
+		end
 
 		local encoded = encodePropertyValue(value)
 		if encoded == nil then
@@ -931,6 +934,25 @@ function Server.init(context)
 		local entries = {}
 		local seen = {}
 
+		local function isCharacterModelObject(object)
+			return object
+				and object.ClassName == "Model"
+				and object.GetAttribute ~= nil
+				and type(object:GetAttribute("__characterUserId")) == "number"
+		end
+
+		local function isCharacterRigReference(object, prop)
+			if prop == "PrimaryPart" and isCharacterModelObject(object) then
+				return true
+			end
+
+			if object.ClassName ~= "Humanoid" or (prop ~= "Character" and prop ~= "RootPart") then
+				return false
+			end
+
+			return isCharacterModelObject(object.Parent)
+		end
+
 		local function collect(object)
 			if seen[object] then
 				return
@@ -947,7 +969,12 @@ function Server.init(context)
 
 			local updates = {}
 			for prop, value in pairs(object._props) do
-				if prop ~= "Parent" and Shared.IsInstanceReference(value) then
+				if
+					prop ~= "Parent"
+					and Shared.ShouldReplicatePropertyForObject(object, prop)
+					and not isCharacterRigReference(object, prop)
+					and Shared.IsInstanceReference(value)
+				then
 					updates[prop] = encodePropertyValue(value)
 				end
 			end

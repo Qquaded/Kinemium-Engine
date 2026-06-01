@@ -1,4 +1,4 @@
--- description: "Represents a SpringConstraint in the environment."
+-- description: "A constraint that simulates a spring between two attachments."
 local _Vector3 = require("@Vector3")
 local _signal = require("@Kinemium.signal")
 local _state = require("@State")
@@ -34,16 +34,12 @@ local propTable = {
 return {
 	class = "SpringConstraint",
 
-	-- description: "Initializes the SpringConstraint instance."
-	-- args: "instance: table, renderer: number, datamodel: table"
-	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		local KinemiumPhysicsService = datamodel:GetService("UnifiedPhysicsService")
 		instance:SetProperties(propTable)
 
 		local _activeConstraint = nil
 
-		-- description: "Cleans up the resources."
 		local function cleanup()
 			if _activeConstraint then
 				KinemiumPhysicsService.jolt.lib.JPH_PhysicsSystem_RemoveConstraint(
@@ -54,7 +50,6 @@ return {
 			end
 		end
 
-		-- description: "Rebuilds the state."
 		local function rebuild()
 			cleanup()
 
@@ -114,7 +109,6 @@ return {
 			end
 		end
 
-		-- description: "Updates spring settings."
 		function instance:UpdateSpringSettings()
 			if not _activeConstraint then
 				return
@@ -137,7 +131,7 @@ return {
 			end
 		end
 
-		-- description: "Updates limits."
+		-- description: "Updates spring limits."
 		function instance:UpdateLimits()
 			if not _activeConstraint then
 				return
@@ -147,7 +141,6 @@ return {
 			KinemiumPhysicsService.SetSpringLimits(_activeConstraint, minL, maxL)
 		end
 
-		-- description: "Draws the visual representation."
 		local function drawGizmo()
 			if not instance.Visible then
 				return
@@ -254,8 +247,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the SpringConstraint class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

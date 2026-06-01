@@ -1,11 +1,8 @@
--- description: "Represents a RemoteEvent in the environment."
+-- description: "Enables asynchronous communication between the client and server."
 local signal = require("@Kinemium.signal")
 
 return {
 	class = "RemoteEvent",
-	-- description: "Initializes the RemoteEvent instance."
-	-- args: "instance: table, renderer: number, datamodel: table"
-	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		local OnClientEvent = signal.new()
 		local OnServerEvent = signal.new()
@@ -17,5 +14,5 @@ return {
 		})
 
 		return instance
-	end,
+	end,	
 }

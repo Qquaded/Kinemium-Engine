@@ -1,4 +1,5 @@
 local BlobLoader = game:GetService("BlobLoader")
+local assetsaver = require("@assetsaver")
 
 local flagValue = GetFlagValue("blob")
 
@@ -33,4 +34,10 @@ if flagValue then
 			warn("Failed to load blob: " .. tostring(loadErr))
 		end
 	end)
+end
+
+task.wait(2)
+
+if IsServer or IsClient then
+	assetsaver:ResolveGame(game)
 end

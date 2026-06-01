@@ -1,4 +1,4 @@
--- description: "Represents a PointLight in the environment."
+-- description: "Emits light uniformly in all directions from a single point."
 local Vector3 = require("@Vector3")
 local Color3 = require("@Color3")
 
@@ -20,9 +20,6 @@ local propTable = {
 
 return {
 	class = "PointLight",
-	-- description: "Initializes the PointLight instance."
-	-- args: "instance: table, renderer: number, datamodel: table"
-	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		instance:SetProperties(propTable)
 
@@ -85,8 +82,7 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the PointLight class."
-	-- args: "tble: table"
+
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

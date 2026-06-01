@@ -1,4 +1,4 @@
--- description: "Represents a RigidConstraint in the environment."
+-- description: "Rigidly connects two attachments, preventing any relative movement between them."
 local propTable = {
 	Name = "RigidConstraint",
 	BaseClass = "Kinemium.constraint",
@@ -11,15 +11,10 @@ local propTable = {
 
 return {
 	class = "RigidConstraint",
-	-- description: "Initializes the RigidConstraint instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the RigidConstraint class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

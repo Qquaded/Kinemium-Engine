@@ -1,4 +1,4 @@
--- description: "Represents an UIScale in the environment."
+-- description: "A modifier class that scales the size of a GUI element."
 local propTable = {
 	Name = "UIScale",
 	BaseClass = "Kinemium.uimodifier",
@@ -8,15 +8,10 @@ local propTable = {
 
 return {
 	class = "UIScale",
-	-- description: "Initializes the UIScale instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the UIScale class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

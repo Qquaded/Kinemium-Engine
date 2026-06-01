@@ -1,4 +1,4 @@
--- description: "Represents a ParticleEmitter in the environment."
+-- description: "Emits particles in 3D space with a custom image template, and with configurable properties such as Color, Transparency, etc"
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
 local Color3 = require("@Color3")
@@ -18,16 +18,9 @@ local r3dstructs = r3d.structs
 local const = r3d.constants
 local lib = raylib.lib
 local structs = raylib.structs
-local Instance = require("@Instance")
 
 local BLEND_MIX = 0
-local BLEND_ADDITIVE = 1
-local BLEND_MULTIPLY = 2
-local BLEND_PREMULTIPLIED_ALPHA = 3
 
--- description: "Gets the Range."
--- args: "value: number, defaultMin: number, defaultMax: number"
--- returns: "number"
 local function getRange(value, defaultMin, defaultMax)
 	if type(value) == "number" then
 		return value, value
@@ -40,9 +33,6 @@ local function getRange(value, defaultMin, defaultMax)
 	return defaultMin, defaultMax
 end
 
--- description: "Randoms range."
--- args: "value: number, defaultMin: number, defaultMax: number"
--- returns: "number"
 local function randomRange(value, defaultMin, defaultMax)
 	local minVal, maxVal = getRange(value, defaultMin, defaultMax)
 	if minVal == nil or maxVal == nil then
@@ -54,9 +44,6 @@ local function randomRange(value, defaultMin, defaultMax)
 	return minVal + math.random() * (maxVal - minVal)
 end
 
--- description: "Clamp01s."
--- args: "v: Vector3"
--- returns: "number"
 local function clamp01(v)
 	if v < 0 then
 		return 0
@@ -67,9 +54,6 @@ local function clamp01(v)
 	return v
 end
 
--- description: "Resolves transparency mode."
--- args: "value: number"
--- returns: "number"
 local function resolveTransparencyMode(value)
 	if type(value) == "number" then
 		return value
@@ -80,9 +64,6 @@ local function resolveTransparencyMode(value)
 	return const.R3D_TRANSPARENCY_PREPASS
 end
 
--- description: "Resolves billboard mode."
--- args: "value: number"
--- returns: "number"
 local function resolveBillboardMode(value)
 	if type(value) == "number" then
 		return value
@@ -93,9 +74,6 @@ local function resolveBillboardMode(value)
 	return const.R3D_BILLBOARD_FRONT
 end
 
--- description: "Resolves cull mode."
--- args: "value: number"
--- returns: "number"
 local function resolveCullMode(value)
 	if type(value) == "number" then
 		return value
@@ -106,9 +84,6 @@ local function resolveCullMode(value)
 	return 1
 end
 
--- description: "Resolves blend mode."
--- args: "value: number"
--- returns: "number"
 local function resolveBlendMode(value)
 	if type(value) == "number" then
 		return value
@@ -119,9 +94,6 @@ local function resolveBlendMode(value)
 	return BLEND_MIX
 end
 
--- description: "Gets the Vector2."
--- args: "value: number, fallback: any"
--- returns: "number"
 local function getVector2(value, fallback)
 	if type(value) == "table" and value.__type == "Vector2" then
 		return value
@@ -129,9 +101,6 @@ local function getVector2(value, fallback)
 	return fallback
 end
 
--- description: "Gets the Color3."
--- args: "value: number, fallback: any"
--- returns: "number"
 local function getColor3(value, fallback)
 	if type(value) == "table" and value.__type == "Color3" then
 		return value
@@ -139,9 +108,6 @@ local function getColor3(value, fallback)
 	return fallback
 end
 
--- description: "Evals number sequence."
--- args: "seq: any, t: any, fallback: any"
--- returns: "number"
 local function evalNumberSequence(seq, t, fallback)
 	if type(seq) == "number" then
 		return seq
@@ -152,9 +118,6 @@ local function evalNumberSequence(seq, t, fallback)
 	return fallback
 end
 
--- description: "Evals color sequence."
--- args: "seq: any, t: any, fallback: any"
--- returns: "number"
 local function evalColorSequence(seq, t, fallback)
 	if type(seq) == "table" and seq.Evaluate then
 		return seq:Evaluate(t)
@@ -165,9 +128,6 @@ local function evalColorSequence(seq, t, fallback)
 	return fallback
 end
 
--- description: "Gets the FlipbookMode."
--- args: "value: number"
--- returns: "number"
 local function getFlipbookMode(value)
 	if type(value) == "number" then
 		return value
@@ -178,9 +138,6 @@ local function getFlipbookMode(value)
 	return 0
 end
 
--- description: "Gets the EmitterCFrame."
--- args: "instance: table"
--- returns: "CFrame"
 local function getEmitterCFrame(instance)
 	local parent = instance.Parent
 	if parent then
@@ -194,9 +151,6 @@ local function getEmitterCFrame(instance)
 	return CFrame.new(0, 0, 0)
 end
 
--- description: "Gets the EmissionDirection."
--- args: "cf: CFrame, normalId: string"
--- returns: "any"
 local function getEmissionDirection(cf, normalId)
 	if normalId == Enum.NormalId.Bottom then
 		return -cf:GetUpVector()
@@ -212,9 +166,6 @@ local function getEmissionDirection(cf, normalId)
 	return cf:GetLookVector()
 end
 
--- description: "Gets the EmitterVelocity."
--- args: "instance: table"
--- returns: "any"
 local function getEmitterVelocity(instance)
 	local parent = instance.Parent
 	if parent then
@@ -232,8 +183,6 @@ local function getEmitterVelocity(instance)
 	return Vector3.new(0, 0, 0)
 end
 
--- description: "Applies spread."
--- args: "baseDir: number, basisRight: any, basisUp: any, spread: any"
 local function applySpread(baseDir, basisRight, basisUp, spread)
 	if not spread or type(spread) ~= "table" then
 		return baseDir
@@ -251,7 +200,6 @@ local function applySpread(baseDir, basisRight, basisUp, spread)
 	return dir:Unit()
 end
 
--- description: "Builds default color."
 local function buildDefaultColor()
 	return ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
@@ -259,7 +207,6 @@ local function buildDefaultColor()
 	})
 end
 
--- description: "Builds default transparency."
 local function buildDefaultTransparency()
 	return NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
@@ -267,7 +214,6 @@ local function buildDefaultTransparency()
 	})
 end
 
--- description: "Builds default size."
 local function buildDefaultSize()
 	return NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
@@ -275,8 +221,6 @@ local function buildDefaultSize()
 	})
 end
 
--- description: "Creates material."
--- args: "texturePath: number"
 local function createMaterial(texturePath)
 	local baseMaterial = rlib.R3D_GetDefaultMaterial()
 	local material = buffer.create(r3dstructs.R3D_Material:size())
@@ -340,8 +284,6 @@ local propTable = {
 	CastShadow = true,
 }
 
--- description: "Writes position mapped."
--- args: "mappedPosition: any"
 local function writePositionMapped(mappedPosition)
 	return function(offset, pos)
 		mappedPosition:writef32(offset, pos.X)
@@ -350,8 +292,6 @@ local function writePositionMapped(mappedPosition)
 	end
 end
 
--- description: "Writes rotation mapped."
--- args: "mappedRotation: number"
 local function writeRotationMapped(mappedRotation)
 	return function(offset, qx, qy, qz, qw)
 		mappedRotation:writef32(offset, qx)
@@ -361,8 +301,6 @@ local function writeRotationMapped(mappedRotation)
 	end
 end
 
--- description: "Writes scale mapped."
--- args: "mappedScale: number"
 local function writeScaleMapped(mappedScale)
 	return function(offset, size)
 		mappedScale:writef32(offset, size)
@@ -371,8 +309,6 @@ local function writeScaleMapped(mappedScale)
 	end
 end
 
--- description: "Writes color mapped."
--- args: "mappedColor: number"
 local function writeColorMapped(mappedColor)
 	return function(offset, r, g, b, a)
 		mappedColor:writeu8(offset, r)
@@ -382,8 +318,6 @@ local function writeColorMapped(mappedColor)
 	end
 end
 
--- description: "Writes position buffer."
--- args: "targetBuffer: number"
 local function writePositionBuffer(targetBuffer)
 	return function(offset, pos)
 		buffer.writef32(targetBuffer, offset, pos.X)
@@ -392,8 +326,6 @@ local function writePositionBuffer(targetBuffer)
 	end
 end
 
--- description: "Writes rotation buffer."
--- args: "targetBuffer: number"
 local function writeRotationBuffer(targetBuffer)
 	return function(offset, qx, qy, qz, qw)
 		buffer.writef32(targetBuffer, offset, qx)
@@ -403,8 +335,6 @@ local function writeRotationBuffer(targetBuffer)
 	end
 end
 
--- description: "Writes scale buffer."
--- args: "targetBuffer: number"
 local function writeScaleBuffer(targetBuffer)
 	return function(offset, size)
 		buffer.writef32(targetBuffer, offset, size)
@@ -413,8 +343,6 @@ local function writeScaleBuffer(targetBuffer)
 	end
 end
 
--- description: "Writes color buffer."
--- args: "targetBuffer: number"
 local function writeColorBuffer(targetBuffer)
 	return function(offset, r, g, b, a)
 		buffer.writeu8(targetBuffer, offset, r)
@@ -427,9 +355,6 @@ end
 return {
 	class = "ParticleEmitter",
 
-	-- description: "Initializes the ParticleEmitter instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -457,7 +382,6 @@ return {
 		local activeCount = 0
 		local emitAccumulator = 0
 
-		-- description: "Rebuilds the state."
 		local function rebuildInstanceBuffer()
 			if instanceBuffer then
 				pcall(rlib.R3D_UnloadInstanceBuffer, instanceBuffer)
@@ -467,7 +391,6 @@ return {
 
 		local updateFlipbook
 
-		-- description: "Applies material settings."
 		local function applyMaterialSettings()
 			if not particleMaterial then
 				return
@@ -534,7 +457,6 @@ return {
 			end
 		end
 
-		-- description: "Updates material."
 		local function updateMaterial()
 			if albedoMap then
 				pcall(rlib.R3D_UnloadAlbedoMap, albedoMap)
@@ -574,7 +496,6 @@ return {
 			end
 		end
 
-		-- description: "Applies shadow mode."
 		local function applyShadowMode()
 			if particleMesh then
 				local mode = instance.CastShadow and SHADOW_AUTO or SHADOW_DISABLED
@@ -585,7 +506,6 @@ return {
 		applyShadowMode()
 		applyMaterialSettings()
 
-		-- description: "Emits particle."
 		local function emitParticle()
 			if activeCount >= instance.MaxParticles then
 				return
@@ -651,22 +571,18 @@ return {
 			}
 		end
 
-		-- description: "Emits."
-		-- args: "count: number"
 		local function emit(count)
 			for _ = 1, count do
 				emitParticle()
 			end
 		end
 
-		-- description: "Instance.s emit."
-		-- args: "_: any, count: number"
+		-- description: "Emits a specified amount of particles."
+		-- args: "self: table, count: number"
 		instance.Emit = function(_, count)
 			emit(math.max(0, count or 1))
 		end
 
-		-- description: "Updates particles."
-		-- args: "dt: number"
 		local function updateParticles(dt)
 			local timeScale = instance.TimeScale or 1
 			local scaledDt = dt * timeScale
@@ -752,7 +668,6 @@ return {
 			end
 		end
 
-		-- description: "Updates instance buffer."
 		local function updateInstanceBuffer()
 			if activeCount <= 0 or not instanceBuffer then
 				return
@@ -987,8 +902,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the ParticleEmitter class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

@@ -1,4 +1,4 @@
--- description: "Represents an UITilt in the environment."
+-- description: "A modifier class that adds a tilt effect to a GUI element based on mouse position."
 local Vector2 = require("@Vector2")
 
 local propTable = {
@@ -10,15 +10,10 @@ local propTable = {
 
 return {
 	class = "UITilt",
-	-- description: "Initializes the UITilt instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the UITilt class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

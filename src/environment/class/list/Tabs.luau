@@ -1,4 +1,4 @@
--- description: "Represents a Tabs in the environment."
+-- description: "A tabbed interface for organizing content."
 local GuiObject = require("@GuiObject")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
@@ -28,8 +28,6 @@ local propTable = {
 	Visible = true,
 }
 
--- description: "Sanitizes tabs."
--- args: "tabs: any"
 local function sanitizeTabs(tabs)
 	local sanitized = {}
 	for _, tab in ipairs(type(tabs) == "table" and tabs or {}) do
@@ -52,12 +50,7 @@ local defaultFont = lib.GetFontDefault()
 return {
 	class = "UITabs",
 
-	-- description: "Initializes the Tabs instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
-		-- description: "Resolves font."
-		-- args: "fontEnum: number"
 		local function resolveFont(fontEnum)
 			local name = fontEnum.Value
 			local resolvedFont = renderer.Font.Get(name) or defaultFont
@@ -72,8 +65,6 @@ return {
 			height = 40,
 			tabs = sanitizeTabs(instance.Tabs),
 			activeIndex = instance.ActiveIndex,
-			-- description: "Ons tab change."
-			-- args: "index: number, tab: number"
 			onTabChange = function(index, tab)
 				instance.ActiveIndex = index
 				instance.ActiveTab = tab
@@ -85,8 +76,6 @@ return {
 		instance.OnTabChanged = onTabChanged
 		instance._tabs = tabs
 
-		-- description: "Instance.renders."
-		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		instance.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -120,8 +109,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Tabs class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

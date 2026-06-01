@@ -1,4 +1,4 @@
--- description: "Represents a SSEffect in the environment."
+-- description: "A rendering effect that applies a full-screen shader to the camera output."
 local ffi = zune.ffi
 
 local propTable = {
@@ -11,16 +11,13 @@ local propTable = {
 return {
 	class = "SSEffect",
 
-	-- description: "Initializes the SSEffect instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		local r3d = require("@r3d")
 		local rlib: any = r3d.lib
 
 		instance:SetProperties(propTable)
 
-		-- description: "Sets the Uniform."
+		-- description: "Sets a shader uniform value."
 		-- args: "name: string, value: number, isFloat: boolean"
 		function instance:SetUniform(name, value, isFloat)
 			if instance._r3dshader then
@@ -141,8 +138,7 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the SSEffect class."
-	-- args: "tble: table"
+
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

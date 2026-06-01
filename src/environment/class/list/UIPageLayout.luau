@@ -1,4 +1,4 @@
--- description: "Represents an UIPageLayout in the environment."
+-- description: "A layout class that affects the positioning of gui objects."
 local UDim = require("@UDim")
 
 local propTable = {
@@ -22,15 +22,10 @@ local propTable = {
 
 return {
 	class = "UIPageLayout",
-	-- description: "Initializes the UIPageLayout instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the UIPageLayout class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

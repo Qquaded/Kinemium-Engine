@@ -1,4 +1,4 @@
--- description: "Represents a RadioButton in the environment."
+-- description: "A gui component that represents a selectable radio button, Can be used under gui containers."
 local GuiObject = require("@GuiObject")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
@@ -26,9 +26,6 @@ GuiObject.inherit(propTable)
 return {
 	class = "UIRadioButton",
 
-	-- description: "Initializes the RadioButton instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		local onValueChanged = signal.new()
 		local radioButton = gui.radioButton({
@@ -36,8 +33,6 @@ return {
 			y = 0,
 			size = 20,
 			value = instance.Value,
-			-- description: "Ons changed."
-			-- args: "value: number"
 			onChanged = function(value)
 				instance.Value = value
 				onValueChanged:Fire(value)
@@ -48,8 +43,6 @@ return {
 		instance.OnValueChanged = onValueChanged
 		instance._radioButton = radioButton
 
-		-- description: "Instance.renders."
-		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		instance.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -70,8 +63,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the RadioButton class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

@@ -1,4 +1,4 @@
--- description: "Represents a ScrollingFrame in the environment."
+-- description: "A container that displays a scrollable area of content."
 local Color3 = require("@Color3")
 local GuiObject = require("@GuiObject")
 local raylib = require("@Raylib")
@@ -69,8 +69,6 @@ local propTable = {
 	_isHoveringTrack = false,
 }
 
--- description: "C3trs."
--- args: "c: any, transparency: number"
 local function c3tr(c, transparency)
 	local r, g, b = c:ToRGB()
 	return structs.Color:new({
@@ -86,12 +84,7 @@ GuiObject.inherit(propTable)
 return {
 	class = "ScrollingFrame",
 
-	-- description: "Initializes the ScrollingFrame instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
-		-- description: "Renders the component."
-		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		propTable.render = function(lib, object, dt, structs, renderer)
 			if not object.Visible then
 				return
@@ -332,8 +325,6 @@ return {
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the ScrollingFrame class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

@@ -1,4 +1,4 @@
--- description: "Represents an UIGradient in the environment."
+-- description: "Creates a gradient on a Gui component."
 local ColorSequence = require("@ColorSequence")
 local ColorSequenceKeypoint = require("@ColorSequenceKeypoint")
 local Color3 = require("@Color3")
@@ -15,15 +15,10 @@ local propTable = {
 
 return {
 	class = "UIGradient",
-	-- description: "Initializes the UIGradient instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance
 	end,
-	-- description: "Inherits the properties of the UIGradient class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

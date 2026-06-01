@@ -44,6 +44,12 @@ Shared.INTERNAL_PROPERTIES = {
 	NetworkOwner = true,
 	NetworkOwnerType = true,
 	CanReplicate = true,
+	FireServer = true,
+	FireClient = true,
+	FireAllClients = true,
+	FireClients = true,
+	InvokeServer = true,
+	InvokeClient = true,
 }
 
 local function isInstanceReference(value)

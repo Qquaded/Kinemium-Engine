@@ -1,4 +1,4 @@
--- description: "Represents a SoftBody in the environment."
+-- description: "An editable mesh body that responds to forces by deforming its shape instead of remaining rigid."
 local signal = require("@Kinemium.signal")
 
 local propTable = {
@@ -23,21 +23,14 @@ local propTable = {
 return {
 	class = "SoftBody",
 
-	-- description: "Initializes the SoftBody instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
-
-		-- TODO: Softbody handled by UPS
 
 		renderer.EventBus:Fire("UpdateSoftBody", instance)
 
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the SoftBody class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

@@ -1,4 +1,4 @@
--- description: "Represents an UICellList in the environment."
+-- description: "A UI component that displays a list of cells organized into sections."
 local GuiObject = require("@GuiObject")
 local UDim2 = require("@UDim2")
 
@@ -30,9 +30,6 @@ GuiObject.inherit(propTable)
 return {
 	class = "UICellList",
 
-	-- description: "Initializes the UICellList instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		local cellList = gui.UICellList({
 			x = 0,
@@ -46,8 +43,6 @@ return {
 		instance:SetProperties(propTable)
 		instance._cellList = cellList
 
-		-- description: "Instance.renders."
-		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		instance.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -67,8 +62,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the UICellList class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

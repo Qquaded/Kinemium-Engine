@@ -1,4 +1,4 @@
--- description: "Represents an UITooltip in the environment."
+-- description: "A modifier class that displays a tooltip when hovering over a GUI element."
 local Vector2 = require("@Vector2")
 local Color3 = require("@Color3")
 local Enum = require("@EnumMap")
@@ -35,12 +35,7 @@ local propTable = {
 return {
 	class = "UITooltip",
 
-	-- description: "Initializes the UITooltip instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
-		-- description: "Renders the component."
-		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		propTable.render = function(lib, object, dt, structs, renderer)
 			if not object.Visible then
 				return
@@ -73,8 +68,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the UITooltip class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

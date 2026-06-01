@@ -1,4 +1,4 @@
--- description: "Represents a LocalScript in the environment."
+-- description: "A script that runs on the client to handle local gameplay logic."
 local Enum = require("@EnumMap")
 
 local propTable = {
@@ -11,16 +11,12 @@ local propTable = {
 
 return {
 	class = "LocalScript",
-	-- description: "Initializes the LocalScript instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		instance:SetProperties(propTable)
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the LocalScript class."
-	-- args: "tble: table"
+
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

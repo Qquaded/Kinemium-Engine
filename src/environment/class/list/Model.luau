@@ -1,12 +1,10 @@
--- description: "Represents a Model in the environment."
+-- description: "Groups parts and other instances so they can be moved, scaled, and queried together."
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 
 return {
 	class = "Model",
-	-- description: "Initializes the Model instance."
-	-- args: "instance: table"
-	-- returns: "table"
+
 	callback = function(instance)
 		instance:SetProperties({
 			WorldPivot = CFrame.new(0, 0, 0),
@@ -15,23 +13,25 @@ return {
 		})
 		instance:SetMetadata("IsMovable", true)
 
-		-- description: "Sets the PrimaryPart."
+		-- description: "Sets the part used as this model's primary reference part."
 		-- args: "part: any"
 		function instance:SetPrimaryPart(part)
 			self.PrimaryPart = part
 		end
 
-		-- description: "Gets the PrimaryPartCFrame."
+		-- description: "Returns the PrimaryPart CFrame, or the WorldPivot when no PrimaryPart is set."
+		-- returns: "CFrame"
 		function instance:GetPrimaryPartCFrame()
 			return self.PrimaryPart and self.PrimaryPart.CFrame or self.WorldPivot
 		end
 
-		-- description: "Gets the Pivot."
+		-- description: "Returns the model's world pivot CFrame."
+		-- returns: "CFrame"
 		function instance:GetPivot()
 			return self.WorldPivot
 		end
 
-		-- description: "Sets the Pivot."
+		-- description: "Sets the model pivot and moves child parts by the same transform offset."
 		-- args: "cf: CFrame"
 		function instance:SetPivot(cf)
 			local offset = cf * self.WorldPivot:Inverse()
@@ -43,34 +43,34 @@ return {
 			end
 		end
 
-		-- description: "Pivots to."
+		-- description: "Moves the model to a new pivot CFrame."
 		-- args: "cf: CFrame"
 		function instance:PivotTo(cf)
 			self:SetPivot(cf)
 		end
 
-		-- description: "Moves to."
+		-- description: "Moves the model pivot to a world position while preserving its orientation."
 		-- args: "pos: Vector3"
 		function instance:MoveTo(pos)
 			local current = self:GetPrimaryPartCFrame()
 			self:PivotTo(CFrame.new(pos) * current:ToObjectSpace(current))
 		end
 
-		-- description: "Translates by."
-		-- args: "offset: number"
+		-- description: "Offsets the model pivot and child parts by a world-space vector."
+		-- args: "offset: Vector3"
 		function instance:TranslateBy(offset)
 			self:PivotTo(self.WorldPivot + offset)
 		end
 
-		-- description: "Rotates by."
-		-- args: "rotCF: any"
+		-- description: "Rotates the model around its current world pivot."
+		-- args: "rotCF: CFrame"
 		function instance:RotateBy(rotCF)
 			local pivot = self.WorldPivot
 			local newPivot = pivot * rotCF
 			self:SetPivot(newPivot)
 		end
 
-		-- description: "Scales to."
+		-- description: "Scales BasePart descendants around the model pivot."
 		-- args: "factor: number"
 		function instance:ScaleTo(factor)
 			for _, child in ipairs(self:GetChildren()) do
@@ -81,7 +81,7 @@ return {
 			end
 		end
 
-		-- description: "Scales by factor."
+		-- description: "Scales sized descendants around the model pivot."
 		-- args: "factor: number"
 		function instance:ScaleByFactor(factor)
 			for _, child in ipairs(self:GetChildren()) do
@@ -92,7 +92,8 @@ return {
 			end
 		end
 
-		-- description: "Gets the ExtentsSize."
+		-- description: "Returns the axis-aligned bounding size of all child parts."
+		-- returns: "Vector3"
 		function instance:GetExtentsSize()
 			local minVec = Vector3.new(math.huge, math.huge, math.huge)
 			local maxVec = Vector3.new(-math.huge, -math.huge, -math.huge)
@@ -123,14 +124,16 @@ return {
 			return maxVec - minVec
 		end
 
-		-- description: "Gets the BoundingBox."
+		-- description: "Returns the model pivot and bounding size for all child parts."
+		-- returns: "CFrame, Vector3"
 		function instance:GetBoundingBox()
 			local size = self:GetExtentsSize()
 			local center = self.WorldPivot
 			return center, size
 		end
 
-		-- description: "Gets the Center."
+		-- description: "Returns the center point between child part positions."
+		-- returns: "Vector3"
 		function instance:GetCenter()
 			local minVec = Vector3.new(math.huge, math.huge, math.huge)
 			local maxVec = Vector3.new(-math.huge, -math.huge, -math.huge)
@@ -146,11 +149,10 @@ return {
 			return (minVec + maxVec) / 2
 		end
 
-		-- description: "Gets the AllParts."
+		-- description: "Returns all descendant parts with Size and CFrame properties."
+		-- returns: "{ any }"
 		function instance:GetAllParts()
 			local parts = {}
-			-- description: "Recurses."
-			-- args: "parent: table"
 			local function recurse(parent)
 				for _, child in ipairs(parent:GetChildren()) do
 					if child.Size and child.CFrame then
@@ -165,13 +167,14 @@ return {
 			return parts
 		end
 
-		-- description: "Ises empty."
+		-- description: "Returns whether the model has no direct children."
+		-- returns: "boolean"
 		function instance:IsEmpty()
 			return #self:GetChildren() == 0
 		end
 
-		-- description: "Sets the Visible."
-		-- args: "visible: any"
+		-- description: "Sets descendant part transparency to visible or hidden."
+		-- args: "visible: boolean"
 		function instance:SetVisible(visible)
 			for _, child in ipairs(self:GetAllParts()) do
 				if child.Transparency ~= nil then
@@ -180,8 +183,8 @@ return {
 			end
 		end
 
-		-- description: "Sets the Transparency."
-		-- args: "t: any"
+		-- description: "Sets transparency on every descendant part."
+		-- args: "t: number"
 		function instance:SetTransparency(t)
 			for _, child in ipairs(self:GetAllParts()) do
 				if child.Transparency ~= nil then

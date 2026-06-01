@@ -1,4 +1,4 @@
--- description: "Represents a BallSocketConstraint in the environment."
+-- description: "Creates a ball-and-socket joint between two attachments."
 local _Vector3 = require("@Vector3")
 local _signal = require("@Kinemium.signal")
 local _state = require("@State")
@@ -21,9 +21,6 @@ local propTable = {
 return {
 	class = "BallSocketConstraint",
 
-	-- description: "Initializes the BallSocketConstraint instance."
-	-- args: "instance: table, renderer: number, datamodel: table"
-	-- returns: "table"
 	callback = function(instance, renderer, datamodel)
 		local KinemiumPhysicsService = datamodel:GetService("UnifiedPhysicsService")
 		instance:SetProperties(propTable)

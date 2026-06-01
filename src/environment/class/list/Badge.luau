@@ -1,4 +1,4 @@
--- description: "Represents a Badge in the environment."
+-- description: "A GUI component class that can be used under a gui container."
 local GuiObject = require("@GuiObject")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
@@ -31,12 +31,7 @@ GuiObject.inherit(propTable)
 return {
 	class = "UIBadge",
 
-	-- description: "Initializes the Badge instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
-		-- description: "Resolves font."
-		-- args: "fontEnum: number"
 		local function resolveFont(fontEnum)
 			local name = fontEnum and fontEnum.Value or "DefaultEngineFont"
 			local resolvedFont = renderer.Font.Get(name) or defaultFont
@@ -57,8 +52,6 @@ return {
 		instance:SetProperties(propTable)
 		instance._badge = badge
 
-		-- description: "Instance.renders."
-		-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
 		instance.render = function(lib, object, dt, structs, renderer)
 			if object.Visible == false then
 				return
@@ -98,8 +91,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Badge class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		GuiObject.inherit(tble)
 	end,

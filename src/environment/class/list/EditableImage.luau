@@ -1,4 +1,4 @@
--- description: "Represents an EditableImage in the environment."
+-- description: "A mutable image that can be drawn onto and modified at runtime."
 local Vector2 = require("@Vector2")
 local _Color3 = require("@Color3")
 local _Enum = require("@EnumMap")
@@ -16,9 +16,6 @@ local propTable = {
 return {
 	class = "EditableImage",
 
-	-- description: "Initializes the EditableImage instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -58,7 +55,7 @@ return {
 			self._texture = nil
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a circle in the image."
 		-- args: "center: Vector2, radius: number, color: any, transparency: number, combineType: string"
 		function instance:DrawCircle(center: Vector2, radius: number, color: any, transparency: number, combineType)
 			local a = math.clamp(math.floor(255 * (1 - (transparency or 0))), 0, 255)
@@ -67,7 +64,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a rectangle in the image."
 		-- args: "position: Vector2, size: Vector2, color: any, transparency: number, combineType: string"
 		function instance:DrawRectangle(position: Vector2, size: Vector2, color: any, transparency: number, combineType)
 			local a = math.clamp(math.floor(255 * (1 - (transparency or 0))), 0, 255)
@@ -82,7 +79,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a line in the image."
 		-- args: "p1: Vector2, p2: Vector2, color: any, transparency: number, combineType: string"
 		function instance:DrawLine(p1: Vector2, p2: Vector2, color: any, transparency: number, combineType)
 			local a = math.clamp(math.floor(255 * (1 - (transparency or 0))), 0, 255)
@@ -91,7 +88,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws an image in the editable image."
 		-- args: "position: Vector2, imageInstance: any, combineType: string"
 		function instance:DrawImage(position: Vector2, imageInstance: any, combineType)
 			if imageInstance and imageInstance._image then
@@ -112,7 +109,7 @@ return {
 			end
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a transformed image in the editable image."
 		-- args: "position: Vector2, scale: Vector2, rotation: number, imageInstance: any, options: any"
 		function instance:DrawImageTransformed(
 			position: Vector2,
@@ -142,7 +139,7 @@ return {
 			end
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a projected image in the editable image."
 		-- args: "mesh: any, projection: any, brushConfig: any"
 		function instance:DrawImageProjected(mesh: any, projection: any, brushConfig: any)
 			if mesh and mesh.class == "EditableMesh" and projection and brushConfig then
@@ -177,7 +174,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Reads pixels buffer."
+		-- description: "Returns pixels buffer"
 		-- args: "position: Vector2, size: Vector2"
 		-- returns: "buffer"
 		function instance:ReadPixelsBuffer(position: Vector2, size: Vector2): buffer
@@ -203,7 +200,7 @@ return {
 			return b
 		end
 
-		-- description: "Sharpens."
+		-- description: "Sharpens the image"
 		function instance:Sharpen()
 			rlib.SetTextureFilter(instance._texture, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
 			rlib.SetTextureWrap(instance._texture, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
@@ -217,7 +214,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Clears."
+		-- description: "Clears the image."
 		-- args: "color: any, transparency: number"
 		function instance:Clear(color: any, transparency: number)
 			transparency = transparency or 0
@@ -231,13 +228,13 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Fills."
+		-- description: "Fills the image with a color and transparency."
 		-- args: "color: any, transparency: number"
 		function instance:Fill(color: any, transparency: number)
 			self:Clear(color, transparency)
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws an outlined rectangle in the image."
 		-- args: "position: Vector2, size: Vector2, color: any, transparency: number, thickness: number"
 		function instance:DrawRectangleOutline(
 			position: Vector2,
@@ -277,26 +274,26 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Rotates."
+		-- description: "Rotates the image."
 		-- args: "angle: number"
 		function instance:Rotate(angle: number)
 			rlib.ImageRotate(self._image, angle)
 			self._dirty = true
 		end
 
-		-- description: "Flips horizontal."
+		-- description: "Flips the image horizontally."
 		function instance:FlipHorizontal()
 			rlib.ImageFlipHorizontal(self._image)
 			self._dirty = true
 		end
 
-		-- description: "Flips vertical."
+		-- description: "Flips the image vertically."
 		function instance:FlipVertical()
 			rlib.ImageFlipVertical(self._image)
 			self._dirty = true
 		end
 
-		-- description: "Flips."
+		-- description: "Flips the image."
 		-- args: "horizontal: boolean, vertical: boolean"
 		function instance:Flip(horizontal: boolean, vertical: boolean)
 			if horizontal then
@@ -307,7 +304,7 @@ return {
 			end
 		end
 
-		-- description: "Crops."
+		-- description: "Crops the image."
 		-- args: "position: Vector2, size: Vector2"
 		function instance:Crop(position: Vector2, size: Vector2)
 			local rec = RectangleStruct:new({
@@ -320,7 +317,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Resizes."
+		-- description: "Resizes the image to a new Vector2."
 		-- args: "newSize: Vector2"
 		function instance:Resize(newSize: Vector2)
 			rlib.ImageResize(self._image, newSize.X, newSize.Y)
@@ -328,7 +325,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Gets the PixelColor."
+		-- description: "Gets the Pixel Color at the inputted Position."
 		-- args: "position: Vector2"
 		-- returns: "any"
 		function instance:GetPixelColor(position: Vector2): any
@@ -347,7 +344,7 @@ return {
 			return _Color3.new(1, 1, 1)
 		end
 
-		-- description: "Sets the PixelColor."
+		-- description: "Sets the Pixel Color."
 		-- args: "position: Vector2, color: any, transparency: number"
 		function instance:SetPixelColor(position: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
@@ -358,7 +355,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Blurs."
+		-- description: "Blurs the image."
 		-- args: "strength: number"
 		function instance:Blur(strength: number)
 			strength = math.max(1, math.floor(strength or 1))
@@ -392,7 +389,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a gradient."
 		-- args: "fromPos: Vector2, toPos: Vector2, color1: any, color2: any, transparency: number"
 		function instance:DrawGradient(fromPos: Vector2, toPos: Vector2, color1: any, color2: any, transparency: number)
 			transparency = transparency or 0
@@ -421,7 +418,7 @@ return {
 			return self.Size.X * self.Size.Y
 		end
 
-		-- description: "Ises dirty."
+		-- description: "Is it dirty?"
 		function instance:IsDirty()
 			return self._dirty
 		end
@@ -436,7 +433,7 @@ return {
 			self._dirty = false
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a pixel at the inputted position with color argument and an optional transparency."
 		-- args: "position: Vector2, color: any, transparency: number"
 		function instance:DrawPixel(position: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
@@ -446,7 +443,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a line in the image, with more customization options such as thickness."
 		-- args: "p1: Vector2, p2: Vector2, thickness: number, color: any, transparency: number"
 		function instance:DrawLineEx(p1: Vector2, p2: Vector2, thickness: number, color: any, transparency: number)
 			transparency = transparency or 0
@@ -456,7 +453,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws circle lines in the image."
 		-- args: "center: Vector2, radius: number, color: any, transparency: number"
 		function instance:DrawCircleLines(center: Vector2, radius: number, color: any, transparency: number)
 			transparency = transparency or 0
@@ -466,7 +463,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a rectangle in the image."
 		-- args: "position: Vector2, size: Vector2, color: any, transparency: number"
 		function instance:DrawRectangleV(position: Vector2, size: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
@@ -476,7 +473,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws rectangle lines in the image."
 		-- args: "position: Vector2, size: Vector2, thickness: number, color: any, transparency: number"
 		function instance:DrawRectangleLines(
 			position: Vector2,
@@ -494,7 +491,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a triangle in the image."
 		-- args: "v1: Vector2, v2: Vector2, v3: Vector2, color: any, transparency: number"
 		function instance:DrawTriangle(v1: Vector2, v2: Vector2, v3: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
@@ -504,7 +501,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws a triangle in the image, with more color options."
 		-- args: "v1: Vector2, v2: Vector2, v3: Vector2, color1: any, color2: any, color3: any, transparency: number"
 		function instance:DrawTriangleEx(
 			v1: Vector2,
@@ -524,7 +521,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws triangle lines in the image."
 		-- args: "v1: Vector2, v2: Vector2, v3: Vector2, color: any, transparency: number"
 		function instance:DrawTriangleLines(v1: Vector2, v2: Vector2, v3: Vector2, color: any, transparency: number)
 			transparency = transparency or 0
@@ -534,7 +531,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws text in the image."
 		-- args: "text: string, position: Vector2, fontSize: number, color: any, transparency: number"
 		function instance:DrawText(text: string, position: Vector2, fontSize: number, color: any, transparency: number)
 			transparency = transparency or 0
@@ -544,7 +541,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Draws the visual representation."
+		-- description: "Draws text with more customization options."
 		-- args: "font: any, text: string, position: Vector2, fontSize: number, spacing: number, color: any, transparency: number"
 		function instance:DrawTextEx(
 			font: any,
@@ -562,7 +559,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Colors replace."
+		-- description: "Replaces the old color with a new color."
 		-- args: "oldColor: any, newColor: any"
 		function instance:ColorReplace(oldColor: any, newColor: any)
 			local c1 = ColorStruct:new({ r = oldColor.R * 255, g = oldColor.G * 255, b = oldColor.B * 255, a = 255 })
@@ -571,7 +568,7 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Alphas mask."
+		-- description: "Alpha masks an image."
 		-- args: "alphaMaskImage: any"
 		function instance:AlphaMask(alphaMaskImage: any)
 			if alphaMaskImage and alphaMaskImage._image then
@@ -580,14 +577,14 @@ return {
 			end
 		end
 
-		-- description: "Alphas crop."
+		-- description: "Alpha crops with a threshold."
 		-- args: "alphaThreshold: number"
 		function instance:AlphaCrop(alphaThreshold: number)
 			rlib.ImageAlphaCrop(self._image, alphaThreshold)
 			self._dirty = true
 		end
 
-		-- description: "Alphas clear."
+		-- description: "Alpha clears."
 		-- args: "color: any, transparency: number"
 		function instance:AlphaClear(color: any, transparency: number)
 			transparency = transparency or 0
@@ -597,20 +594,20 @@ return {
 			self._dirty = true
 		end
 
-		-- description: "Alphas premultiply."
+		-- description: "Alpha premultiplies the image."
 		function instance:AlphaPremultiply()
 			rlib.ImageAlphaPremultiply(self._image)
 			self._dirty = true
 		end
 
-		-- description: "Dithers."
+		-- description: "Dithers the image."
 		-- args: "rBpp: number, gBpp: number, bBpp: number, aBpp: number"
 		function instance:Dither(rBpp: number, gBpp: number, bBpp: number, aBpp: number)
 			rlib.ImageDither(self._image, rBpp, gBpp, bBpp, aBpp)
 			self._dirty = true
 		end
 
-		-- description: "Gets the ImageAlphaBorder."
+		-- description: "Gets the Image Alpha Border."
 		function instance:GetImageAlphaBorder()
 			return rlib.GetImageAlphaBorder(self._image)
 		end
@@ -618,7 +615,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the EditableImage class."
 	inherit = function()
 		return propTable
 	end,

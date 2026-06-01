@@ -1,4 +1,4 @@
--- description: "Represents a LinearVelocity in the environment."
+-- description: "Forces an object to travel in a straight line at a set speed and direction."
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
 local Enum = require("@EnumMap")
@@ -29,16 +29,11 @@ local propTable = {
 return {
 	class = "LinearVelocity",
 
-	-- description: "Initializes the LinearVelocity instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
 		local PhysicsService = game:GetService("UnifiedPhysicsService")
 
-		-- description: "Shoulds apply physics."
-		-- args: "part: any"
 		-- returns: "boolean"
 		local function shouldApplyPhysics(part)
 			local replicator = game:GetService("ReplicatorService")
@@ -63,9 +58,6 @@ return {
 			return players.LocalPlayer ~= nil and players.LocalPlayer == part.NetworkOwner
 		end
 
-		-- description: "Gets the AttachmentPart."
-		-- args: "attachment: any"
-		-- returns: "any"
 		local function getAttachmentPart(attachment)
 			if attachment and attachment:IsA("Attachment") then
 				local parent = attachment.Parent
@@ -76,7 +68,6 @@ return {
 			return nil
 		end
 
-		-- description: "Resolves part."
 		local function resolvePart()
 			local part = getAttachmentPart(instance.Attachment0)
 			if part then
@@ -91,9 +82,6 @@ return {
 			return nil
 		end
 
-		-- description: "Gets the ReferenceCFrame."
-		-- args: "part: any"
-		-- returns: "CFrame"
 		local function getReferenceCFrame(part)
 			local relativeTo = instance.RelativeTo
 			if relativeTo == Enum.ActuatorRelativeTo.Attachment0 then
@@ -107,8 +95,6 @@ return {
 			return nil
 		end
 
-		-- description: "Vectors to world."
-		-- args: "vectorValue: number, part: any"
 		local function vectorToWorld(vectorValue, part)
 			local reference = getReferenceCFrame(part)
 			if reference and reference.VectorToWorldSpace then
@@ -117,8 +103,6 @@ return {
 			return vectorValue
 		end
 
-		-- description: "Vectors to relative."
-		-- args: "vectorValue: number, part: any"
 		local function vectorToRelative(vectorValue, part)
 			local reference = getReferenceCFrame(part)
 			if reference and reference.VectorToObjectSpace then
@@ -127,8 +111,6 @@ return {
 			return vectorValue
 		end
 
-		-- description: "Orthonormalizes."
-		-- args: "primary: number, secondary: number"
 		local function orthonormalize(primary, secondary)
 			local p = primary:IsZero() and Vector3.new(1, 0, 0) or primary:Unit()
 			local s = secondary - p * secondary:Dot(p)
@@ -141,16 +123,12 @@ return {
 			return p, s:Unit()
 		end
 
-		-- description: "Resolves plane axes."
-		-- args: "part: any"
 		local function resolvePlaneAxes(part)
 			local primary = vectorToWorld(instance.PrimaryTangentAxis, part)
 			local secondary = vectorToWorld(instance.SecondaryTangentAxis, part)
 			return orthonormalize(primary, secondary)
 		end
 
-		-- description: "Resolves target velocity."
-		-- args: "part: any"
 		local function resolveTargetVelocity(part)
 			if instance.VelocityConstraintMode == Enum.VelocityConstraintMode.Line then
 				local direction = vectorToWorld(instance.LineDirection, part)
@@ -166,8 +144,6 @@ return {
 			return vectorToWorld(instance.VectorVelocity, part)
 		end
 
-		-- description: "Clamps vector magnitude."
-		-- args: "vectorValue: number, maxMagnitude: any"
 		local function clampVectorMagnitude(vectorValue, maxMagnitude)
 			if maxMagnitude == nil or maxMagnitude == math.huge or maxMagnitude <= 0 then
 				return vectorValue
@@ -179,12 +155,11 @@ return {
 			return vectorValue
 		end
 
-		-- description: "Clamps per axis."
-		-- args: "forceValue: number, part: any"
 		local function clampPerAxis(forceValue, part)
 			if instance.VelocityConstraintMode == Enum.VelocityConstraintMode.Plane then
 				local primary, secondary = resolvePlaneAxes(part)
-				local primaryForce = math.clamp(forceValue:Dot(primary), -instance.MaxPlanarAxesForce.X, instance.MaxPlanarAxesForce.X)
+				local primaryForce =
+					math.clamp(forceValue:Dot(primary), -instance.MaxPlanarAxesForce.X, instance.MaxPlanarAxesForce.X)
 				local secondaryForce =
 					math.clamp(forceValue:Dot(secondary), -instance.MaxPlanarAxesForce.Y, instance.MaxPlanarAxesForce.Y)
 				return primary * primaryForce + secondary * secondaryForce
@@ -249,8 +224,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the LinearVelocity class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

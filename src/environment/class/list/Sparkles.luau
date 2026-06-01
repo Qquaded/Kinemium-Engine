@@ -1,4 +1,4 @@
--- description: "Represents a Sparkles in the environment."
+-- description: "Emits sparkles in 3D space."
 local Color3 = require("@Color3")
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
@@ -11,8 +11,6 @@ local ColorSequenceKeypoint = require("@ColorSequenceKeypoint")
 local Instance = require("@Instance")
 local ParticleEmitter = require("./ParticleEmitter")
 
--- description: "Nses."
--- args: "...: any"
 local function ns(...)
 	local kps = {}
 	local args = { ... }
@@ -22,8 +20,6 @@ local function ns(...)
 	return NumberSequence.new(kps)
 end
 
--- description: "Cses."
--- args: "...: any"
 local function cs(...)
 	local kps = {}
 	local args = { ... }
@@ -47,9 +43,6 @@ local propTable = {
 return {
 	class = "Sparkles",
 
-	-- description: "Initializes the Sparkles instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
@@ -73,7 +66,6 @@ return {
 		trailEmitter.Parent = instance.Parent
 		ParticleEmitter.callback(trailEmitter, renderer, game)
 
-		-- description: "Updates core."
 		local function updateCore()
 			local r = math.max(0, instance.Radius or 3)
 			local ts = math.max(0.001, instance.TimeScale or 1)
@@ -100,7 +92,6 @@ return {
 			coreEmitter.Acceleration = Vector3.new(0, inten * 0.8, 0)
 		end
 
-		-- description: "Updates glint."
 		local function updateGlint()
 			local r = math.max(0, instance.Radius or 3)
 			local ts = math.max(0.001, instance.TimeScale or 1)
@@ -127,7 +118,6 @@ return {
 			glintEmitter.Acceleration = Vector3.new(0, inten * 0.3, 0)
 		end
 
-		-- description: "Updates dust."
 		local function updateDust()
 			local r = math.max(0, instance.Radius or 3)
 			local ts = math.max(0.001, instance.TimeScale or 1)
@@ -152,7 +142,6 @@ return {
 			dustEmitter.Acceleration = Vector3.new(0, inten * 0.15, 0)
 		end
 
-		-- description: "Updates trail."
 		local function updateTrail()
 			local r = math.max(0, instance.Radius or 3)
 			local ts = math.max(0.001, instance.TimeScale or 1)
@@ -208,8 +197,6 @@ return {
 		return instance
 	end,
 
-	-- description: "Inherits the properties of the Sparkles class."
-	-- args: "tble: table"
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

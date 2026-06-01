@@ -1,20 +1,18 @@
--- description: "Represents a BindableFunction in the environment."
+-- description: "Allows one script to invoke a function in another script and receive a return value."
 local propTable = {
 	OnInvoke = nil,
 }
 
 return {
 	class = "BindableFunction",
-	-- description: "Initializes the BindableFunction instance."
-	-- args: "instance: table, renderer: number, game: table"
-	-- returns: "table"
 	callback = function(instance, renderer, game)
 		instance:SetProperties(propTable)
 
 		instance.Name = "BindableFunction"
 
-		-- description: "Invokes."
+		-- description: "Invokes the function, and returns a value."
 		-- args: "...: any"
+		-- returns: "any"
 		function instance:Invoke(...)
 			if type(instance.OnInvoke) == "function" then
 				return instance.OnInvoke(...)
@@ -25,8 +23,7 @@ return {
 
 		return instance
 	end,
-	-- description: "Inherits the properties of the BindableFunction class."
-	-- args: "tble: table"
+
 	inherit = function(tble)
 		for prop, val in pairs(propTable) do
 			tble[prop] = val

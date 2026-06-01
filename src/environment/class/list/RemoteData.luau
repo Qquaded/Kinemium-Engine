@@ -1,11 +1,8 @@
--- description: "Represents a RemoteData in the environment."
+-- description: "Has a Data table property that can be changed by the client or the server, and replicate."
 local signal = require("@Kinemium.signal")
 
 return {
 	class = "RemoteData",
-	-- description: "Initializes the RemoteData instance."
-	-- args: "instance: table"
-	-- returns: "table"
 	callback = function(instance)
 		local dataChanged = signal.new()
 
