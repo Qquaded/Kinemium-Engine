@@ -638,6 +638,16 @@ local function setGravity(physicsSystem, v, wind)
 	lib.JPH_PhysicsSystem_SetGravity(physicsSystem, gravity)
 end
 
+local function writeVec3(ptr, vec)
+	ptr:writef32(0, vec.X)
+	ptr:writef32(4, vec.Y)
+	ptr:writef32(8, vec.Z)
+end
+
+local function readVec3(ptr)
+	return Vector3.new(ptr:readf32(0), ptr:readf32(4), ptr:readf32(8))
+end
+
 KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 	task.spawn(function()
 		repeat
@@ -1298,6 +1308,105 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 					return
 				end
 				lib.JPH_BodyInterface_RemoveAndDestroyBody(bodyInterface, bodyID)
+			end,
+
+			CreateHumanoidController = function(data)
+				if not lib.JPH_CharacterVirtual_Create or not lib.JPH_CharacterVirtual_Update then
+					return nil
+				end
+
+				local size = data.Size or Vector3.new(2, 2.5, 1.25)
+
+				local halfSize = ffi.alloc(structs.JPH_Vec3:size(), structs.JPH_Vec3:alignment())
+				halfSize:writef32(0, size.X * 0.5)
+				halfSize:writef32(4, size.Y * 0.5)
+				halfSize:writef32(8, size.Z * 0.5)
+
+				local shape = lib.JPH_BoxShape_Create(halfSize, 0.05)
+				if shape == ffi.null then
+					return nil
+				end
+
+				local up = buffer.create(structs.JPH_Vec3:size())
+				buffer.writef32(up, 0, 0)
+				buffer.writef32(up, 4, 1)
+				buffer.writef32(up, 8, 0)
+
+				local base = structs.JPH_CharacterBaseSettings:new({
+					maxSlopeAngle = math.rad(data.MaxSlopeAngle or 45),
+					up = up,
+					shape = shape,
+				})
+
+				local settings = structs.JPH_CharacterVirtualSettings:new({
+					base = base,
+					mass = data.Mass or 80,
+					maxStrength = data.MaxStrength or 4000,
+					characterPadding = data.Padding or 0.02,
+					maxNumHits = data.MaxNumHits or 32,
+					penetrationRecoverySpeed = data.PenetrationRecoverySpeed or 1,
+				})
+
+				lib.JPH_CharacterVirtualSettings_Init(settings)
+
+				local pos = data.Position or Vector3.zero
+
+				local position = ffi.alloc(structs.JPH_RVec3:size(), structs.JPH_RVec3:alignment())
+				position:writef64(0, pos.X)
+				position:writef64(8, pos.Y)
+				position:writef64(16, pos.Z)
+
+				local rotation = ffi.alloc(structs.JPH_Quat:size(), structs.JPH_Quat:alignment())
+				rotation:writef32(0, 0)
+				rotation:writef32(4, 0)
+				rotation:writef32(8, 0)
+				rotation:writef32(12, 1)
+
+				local character = lib.JPH_CharacterVirtual_Create(settings, position, rotation, physicsSystem)
+				return character
+			end,
+
+			DestroyHumanoidController = function(controller)
+				if not controller or not controller.character then
+					return
+				end
+				lib.JPH_CharacterBase_Destroy(controller.character)
+				controller.character = nil
+			end,
+
+			StepHumanoidController = function(controller, velocity, gravity, dt)
+				if not controller or not controller.character then
+					return nil
+				end
+
+				local jVelocity = ffi.alloc(structs.JPH_Vec3:size(), structs.JPH_Vec3:alignment())
+				writeVec3(jVelocity, velocity or Vector3.zero)
+				lib.JPH_CharacterVirtual_SetLinearVelocity(controller.character, jVelocity)
+
+				local jGravity = ffi.alloc(structs.JPH_Vec3:size(), structs.JPH_Vec3:alignment())
+				writeVec3(jGravity, gravity or Vector3.new(0, -9.81, 0))
+				lib.JPH_CharacterVirtual_Update(controller.character, dt, jGravity, ffi.null, ffi.null, ffi.null)
+
+				local position = ffi.alloc(structs.JPH_RVec3:size(), structs.JPH_RVec3:alignment())
+				local outVelocity = ffi.alloc(structs.JPH_Vec3:size(), structs.JPH_Vec3:alignment())
+				lib.JPH_CharacterVirtual_GetPosition(controller.character, position)
+				lib.JPH_CharacterVirtual_GetLinearVelocity(controller.character, outVelocity)
+
+				local isSupported = false
+				if lib.JPH_CharacterBase_IsSupported then
+					isSupported = lib.JPH_CharacterBase_IsSupported(controller.character) ~= 0
+				end
+				local groundBodyId = nil
+				if lib.JPH_CharacterBase_GetGroundBodyId then
+					groundBodyId = lib.JPH_CharacterBase_GetGroundBodyId(controller.character)
+				end
+
+				return {
+					position = Vector3.new(position:readf64(0), position:readf64(8), position:readf64(16)),
+					velocity = readVec3(outVelocity),
+					isGrounded = isSupported,
+					groundInstance = groundBodyId and inverseMap[groundBodyId] or nil,
+				}
 			end,
 
 			ApplyForceToRawBody = function(bodyID, force)
@@ -2116,6 +2225,12 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 				game.Workspace.PhysicsEngine == Enum.PhysicsEngine.Jolt
 				or game.Workspace.PhysicsEngine == Enum.PhysicsEngine.Default
 			then
+				-- Only simulate physics when the game is running (not in editor edit mode)
+				local RunService = game:GetService("RunService")
+				if not RunService:IsRunning() then
+					return
+				end
+
 				-- Only re-set gravity when it actually changes to avoid FFI overhead.
 				local newGravity = game.Workspace.Gravity
 				local newWind = game.Workspace.GlobalWind

@@ -16,7 +16,7 @@ until ishared.ReactPointer
 
 repeat
 	task.wait()
-until ishared.EscapeMenu_Signal
+until ishared.CoreGuiSignal
 
 export type SignalObject = typeof(Signal.new())
 

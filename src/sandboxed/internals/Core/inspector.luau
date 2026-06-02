@@ -139,6 +139,21 @@ local function numTb(col, onSubmit)
 end
 
 local IMAGE_EXTENSIONS = { ".png", ".jpg", ".jpeg", ".bmp", ".tga" }
+local AUDIO_EXTENSIONS = { ".mp3", ".wav", ".ogg", ".flac", ".xm", ".mod" }
+
+local function isAudioPath(s)
+	if type(s) ~= "string" or #s < 5 then
+		return false
+	end
+	local ls = s:lower()
+	for _, ext in ipairs(AUDIO_EXTENSIONS) do
+		if ls:sub(-#ext) == ext then
+			return true
+		end
+	end
+	return false
+end
+
 local function isImagePath(s)
 	if type(s) ~= "string" or #s < 5 then
 		return false
@@ -248,16 +263,18 @@ datatypes["string"] = {
 		})
 		comps.tb:setText(tostring(propValue))
 
+		local isSoundProp = propName == "SoundId" and selected.ClassName == "Sound"
+
 		comps.explorer = gui.imageButton({
 			image = getPathIcon(),
 			imageScale = 0.6,
 			backgroundColor = Theme.SecondaryBackgroundColor,
 			onClick = function()
 				local FileDialogService = game:GetService("FileDialogService")
-				local path = FileDialogService.RequestFile({
-					{ name = "Images", extensions = { "png", "jpg", "jpeg", "bmp" } },
-					{ name = "All Files", extensions = { "*" } },
-				})
+				local exts = isSoundProp
+						and { { name = "Audio", extensions = { "mp3", "wav", "ogg", "flac" } }, { name = "All Files", extensions = { "*" } } }
+					or { { name = "Images", extensions = { "png", "jpg", "jpeg", "bmp" } }, { name = "All Files", extensions = { "*" } } }
+				local path = FileDialogService.RequestFile(exts)
 				if path then
 					selected[propName] = path
 					comps.tb:setText(path)
@@ -265,9 +282,17 @@ datatypes["string"] = {
 			end,
 		})
 
+		if isSoundProp then
+			comps.selected = selected
+			comps.volumeDisplay = selected.Volume
+		end
+
 		return comps
 	end,
 	cellHeight = function(comp, propName, propValue)
+		if isAudioPath(propValue) and comp and comp.selected then
+			return CELL_HEIGHT + 80
+		end
 		if isImagePath(propValue) then
 			return CELL_HEIGHT + 180
 		end
@@ -280,7 +305,114 @@ datatypes["string"] = {
 		local mainH = CELL_HEIGHT
 		local mainY = ey
 
-		if isImagePath(propValue) then
+		if isAudioPath(propValue) and comps.selected then
+			local previewH = 75
+			local previewY = ey + 5
+			mainY = ey + previewH + 5
+
+			rl.DrawRectangle(ex, previewY, ew, previewH, Theme.SecondaryBackgroundColor:ToRaylib(0))
+
+			local sel = comps.selected
+			local mousePos = rl.GetMousePosition()
+
+			-- Play/Pause button
+			local btnSize = 26
+			local btnX = ex + 8
+			local btnY = previewY + 6
+			local isPlaying = sel.Playing
+			local playBtnRect = { x = btnX, y = btnY, width = btnSize, height = btnSize }
+			rl.DrawRectangleRounded(
+				structs.Rectangle:new(playBtnRect),
+				0.3, 8,
+				Theme.BackgroundColor:ToRaylib(0)
+			)
+
+			local btnLabel = isPlaying and "||" or ">"
+			rl.DrawTextEx(
+				vend, btnLabel,
+				vector.create(btnX + (btnSize - 8) / 2, btnY + (btnSize - 14) / 2),
+				14, 1, Theme.TextColor:ToRaylib(0)
+			)
+
+			if
+				rl.IsMouseButtonPressed(0) == 1
+				and mousePos.x >= playBtnRect.x and mousePos.x <= playBtnRect.x + playBtnRect.width
+				and mousePos.y >= playBtnRect.y and mousePos.y <= playBtnRect.y + playBtnRect.height
+			then
+				if isPlaying then
+					sel:Pause()
+				elseif sel.IsLoaded then
+					sel:Play()
+				end
+			end
+
+			-- Volume label + slider
+			local lblX = btnX + btnSize + 8
+			local lblY = btnY + 2
+			rl.DrawTextEx(vend, "Volume", vector.create(lblX, lblY), 11, 1, Theme.SecondaryTextColor:ToRaylib(0))
+
+			local sliderY = lblY + 14
+			local sliderH = 14
+			local sliderW = math.max(40, ew - (lblX - ex) - 8)
+			local sliderX = lblX
+			local trackH = 4
+			local trackY = sliderY + (sliderH - trackH) / 2
+
+			-- Slider interaction (sets target value directly)
+			local isDragging = rl.IsMouseButtonDown(0) == 1
+				and mousePos.x >= sliderX and mousePos.x <= sliderX + sliderW
+				and mousePos.y >= sliderY and mousePos.y <= sliderY + sliderH
+
+			if isDragging then
+				comps.volumeDisplay = math.clamp((mousePos.x - sliderX) / sliderW, 0, 1)
+				sel.Volume = comps.volumeDisplay
+			end
+
+			-- Lerp display value toward target when not dragging
+			local dt = rl.GetFrameTime()
+			comps.volumeDisplay = comps.volumeDisplay + (sel.Volume - comps.volumeDisplay) * math.min(dt * 8, 1)
+
+			-- Track background
+			rl.DrawRectangleRounded(
+				structs.Rectangle:new({ x = sliderX, y = trackY, width = sliderW, height = trackH }),
+				0.5, 4,
+				Color3.new(0.15, 0.15, 0.15):ToRaylib(0)
+			)
+
+			-- Fill
+			local fillW = sliderW * comps.volumeDisplay
+			if fillW > 0 then
+				rl.DrawRectangleRounded(
+					structs.Rectangle:new({ x = sliderX, y = trackY, width = fillW, height = trackH }),
+					0.5, 4,
+					Color3.new(0.02, 0.5, 1):ToRaylib(0)
+				)
+			end
+
+			-- Handle
+			local handleX = sliderX + fillW
+			local handleY = sliderY + sliderH / 2
+			local handleR = 6
+			rl.DrawCircleV(vector.create(handleX, handleY), handleR, Color3.new(1, 1, 1):ToRaylib(0))
+
+			-- File name
+			local fileName = propValue:match("[^/\\]+$") or propValue
+			rl.DrawTextEx(
+				vend, fileName,
+				vector.create(ex + 8, previewY + previewH - 38),
+				12, 1, Theme.TextColor:ToRaylib(0)
+			)
+
+			-- Status
+			local status = sel.IsLoaded
+					and (sel.Playing and "Playing" or "Stopped")
+				or "Not Loaded"
+			rl.DrawTextEx(
+				vend, status,
+				vector.create(ex + 8, previewY + previewH - 22),
+				11, 1, Theme.SecondaryTextColor:ToRaylib(0)
+			)
+		elseif isImagePath(propValue) then
 			local previewH = 170
 			local previewY = ey + 5
 			mainY = ey + 175

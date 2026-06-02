@@ -42,6 +42,8 @@ networkController.Parent = CharacterModel
 
 local humanoid = Instance.new("Humanoid")
 humanoid.DisplayName = player.Name
+humanoid.WalkSpeed = player.WalkSpeed
+humanoid.JumpPower = player.JumpPower
 humanoid.JumpQueueWindow = 0.05
 humanoid.Parent = CharacterModel
 

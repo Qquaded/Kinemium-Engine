@@ -38,6 +38,8 @@ return {
 	callback = function(instance, renderer)
 		instance:SetProperties(propTable)
 
+		raylib.lib.InitAudioDevice()
+
 		local function updateVolume()
 			if not instance.IsLoaded then
 				return
@@ -77,7 +79,7 @@ return {
 				return
 			end
 
-			local soundPath = zembed.AssetPath(instance.SoundId)
+			local soundPath = instance.SoundId
 			if instance.IsStream then
 				instance._raylibSound = raylib.lib.LoadMusicStream(soundPath)
 				-- MusicStreams are pointer/objects, but in FFI they return valid if loaded
@@ -123,6 +125,8 @@ return {
 		-- description: "Plays the audio with an optional fade duration."
 		-- args: "self: table, fadeDuration: number"
 		instance.Play = function(self, fadeDuration)
+			print("Play called, IsLoaded:", self.IsLoaded, "Playing:", self.Playing)
+			print("_raylibSound:", self._raylibSound)
 			if self.IsLoaded and not self.Playing then
 				fadeTo(1.0, fadeDuration)
 				if self.IsStream then

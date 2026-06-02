@@ -46,7 +46,7 @@ return function(objects, data)
 		local trackY = r.y + (r.height - trackHeight) / 2
 		local trackRect = rect.new(r.x, trackY, r.width, trackHeight)
 
-		if mouseDown and (config.dragging or rect.MouseIsInRect(r)) then
+		if mouseDown and (config.dragging or rect.MouseIsInRect(r)) and not _G.__aereon_blockInput then
 			config.dragging = true
 			local normalizedX = math.clamp((mousePos.x - r.x) / r.width, 0, 1)
 			config.value = config.min + normalizedX * (config.max - config.min)

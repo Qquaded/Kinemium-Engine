@@ -44,6 +44,8 @@ if game.MultiplayerMode == Enum.MultiplayerMode.SinglePlayer and not RunService:
 
 	local humanoid = Instance.new("Humanoid")
 	humanoid.DisplayName = player.Name
+	humanoid.WalkSpeed = player.WalkSpeed
+	humanoid.JumpPower = player.JumpPower
 	humanoid.JumpQueueWindow = 0.05
 	humanoid.Parent = CharacterModel
 

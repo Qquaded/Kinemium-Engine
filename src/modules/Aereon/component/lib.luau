@@ -2,6 +2,7 @@ local raylib = require("@raylib")
 local _structs = raylib.structs
 local objects = {}
 local StyleSheet = require("./stylesheet")
+local MDXFormatter = require("./mdxFormatter")
 
 local _defaultFont = raylib.lib.GetFontDefault()
 
@@ -182,6 +183,7 @@ end
 -- Styling API
 comps.immediate = require("./objects/immediate")
 comps.stylesheet = StyleSheet
+comps.mdxFormatter = MDXFormatter
 
 local activeToasts = 0
 

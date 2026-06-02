@@ -206,8 +206,6 @@ local function create_window(title, frame)
 				name = "File",
 				render = function(windowData)
 					local menuRect = aRect.new(windowData.x, windowData.y + 60, 200, 300)
-
-					fileMenu:show()
 					fileMenu.set("backgroundColor", Theme.aereon.window.BackgroundColor)
 					fileMenu.set("textColor", Theme.TextColor)
 					fileMenu.set("obj_rect", menuRect)
@@ -649,6 +647,28 @@ end
 
 fileMenu:hide()
 
+local fileMenuVisible = false
+local wasFileMenuShowing = false
+
+-- tab change handler for file menu toggle
+window.tabChanged = function(self, index, tab)
+	if tab and tab.name == "File" then
+		if fileMenuVisible then
+			fileMenu:hide()
+			fileMenuVisible = false
+			propback:SetTab(nil)
+		else
+			fileMenu:show()
+			fileMenuVisible = true
+		end
+	else
+		if fileMenuVisible then
+			fileMenu:hide()
+			fileMenuVisible = false
+		end
+	end
+end
+
 -- propback:Minimize()
 
 RunService.RenderStepped:Connect(function(a0: number)
@@ -899,7 +919,34 @@ propback.stepped = function(propback)
 		end
 
 		if renderFileMenu then
+			-- Close file menu on escape key
+			if rl.IsKeyPressed(256) == 1 then
+				fileMenu:hide()
+				fileMenuVisible = false
+				renderFileMenu = false
+				-- Deselect the File tab
+				propback:SetTab(nil)
+			end
+
+			-- Block input for buttons under the file menu
+			local menuObjRect = fileMenu.get("obj_rect")
+			if menuObjRect and arectlib.MouseIsInRect(menuObjRect) then
+				_G.__aereon_blockInput = true
+			end
+
 			fileMenu.render(dt)
+
+			-- Click-outside-to-close
+			if fileMenu.get("visible") and rl.IsMouseButtonReleased(0) == 1 then
+				if not (menuObjRect and arectlib.MouseIsInRect(menuObjRect)) then
+					fileMenu:hide()
+					fileMenuVisible = false
+					renderFileMenu = false
+					propback:SetTab(nil)
+				end
+			end
+
+			_G.__aereon_blockInput = false
 			renderFileMenu = false
 		end
 	end

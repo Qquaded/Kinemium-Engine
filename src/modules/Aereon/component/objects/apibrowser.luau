@@ -2,6 +2,7 @@ local raylib = require("@raylib")
 local rect = require("@arect")
 local color3 = require("@Color3")
 local aereon = require("@Aereon")
+local MDXFormatter = require("../mdxFormatter")
 local structs = raylib.structs
 
 return function(objects, data)
@@ -59,6 +60,9 @@ return function(objects, data)
 		headerFontSpacing = 0.6,
 		labelFontSize = 11,
 		labelFontSpacing = 0.5,
+		mdxComponents = data.mdxComponents or data.documentationComponents or {},
+		mdxStyles = data.mdxStyles or data.documentationStyles or {},
+		mdxTheme = data.mdxTheme or data.documentationTheme or {},
 
 		-- Data structure
 		categories = data.categories or {
@@ -236,6 +240,31 @@ return function(objects, data)
 			end
 		end
 	end
+
+	local function createDocumentRenderer()
+		local theme = {
+			textColor = config.textColor,
+			mutedTextColor = config.subtextColor,
+			headingColor = config.textColor,
+			accentColor = config.accentColor,
+			panelColor = config.panelColor,
+			headerColor = config.headerColor,
+			borderColor = config.dividerColor,
+			codeColor = config.accentColor,
+		}
+		for key, value in pairs(config.mdxTheme) do
+			theme[key] = value
+		end
+
+		return MDXFormatter.createRenderer({
+			font = config.font,
+			components = config.mdxComponents,
+			styles = config.mdxStyles,
+			theme = theme,
+		})
+	end
+
+	local documentRenderer = createDocumentRenderer()
 
 	local function getHoverState(key, dt, isHovered)
 		if not config.hoverStates[key] then
@@ -633,54 +662,65 @@ return function(objects, data)
 			)
 			currentY = currentY + 14
 
-			drawText(
-				"Description",
-				r.x + config.padding,
-				currentY,
-				config.labelFontSize,
-				config.labelFontSpacing,
-				config.accentColor
-			)
-			currentY = currentY + 20
-
-			local descText = config.selectedItem.description
-				or (
-					"Detailed information about "
-					.. config.selectedItem.name
-					.. ". This would typically include usage examples, parameters, return values, and other relevant documentation."
+			if config.selectedItem.documentationBlocks and #config.selectedItem.documentationBlocks > 0 then
+				local docWidth = r.width - config.padding * 2
+				local docHeight = documentRenderer.render(
+					config.selectedItem.documentationBlocks,
+					r.x + config.padding,
+					currentY,
+					docWidth
 				)
-			local descBoxWidth = r.width - config.padding * 2
-			local descPX, descPY = 12, 12
-			local descLineHeight = config.fontSize + 7
-			local descTextWidth = descBoxWidth - descPX * 2
-			local descLines = wrapText(descText, descTextWidth, config.fontSize, config.fontSpacing)
-			local descTextHeight = ((#descLines - 1) * descLineHeight) + config.fontSize
-			local descBoxHeight = descTextHeight + descPY * 2
+				currentY = currentY + docHeight
+			else
+				drawText(
+					"Description",
+					r.x + config.padding,
+					currentY,
+					config.labelFontSize,
+					config.labelFontSpacing,
+					config.accentColor
+				)
+				currentY = currentY + 20
 
-			raylib.lib.DrawRectangleRounded(
-				rect:translate(rect.new(r.x + config.padding, currentY, descBoxWidth, descBoxHeight)),
-				0.10,
-				6,
-				config.panelColor:ToRaylib(0)
-			)
-			raylib.lib.DrawRectangleRounded(
-				rect:translate(rect.new(r.x + config.padding, currentY + 6, 3, descBoxHeight - 12)),
-				0.5,
-				4,
-				config.accentDim:ToRaylib(0)
-			)
+				local descText = config.selectedItem.description
+					or (
+						"Detailed information about "
+						.. config.selectedItem.name
+						.. ". This would typically include usage examples, parameters, return values, and other relevant documentation."
+					)
+				local descBoxWidth = r.width - config.padding * 2
+				local descPX, descPY = 12, 12
+				local descLineHeight = config.fontSize + 7
+				local descTextWidth = descBoxWidth - descPX * 2
+				local descLines = wrapText(descText, descTextWidth, config.fontSize, config.fontSpacing)
+				local descTextHeight = ((#descLines - 1) * descLineHeight) + config.fontSize
+				local descBoxHeight = descTextHeight + descPY * 2
 
-			drawWrappedLines(
-				descLines,
-				r.x + config.padding + descPX + 2,
-				currentY + descPY,
-				config.fontSize,
-				config.fontSpacing,
-				config.subtextColor,
-				descLineHeight
-			)
+				raylib.lib.DrawRectangleRounded(
+					rect:translate(rect.new(r.x + config.padding, currentY, descBoxWidth, descBoxHeight)),
+					0.10,
+					6,
+					config.panelColor:ToRaylib(0)
+				)
+				raylib.lib.DrawRectangleRounded(
+					rect:translate(rect.new(r.x + config.padding, currentY + 6, 3, descBoxHeight - 12)),
+					0.5,
+					4,
+					config.accentDim:ToRaylib(0)
+				)
 
-			currentY = currentY + descBoxHeight + 16
+				drawWrappedLines(
+					descLines,
+					r.x + config.padding + descPX + 2,
+					currentY + descPY,
+					config.fontSize,
+					config.fontSpacing,
+					config.subtextColor,
+					descLineHeight
+				)
+
+				currentY = currentY + descBoxHeight + 16
+			end
 			config.rightContentHeight = currentY - contentStartY + config.padding
 		end,
 	}
@@ -708,6 +748,32 @@ return function(objects, data)
 	})
 
 	--  Render
+
+	wrapper.setClassDescription = function(className, newDescription)
+		local function scan(items)
+			for _, item in ipairs(items) do
+				if item.name == className then
+					item.description = newDescription
+					item.documentationBlocks = MDXFormatter.parse(newDescription)
+					return true
+				end
+
+				if item.children and scan(item.children) then
+					return true
+				end
+			end
+
+			return false
+		end
+
+		for _, category in ipairs(config.categories) do
+			if category.items and scan(category.items) then
+				return wrapper
+			end
+		end
+
+		return wrapper
+	end
 
 	wrapper.render = function(dt)
 		local r = config.obj_rect
@@ -984,6 +1050,9 @@ return function(objects, data)
 
 	wrapper.set = function(prop, value)
 		config[prop] = value
+		if prop == "font" or prop == "mdxComponents" or prop == "mdxStyles" or prop == "mdxTheme" then
+			documentRenderer = createDocumentRenderer()
+		end
 		return wrapper
 	end
 

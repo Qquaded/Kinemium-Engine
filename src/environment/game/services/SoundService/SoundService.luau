@@ -27,8 +27,8 @@ SoundService.InitRenderer = function(renderer, renderer_signal, datamodel)
 					raylib.lib.UpdateMusicStream(obj._raylibSound)
 				end
 
-				if obj.Is3D and obj.Parent and obj.Parent:IsA("BasePart") then
-					local pos = obj.Parent.Position
+				if obj.Is3D then
+					local pos = obj.Parent and obj.Parent:IsA("BasePart") and obj.Parent.Position or obj.Position
 					local dist = (pos - camPos):Magnitude()
 
 					local attenuation = 1.0

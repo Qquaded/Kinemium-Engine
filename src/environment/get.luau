@@ -5,7 +5,6 @@ local EnumMap = require("@EnumMap")
 local PlayerGui = require("@PlayerGui")
 local Terrain = require("@Terrain")
 local capi = require("./capi")
-local PlayerObject = require("@Player")
 local shared = {}
 
 return function(renderer, Kinemium_camera)
@@ -80,6 +79,84 @@ return function(renderer, Kinemium_camera)
 			local hi = math.floor(value / 2 ^ 32)
 			buffer.writeu32(b, offset, lo)
 			buffer.writeu32(b, offset + 4, hi)
+		end,
+
+		readi128 = function(b: buffer, offset: number): number
+			local lo = data.buffer.readu64(b, offset)
+			local hi = data.buffer.readi64(b, offset + 8)
+			return hi * 2 ^ 64 + lo
+		end,
+
+		writei128 = function(b: buffer, offset: number, value: number)
+			local lo = value % 2 ^ 64
+			local hi = math.floor(value / 2 ^ 64)
+			data.buffer.writeu64(b, offset, lo)
+			data.buffer.writei64(b, offset + 8, hi)
+		end,
+
+		readu128 = function(b: buffer, offset: number): number
+			local lo = data.buffer.readu64(b, offset)
+			local hi = data.buffer.readu64(b, offset + 8)
+			return hi * 2 ^ 64 + lo
+		end,
+
+		writeu128 = function(b: buffer, offset: number, value: number)
+			local lo = value % 2 ^ 64
+			local hi = math.floor(value / 2 ^ 64)
+			data.buffer.writeu64(b, offset, lo)
+			data.buffer.writeu64(b, offset + 8, hi)
+		end,
+
+		readi256 = function(b: buffer, offset: number): number
+			local lo = data.buffer.readu128(b, offset)
+			local hi = data.buffer.readi128(b, offset + 16)
+			return hi * 2 ^ 128 + lo
+		end,
+
+		writei256 = function(b: buffer, offset: number, value: number)
+			local lo = value % 2 ^ 128
+			local hi = math.floor(value / 2 ^ 128)
+			data.buffer.writeu128(b, offset, lo)
+			data.buffer.writei128(b, offset + 16, hi)
+		end,
+
+		readu256 = function(b: buffer, offset: number): number
+			local lo = data.buffer.readu128(b, offset)
+			local hi = data.buffer.readu128(b, offset + 16)
+			return hi * 2 ^ 128 + lo
+		end,
+
+		writeu256 = function(b: buffer, offset: number, value: number)
+			local lo = value % 2 ^ 128
+			local hi = math.floor(value / 2 ^ 128)
+			data.buffer.writeu128(b, offset, lo)
+			data.buffer.writeu128(b, offset + 16, hi)
+		end,
+
+		readi512 = function(b: buffer, offset: number): number
+			local lo = data.buffer.readu256(b, offset)
+			local hi = data.buffer.readi256(b, offset + 32)
+			return hi * 2 ^ 256 + lo
+		end,
+
+		writei512 = function(b: buffer, offset: number, value: number)
+			local lo = value % 2 ^ 256
+			local hi = math.floor(value / 2 ^ 256)
+			data.buffer.writeu256(b, offset, lo)
+			data.buffer.writei256(b, offset + 32, hi)
+		end,
+
+		readu512 = function(b: buffer, offset: number): number
+			local lo = data.buffer.readu256(b, offset)
+			local hi = data.buffer.readu256(b, offset + 32)
+			return hi * 2 ^ 256 + lo
+		end,
+
+		writeu512 = function(b: buffer, offset: number, value: number)
+			local lo = value % 2 ^ 256
+			local hi = math.floor(value / 2 ^ 256)
+			data.buffer.writeu256(b, offset, lo)
+			data.buffer.writeu256(b, offset + 32, hi)
 		end,
 
 		fill = function(b: buffer, value: number, offset: number?, length: number?)
@@ -239,8 +316,6 @@ return function(renderer, Kinemium_camera)
 	data.tick = function()
 		return os.clock()
 	end
-
-	local requiredCache = {}
 
 	data.import = function(v)
 		local callerEnv = getfenv(2)

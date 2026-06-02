@@ -305,7 +305,7 @@ function rect.HoverLeave(object, left)
 end
 
 function rect.Button(object, clicked)
-	if raylib.IsMouseButtonReleased(0) == 1 and rect.MouseIsInRect(object) then
+	if raylib.IsMouseButtonReleased(0) == 1 and rect.MouseIsInRect(object) and not _G.__aereon_blockInput then
 		clicked(object)
 	end
 end

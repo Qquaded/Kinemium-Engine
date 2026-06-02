@@ -1,6 +1,6 @@
 repeat
 	task.wait()
-until ishared.EscapeMenu_Signal
+until ishared.CoreGuiSignal
 
 repeat
 	task.wait()
@@ -13,7 +13,7 @@ if not RunService:IsClient() then
 	return
 end
 
-local sign = ishared.EscapeMenu_Signal
+local sign = ishared.CoreGuiSignal
 local manager = ishared.ReactPointer
 local renderer = KinemiumRaylib.renderer
 local HUDService = game:GetService("HUDService")

@@ -15,7 +15,7 @@ end
 
 repeat
 	task.wait()
-until ishared.EscapeMenu_Signal
+until ishared.CoreGuiSignal
 
 repeat
 	task.wait()
@@ -29,7 +29,7 @@ if not RunService:IsClient() then
 	return
 end
 
-local signal = ishared.EscapeMenu_Signal
+local signal = ishared.CoreGuiSignal
 local manager = ishared.ReactPointer
 
 local chatRemote: RemoteEvent = InternalStorage:FindFirstChild("ChatRemote")

@@ -12,6 +12,20 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 	local KinemiumFontService = game:GetService("KinemiumFontService")
 	local zembed = require("@zembed")
 
+	-- Global registries across all window systems (prevents click-through)
+	if not _G.__aereon_allWindows then
+		_G.__aereon_allWindows = {}
+	end
+	if not _G.__aereon_blockInput then
+		_G.__aereon_blockInput = false
+	end
+	if not _G.__aereon_topWindow then
+		_G.__aereon_topWindow = nil
+	end
+	if not _G.__aereon_scissorStack then
+		_G.__aereon_scissorStack = {}
+	end
+
 	local resizingWindow = nil
 	local resizeSide = nil
 	local resizeStart = vector.create(0, 0)
@@ -314,6 +328,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 			_savedH = data.height,
 		}
 		table.insert(windowRegistry, window)
+		table.insert(_G.__aereon_allWindows, window)
 		getOrCreateAnim(window)
 
 		function window:MoveTo(x, y)
@@ -485,6 +500,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 		local mouseRightPressed = raylib.IsMouseButtonPressed(1)
 		local mouseDown = raylib.IsMouseButtonDown(0)
 		local mouseReleased = raylib.IsMouseButtonReleased(0)
+		local mouseWheel = raylib.GetMouseWheelMove()
 		local tabFontSize = wval(wcfg, "TitleTextSize", 13)
 		local speed = 12 * dt
 
@@ -509,6 +525,22 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 				hoveredWindow = w
 				break
 			end
+		end
+
+		-- Determine global topmost window across all window systems for click-through prevention
+		_G.__aereon_topWindow = nil
+		for i = #_G.__aereon_allWindows, 1, -1 do
+			local w = _G.__aereon_allWindows[i]
+			local anim = getOrCreateAnim(w)
+			if not w.Closed and not anim.closing and w.enabled and isMouseOverWindow(w, mousePos) then
+				_G.__aereon_topWindow = w
+				break
+			end
+		end
+
+		-- Mouse wheel: prevent camera scroll when over a window
+		if mouseWheel ~= 0 and hoveredWindow then
+			game.Stop3DInput = true
 		end
 
 		-- Right-click: focus management only
@@ -1000,6 +1032,13 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 
 					if not wd.DisableClipping then
 						raylib.BeginScissorMode(wx, wy + contentOffsetY, ww, contentH)
+						table.insert(_G.__aereon_scissorStack, { x = wx, y = wy + contentOffsetY, width = ww, height = contentH })
+					end
+
+					-- Block input for non-topmost windows to prevent click-through
+					local wasBlocking = _G.__aereon_blockInput
+					if _G.__aereon_topWindow and _G.__aereon_topWindow ~= wd then
+						_G.__aereon_blockInput = true
 					end
 
 					if wd.Scrollable then
@@ -1043,12 +1082,27 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 						module.stepped(wd, dt)
 					end
 
-					if not wd.DisableClipping then
-						raylib.EndScissorMode()
+					if _G.__aereon_topWindow and _G.__aereon_topWindow ~= wd then
+						_G.__aereon_blockInput = wasBlocking
 					end
 
+					if not wd.DisableClipping then
+						raylib.EndScissorMode()
+						if #_G.__aereon_scissorStack > 0 then
+							table.remove(_G.__aereon_scissorStack)
+						end
+					end
+
+					-- wd.stepped (layout callback, runs outside scissor)
 					if wd.stepped then
+						local steppedWasBlocking = _G.__aereon_blockInput
+						if _G.__aereon_topWindow and _G.__aereon_topWindow ~= wd then
+							_G.__aereon_blockInput = true
+						end
 						wd.stepped(wd, dt)
+						if _G.__aereon_topWindow and _G.__aereon_topWindow ~= wd then
+							_G.__aereon_blockInput = steppedWasBlocking
+						end
 					end
 				end
 			else

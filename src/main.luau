@@ -49,6 +49,7 @@ _G.ENGINE_PROFILER = require("@profiler")
 _G.ENGINE_VERSION = "1.10.7"
 _G.ENGINE_ENDPOINT = {
 	MARKETPLACE = "https://quadigen.github.io/Kinemium-Engine-Plugins/plugins.json",
+	API = "https://kinemium-docs.vercel.app/api/docs/",
 }
 
 _G.warn = function(...)

@@ -2,6 +2,22 @@ local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Player = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+print(Route)
+
+local keyMap = {
+	["1"] = Enum.KeyCode.One,
+	["2"] = Enum.KeyCode.Two,
+	["3"] = Enum.KeyCode.Three,
+	["4"] = Enum.KeyCode.Four,
+	["5"] = Enum.KeyCode.Five,
+	["6"] = Enum.KeyCode.Six,
+	["7"] = Enum.KeyCode.Seven,
+	["8"] = Enum.KeyCode.Eight,
+	["9"] = Enum.KeyCode.Nine,
+	["10"] = Enum.KeyCode.Zero,
+}
 
 repeat
 	task.wait()
@@ -113,17 +129,15 @@ local function updateBackpackSize()
 	end
 end
 
-local function createSlot()
+local slots = {}
+
+local function createSlot(tool)
 	local slot = Instance.new("Frame")
 	slot.Size = UDim2.new(0, 50, 0, 50)
 	slot.BackgroundColor3 = Color3.new(0, 0, 0)
 	slot.BackgroundTransparency = 0.5
 	slot.Parent = BackpackGui
 	slotCount += 1
-	bindRuntime(slot, {
-		BackgroundColor3 = "secondarybackground",
-		BackgroundTransparency = "bgtransparency",
-	})
 
 	updateBackpackSize()
 
@@ -144,12 +158,43 @@ local function createSlot()
 		Font = "font",
 	})
 
+	local toolName = Instance.new("TextLabel")
+	toolName.Text = tool.Name
+	toolName.Size = UDim2.new(0, 50, 0, 50)
+	toolName.BackgroundTransparency = 1
+	toolName.TextSize = 11
+	toolName.AnchorPoint = Vector2.new(0.5, 0.5)
+	toolName.Position = UDim2.new(0.5, 0, 0.5, 0)
+	toolName.TextColor3 = Color3.new(1, 1, 1)
+	toolName.Parent = slot
+	bindRuntime(toolName, {
+		TextColor3 = "text",
+		Font = "font",
+	})
+
+	tool.Changed:Connect(function()
+		toolName.Text = tool.Name
+	end)
+
+	local mainRoute = `/{tostring(slotCount)}`
+
+	Route.add(mainRoute, function()
+		tool.Equipped:Fire(slotCount)
+		slot.BackgroundColor3 = Color3.new(1, 1, 1)
+		return function()
+			tool.Unequipped:Fire(slotCount)
+			slot.BackgroundColor3 = Color3.new(0, 0, 0)
+		end
+	end)
+
+	slots[tostring(slotCount)] = mainRoute
+
 	return slot
 end
 
 BackpackObject.ChildAdded:Connect(function(child)
 	if child:IsA("Tool") then
-		createSlot()
+		createSlot(child)
 	end
 end)
 
@@ -157,6 +202,14 @@ BackpackObject.ChildRemoved:Connect(function(child)
 	if child:IsA("Tool") then
 		slotCount = math.max(0, slotCount - 1)
 		updateBackpackSize()
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	for slot, path in pairs(slots) do
+		if UserInputService:IsKeyDown(keyMap[slot]) then
+			Route.handle(path)
+		end
 	end
 end)
 

@@ -66,7 +66,7 @@ return function(objects, data)
 
 		raylib.lib.DrawText(config.text, textX, textY, config.fontSize, config.textColor:ToRaylib(0))
 
-		if buttonEffects.isHovered() and raylib.lib.IsMouseButtonReleased(0) == 1 and config.onClick then
+		if buttonEffects.isHovered() and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput and config.onClick then
 			config.onClick()
 		end
 	end

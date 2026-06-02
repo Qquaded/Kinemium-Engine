@@ -1,6 +1,6 @@
 repeat
 	task.wait()
-until ishared.EscapeMenu_Signal
+until ishared.CoreGuiSignal
 
 repeat
 	task.wait()
@@ -23,7 +23,7 @@ end
 
 local screenGui = CoreGui.KinemiumCoreGui
 
-local sign = ishared.EscapeMenu_Signal
+local sign = ishared.CoreGuiSignal
 local manager = ishared.ReactPointer
 local renderer = KinemiumRaylib.renderer
 

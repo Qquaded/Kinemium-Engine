@@ -112,7 +112,26 @@ return function(objects, data)
 		local textX = r.x + 12
 		local textY = r.y + (r.height - config.fontSize) / 2
 
+		-- Clip button text to button inner bounds (intersect with parent scissor if any)
+		local textClipX = r.x + 12
+		local textClipY = r.y
+		local textClipW = r.width - 24 - config.fontSize
+		local textClipH = r.height
+		local parentScissor = _G.__aereon_scissorStack and _G.__aereon_scissorStack[#_G.__aereon_scissorStack]
+		if parentScissor then
+			textClipX = math.max(textClipX, parentScissor.x)
+			textClipY = math.max(textClipY, parentScissor.y)
+			textClipW = math.max(0, math.min(textClipW, parentScissor.x + parentScissor.width - textClipX))
+			textClipH = math.max(0, math.min(textClipH, parentScissor.y + parentScissor.height - textClipY))
+		end
+		local wasScissorActive = parentScissor ~= nil
+		raylib.lib.BeginScissorMode(textClipX, textClipY, textClipW, textClipH)
 		drawText(selectedText, textX, textY, config.fontSize, config.spacing, config.textColor)
+		raylib.lib.EndScissorMode()
+		-- Restore parent scissor if it was active
+		if wasScissorActive then
+			raylib.lib.BeginScissorMode(parentScissor.x, parentScissor.y, parentScissor.width, parentScissor.height)
+		end
 
 		local arrowSize = 6
 		local arrowX = r.x + r.width - arrowSize - 12
@@ -135,7 +154,7 @@ return function(objects, data)
 			)
 		end
 
-		if rect.MouseIsInRect(r) then
+		if rect.MouseIsInRect(r) and not _G.__aereon_blockInput then
 			if raylib.lib.IsMouseButtonReleased(0) == 1 then
 				config.expanded = not config.expanded
 				if config.expanded then
@@ -175,6 +194,12 @@ return function(objects, data)
 			listY = math.clamp(listY, margin, screenHeight - listHeight - margin)
 
 			local listX = math.clamp(r.x, margin, math.max(screenWidth - r.width - margin, margin))
+
+			-- Temporarily disable parent scissor so dropdown list is not clipped by scrollables/containers
+			local savedScissor = _G.__aereon_scissorStack and _G.__aereon_scissorStack[#_G.__aereon_scissorStack]
+			if savedScissor then
+				raylib.lib.EndScissorMode()
+			end
 
 			raylib.lib.DrawRectangleRounded(
 				structs.Rectangle:new({
@@ -233,7 +258,7 @@ return function(objects, data)
 						)
 					end
 
-					if rect.MouseIsInRect(itemRect) and config.expanded then
+					if rect.MouseIsInRect(itemRect) and config.expanded and not _G.__aereon_blockInput then
 						raylib.lib.DrawRectangleRounded(
 							structs.Rectangle:new({
 								x = itemRect.x,
@@ -267,6 +292,11 @@ return function(objects, data)
 						config.textColor
 					)
 				end
+			end
+
+			-- Restore parent scissor after drawing expanded dropdown list
+			if savedScissor then
+				raylib.lib.BeginScissorMode(savedScissor.x, savedScissor.y, savedScissor.width, savedScissor.height)
 			end
 		end
 	end

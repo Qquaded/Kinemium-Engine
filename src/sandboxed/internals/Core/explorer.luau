@@ -83,13 +83,14 @@ local addMenuHoverAnim = {}
 local lastClickTime = {}
 local lastClicked = nil
 local activeAddMenu = nil
+local addMenuRect = nil
 local yOffset = 0
 local windowObject = nil
 local dragInstance = nil
 local isDragging = false
 local dragMouseStart = nil
 local dragTargetInstance = nil
-local DRAG_THRESHOLD = 5
+local DRAG_THRESHOLD = 20
 local dropAnimInstance = nil
 local dropAnimStart = 0
 local dropAnimFromX = 0
@@ -1027,6 +1028,8 @@ local function drawAdditionMenu(instance, mousePos, btnY, toggleX)
 			Color3.new(0.3, 0.3, 0.3):ToRaylib(0)
 		)
 	end
+
+	addMenuRect = menuRect
 end
 
 -- Tree drawing
@@ -1178,15 +1181,6 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 				end
 			end
 
-			if rl.IsMouseButtonReleased(0) == 1 then
-				local obj_rect = SelectionMenu.get("obj_rect")
-				if ContextMenuOpen then
-					if arect.MouseIsOutsideRect(obj_rect) then
-						ContextMenuOpen = false
-						SelectionMenu:hide()
-					end
-				end
-			end
 		end
 
 		-- Record drag source on mouse press
@@ -1513,6 +1507,28 @@ explorerWindow.stepped = function(windowData)
 		drawAdditionMenu(activeAddMenu.instance, rl.GetMousePosition(), activeAddMenu.btnY, activeAddMenu.toggleX)
 	end
 	SelectionMenu.render(dt)
+
+	-- Close addition menu when clicking outside
+	if addMenuOpenBool and rl.IsMouseButtonPressed(0) == 1 then
+		local mousePos = rl.GetMousePosition()
+		if addMenuRect and not isMouseInRect(addMenuRect, mousePos) then
+			for key in pairs(addMenuOpen) do
+				addMenuOpen[key] = false
+			end
+			addMenuOpenBool = false
+			addMenuRect = nil
+			activeAddMenu = nil
+		end
+	end
+
+	-- Close selection/context menu when clicking outside
+	if ContextMenuOpen and rl.IsMouseButtonReleased(0) == 1 then
+		local obj_rect = SelectionMenu.get("obj_rect")
+		if obj_rect and arect.MouseIsOutsideRect(obj_rect) then
+			ContextMenuOpen = false
+			SelectionMenu:hide()
+		end
+	end
 
 	local ctrl = rl.IsKeyDown(341) == 1 or rl.IsKeyDown(345) == 1
 

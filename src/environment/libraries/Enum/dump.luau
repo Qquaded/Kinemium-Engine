@@ -1065,7 +1065,6 @@ enums.CoreGuiType = {
 	All = 4,
 	EmotesMenu = 5,
 	SelfView = 6,
-	Captures = 7,
 }
 enums.CreateAssetResult = {
 	Success = 1,

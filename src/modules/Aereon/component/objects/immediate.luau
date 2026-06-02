@@ -44,7 +44,7 @@ immediate.switch = function(data)
 		handleColor:ToRaylib(0)
 	)
 
-	if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+	if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 		value = not value
 		if onChanged then
 			onChanged(value)
@@ -96,9 +96,9 @@ immediate.textbox = function(data)
 		raylib.lib.DrawRectangle(textX + textWidth + 2, textY, 2, fontSize, textColor:ToRaylib(0))
 	end
 
-	if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+	if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 		focused = true
-	elseif not rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+	elseif not rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 		focused = false
 	end
 
@@ -169,7 +169,7 @@ immediate.dropdown = function(data)
 		)
 	end
 
-	if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+	if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 		expanded = not expanded
 	end
 
@@ -198,7 +198,7 @@ immediate.dropdown = function(data)
 					hoverColor:ToRaylib(0)
 				)
 
-				if raylib.lib.IsMouseButtonReleased(0) == 1 then
+				if raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 					selectedIndex = i
 					expanded = false
 					if onSelect then
@@ -271,7 +271,7 @@ immediate.colorpicker = function(data)
 		raylib.lib.DrawRectangle(hueBarRect.x, hueBarRect.y + y, hueBarRect.width, 1, hueColor:ToRaylib(0))
 	end
 
-	if rect.MouseIsInRect(gradientRect) and raylib.lib.IsMouseButtonDown(0) == 1 then
+	if rect.MouseIsInRect(gradientRect) and raylib.lib.IsMouseButtonDown(0) == 1 and not _G.__aereon_blockInput then
 		local mouseX = raylib.lib.GetMouseX()
 		local mouseY = raylib.lib.GetMouseY()
 
@@ -285,7 +285,7 @@ immediate.colorpicker = function(data)
 		end
 	end
 
-	if rect.MouseIsInRect(hueBarRect) and raylib.lib.IsMouseButtonDown(0) == 1 then
+	if rect.MouseIsInRect(hueBarRect) and raylib.lib.IsMouseButtonDown(0) == 1 and not _G.__aereon_blockInput then
 		local mouseY = raylib.lib.GetMouseY()
 		local hue = math.clamp((mouseY - hueBarRect.y) / hueBarRect.height * 360, 0, 360)
 		local _, s, v = color:ToHSV()
@@ -349,7 +349,7 @@ immediate.slider = function(data)
 
 	-- Handle interaction
 	local handleRect = rect.new(handleX, handleY, handleSize, handleSize)
-	if rect.MouseIsInRect(handleRect) and raylib.lib.IsMouseButtonDown(0) == 1 then
+	if rect.MouseIsInRect(handleRect) and raylib.lib.IsMouseButtonDown(0) == 1 and not _G.__aereon_blockInput then
 		local mouseX = raylib.lib.GetMouseX()
 		local newValue = min + (mouseX - r.x) / r.width * (max - min)
 		value = math.clamp(newValue, min, max)
@@ -379,7 +379,7 @@ immediate.textbutton = function(data)
 
 	local isHovered = rect.MouseIsInRect(r)
 	local isPressed = isHovered and raylib.lib.IsMouseButtonDown(0) == 1
-	local wasClicked = isHovered and raylib.lib.IsMouseButtonReleased(0) == 1
+	local wasClicked = isHovered and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput
 
 	-- Determine button color based on state
 	local currentColor = backgroundColor

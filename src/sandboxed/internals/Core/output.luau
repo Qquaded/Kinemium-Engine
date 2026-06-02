@@ -177,11 +177,16 @@ local function create_window(title, frame)
 		y = initialPos.Y,
 		width = initialSize.X,
 		height = initialSize.Y,
+		DisableClipping = true,
 		tabs = {
 			{
 				name = "Output",
 				render = function(windowData)
-					local winX, winY = windowData.x, windowData.y + 30
+					local titleBarH = windowData._titleBarH or 28
+					local tabBarH = windowData._tabBarH or 28
+					local contentOffsetY = titleBarH + tabBarH
+					local winX = windowData.x
+					local winY = windowData.y + contentOffsetY
 					local winWidth, winHeight = windowData.width, windowData.height
 					local padding = 2
 					local dt = rl.GetFrameTime()
@@ -189,11 +194,12 @@ local function create_window(title, frame)
 
 					local logs = LogService.GetLogHistory() or {}
 					local logCount = #logs
+					local textBoxHeight = 30
 					local listRect = {
 						x = winX,
 						y = winY,
 						width = winWidth,
-						height = math.max(0, winHeight - 34),
+						height = math.max(0, winHeight - contentOffsetY - textBoxHeight - padding * 2),
 					}
 					local textWidth = math.max(64, winWidth - 26)
 
@@ -329,28 +335,10 @@ local function create_window(title, frame)
 
 					box:drawWithExtras(
 						windowData.x + padding,
-						windowData.y + windowData.height - 30 - padding,
+						windowData.y + windowData.height - textBoxHeight - padding,
 						windowData.width - 2 * padding,
-						30
+						textBoxHeight
 					)
-				end,
-			},
-			{
-				name = "Stack Trace",
-				render = function(windowData)
-					-- Tab 2 content
-				end,
-			},
-			{
-				name = "Debugger",
-				render = function(windowData)
-					-- Tab 2 content
-				end,
-			},
-			{
-				name = "Profiler",
-				render = function(windowData)
-					-- Tab 2 content
 				end,
 			},
 		},

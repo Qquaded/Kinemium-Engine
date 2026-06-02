@@ -92,6 +92,7 @@ return function(objects, data)
 				config.obj_rect.width,
 				config.obj_rect.height
 			)
+			table.insert(_G.__aereon_scissorStack, { x = config.obj_rect.x, y = config.obj_rect.y, width = config.obj_rect.width, height = config.obj_rect.height })
 		end
 
 		-- Update child position
@@ -137,6 +138,9 @@ return function(objects, data)
 
 		if not config.disableClipping then
 			raylib.lib.EndScissorMode()
+			if #_G.__aereon_scissorStack > 0 then
+				table.remove(_G.__aereon_scissorStack)
+			end
 		end
 
 		-- Render scrollbar
@@ -189,12 +193,12 @@ return function(objects, data)
 			local isThumbHovered = isInRect(expandedThumb)
 			local isTrackHovered = isInRect(expandedTrack)
 
-			if (mousePressed or mouseDown) and isThumbHovered and not config.scrollbarDrag.active then
+			if mousePressed and isThumbHovered and not config.scrollbarDrag.active then
 				config.scrollbarDrag.active = true
 				config.scrollbarDrag.offset = (config.direction == "horizontal")
 						and (mousePos.x - (config.obj_rect.x + thumbPos))
 					or (mousePos.y - (config.obj_rect.y + thumbPos))
-			elseif (mousePressed or mouseDown) and isTrackHovered and not config.scrollbarDrag.active then
+			elseif mousePressed and isTrackHovered and not config.scrollbarDrag.active then
 				local mouseVal = (config.direction == "horizontal") and mousePos.x or mousePos.y
 				local startVal = (config.direction == "horizontal") and config.obj_rect.x or config.obj_rect.y
 

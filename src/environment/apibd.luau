@@ -45,6 +45,12 @@ for i, v in pairs(EnumMap) do
 	local desc = "Available Items:\n"
 	if type(v) == "table" then
 		for enumName, enumValue in pairs(v) do
+			if type(enumName) ~= "string" then
+				continue
+			end
+			if enumName:sub(1, 1) == "_" then
+				continue
+			end
 			if enumName == "__index" then
 				continue
 			end
@@ -84,7 +90,7 @@ for i, v in pairs(Registry.getClasses()) do
 		name = i,
 		type = "class",
 		super = super,
-		description = "No one shall be subjected to arbitrary arrest, detention or exile. Everyone is entitled in full equality to a fair\n and public hearing by an independent and impartial tribunal, in the determination of his rights and obligations\n and of any criminal charge against him. No one shall be subjected to arbitrary interference with his privacy, family, home or correspondence, nor to attacks upon his honour and reputation. Everyone has the right to the protection of the law against such interference or attacks.",
+		description = "I think, therefore I am, therefore I am AM",
 	})
 end
 

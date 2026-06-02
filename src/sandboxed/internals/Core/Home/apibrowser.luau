@@ -15,8 +15,11 @@ local SecondaryBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackg
 local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
 local categories = require("@apidumpbrowser")
+local api_endpoint = ENGINE_ENDPOINT.API :: string
+local HTTPService = game:GetService("HttpService")
 
-local browser = gui.apibrowser({
+local browser
+browser = gui.apibrowser({
 	x = 50,
 	y = 50,
 	categories = categories,
@@ -26,7 +29,25 @@ local browser = gui.apibrowser({
 	game = game,
 	font = vend,
 	onItemSelect = function(item)
-		print("Selected:", item.name, item.type)
+		if item.type == "class" then
+			browser.setClassDescription(item.name, "# Loading..")
+
+			task.spawn(function()
+				local endpoint = api_endpoint .. item.name
+				local data = HTTPService:GetAsync(endpoint)
+
+				if string.find(data, "404") then
+					browser.setClassDescription(
+						item.name,
+						[[# 404
+						Documentation about this class is not found, You can check the docs here: https://kinemium-docs.vercel.app/docs]]
+					)
+					return
+				end
+
+				browser.setClassDescription(item.name, data)
+			end)
+		end
 	end,
 })
 

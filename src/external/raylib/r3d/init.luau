@@ -49,7 +49,10 @@ local funcs = require("./r3d/funcs")
 local constants = require("./r3d/constants")
 
 local libname = "r3d." .. ffi.suffix
-local assimpname = "assimp-vc143-mt." .. ffi.suffix
+local assimpname = "assimp-vc145-mt." .. ffi.suffix
+if zune.platform.os ~= "windows" then
+	assimpname = "assimp-vc143-mt." .. ffi.suffix
+end
 local raylibname = "raylib." .. ffi.suffix
 
 local asmpPath = zembed.IsEmbedded() and zune.fs.path.join(dll, assimpname) or (dll .. assimpname)

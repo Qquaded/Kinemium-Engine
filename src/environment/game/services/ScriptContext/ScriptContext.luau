@@ -304,14 +304,9 @@ ScriptContext.InitRenderer = function(renderer, signal, datamodel)
 			end,
 
 			RunClientScripts = function()
-				local StarterGui, StarterPlayer, Players, CoreGui, InternalStorage =
-					getserv("StarterGui"),
-					getserv("StarterPlayer"),
-					getserv("Players"),
-					getserv("CoreGui"),
-					getserv("InternalStorage")
+				local StarterPlayer, Players, CoreGui, InternalStorage =
+					getserv("StarterPlayer"), getserv("Players"), getserv("CoreGui"), getserv("InternalStorage")
 
-				runScriptOfClass(StarterGui, "LocalScript")
 				runScriptOfClass(StarterPlayer, "LocalScript")
 				runScriptOfClass(Players, "LocalScript")
 				runScriptOfClass(CoreGui, "LocalScript")

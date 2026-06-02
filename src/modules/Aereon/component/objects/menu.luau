@@ -220,7 +220,7 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 	end
 
 	-- Click
-	local clicked = isHovered and raylib.lib.IsMouseButtonReleased(0) == 1 and not isDisabled and not item.submenu
+	local clicked = isHovered and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput and not isDisabled and not item.submenu
 
 	return item.submenu and openSubmenuPath[depth] == itemId, clicked
 end

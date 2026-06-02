@@ -55,7 +55,7 @@ return function(objects, data)
 			raylib.lib.DrawCircleV(vector.create(centerX, centerY), fillRadius, config.fillColor:ToRaylib(0))
 		end
 
-		if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+		if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 			config.value = true
 			if config.onChanged then
 				config.onChanged(config.value)

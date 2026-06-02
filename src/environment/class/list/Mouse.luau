@@ -215,6 +215,43 @@ export type RayCollision = typeof(RayCollision:new({}))
 	}
 end
 
+local function isInstance(value)
+	return type(value) == "table" and rawget(value, "_props") ~= nil
+end
+
+local function isDescendantOrSelf(instance, ancestor)
+	local current = instance
+	while current do
+		if current == ancestor then
+			return true
+		end
+		current = current.Parent
+	end
+	return false
+end
+
+local function isTargetFiltered(targetFilter, part)
+	if not targetFilter then
+		return false
+	end
+
+	if isInstance(targetFilter) then
+		return isDescendantOrSelf(part, targetFilter)
+	end
+
+	if type(targetFilter) ~= "table" then
+		return false
+	end
+
+	for _, filter in ipairs(targetFilter) do
+		if isInstance(filter) and isDescendantOrSelf(part, filter) then
+			return true
+		end
+	end
+
+	return false
+end
+
 return {
 	class = "Mouse",
 	non_creatable = true,
@@ -268,28 +305,7 @@ return {
 
 					local parts = Workspace:Get3DObjects()
 					for _, part in ipairs(parts) do
-						local isFiltered = false
-						if instance.TargetFilter then
-							local current = part
-							local isTable = type(instance.TargetFilter) == "table"
-
-							while current do
-								if isTable then
-									if table.find(instance.TargetFilter, current) then
-										isFiltered = true
-										break
-									end
-								else
-									if instance.TargetFilter == current then
-										isFiltered = true
-										break
-									end
-								end
-								current = current.Parent
-							end
-						end
-
-						if isFiltered then
+						if isTargetFiltered(instance.TargetFilter, part) then
 							continue
 						end
 

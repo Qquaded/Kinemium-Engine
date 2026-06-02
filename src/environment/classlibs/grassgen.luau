@@ -37,7 +37,10 @@ local function readGrassShaderSource(): string?
 uniform float u_windStrength;
 uniform float u_time;
 
+varying vec4 vColor;
+
 void vertex() {
+    vColor = COLOR;
     float h = TEXCOORD.y;
     float sway = sin(u_time * 2.2 + INSTANCE_POSITION.x * 7.1 + INSTANCE_POSITION.z * 5.3) * u_windStrength;
     float flutter = sin(u_time * 6.7 + INSTANCE_POSITION.x * 13.0 + INSTANCE_POSITION.z * 9.4) * u_windStrength * 0.3;
@@ -61,7 +64,7 @@ void fragment() {
     	METALNESS = 0.0;
     	ALPHA = 1.0;
     }]]
-    end
+end
 
 local function setMaterialShaderField(matBuf: buffer, shaderPtr: any)
 	local off = r3dstructs.R3D_Material:offset("shader")

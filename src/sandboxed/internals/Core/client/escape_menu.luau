@@ -66,7 +66,7 @@ manager:setGroup("#runtime", {
 })
 
 ishared.ReactPointer = manager
-ishared.EscapeMenu_Signal = main_signal
+ishared.CoreGuiSignal = ishared.CoreGuiSignal or main_signal
 HUDService.AttachRuntime(manager)
 
 local function runtime(key, fallback)
@@ -189,7 +189,7 @@ bindRuntime(tabs, {
 tabs:GetPropertyChangedSignal("ActiveIndex"):Connect(function()
 	local tabName = tabs.Tabs[tabs.ActiveIndex]
 	if tabName ~= nil then
-		Routes.handle("/" .. string.lower(tabName))
+		Route.handle("/" .. string.lower(tabName))
 	end
 end)
 
@@ -334,7 +334,7 @@ local function newTopbarButton(icon, routeName, callback, closed)
 	}, updateButtonTransparency)
 
 	NewButton.MouseButton1Click:Connect(function()
-		Routes.handle(`/{string.lower(routeName)}`)
+		Route.handle(`/{string.lower(routeName)}`)
 	end)
 
 	NewButton.MouseEnter:Connect(function(a0: number, a1: number)
@@ -355,7 +355,7 @@ local function newTopbarButton(icon, routeName, callback, closed)
 		}, "icondamping", "iconfrequency")
 	end)
 
-	Routes.add(`/{string.lower(routeName)}`, function()
+	Route.add(`/{string.lower(routeName)}`, function()
 		if callback then
 			callback()
 		end
@@ -506,7 +506,7 @@ onRuntimeChange({ "background", "backgroundactive", "text", "icondamping", "icon
 local function OpenMenu()
 	local activeTabName = tabs.Tabs[tabs.ActiveIndex]
 	if activeTabName ~= nil then
-		Routes.handle("/" .. string.lower(activeTabName))
+		Route.handle("/" .. string.lower(activeTabName))
 	end
 
 	Icon.Image = "./src/assets/images/burger.png"
@@ -518,7 +518,7 @@ local function OpenMenu()
 end
 
 local function CloseMenu()
-	Routes.deselect()
+	Route.deselect()
 	Menu.Visible = false
 	Icon.Image = "./src/assets/images/kinemium/Core.png"
 	updateMenuButtonVisuals()
@@ -590,7 +590,7 @@ local function createWindow(title, callback)
 	window_padding.Padding = UDim2.new(0, 10, 0, 10)
 	window_padding.Parent = window
 
-	Routes.add(`/{string.lower(title)}`, function()
+	Route.add(`/{string.lower(title)}`, function()
 		window.Visible = true
 		springTarget(window, {
 			Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -618,7 +618,7 @@ local function createWindow(title, callback)
 	return window
 end
 
-Routes.deselect()
+Route.deselect()
 
 OpenMenuButton.MouseEnter:Connect(function()
 	openButtonHovered = true
@@ -679,10 +679,16 @@ main_signal:Connect(function(message, param, cb)
 		else
 			CloseMenu()
 		end
+	elseif message == "RemoveMenu" then
+		Gui.Enabled = false
+	elseif message == "DestroyMenu" then
+		Gui:Destroy()
+	elseif message == "EnableMenu" then
+		Gui.Enabled = true
 	elseif message == "OpenRoute" then
-		Routes.handle("/" .. param)
+		Route.handle("/" .. param)
 	elseif message == "CloseRoute" then
-		Routes.deselect()
+		Route.deselect()
 	elseif message == "MakeWindow" then
 		createWindow(param, cb)
 		local newTabs = tabs.Tabs

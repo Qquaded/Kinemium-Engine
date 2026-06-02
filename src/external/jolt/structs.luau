@@ -381,7 +381,7 @@ export type JPH_SwingTwistConstraintSettings = typeof(JPH_SwingTwistConstraintSe
 
 local JPH_SixDOFConstraintSettings = ffi.struct({
 	{ base = JPH_ConstraintSettings },
-	{ space = ffi.types.i32 },  -- EConstraintSpace: 0=LocalToBodyCOM, 1=WorldSpace
+	{ space = ffi.types.i32 }, -- EConstraintSpace: 0=LocalToBodyCOM, 1=WorldSpace
 	{ position1 = JPH_RVec3 },
 	{ axisX1 = JPH_Vec3 },
 	{ axisY1 = JPH_Vec3 },
@@ -668,11 +668,6 @@ local JPH_VehicleDifferentialSettings = ffi.struct({
 	{ engineTorqueRatio = float },
 })
 export type JPH_VehicleDifferentialSettings = typeof(JPH_VehicleDifferentialSettings:new({}))
-
--- Placeholder for arrays
-local function JPH_Array(type_, length)
-	return type_:array(length)
-end
 
 -- JPH_BodyCreationSettings
 local JPH_BodyCreationSettings = ffi.struct({

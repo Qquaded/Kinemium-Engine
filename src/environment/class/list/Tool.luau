@@ -1,5 +1,6 @@
 -- description: "A tool that can be equipped and used by players."
 local CFrame = require("@CFrame")
+local signal = require("@Kinemium.signal")
 
 local propTable = {
 	Enabled = true,
@@ -7,6 +8,11 @@ local propTable = {
 	Grip = CFrame.new(),
 	ToolTip = "",
 	TextureId = "",
+
+	Activate = signal.new(),
+	Deactivate = signal.new(),
+	Equipped = signal.new(),
+	Unequipped = signal.new(),
 }
 
 return {

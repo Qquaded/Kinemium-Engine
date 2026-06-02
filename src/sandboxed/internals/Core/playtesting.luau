@@ -3,6 +3,7 @@ local IsPlaytesting = false
 
 local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
 local playtestService = game:GetService("PlaytestService")
+local KineFileService = game:GetService("KineFileService")
 
 local RunService = game:GetService("RunService")
 if RunService:IsServer() then
@@ -18,6 +19,7 @@ local Process = game:GetService("Process")
 local processes = {}
 
 local playerCount = 1
+local offlinePlayerCount = 1
 
 NewCategoryToolbar:Fire("Playtest", {
 	elements = {
@@ -80,6 +82,38 @@ NewCategoryToolbar:Fire("Playtest", {
 			hoverColor = Color3.new(0, 0, 0),
 			roundness = 0.2,
 			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/MultipleDevices.png"),
+		},
+		{
+			type = "ImageButton",
+			text = "Offline Client",
+			callback = function()
+				task.spawn(function()
+					local gameName = ishared.GameName or "Game"
+
+					pcall(function()
+						zune.fs.deleteFile("./.temp/offline_" .. gameName .. ".kine")
+					end)
+
+					KineFileService.ExportGameAsFile("./.temp/", "offline_" .. gameName)
+
+					Process.RunProcessZune({
+						"run",
+						"game",
+						"--client",
+						"--offline",
+						"--no-multiplayer",
+						"--blob",
+						"./.temp/offline_" .. gameName .. ".kine",
+						"--username",
+						"OfflinePlayer" .. offlinePlayerCount,
+					})
+					offlinePlayerCount += 1
+				end)
+			end,
+			hoverTransparency = 0.5,
+			hoverColor = Color3.new(0, 0, 0),
+			roundness = 0.2,
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/NetworkController.png"),
 		},
 	},
 })
