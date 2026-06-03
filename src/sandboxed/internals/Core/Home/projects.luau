@@ -20,6 +20,7 @@ local FileDialogService = game:GetService("FileDialogService")
 local ProjectSyncService = game:GetService("ProjectSyncService")
 local RBXModelImporter = game:GetService("RBXModelImporter")
 local project_prompt_active = false
+local zembed = require("@zembed")
 
 local fs = Filesystem
 
@@ -217,7 +218,11 @@ group = aereon.create({
 					project_prompt_active = false
 					local gnInput = gameNameInput:getText()
 					local projInput = projectPath:getText()
+
 					local path = "./src/projects/" .. gnInput
+					if zembed.IsEmbedded() then
+						path = "./projects/" .. gnInput
+					end
 
 					if gnInput == "" then
 						return
