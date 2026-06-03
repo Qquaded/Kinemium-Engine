@@ -5,7 +5,6 @@ local zembed = require("@zembed")
 local Instance = require("@Instance")
 
 local asset_suffixes = {
-	-- Images
 	".png",
 	".jpg",
 	".jpeg",
