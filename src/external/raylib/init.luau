@@ -1,5 +1,68 @@
 --!strict
 
+if _G.IsHeadless == true then
+	local function noop()
+		return 0
+	end
+
+	local mockStruct = {
+		new = function()
+			return {}
+		end,
+		offset = function()
+			return 0
+		end,
+		size = function()
+			return 0
+		end,
+	}
+
+	local mockStructs = setmetatable({}, {
+		__index = function()
+			return mockStruct
+		end,
+	})
+	local mockConstGroup = setmetatable({}, {
+		__index = function()
+			return 0
+		end,
+	})
+
+	local mockLib = setmetatable({}, {
+		__index = function()
+			return noop
+		end,
+	})
+
+	local mockConst = setmetatable({
+		structs = mockStructs,
+		BlendMode = mockConstGroup,
+		CameraProjection = mockConstGroup,
+		ConfigFlags = mockConstGroup,
+		CubemapLayout = mockConstGroup,
+		KeyboardKey = mockConstGroup,
+		MaterialMapIndex = mockConstGroup,
+		MouseButton = mockConstGroup,
+		MouseCursor = mockConstGroup,
+		PixelFormat = mockConstGroup,
+		ShaderLocationIndex = mockConstGroup,
+		ShaderUniformDataType = mockConstGroup,
+		TextureFilter = mockConstGroup,
+		TextureWrap = mockConstGroup,
+		TraceLogLevel = mockConstGroup,
+	}, {
+		__index = function()
+			return 0
+		end,
+	})
+
+	return {
+		lib = mockLib,
+		const = mockConst,
+		structs = mockStructs,
+	}
+end
+
 local native = require("@self/native")
 local raylib = require("@self/native/raylib")
 

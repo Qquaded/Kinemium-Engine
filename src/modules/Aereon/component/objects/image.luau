@@ -1,7 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 
 return function(objects, data)
 	local config = {

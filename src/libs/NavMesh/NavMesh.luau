@@ -412,7 +412,7 @@ end
 
 function NavMeshQuery:Raycast(origin: Vector3, direction: Vector3, maxDistance: number): RaycastResult
 	local origin2D = Vector2.new(origin.X, origin.Z)
-	local dir2D = Vector2.new(direction.X, direction.Z).Unit
+	local dir2D = Vector2.new(direction.X, direction.Z):Unit()
 
 	local closestHit = nil
 	local closestT = maxDistance
@@ -425,7 +425,7 @@ function NavMeshQuery:Raycast(origin: Vector3, direction: Vector3, maxDistance: 
 			local v2 = poly.vertices[j]
 
 			local edge = v2 - v1
-			local edgeNormal = Vector2.new(-edge.Y, edge.X).Unit
+			local edgeNormal = Vector2.new(-edge.Y, edge.X):Unit()
 
 			local denom = dir2D * edgeNormal
 			if math.abs(denom) > 0.0001 then
@@ -523,10 +523,12 @@ function NavMeshQuery:GetRandomPointReachable(fromPos: Vector3): Vector3?
 	local reachable = {}
 	local visited = {}
 	local queue = { startPolyId }
+	local head = 1
 	visited[startPolyId] = true
 
-	while #queue > 0 do
-		local current = table.remove(queue, 1)
+	while head <= #queue do
+		local current = queue[head]
+		head += 1
 		table.insert(reachable, current)
 
 		local poly = self.mesh.polygons[current]
@@ -583,7 +585,7 @@ function NavMesh:CreateFromWorkspace(workspace: Instance?, agentHeight: number?,
 	end
 
 	for _, part in ipairs(descendants) do
-		if part:IsA("Part") and part.CanCollide and not part.Anchored == false then
+		if part.BaseClass == "BasePart" and part.CanCollide and not part.Anchored == false then
 			local size = part.Size
 			local pos = part.Position
 
@@ -639,7 +641,7 @@ function NavMesh:CreateFromParts(parts: { Instance }, agentHeight: number?, agen
 	local surfaces = {}
 
 	for _, part in ipairs(parts) do
-		if part:IsA("Part") and part.CanCollide then
+		if part.BaseClass == "BasePart" and part.CanCollide then
 			local size = part.Size
 			local pos = part.Position
 

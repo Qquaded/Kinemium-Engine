@@ -1,18 +1,13 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
+local font = raylib.lib.GetFontDefault()
+
+local function drawText(fnt, text, x, y, size, color)
+	raylib.lib.DrawTextEx(fnt, text, vector.create(x, y), size, 1, color)
+end
 
 return function(objects, data)
 	local config = {
@@ -20,18 +15,19 @@ return function(objects, data)
 		h = 0,
 		s = 1,
 		v = 1,
-		a = 1,
-		dragging = nil, -- "sv", "h", "a"
+		a = 0,
+		dragging = nil, -- "sv", "hue", "alpha"
 		onChanged = data.onChanged,
-		rounded = data.rounded or { 0.1, 8 },
+		rounded = data.rounded or { 0.08, 8 },
 		modifiers = {},
+		font = data.font or font,
+		fontSize = data.fontSize or 12,
 
-		backgroundColor = color3.new(0.12, 0.12, 0.14),
-		backgroundTransparency = 0,
+		backgroundColor = data.backgroundColor or color3.new(0.13, 0.13, 0.15),
+		backgroundTransparency = data.backgroundTransparency or 0,
 
-		activeTab = "RGB", -- "RGB" or "HSV"
-		recentColors = {}, -- Store recent colors
-		maxRecentColors = 12,
+		recentColors = {},
+		maxRecentColors = 30,
 	}
 
 	local function updateColor()
@@ -69,6 +65,16 @@ return function(objects, data)
 		return wrapper
 	end
 
+	wrapper.setColor = function(col)
+		local h, s, v = col:ToHSV()
+
+		config.h = h
+		config.s = s
+		config.v = v
+
+		updateColor()
+	end
+
 	wrapper.getColor = function()
 		return color3.fromHSV(config.h, config.s, config.v)
 	end
@@ -79,78 +85,65 @@ return function(objects, data)
 
 	wrapper.render = function(dt)
 		local r = config.obj_rect
+		local fnt = config.font
+		local fs = config.fontSize
 		local mousePos = raylib.lib.GetMousePosition()
 		local mouseDown = raylib.lib.IsMouseButtonDown(0) == 1
 		local mousePressed = raylib.lib.IsMouseButtonPressed(0) == 1
 
-		local padding = 16
-		local titleHeight = 30
-		local sliderWidth = 20
-		local spacing = 12
-		local hexHeight = 25
-		local tabHeight = 35
-		local valuesHeight = 80
-		local recentHeight = 70
+		local padding = 12
+		local barHeight = 14
+		local spacing = 8
+		local headerHeight = 28
+		local hexRowHeight = 24
+		local recentLabelHeight = 20
+		local recentSwatchSize = 18
+		local recentSwatchSpacing = 4
+		local recentCols = 10
 
-		-- Calculate SV picker size (square)
-		local availableHeight = r.height
-			- padding * 2
-			- titleHeight
-			- hexHeight
-			- tabHeight
-			- valuesHeight
-			- recentHeight
-			- spacing * 5
-		local availableWidth = r.width - padding * 3 - sliderWidth
-		local svSize = math.min(availableWidth, availableHeight)
+		-- Full width available for content
+		local contentWidth = r.width - padding * 2
 
-		-- Layout rectangles
-		local titleRect = rect.new(r.x + padding, r.y + padding, r.width - padding * 2, titleHeight)
-		local svRect = rect.new(r.x + padding, r.y + padding + titleHeight, svSize, svSize)
-		local hueRect = rect.new(r.x + padding + svSize + spacing, r.y + padding + titleHeight, sliderWidth, svSize)
-		local hexRect = rect.new(
-			r.x + padding,
-			r.y + padding + titleHeight + svSize + spacing,
-			svSize + sliderWidth + spacing,
-			hexHeight
-		)
-		local tabRect = rect.new(
-			r.x + padding,
-			r.y + padding + titleHeight + svSize + hexHeight + spacing * 2,
-			svSize + sliderWidth + spacing,
-			tabHeight
-		)
-		local valuesRect = rect.new(
-			r.x + padding,
-			r.y + padding + titleHeight + svSize + hexHeight + tabHeight + spacing * 3,
-			svSize + sliderWidth + spacing,
-			valuesHeight
-		)
-		local recentRect = rect.new(
-			r.x + padding,
-			r.y + padding + titleHeight + svSize + hexHeight + tabHeight + valuesHeight + spacing * 4,
-			svSize + sliderWidth + spacing,
-			recentHeight
-		)
+		-- SV square takes up the full width, height = width for square
+		local svSize = contentWidth
+		local svRect = rect.new(r.x + padding, r.y + headerHeight + padding, svSize, svSize)
 
-		-- Background
+		-- Hue bar  full width, horizontal
+		local hueRect = rect.new(r.x + padding, svRect.y + svRect.height + spacing, contentWidth, barHeight)
+
+		-- Alpha bar  full width, horizontal, below hue
+		local alphaRect = rect.new(r.x + padding, hueRect.y + barHeight + spacing, contentWidth, barHeight)
+
+		-- Hex row
+		local hexRowY = alphaRect.y + barHeight + spacing
+		local hexRect = rect.new(r.x + padding, hexRowY, contentWidth, hexRowHeight)
+
+		-- Recent colors section
+		local recentY = hexRowY + hexRowHeight + spacing
+		local recentRows = math.ceil(config.maxRecentColors / recentCols)
+		local recentTotalHeight = recentLabelHeight + recentRows * (recentSwatchSize + recentSwatchSpacing)
+		local recentRect = rect.new(r.x + padding, recentY, contentWidth, recentTotalHeight)
+
+		-- Draw background
 		raylib.lib.DrawRectangleRounded(
 			rect:translate(r),
 			config.rounded[1],
 			config.rounded[2],
-			c3tr(config.backgroundColor, config.backgroundTransparency)
+			config.backgroundColor:ToRaylib(config.backgroundTransparency)
 		)
 
-		-- Title
-		raylib.lib.DrawText("Color Palette", titleRect.x, titleRect.y + 5, 14, c3tr(color3.new(0.86, 0.86, 0.86), 0))
+		-- Header: "Solid" label + close icon placeholder
+		local mutedColor = color3.new(0.55, 0.55, 0.58)
 
-		-- Handle dragging
+		-- Handle mouse dragging
 		if mouseDown then
 			if not config.dragging then
 				if rect.MouseIsInRect(svRect) then
 					config.dragging = "sv"
 				elseif rect.MouseIsInRect(hueRect) then
-					config.dragging = "h"
+					config.dragging = "hue"
+				elseif rect.MouseIsInRect(alphaRect) then
+					config.dragging = "alpha"
 				end
 			end
 
@@ -158,211 +151,170 @@ return function(objects, data)
 				config.s = math.clamp((mousePos.x - svRect.x) / svRect.width, 0, 1)
 				config.v = 1 - math.clamp((mousePos.y - svRect.y) / svRect.height, 0, 1)
 				updateColor()
-			elseif config.dragging == "h" then
-				config.h = 1 - math.clamp((mousePos.y - hueRect.y) / hueRect.height, 0, 1)
+			elseif config.dragging == "hue" then
+				config.h = math.clamp((mousePos.x - hueRect.x) / hueRect.width, 0, 1)
 				updateColor()
+			elseif config.dragging == "alpha" then
+				config.a = math.clamp((mousePos.x - alphaRect.x) / alphaRect.width, 0, 1)
+				if config.onChanged then
+					config.onChanged(color3.fromHSV(config.h, config.s, config.v), config.a)
+				end
 			end
 		else
 			config.dragging = nil
 		end
 
-		-- SV Picker with gradients
-		local baseColor = color3.fromHSV(config.h, 1, 1)
-		raylib.lib.DrawRectangleRounded(rect:translate(svRect), 0.05, 8, c3tr(baseColor, 0))
-
-		-- Saturation gradient (white to transparent)
+		-- === SV Picker ===
+		local baseHueColor = color3.fromHSV(config.h, 1, 1)
+		-- Base hue fill
+		raylib.lib.DrawRectangle(svRect.x, svRect.y, svRect.width, svRect.height, baseHueColor:ToRaylib(0))
+		-- White gradient left→right (saturation)
 		raylib.lib.DrawRectangleGradientH(
 			svRect.x,
 			svRect.y,
 			svRect.width,
 			svRect.height,
-			c3tr(color3.new(1, 1, 1), 0),
-			c3tr(color3.new(1, 1, 1), 1)
+			color3.new(1, 1, 1):ToRaylib(0),
+			color3.new(1, 1, 1):ToRaylib(1)
 		)
-
-		-- Value gradient (transparent to black)
+		-- Black gradient top→bottom (value)  drawn bottom-bright, top-dark
 		raylib.lib.DrawRectangleGradientV(
 			svRect.x,
 			svRect.y,
 			svRect.width,
 			svRect.height,
-			c3tr(color3.new(0, 0, 0), 1),
-			c3tr(color3.new(0, 0, 0), 0)
+			color3.new(0, 0, 0):ToRaylib(1),
+			color3.new(0, 0, 0):ToRaylib(0)
 		)
 
+		-- SV cursor
 		local cursorX = svRect.x + config.s * svRect.width
 		local cursorY = svRect.y + (1 - config.v) * svRect.height
-		raylib.lib.DrawCircleV(vector.create(cursorX, cursorY), 8, c3tr(color3.new(1, 1, 1), 0))
+		raylib.lib.DrawCircleV(vector.create(cursorX, cursorY), 7, color3.new(1, 1, 1):ToRaylib(0))
 		raylib.lib.DrawCircleV(
 			vector.create(cursorX, cursorY),
-			6,
-			c3tr(color3.fromHSV(config.h, config.s, config.v), 0)
+			5,
+			color3.fromHSV(config.h, config.s, config.v):ToRaylib(0)
 		)
 
-		raylib.lib.DrawRectangleRounded(rect:translate(hueRect), 0.3, 8, c3tr(color3.new(0.08, 0.08, 0.1), 0))
-
-		for i = 0, hueRect.height - 1 do
-			local hue = 1 - (i / hueRect.height)
+		-- === Hue Bar (horizontal rainbow) ===
+		-- Draw rounded background
+		raylib.lib.DrawRectangleRounded(rect:translate(hueRect), 0.5, 8, color3.new(0.08, 0.08, 0.1):ToRaylib(0))
+		for i = 0, hueRect.width - 1 do
+			local hue = i / hueRect.width
 			raylib.lib.DrawRectangle(
-				hueRect.x + 2,
-				hueRect.y + i,
-				hueRect.width - 4,
+				hueRect.x + i,
+				hueRect.y + 1,
 				1,
-				c3tr(color3.fromHSV(hue, 1, 1), 0)
+				hueRect.height - 2,
+				color3.fromHSV(hue, 1, 1):ToRaylib(0)
 			)
 		end
+		-- Hue thumb
+		local hueX = hueRect.x + config.h * hueRect.width
+		local hueMidY = hueRect.y + hueRect.height / 2
+		raylib.lib.DrawCircleV(vector.create(hueX, hueMidY), 8, color3.new(1, 1, 1):ToRaylib(0))
+		raylib.lib.DrawCircleV(vector.create(hueX, hueMidY), 6, color3.fromHSV(config.h, 1, 1):ToRaylib(0))
 
-		local hueY = hueRect.y + (1 - config.h) * hueRect.height
-		raylib.lib.DrawCircleV(vector.create(hueRect.x + hueRect.width / 2, hueY), 8, c3tr(color3.new(1, 1, 1), 0))
-		raylib.lib.DrawCircleV(
-			vector.create(hueRect.x + hueRect.width / 2, hueY),
-			6,
-			c3tr(color3.fromHSV(config.h, 1, 1), 0)
-		)
-
-		local r_val, g_val, b_val = color3.fromHSV(config.h, config.s, config.v):ToRGB()
-		local hexText = string.format("#%02x%02x%02x", r_val, g_val, b_val)
-		raylib.lib.DrawText(hexText, hexRect.x + 30, hexRect.y + 5, 12, c3tr(color3.new(0.39, 0.59, 1), 0))
-
-		-- Tab buttons
-		local rgbTabRect = rect.new(tabRect.x, tabRect.y, 40, 20)
-		local hsvTabRect = rect.new(tabRect.x + 70, tabRect.y, 40, 20)
-
-		if mousePressed then
-			if rect.MouseIsInRect(rgbTabRect) then
-				config.activeTab = "RGB"
-			elseif rect.MouseIsInRect(hsvTabRect) then
-				config.activeTab = "HSV"
+		-- === Alpha Bar (checker + gradient) ===
+		-- Checker pattern to indicate transparency
+		local checkerSize = 5
+		for row = 0, math.ceil(alphaRect.height / checkerSize) - 1 do
+			for col = 0, math.ceil(alphaRect.width / checkerSize) - 1 do
+				local cx = alphaRect.x + col * checkerSize
+				local cy = alphaRect.y + row * checkerSize
+				local isLight = (row + col) % 2 == 0
+				local checkerCol = isLight and color3.new(0.8, 0.8, 0.8):ToRaylib(0)
+					or color3.new(0.55, 0.55, 0.55):ToRaylib(0)
+				raylib.lib.DrawRectangle(cx, cy, checkerSize, checkerSize, checkerCol)
 			end
 		end
+		local currentColor = color3.fromHSV(config.h, config.s, config.v)
+		local r_val, g_val, b_val = currentColor:ToRGB()
+		raylib.lib.DrawRectangleGradientH(
+			alphaRect.x,
+			alphaRect.y,
+			alphaRect.width,
+			alphaRect.height,
+			structs.Color:new({ r = r_val, g = g_val, b = b_val, a = 0 }),
+			structs.Color:new({ r = r_val, g = g_val, b = b_val, a = 255 })
+		)
+		-- Alpha thumb
+		local alphaX = alphaRect.x + config.a * alphaRect.width
+		local alphaMidY = alphaRect.y + alphaRect.height / 2
+		raylib.lib.DrawCircleV(vector.create(alphaX, alphaMidY), 8, color3.new(1, 1, 1):ToRaylib(0))
+		raylib.lib.DrawCircleV(
+			vector.create(alphaX, alphaMidY),
+			6,
+			structs.Color:new({ r = r_val, g = g_val, b = b_val, a = math.floor(config.a * 255) })
+		)
 
-		local rgbColor = config.activeTab == "RGB" and color3.new(0.86, 0.86, 0.86) or color3.new(0.47, 0.47, 0.47)
-		local hsvColor = config.activeTab == "HSV" and color3.new(0.86, 0.86, 0.86) or color3.new(0.47, 0.47, 0.47)
+		-- === Hex + Opacity Row ===
+		local hexText = string.format("#%02x%02x%02x", r_val, g_val, b_val)
+		local opacityText = string.format("%d%%", math.floor(config.a * 100))
 
-		raylib.lib.DrawText("RGB", rgbTabRect.x, rgbTabRect.y, 12, c3tr(rgbColor, 0))
-		raylib.lib.DrawText("HSV", hsvTabRect.x, hsvTabRect.y, 12, c3tr(hsvColor, 0))
+		-- Small color preview swatch
+		raylib.lib.DrawRectangleRounded(
+			rect:translate(rect.new(hexRect.x, hexRect.y + 2, 20, 20)),
+			0.3,
+			4,
+			currentColor:ToRaylib(0)
+		)
 
-		-- Values display
-		local labelColor = color3.new(0.63, 0.63, 0.63)
-		local valueColor = color3.new(0.86, 0.86, 0.86)
+		-- Hex label + value
+		drawText(fnt, "HEX", hexRect.x + 26, hexRect.y + 5, fs - 1, mutedColor:ToRaylib(0))
+		drawText(fnt, hexText, hexRect.x + 52, hexRect.y + 5, fs, color3.new(0.2, 0.2, 0.22):ToRaylib(0))
 
-		if config.activeTab == "RGB" then
-			raylib.lib.DrawText("Red", valuesRect.x, valuesRect.y, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(tostring(r_val), valuesRect.x + 60, valuesRect.y, 11, c3tr(valueColor, 0))
+		-- Opacity on the right
+		local opW = 36
+		drawText(
+			fnt,
+			opacityText,
+			hexRect.x + hexRect.width - opW,
+			hexRect.y + 5,
+			fs,
+			color3.new(0.2, 0.2, 0.22):ToRaylib(0)
+		)
 
-			raylib.lib.DrawText("Green", valuesRect.x, valuesRect.y + 20, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(tostring(g_val), valuesRect.x + 60, valuesRect.y + 20, 11, c3tr(valueColor, 0))
-
-			raylib.lib.DrawText("Blue", valuesRect.x, valuesRect.y + 40, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(tostring(b_val), valuesRect.x + 60, valuesRect.y + 40, 11, c3tr(valueColor, 0))
-
-			raylib.lib.DrawText("Hue", valuesRect.x + 120, valuesRect.y, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(
-				tostring(math.floor(config.h * 360)),
-				valuesRect.x + 180,
-				valuesRect.y,
-				11,
-				c3tr(valueColor, 0)
-			)
-
-			raylib.lib.DrawText("Sat...", valuesRect.x + 120, valuesRect.y + 20, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(
-				tostring(math.floor(config.s * 100)),
-				valuesRect.x + 180,
-				valuesRect.y + 20,
-				11,
-				c3tr(valueColor, 0)
-			)
-
-			raylib.lib.DrawText("Value", valuesRect.x + 120, valuesRect.y + 40, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(
-				tostring(math.floor(config.v * 100)),
-				valuesRect.x + 180,
-				valuesRect.y + 40,
-				11,
-				c3tr(valueColor, 0)
-			)
-		else
-			raylib.lib.DrawText("Hue", valuesRect.x, valuesRect.y, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(
-				tostring(math.floor(config.h * 360)),
-				valuesRect.x + 60,
-				valuesRect.y,
-				11,
-				c3tr(valueColor, 0)
-			)
-
-			raylib.lib.DrawText("Sat...", valuesRect.x, valuesRect.y + 20, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(
-				tostring(math.floor(config.s * 100)),
-				valuesRect.x + 60,
-				valuesRect.y + 20,
-				11,
-				c3tr(valueColor, 0)
-			)
-
-			raylib.lib.DrawText("Value", valuesRect.x, valuesRect.y + 40, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(
-				tostring(math.floor(config.v * 100)),
-				valuesRect.x + 60,
-				valuesRect.y + 40,
-				11,
-				c3tr(valueColor, 0)
-			)
-
-			raylib.lib.DrawText("Red", valuesRect.x + 120, valuesRect.y, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(tostring(r_val), valuesRect.x + 180, valuesRect.y, 11, c3tr(valueColor, 0))
-
-			raylib.lib.DrawText("Green", valuesRect.x + 120, valuesRect.y + 20, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(tostring(g_val), valuesRect.x + 180, valuesRect.y + 20, 11, c3tr(valueColor, 0))
-
-			raylib.lib.DrawText("Blue", valuesRect.x + 120, valuesRect.y + 40, 11, c3tr(labelColor, 0))
-			raylib.lib.DrawText(tostring(b_val), valuesRect.x + 180, valuesRect.y + 40, 11, c3tr(valueColor, 0))
-		end
-
-		raylib.lib.DrawText("Recent colors", recentRect.x, recentRect.y, 11, c3tr(labelColor, 0))
-
-		local colorSize = 20
-		local colorSpacing = 5
-		local colorsPerRow = 6
+		-- === Document Colors ===
+		drawText(fnt, "Document colors", recentRect.x, recentRect.y, fs - 1, mutedColor:ToRaylib(0))
 
 		for i, col in ipairs(config.recentColors) do
-			local row = math.floor((i - 1) / colorsPerRow)
-			local column = (i - 1) % colorsPerRow
-			local cx = recentRect.x + column * (colorSize + colorSpacing)
-			local cy = recentRect.y + 20 + row * (colorSize + colorSpacing)
+			local row = math.floor((i - 1) / recentCols)
+			local column = (i - 1) % recentCols
+			local cx = recentRect.x + column * (recentSwatchSize + recentSwatchSpacing)
+			local cy = recentRect.y + recentLabelHeight + row * (recentSwatchSize + recentSwatchSpacing)
 
-			local colorRect = rect.new(cx, cy, colorSize, colorSize)
+			local swatchRect = rect.new(cx, cy, recentSwatchSize, recentSwatchSize)
 			raylib.lib.DrawRectangleRounded(
-				rect:translate(colorRect),
-				0.15,
+				rect:translate(swatchRect),
+				0.2,
 				4,
 				structs.Color:new({ r = col.r, g = col.g, b = col.b, a = 255 })
 			)
 
-			if mousePressed and rect.MouseIsInRect(colorRect) then
-				local r_norm, g_norm, b_norm = col.r / 255, col.g / 255, col.b / 255
-				local max_val = math.max(r_norm, g_norm, b_norm)
-				local min_val = math.min(r_norm, g_norm, b_norm)
-				local delta = max_val - min_val
+			if mousePressed and rect.MouseIsInRect(swatchRect) then
+				local rn, gn, bn = col.r / 255, col.g / 255, col.b / 255
+				local max_v = math.max(rn, gn, bn)
+				local min_v = math.min(rn, gn, bn)
+				local delta = max_v - min_v
 
-				config.v = max_val
-				config.s = max_val == 0 and 0 or delta / max_val
+				config.v = max_v
+				config.s = max_v == 0 and 0 or delta / max_v
 
 				if delta == 0 then
 					config.h = 0
-				elseif max_val == r_norm then
-					config.h = ((g_norm - b_norm) / delta) % 6
-				elseif max_val == g_norm then
-					config.h = (b_norm - r_norm) / delta + 2
+				elseif max_v == rn then
+					config.h = ((gn - bn) / delta) % 6
+				elseif max_v == gn then
+					config.h = (bn - rn) / delta + 2
 				else
-					config.h = (r_norm - g_norm) / delta + 4
+					config.h = (rn - gn) / delta + 4
 				end
 				config.h = (config.h / 6) % 1
 
 				if config.onChanged then
-					local c = color3.fromHSV(config.h, config.s, config.v)
-					config.onChanged(c, config.a)
+					config.onChanged(color3.fromHSV(config.h, config.s, config.v), config.a)
 				end
 			end
 		end

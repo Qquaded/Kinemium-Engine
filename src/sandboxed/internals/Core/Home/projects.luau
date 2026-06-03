@@ -1,43 +1,150 @@
+local RunService = game:GetService("RunService")
+if RunService:IsServer() then
+	return
+end
+
 local rlservice = game:GetService("KinemiumRaylib")
 local raylib = require("@raylib")
+local MouseCursor = require("@Kinemium.MouseCursor")
 local lib = raylib.lib
-local renderer = rlservice.renderer
+local renderer = rlservice.GetRenderer()
 local aereon = require("@Aereon")
 local gui = aereon.gui
-local rect = require("@Arect")(lib)
+local rect = require("@Arect")
 local transparent = Color3.new(1, 1, 1):ToRaylib(0.5)
 
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
 local ProjectLoaderService = game:GetService("ProjectLoaderService")
 local FileDialogService = game:GetService("FileDialogService")
-local DiscordService = game:GetService("DiscordService")
 local ProjectSyncService = game:GetService("ProjectSyncService")
+local RBXModelImporter = game:GetService("RBXModelImporter")
+local project_prompt_active = false
 
-local fs = zune.fs
+local fs = Filesystem
 
-local vend = KinemiumFontService.GetDefaultFontSmall()
-local arect = require("@Arect")(raylib.lib)
+local vend = KinemiumFontService.GetDefaultFont()
+local boldFont = KinemiumFontService.GetBoldFont()
+local arect = require("@arect")
 local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
 
-local defaultKinemiumIcon = "./src/assets/images/icons/vanilla3/kinemium/KinemiumWhite.png"
+local defaultKinemiumIcon = "./src/assets/images/kinemium/KinemiumWhite.png"
 local logoIcon = KinemiumIconLoader.ToTexture(defaultKinemiumIcon)
 
-local backgroundColor = StudioThemeService.SelectedTheme.BackgroundColor
-local TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
-
 local SecondaryBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor
-local ThirdBackgroundColor = StudioThemeService.SelectedTheme.ThirdBackgroundColor
-local SecondaryBackgroundColorRaylib = StudioThemeService.SelectedTheme.SecondaryBackgroundColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryBackgroundColorTransparency
-)
 local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
-KinemiumIconLoader.new("Add", "./src/assets/images/icons/vanilla3/ui/16x/200/Add.png")
+KinemiumIconLoader.new("Add", "./src/assets/images/plus.png")
+
 local addIcon = KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("Add"))
 
 local textbox = aereon.textbox(StudioThemeService.SelectedTheme, game)
 local gameiconPath
+
+local projectSearchBox
+local projectFilterDropdown
+local projectSearchText = ""
+local projectFilter = "All"
+local projectEntries = {}
+
+KinemiumIconLoader.new("Folder", "./src/assets/images/icons/Folder.png")
+KinemiumIconLoader.new("Project", "./src/assets/images/icons/DataModel.png")
+KinemiumIconLoader.new("Path", "./src/assets/images/icons/Attachment.png")
+
+local folderIcon = KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("Folder"))
+local projectIcon = KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("Project"))
+local pathIcon = KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("Path"))
+
+local projects = ProjectLoaderService.GetProjects() or {}
+
+local generated_card_projects = {}
+
+local function applyProjectFilter()
+	local query = string.lower(projectSearchText or "")
+	local now = os.time()
+	for _, entry in ipairs(projectEntries) do
+		local projectData = entry.project
+		local name = string.lower(projectData.name or "")
+		local path = string.lower(projectData.path or "")
+		local matchesSearch = query == "" or string.find(name, query, 1, true) or string.find(path, query, 1, true)
+		local isRecent = projectData.last_opened and (now - projectData.last_opened) <= (7 * 24 * 60 * 60)
+		local matchesFilter = true
+		if projectFilter == "Recent" then
+			matchesFilter = isRecent
+		elseif projectFilter == "Older" then
+			matchesFilter = not isRecent
+		end
+		entry.card.set("visible", matchesSearch and matchesFilter)
+	end
+end
+
+local cardStack = gui.vstack({
+	spacing = 10,
+	padding = 0,
+	autoSize = true,
+	backgroundColor = Color3.new(0, 0, 0),
+	backgroundTransparency = 1,
+})
+
+local scrollArea = gui.scrollable({
+	child = cardStack,
+	scrollbarWidth = 8,
+	scrollbarColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+	scrollbarHoverColor = StudioThemeService.SelectedTheme.Accent,
+	scrollbarBackground = StudioThemeService.SelectedTheme.ThirdBackgroundColor,
+	scrollbarBackgroundTransparency = 0.7,
+})
+
+local function generateProjectCards()
+	projects = ProjectLoaderService.GetProjects() or {}
+
+	for _, projectData in pairs(projects) do
+		-- if projectData.path already has a card, skip it
+		if generated_card_projects[projectData.path] then
+			continue
+		end
+		generated_card_projects[projectData.path] = true
+
+		local icon
+
+		if projectData.icon then
+			icon = KinemiumIconLoader.ToTexture(projectData.icon)
+		else
+			icon = logoIcon
+		end
+		local stat = fs.stat(projectData.path)
+		if stat.kind == "none" then
+			continue
+		end
+		local card = gui.projectCard({
+			comp = "projectCard",
+			x = 0,
+			y = 0,
+			width = screenx - 135,
+			title = projectData.name,
+			subtext = "Edited on " .. os.date("%Y-%m-%d %H:%M:%S", projectData.last_opened),
+			tags = { "son", "im crine" },
+			backgroundColor = SecondaryBackgroundColor,
+			icon = icon,
+			font = vend,
+			zindex = 3,
+			onClick = function()
+				if project_prompt_active then
+					return
+				end
+				ishared.GameName = projectData.name
+				ishared.FolderPath = projectData.path
+				ishared.GameIcon = projectData.icon
+				ishared.EnableHomescreen = false
+				ProjectSyncService:StartSyncing(ishared.FolderPath)
+				renderer:SetDimension("3D")
+			end,
+		})
+
+		cardStack.add(card)
+		table.insert(projectEntries, { project = projectData, card = card })
+	end
+end
 
 local gameNameInput = textbox.new({
 	multiline = false,
@@ -72,34 +179,6 @@ local dimension = gui.dropdown({
 
 local group
 group = aereon.create({
-	frame = {
-		comp = "frame",
-		x = 0,
-		y = 0,
-		width = screenx,
-		height = screeny,
-		zindex = 1,
-	},
-	background = {
-		comp = "frame",
-		x = 0,
-		y = 0,
-		width = screenx,
-		height = screeny,
-		raylib_color = SecondaryBackgroundColorRaylib,
-		zindex = 2,
-		rounded = { 0, 10 },
-	},
-	title = {
-		comp = "label",
-		text = "Projects",
-		x = 120,
-		y = 120,
-		font = vend,
-		textColor = TextColor,
-		backgroundColor = backgroundColor,
-		zindex = 3,
-	},
 
 	-- addition
 	addButton = {
@@ -112,6 +191,7 @@ group = aereon.create({
 		zindex = 3,
 
 		onClick = function()
+			project_prompt_active = true
 			group.newProjectPrompt.show()
 		end,
 	},
@@ -124,22 +204,31 @@ group = aereon.create({
 		bodyHeight = 400,
 		font = vend,
 		backgroundColor = SecondaryBackgroundColor,
-		title = "NEW PROJECT",
+		title = "Create New Project",
+		onClose = function()
+			project_prompt_active = false
+		end,
 		buttons = {
 			{
-				text = "CREATE",
-				color = Color3.new(0.368627, 0.368627, 0.368627),
+				text = "Create Project",
+				width = 140,
+				color = StudioThemeService.SelectedTheme.Accent,
 				onClick = function()
+					project_prompt_active = false
 					local gnInput = gameNameInput:getText()
 					local projInput = projectPath:getText()
+					local path = "./src/projects/" .. gnInput
 
 					if gnInput == "" then
 						return
 					end
 
 					if projInput == "" then
-						fs.makeDir("./src/projects/" .. gnInput)
-						projInput = "./src/projects/" .. gnInput
+						if fs.stat(path).kind ~= "none" then
+							return
+						end
+						fs.makeDir(path)
+						projInput = path
 					end
 
 					ishared.GameName = gnInput
@@ -150,150 +239,303 @@ group = aereon.create({
 					ishared.EnableHomescreen = false
 					renderer:SetDimension("3D")
 
-					DiscordService.SetRPC({
-						details = "Working on " .. ishared.GameName,
-					})
+					if ishared.RBXLPlacefile then
+						local file = ishared.RBXLPlacefile
+						if file then
+							current_place_imported = file
+
+							local converted = RBXModelImporter.ImportPlaceFile(file)
+
+							-- expected structure:
+							-- { Service = {children = raw}}
+							if converted then
+								for service, children in pairs(converted) do
+									local service_object = game:GetService(service)
+									if service_object then
+										for _, child in pairs(children) do
+											if child then
+												child.Parent = service_object
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+
+					generateProjectCards()
+					applyProjectFilter()
 				end,
 			},
 		},
 		bodyRenderer = function(dt, x, y, width, height)
-			local iconRectSource = rect.new(0, 0, logoIcon.x, logoIcon.y)
-			local iconRect = rect.new(x, y, 200, 200)
-			local fileExplorerRect = rect.new(x + 510, y + 130, 30, 30)
+			-- Logo Container
+			local logoBg = SecondaryBackgroundColor:ToRaylib(0.2)
+			local logoSize = 180
+			local logoX = x + 10
+			local logoY = y + 10
+			local logoRect = rect.new(logoX, logoY, logoSize, logoSize)
 
-			local tint = raylib.const.WHITE
-			if rect.MouseIsInRect(iconRect) then
-				tint = transparent
-				lib.SetMouseCursor(raylib.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
-			else
-				lib.SetMouseCursor(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
+			-- Draw logo background
+			raylib.lib.DrawRectangleRounded(rect:translate(logoRect), 0.1, 12, logoBg)
+
+			-- Import button (stub)
+			if not group.importButton then
+				group.importButton = gui.imageTextButton({
+					text = "Import RBXL/RBXLX",
+					icon = folderIcon,
+					font = vend,
+					fontSize = 14,
+					backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+					hoverColor = StudioThemeService.SelectedTheme.ThirdBackgroundColor,
+					pressColor = StudioThemeService.SelectedTheme.Accent,
+					textColor = StudioThemeService.SelectedTheme.TextColor,
+					rounded = { 0.2, 6 },
+					onClick = function()
+						local file = FileDialogService.RequestFile({
+							{ name = "Place file", extensions = { "rbxl", "rbxlx" } },
+						})
+
+						ishared.RBXLPlacefile = file
+					end,
+				})
 			end
+			local importW, importH = 240, 28
+			local importX = x + 10
+			local importY = y + height - importH - 10
+			group.importButton.set("obj_rect", arect.new(importX, importY, importW, importH))
+			group.importButton.render(dt)
+
+			local iconRectSource = rect.new(0, 0, logoIcon.x, logoIcon.y)
+			local iconPadding = 20
+			local iconDisplayRect = rect.new(
+				logoX + iconPadding,
+				logoY + iconPadding,
+				logoSize - iconPadding * 2,
+				logoSize - iconPadding * 2
+			)
+
+			local isLogoHovered = rect.MouseIsInRect(logoRect)
+			local tint = isLogoHovered and transparent or raylib.const.WHITE
+
 			lib.DrawTexturePro(
 				logoIcon.texture,
 				rect:translate(iconRectSource),
-				rect:translate(iconRect),
+				rect:translate(iconDisplayRect),
 				vector.create(0, 0),
 				0,
 				tint
 			)
-			rect.Button(iconRect, function()
+
+			if isLogoHovered then
+				MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
+				lib.DrawTextEx(
+					vend,
+					"CHANGE ICON",
+					vector.create(logoX + 45, logoY + logoSize / 2 - 8),
+					14,
+					1,
+					raylib.const.WHITE
+				)
+			end
+
+			rect.Button(logoRect, function()
 				local imagePath = FileDialogService.RequestFile({
-					{ name = "Kinemium Project", extensions = { "kproj" } },
+					{ name = "Images", extensions = { "png", "jpg", "jpeg", "bmp" } },
 					{ name = "All Files", extensions = { "*" } },
 				})
-				logoIcon = KinemiumIconLoader.ToTexture(imagePath)
-				gameiconPath = imagePath
+				if imagePath then
+					logoIcon = KinemiumIconLoader.ToTexture(imagePath)
+					gameiconPath = imagePath
+				end
 			end)
 
-			rect.Button(fileExplorerRect, function()
+			-- Input Fields Section
+			local inputX = x + logoSize + 40
+			local inputW = width - logoSize - 50
+
+			-- Game Name
+			lib.DrawTexturePro(
+				projectIcon.texture,
+				rect.new(0, 0, projectIcon.x, projectIcon.y).rect,
+				rect.new(inputX, y - 2, 20, 20).rect,
+				vector.create(0, 0),
+				0,
+				raylib.const.WHITE
+			)
+			lib.DrawTextEx(vend, "Game Name", vector.create(inputX + 28, y), 16, 1, raylib.const.WHITE)
+			gameNameInput:drawWithExtras(inputX, y + 30, inputW, 45)
+
+			-- Project Path
+			lib.DrawTexturePro(
+				folderIcon.texture,
+				rect.new(0, 0, folderIcon.x, folderIcon.y).rect,
+				rect.new(inputX, y + 98, 20, 20).rect,
+				vector.create(0, 0),
+				0,
+				raylib.const.WHITE
+			)
+			lib.DrawTextEx(vend, "Project Path", vector.create(inputX + 28, y + 100), 16, 1, raylib.const.WHITE)
+			projectPath:drawWithExtras(inputX, y + 130, inputW - 40, 45)
+
+			-- Path Explorer Button
+			local explorerRect = rect.new(inputX + inputW - 30, y + 130, 30, 45)
+			local isExplorerHovered = rect.MouseIsInRect(explorerRect)
+			raylib.lib.DrawRectangleRounded(
+				rect:translate(explorerRect),
+				0.2,
+				8,
+				isExplorerHovered and StudioThemeService.SelectedTheme.Accent:ToRaylib(0.2)
+					or SecondaryBackgroundColor:ToRaylib(0)
+			)
+			lib.DrawTexturePro(
+				pathIcon.texture,
+				rect.new(0, 0, 16, 16).rect,
+				rect.new(explorerRect.x + 7, explorerRect.y + 14, 16, 16).rect,
+				vector.create(0, 0),
+				0,
+				isExplorerHovered and raylib.const.WHITE or transparent
+			)
+
+			rect.Button(explorerRect, function()
 				local projectPathStr = FileDialogService.RequestFolder({
 					{ name = "Kinemium Project", extensions = { "kproj" } },
 					{ name = "All Files", extensions = { "*" } },
 				})
-				projectPath:setText(projectPathStr)
+				if projectPathStr then
+					projectPath:setText(projectPathStr)
+				end
 			end)
 
-			lib.DrawTextEx(vend, "Game name", vector.create(x + 210, y), 16, 1, raylib.const.WHITE)
-			gameNameInput:drawWithExtras(x + 210, y + 30, 300, 50)
-
-			lib.DrawTextEx(vend, "Project path", vector.create(x + 210, y + 100), 16, 1, raylib.const.WHITE)
-			projectPath:drawWithExtras(x + 210, y + 130, 300, 50)
-
-			lib.DrawTextEx(vend, "Dimension", vector.create(x + 210, y + 200), 16, 1, raylib.const.WHITE)
-			dimension.set("obj_rect", rect.new(x + 210, y + 230, 300, 40))
+			-- Dimension
+			lib.DrawTextEx(vend, "Dimension", vector.create(inputX, y + 200), 16, 1, raylib.const.WHITE)
+			dimension.set("obj_rect", rect.new(inputX, y + 230, inputW, 40))
 			dimension.render(dt)
-
-			lib.DrawRectangleRec(rect:translate(fileExplorerRect), raylib.const.WHITE)
 		end,
 		zindex = 5,
 	},
 })
 
-group.frame.setTransparency(1)
-
-local logoPath = "./src/assets/images/icons/vanilla3/kinemium/KinemiumWhite.png"
-local kilLogo = KinemiumIconLoader.ToTexture(logoPath)
-
-local projects = ProjectLoaderService.GetProjects() or {}
-
-local itemSlots = {}
-local base_y = 150
-
-for _, projectData in pairs(projects) do
-	local icon
-
-	if projectData.icon then
-		icon = KinemiumIconLoader.ToTexture(projectData.icon)
-	else
-		icon = logoIcon
-	end
-	local stat = fs.stat(projectData.path)
-	if stat.kind == "none" then
-		continue
-	end
-	local card = gui.projectCard({
-		comp = "projectCard",
-		x = 120,
-		y = base_y, -- use base_y for initial placement
-		width = screenx - 135,
-		title = projectData.name,
-		subtext = "Edited on " .. os.date("%Y-%m-%d %H:%M:%S", projectData.last_opened),
-		tags = { "son", "im crine" },
-		backgroundColor = ThirdBackgroundColor,
-		icon = icon,
-		font = vend,
-		zindex = 3,
-		onClick = function()
-			ishared.GameName = projectData.name
-			ishared.FolderPath = projectData.path
-			ishared.GameIcon = projectData.icon
-			ishared.EnableHomescreen = false
-			ProjectSyncService:StartSyncing(ishared.FolderPath)
-			renderer:SetDimension("3D")
-
-			DiscordService.SetRPC({
-				details = "Working on " .. ishared.GameName,
-			})
-		end,
-	})
-
-	table.insert(itemSlots, card)
-
-	base_y = base_y + 90 -- move down for next card
-end
-
 repeat
 	task.wait()
 until ishared.Home
 
-table.insert(ishared.Home.rendering, {
-	render = function(dt)
-		if ishared.Home.activePage ~= "Projects" then
-			return
-		end
+generateProjectCards()
+applyProjectFilter()
 
-		DiscordService.SetRPC({
-			details = "Viewing Projects",
+ishared.Home.pages["Projects"] = function(dt, alpha, slideOffset)
+	local fade = function(col, a)
+		return col:ToRaylib(1 - (a or 1) * alpha)
+	end
+
+	if ishared.Home.activePage ~= "Projects" and ishared.Home.previousPage ~= "Projects" then
+		return
+	end
+
+	screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
+
+	local startX = 100
+	local headerY = 80 + slideOffset
+	local controlsY = headerY + 90
+	local searchHeight = 32
+	local dropdownWidth = 180
+	local gap = 12
+
+	group.addButton.set("obj_rect", arect.new(screenx - 50, 110 + slideOffset, 30, 30))
+	group.newProjectPrompt.set("obj_rect", arect.new(0, 0, 600, 250))
+	group.render(dt, { "newProjectPrompt" })
+
+	if vend then
+		raylib.lib.DrawTextEx(
+			boldFont,
+			"Projects",
+			vector.create(startX, headerY),
+			42,
+			1,
+			fade(StudioThemeService.SelectedTheme.TextColor, 1)
+		)
+		raylib.lib.DrawTextEx(
+			vend,
+			"Manage and open your Kinemium Engine projects",
+			vector.create(startX, headerY + 50),
+			18,
+			1,
+			fade(StudioThemeService.SelectedTheme.SecondaryTextColor, 1)
+		)
+	end
+
+	-- Search + Filter
+	if not projectSearchBox then
+		projectSearchBox = textbox.new({
+			padding = 8,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			textColor = StudioThemeService.SelectedTheme.TextColor,
+			placeholderColor = StudioThemeService.SelectedTheme.SecondaryTextColor,
+			cornerRadius = 0.2,
+			BackgroundTransparency = 0,
+			BorderTransparency = 1,
+			placeholder = "Search projects...",
+			fontSize = 14,
+			escapeBlurs = false,
+			blurOnSubmit = false,
+			onChange = function(text)
+				projectSearchText = text or ""
+				applyProjectFilter()
+			end,
 		})
+	end
 
-		screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
+	local searchWidth = screenx - 170 - dropdownWidth - gap
+	projectSearchBox:drawWithExtras(startX, controlsY + slideOffset, searchWidth, searchHeight)
+	local currentSearch = projectSearchBox:getText() or ""
+	if currentSearch ~= projectSearchText then
+		projectSearchText = currentSearch
+		applyProjectFilter()
+	end
 
-		local x = 60
-		local y = 60
+	if not projectFilterDropdown then
+		projectFilterDropdown = gui.dropdown({
+			x = startX + searchWidth + gap,
+			y = controlsY + slideOffset,
+			width = dropdownWidth,
+			height = searchHeight,
+			options = { "All", "Recent", "Older" },
+			font = vend,
+			selectedIndex = 1,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			hoverColor = StudioThemeService.SelectedTheme.ThirdBackgroundColor,
+			textColor = StudioThemeService.SelectedTheme.TextColor,
+			borderTransparency = 1,
+			onSelect = function(index, value)
+				projectFilter = value or "All"
+				applyProjectFilter()
+			end,
+			onExpand = function()
+				if group.newProjectPrompt.get("visible") then
+					return
+				end
+				project_prompt_active = projectFilterDropdown.get("expanded")
+			end,
+			onCollapse = function()
+				if group.newProjectPrompt.get("visible") then
+					return
+				end
+				project_prompt_active = projectFilterDropdown.get("expanded")
+			end,
+		})
+	end
+	projectFilterDropdown.set(
+		"obj_rect",
+		arect.new(startX + searchWidth + gap, controlsY + slideOffset, dropdownWidth, searchHeight)
+	)
 
-		group.frame.set("obj_rect", arect.new(x, y, screenx, screeny))
-		group.background.set("obj_rect", arect.new(x + 30, y + 30, screenx - 60, screeny - 60))
-		group.addButton.set("obj_rect", arect.new(screenx - 50, 110, 30, 30))
+	-- Render scroll area
+	local scrollY = controlsY + searchHeight + 16 + slideOffset
+	scrollArea.set("obj_rect", arect.new(100, scrollY, screenx - 170, screeny - (scrollY + 50)))
+	cardStack.set("width", screenx - 180) -- Adjust stack width for scrollbar
+	scrollArea.render(dt)
 
-		group.render(dt, { "newProjectPrompt" })
+	projectFilterDropdown.render(dt)
 
-		-- render each card
-		for i, card in ipairs(itemSlots) do
-			local card_y = 150 + (i - 1) * 90
-			card.set("obj_rect", arect.new(120, card_y, screenx - 135, 80))
-			card.render(dt)
-		end
-
-		group.newProjectPrompt.render(dt)
-	end,
-})
+	group.newProjectPrompt.render(dt)
+end

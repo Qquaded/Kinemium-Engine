@@ -1,6 +1,6 @@
-local Spring = require("../enviroment/datatypes/Spring")
-local Vector3 = require("../enviroment/datatypes/Vector3")
-local CFrame = require("../enviroment/datatypes/CFrame")
+local Spring = require("../environment/datatypes/Spring")
+local Vector3 = require("../environment/datatypes/Vector3")
+local CFrame = require("../environment/datatypes/CFrame")
 
 local testing = zune.testing
 local expect = testing.expect

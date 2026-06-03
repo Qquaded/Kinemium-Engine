@@ -253,6 +253,13 @@ local R3D_StencilState = ffi.struct({
 })
 export type R3D_StencilState = typeof(R3D_StencilState:new({}))
 
+local R3D_SurfaceShader = ffi.struct({
+	{ program = ffi.types.pointer }, -- Pointer to r3d_shader_custom_program_t
+	{ data = ffi.types.pointer }, -- r3d_shader_custom_data_t (contains uniforms and samplers)
+	{ programOwner = ffi.types.u8 }, -- Boolean flag indicating ownership of the program
+})
+export type R3D_SurfaceShader = typeof(R3D_SurfaceShader:new({}))
+
 local R3D_Material = ffi.struct({
 	{ albedo = R3D_AlbedoMap },
 	{ emission = R3D_EmissionMap },
@@ -268,7 +275,7 @@ local R3D_Material = ffi.struct({
 	{ blendMode = ffi.types.i32 },
 	{ cullMode = ffi.types.i32 },
 	{ unlit = ffi.types.u8 },
-	{ shader = ffi.types.pointer },
+	{ shader = R3D_SurfaceShader },
 })
 export type R3D_Material = typeof(R3D_Material:new({}))
 
@@ -434,6 +441,7 @@ local structs = {
 	R3D_InstanceBuffer = R3D_InstanceBuffer,
 	R3D_Model = R3D_Model,
 	R3D_Decal = R3D_Decal,
+	R3D_SurfaceShader = R3D_SurfaceShader,
 	R3D_Capsule = R3D_Capsule,
 	R3D_Penetration = R3D_Penetration,
 	R3D_SweepCollision = R3D_SweepCollision,

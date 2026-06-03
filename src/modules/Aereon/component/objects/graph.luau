@@ -1,17 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 local defaultFont = raylib.lib.GetFontDefault()
@@ -104,7 +94,7 @@ return function(objects, data)
 
 		raylib.lib.DrawRectangleRec(
 			rect:translate(r),
-			c3tr(config.bgColor or config.backgroundColor, config.bgTransparency)
+			(config.bgColor or config.backgroundColor):ToRaylib(config.bgTransparency)
 		)
 
 		for i = 2, count do
@@ -112,7 +102,7 @@ return function(objects, data)
 			local y1 = r.y + r.height - ((values[i - 1] - minVal) / (maxVal - minVal)) * r.height
 			local x2 = r.x + (i - 1) * widthPerValue
 			local y2 = r.y + r.height - ((values[i] - minVal) / (maxVal - minVal)) * r.height
-			raylib.lib.DrawLine(x1, y1, x2, y2, c3tr(config.lineColor, 0))
+			raylib.lib.DrawLine(x1, y1, x2, y2, config.lineColor:ToRaylib(0))
 		end
 
 		local mouse = raylib.lib.GetMousePosition()
@@ -147,14 +137,14 @@ return function(objects, data)
 			local tooltipRect = rect.new(px - textWidth / 2 - 4, py - 2, textWidth + 8, textHeight + 4)
 			raylib.lib.DrawRectangleRec(
 				rect:translate(tooltipRect),
-				c3tr(config.tooltipBackgroundColor or color3.new(0, 0, 0), 0.8)
+				(config.tooltipBackgroundColor or color3.new(0, 0, 0)):ToRaylib(0.8)
 			)
 			raylib.lib.DrawText(
 				tooltipText,
 				tooltipRect.x + 4,
 				tooltipRect.y + 2,
 				textHeight,
-				c3tr(config.tooltipTextColor or color3.new(1, 1, 1), 0)
+				(config.tooltipTextColor or color3.new(1, 1, 1)):ToRaylib(0)
 			)
 		end
 	end

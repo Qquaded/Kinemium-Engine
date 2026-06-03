@@ -1,5 +1,5 @@
-local NumberSequence = require("../enviroment/datatypes/NumberSequence")
-local NumberSequenceKeypoint = require("../enviroment/datatypes/NumberSequenceKeypoint")
+local NumberSequence = require("../environment/datatypes/NumberSequence")
+local NumberSequenceKeypoint = require("../environment/datatypes/NumberSequenceKeypoint")
 
 local testing = zune.testing
 local expect = testing.expect

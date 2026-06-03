@@ -1,6 +1,6 @@
-local ColorSequence = require("../enviroment/datatypes/ColorSequence")
-local ColorSequenceKeypoint = require("../enviroment/datatypes/ColorSequenceKeypoint")
-local Color3 = require("../enviroment/datatypes/Color3")
+local ColorSequence = require("../environment/datatypes/ColorSequence")
+local ColorSequenceKeypoint = require("../environment/datatypes/ColorSequenceKeypoint")
+local Color3 = require("../environment/datatypes/Color3")
 
 local testing = zune.testing
 local expect = testing.expect

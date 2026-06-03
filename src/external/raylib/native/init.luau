@@ -8,7 +8,7 @@ local platform = zune.platform
 local tar = require("./lib/tar")
 local zip = require("./lib/zip")
 
-local RAYLIB_VERSION = `5.5`
+local RAYLIB_VERSION = `6.0`
 local RAYLIB_URL = `https://github.com/raysan5/raylib/releases`
 
 local function request(link: string, options: any, bytes: boolean?): HttpResponse<buffer | string>

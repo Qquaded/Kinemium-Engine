@@ -5,7 +5,7 @@ local ENGINE_PROFILER = ProfilerService.ENGINE_PROFILER
 local rlservice = game:GetService("KinemiumRaylib")
 local raylib = require("@raylib")
 local lib = raylib.lib
-local renderer = rlservice.renderer
+local renderer = rlservice.GetRenderer()
 
 local aereon = require("@Aereon")
 local gui = aereon.gui

@@ -1,9 +1,9 @@
 -- KinemiumSignal.lua
-local Signal = {}
+local Signal = { __type = "KinemiumSignal" }
 Signal.__index = Signal
 
 -- connection object
-local Connection = {}
+local Connection = { __type = "KinemiumConnection" }
 Connection.__index = Connection
 
 function Connection.new(signal, fn, priority)
@@ -35,10 +35,7 @@ end
 
 function Connection:Fire(...)
 	if self.Connected and self._fn then
-		local ok, err = pcall(self._fn, ...)
-		if not ok then
-			print(err)
-		end
+		self._fn(...)
 	end
 end
 
@@ -52,22 +49,21 @@ end
 -- signal container
 function Signal.new()
 	local self = setmetatable({}, Signal)
-	self._connections = {}
-	self._prevState = {}
 	self._paused = false
-	self._queuedFires = {}
-	self._filters = {}
-	self._middlewares = {}
-	self._history = {}
-	self._historyLimit = 10
 	self._debugMode = false
 	return self
 end
 
 function Signal:Connect(fn, priority)
 	local conn = Connection.new(self, fn, priority)
-	table.insert(self._connections, conn)
-	self:_sortConnections()
+	if not self._connections then
+		self._connections = { conn }
+	else
+		table.insert(self._connections, conn)
+		if priority or conn.Priority ~= 0 then
+			self:_sortConnections()
+		end
+	end
 	return conn
 end
 
@@ -107,30 +103,52 @@ end
 
 function Signal:Fire(...)
 	if self._paused then
+		if not self._queuedFires then
+			self._queuedFires = {}
+		end
 		table.insert(self._queuedFires, { ... })
 		return
 	end
 
-	local args = { ... }
+	-- Avoid {...} allocation if possible
+	local args = nil
+	local hasArgs = false
 
 	-- Apply filters
-	for _, filter in ipairs(self._filters) do
-		local shouldContinue, modifiedArgs = filter(table.unpack(args))
-		if not shouldContinue then
-			return
-		end
-		if modifiedArgs then
-			args = modifiedArgs
+	if self._filters then
+		args = { ... }
+		hasArgs = true
+		for _, filter in ipairs(self._filters) do
+			local shouldContinue, modifiedArgs = filter(table.unpack(args))
+			if not shouldContinue then
+				return
+			end
+			if modifiedArgs then
+				args = modifiedArgs
+			end
 		end
 	end
 
 	-- Apply middlewares
-	for _, middleware in ipairs(self._middlewares) do
-		args = { middleware(table.unpack(args)) }
+	if self._middlewares then
+		if not hasArgs then
+			args = { ... }
+			hasArgs = true
+		end
+		for _, middleware in ipairs(self._middlewares) do
+			args = { middleware(table.unpack(args)) }
+		end
 	end
 
 	-- Store in history
-	if self._historyLimit > 0 then
+	if self._historyLimit and self._historyLimit > 0 then
+		if not hasArgs then
+			args = { ... }
+			hasArgs = true
+		end
+		if not self._history then
+			self._history = {}
+		end
 		table.insert(self._history, 1, { os.clock(), args })
 		if #self._history > self._historyLimit then
 			table.remove(self._history)
@@ -138,11 +156,22 @@ function Signal:Fire(...)
 	end
 
 	if self._debugMode then
-		print(string.format("[Signal Debug] Firing with %d args to %d listeners", #args, #self._connections))
+		if not hasArgs then
+			args = { ... }
+			hasArgs = true
+		end
+		local count = self._connections and #self._connections or 0
+		print(string.format("[Signal Debug] Firing with %d args to %d listeners", #args, count))
 	end
 
-	for _, conn in ipairs(self._connections) do
-		conn:Fire(table.unpack(args))
+	if self._connections then
+		for _, conn in ipairs(self._connections) do
+			if hasArgs then
+				conn:Fire(table.unpack(args))
+			else
+				conn:Fire(...)
+			end
+		end
 	end
 end
 
@@ -154,6 +183,9 @@ function Signal:FireDeferred(...)
 end
 
 function Signal:FireParallel(...)
+	if not self._connections then
+		return
+	end
 	local args = { ... }
 	for _, conn in ipairs(self._connections) do
 		task.spawn(function()
@@ -168,10 +200,12 @@ end
 
 function Signal:Resume()
 	self._paused = false
-	for _, args in ipairs(self._queuedFires) do
-		self:Fire(table.unpack(args))
+	if self._queuedFires then
+		for _, args in ipairs(self._queuedFires) do
+			self:Fire(table.unpack(args))
+		end
+		self._queuedFires = nil
 	end
-	self._queuedFires = {}
 end
 
 function Signal:IsPaused()
@@ -179,8 +213,14 @@ function Signal:IsPaused()
 end
 
 function Signal:AddFilter(filterFn)
+	if not self._filters then
+		self._filters = {}
+	end
 	table.insert(self._filters, filterFn)
 	return function()
+		if not self._filters then
+			return
+		end
 		for i, f in ipairs(self._filters) do
 			if f == filterFn then
 				table.remove(self._filters, i)
@@ -191,8 +231,14 @@ function Signal:AddFilter(filterFn)
 end
 
 function Signal:AddMiddleware(middlewareFn)
+	if not self._middlewares then
+		self._middlewares = {}
+	end
 	table.insert(self._middlewares, middlewareFn)
 	return function()
+		if not self._middlewares then
+			return
+		end
 		for i, m in ipairs(self._middlewares) do
 			if m == middlewareFn then
 				table.remove(self._middlewares, i)
@@ -203,6 +249,9 @@ function Signal:AddMiddleware(middlewareFn)
 end
 
 function Signal:GetHistory(count)
+	if not self._history then
+		return {}
+	end
 	count = count or #self._history
 	local result = {}
 	for i = 1, math.min(count, #self._history) do
@@ -213,13 +262,15 @@ end
 
 function Signal:SetHistoryLimit(limit)
 	self._historyLimit = limit
-	while #self._history > limit do
-		table.remove(self._history)
+	if self._history then
+		while #self._history > limit do
+			table.remove(self._history)
+		end
 	end
 end
 
 function Signal:ClearHistory()
-	self._history = {}
+	self._history = nil
 end
 
 function Signal:SetDebugMode(enabled)
@@ -227,17 +278,22 @@ function Signal:SetDebugMode(enabled)
 end
 
 function Signal:DisconnectAll()
-	for i = #self._connections, 1, -1 do
-		self._connections[i]:Disconnect()
+	if self._connections then
+		for i = #self._connections, 1, -1 do
+			self._connections[i]:Disconnect()
+		end
+		self._connections = nil
 	end
-	self._connections = {}
 end
 
 function Signal:GetConnectionCount()
-	return #self._connections
+	return self._connections and #self._connections or 0
 end
 
 function Signal:FireOncePerPress(id, currentState, ...)
+	if not self._prevState then
+		self._prevState = {}
+	end
 	if not self._prevState[id] then
 		self._prevState[id] = 0
 	end
@@ -312,22 +368,27 @@ function Signal:Merge(otherSignal)
 end
 
 function Signal:_sortConnections()
-	table.sort(self._connections, function(a, b)
-		return a.Priority > b.Priority
-	end)
+	if self._connections then
+		table.sort(self._connections, function(a, b)
+			return a.Priority > b.Priority
+		end)
+	end
 end
 
 function Signal:Destroy()
 	self:DisconnectAll()
-	self._prevState = {}
-	self._queuedFires = {}
-	self._filters = {}
-	self._middlewares = {}
-	self._history = {}
+	self._prevState = nil
+	self._queuedFires = nil
+	self._filters = nil
+	self._middlewares = nil
+	self._history = nil
 	setmetatable(self, nil)
 end
 
 Signal.__type = "KinemiumSignal"
 Connection.__type = "KinemiumConnection"
+
+export type Signal = typeof(Signal.new())
+export type Connection = typeof(Connection.new(Signal.new(), function() end))
 
 return Signal

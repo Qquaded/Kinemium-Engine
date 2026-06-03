@@ -1,4 +1,4 @@
-local TweenInfo = require("../enviroment/datatypes/TweenInfo")
+local TweenInfo = require("../environment/datatypes/TweenInfo")
 
 local testing = zune.testing
 local expect = testing.expect

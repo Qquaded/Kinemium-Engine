@@ -148,9 +148,6 @@ function body.each(func: (number, Body) -> ())
 	end
 end
 
--- Sleep
-
--- Fix: wakeUp no longer zeros velocity — preserves motion continuity
 function body.wakeUp(id: number)
 	local b = body.pool[id]
 	if b and b.isSleeping then

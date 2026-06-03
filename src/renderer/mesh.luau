@@ -1,15 +1,19 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 local lib = raylib.lib
-local r3d = require("@r3d").lib
+local r3dapi = require("@r3d")
+local r3d = r3dapi.lib
+local _r3dstructs = r3dapi.structs
+local ffi = zune.ffi
 local meshgen = require("./meshgen")
 local modelRegistry = {}
+local meshDataRegistry = {} -- CPU-side R3D_MeshData for file-loaded models
 
 local function LoadMesh(meshId: string, filePath: string)
 	local model = lib.LoadModel(filePath)
 	if lib.IsModelValid(model) == 1 then
 		modelRegistry[filePath] = model
-		print(`Loaded mesh: {meshId} from {filePath}`)
+		log(`Loaded mesh: {meshId} from {filePath}`)
 		return model
 	else
 		warn(`Failed to load mesh: {filePath}`)
@@ -22,7 +26,8 @@ local function UnloadMesh(meshId: string)
 	if model then
 		lib.UnloadModel(model)
 		modelRegistry[meshId] = nil
-		print(`Unloaded mesh: {meshId}`)
+		meshDataRegistry[meshId] = nil
+		log(`Unloaded mesh: {meshId}`)
 	end
 end
 
@@ -31,30 +36,35 @@ local function GetMesh(meshId: string)
 end
 
 local function GenerateMesh(meshId: string, params: any)
-	local mesh
+	local meshData
+	local gpuMesh
+
+	print(meshId)
 
 	if meshId == "cube" then
-		mesh = r3d.R3D_GenMeshCube(params.width or 1, params.height or 1, params.length or 1)
-		--mesh = lib.GenMeshCube(params.width or 1, params.height or 1, params.length or 1)
+		meshData = r3d.R3D_GenMeshDataCube(params.width or 1, params.height or 1, params.length or 1)
+		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0) -- 4 = R3D_PRIMITIVE_TRIANGLES, 0 = Static usages
 	elseif meshId == "sphere" then
-		mesh = r3d.R3D_GenMeshSphere(params.radius or 1, params.rings or 16, params.slices or 16)
-		--mesh = lib.GenMeshSphere(params.radius or 1, params.rings or 16, params.slices or 16)
+		meshData = r3d.R3D_GenMeshDataSphere(params.radius or 1, params.rings or 16, params.slices or 16)
+		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
 	elseif meshId == "cylinder" then
-		mesh = r3d.R3D_GenMeshCylinder(params.radius or 1, params.height or 2, params.slices or 16, 1)
-		--mesh = lib.GenMeshCylinder(params.radius or 1, params.height or 2, params.slices or 16)
+		meshData = r3d.R3D_GenMeshDataCylinder(params.radius or 1, params.height or 2, params.slices or 16)
+		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
 	elseif meshId == "plane" then
-		mesh = r3d.R3D_GenMeshPlane(params.width or 10, params.length or 10, params.resX or 1, params.resZ or 1)
-		--mesh = lib.GenMeshPlane(params.width or 10, params.length or 10, params.resX or 1, params.resZ or 1)
+		meshData = r3d.R3D_GenMeshDataPlane(params.width or 10, params.length or 10, params.resX or 1, params.resZ or 1)
+		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
 	elseif meshId == "torus" then
-		mesh = r3d.R3D_GenMeshTorus(params.radius or 1, params.size or 0.3, params.radSeg or 16, params.sides or 16)
-		--mesh = lib.GenMeshTorus(params.radius or 1, params.size or 0.3, params.radSeg or 16, params.sides or 16)
+		meshData =
+			r3d.R3D_GenMeshDataTorus(params.radius or 1, params.size or 0.3, params.radSeg or 16, params.sides or 16)
+		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
 	elseif meshId == "wedge" then
-		mesh = r3d.R3D_GenMeshSlope(
+		meshData = r3d.R3D_GenMeshDataSlope(
 			params.width or 1,
 			params.height or 1,
 			params.length or 1,
 			params.slopeNormal or vector.create(1, 1, 0)
 		)
+		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
 	elseif meshId == "cornerwedge" then
 		local width = params.width or 1
 		local height = params.height or 1
@@ -88,19 +98,22 @@ local function GenerateMesh(meshId: string, params: any)
 			{ d, c, e },
 		}
 
+		-- buildFromTriangles returns { cpuMeshData, gpuMesh }
 		local custom = meshgen.buildFromTriangles(triangles, { usage = meshgen.Usage.Static })
 		if not custom then
 			return nil
 		end
-		return { nil, custom }
+		return custom
 	else
 		warn(`Unknown mesh type: {meshId}`)
 		return nil
 	end
 
-	print(`Generated mesh: {meshId} ({meshId})`)
-	return { nil, mesh }
+	log(`Generated mesh: {meshId} ({meshId})`)
+	return { meshData, gpuMesh }
 end
+
+local _preloadedMeshesCache = nil
 
 local function PreloadStandardMeshes()
 	local preloaded = {}
@@ -113,6 +126,7 @@ local function PreloadStandardMeshes()
 		GenerateMesh("wedge", { width = 1, height = 1, length = 1, slopeNormal = vector.create(1, 1, 0) })
 	preloaded["cornerwedge"] = GenerateMesh("cornerwedge", { width = 1, height = 1, length = 1 })
 
+	_preloadedMeshesCache = preloaded
 	return preloaded
 end
 
@@ -179,4 +193,9 @@ return {
 	GetModelRegistry = GetModelRegistry,
 	drawModel = drawModel,
 	loadMaterialOnModel = loadMaterialOnModel,
+	-- Returns the map populated by PreloadStandardMeshes.
+	-- Each entry is { cpuMeshData, gpuMesh } keyed by shape name.
+	GetPreloadedMeshes = function()
+		return _preloadedMeshesCache
+	end,
 }

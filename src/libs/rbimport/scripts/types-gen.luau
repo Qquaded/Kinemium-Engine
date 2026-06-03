@@ -1,0 +1,195 @@
+--!strict
+local fs = zune.fs;
+
+local reflection = require("../src/reflection");
+
+local api = reflection:GetApiDump();
+
+local INDENT = "    ";
+
+local HIDDEN = {};
+
+local MemberValueTypeOverride = {
+    ["Content"] = "any",
+    ["Instance"] = "any",
+    ["ContentId"] = "any",
+    ["Map"] = "any",
+    ["Variant"] = "any", -- Function
+
+    ["ProtectedString"] = "string",
+    ["Path2DControlPoint"] = HIDDEN,
+
+    ["Dictionary"] = "{[string]: any}", -- Function
+    ["null"] = "()", -- Function
+    ["Array"] = "{any}", -- Function
+    ["Tuple"] = "...any", -- Function
+
+    ["string"] = "string",
+    ["BinaryString"] = "buffer",
+    ["int64"] = "buffer",
+    ["int"] = "number",
+    ["float"] = "number",
+    ["double"] = "number",
+    ["bool"] = "boolean",
+    ["SharedString"] = HIDDEN,
+    ["UniqueId"] = HIDDEN,
+    ["SecurityCapabilities"] = HIDDEN,
+};
+
+local supported_datatypes = {};
+
+for _, file in fs.entries("src/datatypes") do
+    if (zune.mem.endsWith(file.name, ".luau")) then
+        local name = file.name:sub(1, -6);
+        supported_datatypes[name] = true;
+    end
+end
+
+local function getSupportedType(valueType: reflection.TypeInfo): any?
+    local optional = valueType.Name:find("?") ~= nil;
+    local searchName = valueType.Name:gsub("?", "");
+    local override = MemberValueTypeOverride[searchName];
+    if (override) then
+        return override;
+    end
+    if (valueType.Category == "Enum") then
+        return `enum.Enum_{valueType.Name}{if (optional) then "?" else ""}`;
+    elseif (valueType.Category == "Class") then
+        return `{valueType.Name}{if (optional) then "?" else ""}`;
+    elseif (valueType.Category == "DataType") then
+        if (supported_datatypes[searchName]) then
+            return `datatypes.{searchName}{if (optional) then "?" else ""}`;
+        else
+            print(`[type-gen] Unsupported datatype: {searchName}`);
+            return;
+        end
+    else
+        return `{valueType.Name}{if (optional) then "?" else ""}`;
+    end
+end
+
+local function generateObjectMembersType(class: reflection.ClassInfo): string
+    local root = class.Superclass == "<<<ROOT>>>"
+    local lines = {
+        `export type {class.Name} = {if (not root) then `{class.Superclass} & ` else ""}\{`
+    };
+    for _, member in class.Members do
+        if (member.Tags and table.find(member.Tags, "Deprecated")) then
+            continue;
+        end
+        if (member.MemberType == "Event") then
+            -- Optional?
+        elseif (member.MemberType == "Property") then
+            local override = getSupportedType(member.ValueType);
+            if (override == HIDDEN or not override) then
+                continue;
+            end
+            local member_name = member.Name;
+            if (member_name:find("[%s\"]")) then
+                member_name = `["{member_name:gsub('"', "\\\"")}"]`;
+            end
+            table.insert(
+                lines,
+                `{INDENT}{member_name}: {override or member.ValueType.Name},`
+            );
+        elseif (member.MemberType == "Function") then
+            local params = {};
+            for _, param in member.Parameters do
+                local override = getSupportedType(param.Type);
+                if (override == HIDDEN or not override) then
+                    override = "any";
+                end
+                if (override == "...any") then
+                    table.insert(params, `...any`);
+                    continue;
+                end
+                local name = param.Name;
+                if (param.Name == "function") then
+                    name = "callback";
+                end
+                table.insert(
+                    params,
+                    `{name}: {override or param.Type.Name}`
+                );
+            end
+            local params_types = "";
+            if (#params > 0) then
+                params_types = `, {table.concat(params, ", ")}`;
+            end
+            local return_type = "()";
+            if (#member.ReturnType == 0) then
+                return_type = getSupportedType(member.ReturnType::any)::any;
+                if (return_type::any == HIDDEN or not return_type) then
+                    return_type = "any";
+                end
+            else
+                return_type = "...any";
+            end
+            table.insert(
+                lines,
+                `{INDENT}{member.Name}: (self: {class.Name}{params_types}) -> {return_type},`
+            );
+        end
+    end
+    table.insert(lines, `}\n`);
+    return table.concat(lines, "\n");
+end
+
+local function generateInstanceNewTypes()
+    local lines = {
+        `export type NewConstructor = `
+    };
+    for i, class in api.Classes do
+        if (class.Tags and table.find(class.Tags, "NotCreatable")) then
+            continue;
+        end
+        table.insert(lines, `{INDENT}& (("{class.Name}", parent: Instance?) -> {class.Name})`);
+    end
+    return table.concat(lines, "\n");
+end
+
+local lines = {
+    `-- Luau code generated by types-gen.luau`,
+    `--!strict`,
+    `local datatypes = require("../datatypes")`,
+    `local enum = require("./roblox_enums")\n`,
+    `export type Enums = enum.Enums\n`,
+};
+local enum_lines = {
+    `export type EnumItem = \{`,
+    `{INDENT}Name: string,`,
+    `{INDENT}Value: number,`,
+    `{INDENT}EnumType: Enum,`,
+    `{INDENT}IsA: (self: EnumItem, enumName: string) -> boolean,`,
+    `}`,
+    `export type Enum = \{`,
+    `{INDENT}GetEnumItems: (self: Enum) -> \{ EnumItem \}`,
+    `}`,
+};
+local end_enum_lines = {
+    `export type Enums = \{`,
+};
+for i, enum in api.Enums do
+    table.insert(enum_lines, `export type Enum_{enum.Name} = Enum & \{`);
+    for i, item in enum.Items do
+        table.insert(enum_lines, `{INDENT}{item.Name}: EnumItem,`);
+    end
+    table.insert(enum_lines, `}`);
+    table.insert(end_enum_lines, `{INDENT}{enum.Name}: Enum_{enum.Name},`);
+end
+table.insert(end_enum_lines, `}`);
+table.move(end_enum_lines, 1, #end_enum_lines, #enum_lines + 1, enum_lines);
+table.insert(enum_lines, `return \{\};`);
+
+for i, class in api.Classes do
+    table.insert(lines, generateObjectMembersType(class));
+end
+
+table.insert(lines, generateInstanceNewTypes());
+table.insert(lines, `return \{\};`);
+
+if (fs.stat("./src/types").kind == "none") then
+    fs.makeDir("./src/types");
+end
+fs.writeFile("./src/types/roblox_enums.luau", table.concat(enum_lines, "\n"));
+fs.writeFile("./src/types/roblox.luau", table.concat(lines, "\n"));

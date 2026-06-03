@@ -590,11 +590,11 @@ local funcs = {
 		returns = structs.R3D_Mesh,
 		args = { ffi.types.float, ffi.types.float, ffi.types.float, ffi.types.i32, ffi.types.i32, ffi.types.i32 },
 	},
-	R3D_GenMeshSphere = { returns = structs.R3D_Mesh, args = { ffi.types.float, ffi.types.i32, ffi.types.i32 } },
+	R3D_GenMeshSphere = { returns = structs.R3D_Mesh, args = { ffi.types.i32, ffi.types.i32, ffi.types.i32 } },
 	R3D_GenMeshHemiSphere = { returns = structs.R3D_Mesh, args = { ffi.types.float, ffi.types.i32, ffi.types.i32 } },
 	R3D_GenMeshCylinder = {
 		returns = structs.R3D_Mesh,
-		args = { ffi.types.float, ffi.types.float, ffi.types.float, ffi.types.i32 },
+		args = { ffi.types.float, ffi.types.float, ffi.types.i32 },
 	},
 	R3D_GenMeshTorus = {
 		returns = structs.R3D_Mesh,
@@ -660,9 +660,9 @@ local funcs = {
 	R3D_GenMeshDataNormals = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	R3D_GenMeshDataTangents = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	R3D_CalculateMeshDataBoundingBox = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
-	R3D_LoadModel = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	R3D_LoadModel = { returns = structs.R3D_Model, args = { ffi.types.pointer } },
 	R3D_LoadModelFromMemory = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_Model,
 		args = { ffi.types.pointer, ffi.types.u32, ffi.types.pointer },
 	},
 	R3D_UnloadModel = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.u8 } },
@@ -726,7 +726,7 @@ local funcs = {
 	},
 
 	R3D_GenProceduralSky = { returns = structs.R3D_Cubemap, args = { ffi.types.i32, structs.R3D_ProceduralSky } },
-	R3D_GenCustomSky = { returns = ffi.types.pointer, args = { ffi.types.i32, ffi.types.pointer } },
+	R3D_GenCustomSky = { returns = structs.R3D_Cubemap, args = { ffi.types.i32, ffi.types.pointer } },
 	R3D_UpdateProceduralSky = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
 	R3D_UpdateCustomSky = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
 
@@ -746,7 +746,7 @@ local funcs = {
 	},
 	R3D_LoadMaterialsFromImporter = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
 
-	R3D_LoadModelEx = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.u32 } },
+	R3D_LoadModelEx = { returns = structs.R3D_Model, args = { ffi.types.pointer, ffi.types.u32 } },
 	R3D_LoadModelFromMemoryEx = {
 		returns = ffi.types.pointer,
 		args = { ffi.types.pointer, ffi.types.u32, ffi.types.pointer, ffi.types.u32 },
@@ -779,7 +779,7 @@ local funcs = {
 	},
 
 	R3D_LoadSurfaceShader = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
-	R3D_LoadSurfaceShaderFromMemory = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	R3D_LoadSurfaceShaderFromMemory = { returns = structs.R3D_SurfaceShader, args = { ffi.types.pointer } },
 	R3D_UnloadSurfaceShader = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	R3D_SetSurfaceShaderUniform = {
 		returns = ffi.types.void,
@@ -817,15 +817,15 @@ local funcs = {
 		args = { ffi.types.float, ffi.types.float, ffi.types.i32, ffi.types.i32 },
 	},
 	R3D_GenMeshDataSlope = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_MeshData,
 		args = { ffi.types.float, ffi.types.float, ffi.types.float, ffi.types.pointer },
 	},
 	R3D_GenMeshDataCylinder = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.float, ffi.types.float, ffi.types.float, ffi.types.i32 },
+		returns = structs.R3D_MeshData,
+		args = { ffi.types.float, ffi.types.float, ffi.types.i32 },
 	},
 	R3D_GenMeshDataCapsule = {
-		returns = ffi.types.pointer,
+		returns = structs.R3D_MeshData,
 		args = { ffi.types.float, ffi.types.float, ffi.types.i32, ffi.types.i32 },
 	},
 
@@ -893,8 +893,8 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
 	},
 	R3D_RaycastMesh = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		returns = rlstructs.structs.RayCollision,
+		args = { rlstructs.structs.Ray, structs.R3D_MeshData, rlstructs.structs.Matrix },
 	},
 	R3D_RaycastModel = {
 		returns = ffi.types.pointer,

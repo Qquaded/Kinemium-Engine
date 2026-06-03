@@ -1,5 +1,5 @@
-local Rect = require("../enviroment/datatypes/Rect")
-local Vector2 = require("../enviroment/datatypes/Vector2")
+local Rect = require("../environment/datatypes/Rect")
+local Vector2 = require("../environment/datatypes/Vector2")
 
 local testing = zune.testing
 local expect = testing.expect

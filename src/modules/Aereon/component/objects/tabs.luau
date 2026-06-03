@@ -1,19 +1,7 @@
 local raylib = require("@raylib")
-local structs = raylib.structs
-
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
-
+local effects = require("./effects")
 local defaultFont = raylib.lib.GetFontDefault()
 
 return function(objects, data)
@@ -22,12 +10,28 @@ return function(objects, data)
 		tabs = data.tabs or { "Tab 1", "Tab 2", "Tab 3" },
 		activeIndex = data.activeIndex or 1,
 		onTabChange = data.onTabChange,
-		backgroundColor = data.backgroundColor or color3.new(0.15, 0.15, 0.15),
+		font = data.font or defaultFont,
+		backgroundColor = data.backgroundColor or color3.new(1, 1, 1),
+		backgroundTransparency = data.backgroundTransparency or 0,
 		activeColor = data.activeColor or color3.new(0.02, 0.5, 1),
-		textColor = data.textColor or color3.new(1, 1, 1),
+		hoverColor = data.hoverColor or color3.new(0.25, 0.25, 0.3),
+		textColor = data.textColor or color3.new(0, 0, 0),
 		fontSize = data.fontSize or 16,
+		spacing = data.spacing or 1,
 		animX = 0,
+		tabEffects = {},
 	}
+
+	for i = 1, #config.tabs do
+		config.tabEffects[i] = effects({
+			baseColor = config.backgroundColor,
+			hoverColor = config.hoverColor,
+			pressColor = config.activeColor,
+			enableShadows = false,
+			enableGlow = false,
+			enablePress = false,
+		})
+	end
 
 	local wrapper = {}
 
@@ -35,7 +39,9 @@ return function(objects, data)
 		if type(config[prop]) == "function" then
 			return wrapper
 		end
+
 		config[prop] = value
+
 		return wrapper
 	end
 
@@ -43,36 +49,90 @@ return function(objects, data)
 		config.activeIndex = math.clamp(index, 1, #config.tabs)
 	end
 
+	wrapper.get = function(prop)
+		return config[prop]
+	end
+
+	wrapper.get_rect = function()
+		return config.obj_rect
+	end
+
 	wrapper.render = function(dt)
 		local r = config.obj_rect
+
 		local tabWidth = r.width / #config.tabs
 
-		raylib.lib.DrawRectangleRounded(rect:translate(r), 0.2, 8, c3tr(config.backgroundColor, 0))
+		raylib.lib.DrawRectangleRounded(
+			rect:translate(r),
+			0.2,
+			8,
+			config.backgroundColor:ToRaylib(config.backgroundTransparency)
+		)
 
 		local targetX = r.x + (config.activeIndex - 1) * tabWidth
+
 		config.animX = config.animX + (targetX - config.animX) * 0.15
 
 		local indicatorRect = rect.new(config.animX, r.y + r.height - 3, tabWidth, 3)
+
 		raylib.lib.DrawRectangle(
 			indicatorRect.x,
 			indicatorRect.y,
 			indicatorRect.width,
 			indicatorRect.height,
-			c3tr(config.activeColor, 0)
+			config.activeColor:ToRaylib(0)
 		)
 
 		for i, tab in ipairs(config.tabs) do
 			local tabX = r.x + (i - 1) * tabWidth
 			local tabRect = rect.new(tabX, r.y, tabWidth, r.height)
 
-			local textWidth = raylib.lib.MeasureText(tab, config.fontSize)
+			-- Update effects for this tab
+			if not config.tabEffects[i] then
+				-- add it
+				config.tabEffects[i] = effects({
+					baseColor = config.backgroundColor,
+					hoverColor = config.hoverColor,
+					pressColor = config.activeColor,
+					enableShadows = false,
+					enableGlow = false,
+					enablePress = false,
+				})
+			end
+
+			config.tabEffects[i].setRect(tabRect)
+			config.tabEffects[i].update(dt)
+
+			-- Draw tab background with hover effect
+
+			local tabBgColor = config.backgroundColor
+
+			if i == config.activeIndex then
+				tabBgColor = config.activeColor
+			elseif config.tabEffects[i].isHovered() then
+				tabBgColor = config.tabEffects[i].getCurrentColor()
+			end
+
+			raylib.lib.DrawRectangle(tabRect.x, tabRect.y, tabRect.width, tabRect.height, tabBgColor:ToRaylib(0.5))
+
+			local textWidth = raylib.lib.MeasureTextEx(config.font, tab, config.fontSize, config.spacing).x
+
 			local textX = tabX + (tabWidth - textWidth) / 2
+
 			local textY = r.y + (r.height - config.fontSize) / 2
 
-			raylib.lib.DrawText(tab, textX, textY, config.fontSize, c3tr(config.textColor, 0))
+			raylib.lib.DrawTextEx(
+				config.font,
+				tab,
+				vector.create(textX, textY),
+				config.fontSize,
+				config.spacing,
+				config.textColor:ToRaylib(0)
+			)
 
-			if rect.MouseIsInRect(tabRect) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+			if config.tabEffects[i].isHovered() and raylib.lib.IsMouseButtonReleased(0) == 1 then
 				config.activeIndex = i
+
 				if config.onTabChange then
 					config.onTabChange(i, tab)
 				end
@@ -81,5 +141,6 @@ return function(objects, data)
 	end
 
 	table.insert(objects, wrapper)
+
 	return wrapper
 end

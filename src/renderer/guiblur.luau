@@ -2,9 +2,13 @@
 --!native
 local blurmod = {}
 local raylib = require("@raylib")
+local zembed = require("@zembed")
 local lib, structs, const = raylib.lib, raylib.structs, raylib.const
 
 local function extract_texture(v)
+	if type(v) == "table" and v.id then
+		return v
+	end
 	local texture = zune.mem.slice(v, structs.RenderTexture:offset("texture"), structs.Texture:size())
 	return texture
 end
@@ -20,14 +24,28 @@ function blurmod.Init(width, height)
 	width = width or lib.GetRenderWidth()
 	height = height or lib.GetRenderHeight()
 
-	local blurShader = lib.LoadShader(nil, "./src/assets/shaders/blur3d.frag")
+	local blurShader = lib.LoadShader(nil, zembed.AssetPath("kineasset://shaders/blur3d.frag"))
 	local resolutionLoc = lib.GetShaderLocation(blurShader, "resolution")
 	local directionLoc = lib.GetShaderLocation(blurShader, "direction")
 	local radiusLoc = lib.GetShaderLocation(blurShader, "blurRadius")
 
-	local WorkspaceCapture = lib.LoadRenderTexture(width, height)
-	local blurH = lib.LoadRenderTexture(width, height)
-	local blurV = lib.LoadRenderTexture(width, height)
+	local WorkspaceCapture
+	local blurH
+	local blurV
+
+	local function rebuildTargets(targetWidth, targetHeight)
+		width = math.max(1, math.floor(targetWidth))
+		height = math.max(1, math.floor(targetHeight))
+
+		WorkspaceCapture = lib.LoadRenderTexture(width, height)
+		blurH = lib.LoadRenderTexture(width, height)
+		blurV = lib.LoadRenderTexture(width, height)
+
+		wrapper.WorkspaceCapture = WorkspaceCapture
+		wrapper.blurV = blurV
+	end
+
+	rebuildTargets(width, height)
 
 	wrapper.enabled = true
 	wrapper.WorkspaceCapture = WorkspaceCapture
@@ -36,6 +54,21 @@ function blurmod.Init(width, height)
 
 	function wrapper:SetBlurRadius(radius)
 		self.blurRadius = radius
+	end
+
+	function wrapper:Resize(targetWidth, targetHeight)
+		targetWidth = targetWidth or width
+		targetHeight = targetHeight or height
+
+		if targetWidth == width and targetHeight == height then
+			return
+		end
+
+		lib.UnloadRenderTexture(WorkspaceCapture)
+		lib.UnloadRenderTexture(blurH)
+		lib.UnloadRenderTexture(blurV)
+
+		rebuildTargets(targetWidth, targetHeight)
 	end
 
 	function wrapper:BeginCapture()
@@ -196,5 +229,7 @@ function blurmod.Init(width, height)
 
 	return wrapper
 end
+
+blurmod._extract_texture = extract_texture
 
 return blurmod

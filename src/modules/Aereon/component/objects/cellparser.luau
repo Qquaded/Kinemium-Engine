@@ -4,7 +4,7 @@ return function(objects, config)
 	local raylib = require("@raylib")
 	local MergedCell = require("./cellItem")
 
-	local arect = require("@Arect")(raylib.lib)
+	local arect = require("@arect")
 
 	local defaults = {
 		x = config.x or 0,
@@ -14,6 +14,9 @@ return function(objects, config)
 		spacing = config.spacing or 0, -- Spacing between groups
 		groupSpacing = config.groupSpacing or 20, -- Spacing between different groups
 	}
+
+	local props = {}
+	local cellOffsets = {}
 
 	local function createCell(cellConfig, position, yOffset)
 		local cell = MergedCell(objects, {
@@ -31,18 +34,15 @@ return function(objects, config)
 			position = position,
 			showSeparator = cellConfig.showSeparator,
 
-			-- Visual customization
 			backgroundColor = cellConfig.backgroundColor,
 			hoverColor = cellConfig.hoverColor,
 			separatorColor = cellConfig.separatorColor,
 			textColor = cellConfig.textColor,
 			descriptionColor = cellConfig.descriptionColor,
 
-			-- Editor
 			editorComponent = cellConfig.editor or cellConfig.editorComponent,
 			editorWidth = cellConfig.editorWidth or 200,
 
-			-- Callbacks
 			onValueChange = cellConfig.onValueChange,
 			onClick = cellConfig.onClick,
 		})
@@ -94,6 +94,12 @@ return function(objects, config)
 				local cell = createCell(itemConfig, position, currentY)
 				table.insert(groupCells, cell)
 				table.insert(cells, cell)
+				cellOffsets[cell] = currentY
+
+				local editorcomp = itemConfig.editor
+				if editorcomp then
+					props[cell] = editorcomp
+				end
 
 				currentY = currentY + (itemConfig.height or defaults.cellHeight)
 			end
@@ -106,33 +112,63 @@ return function(objects, config)
 		end
 	end
 
-	-- Return wrapper with helper methods
 	local wrapper = {}
+	local overallRect = arect.new(defaults.x, defaults.y, defaults.width, currentY)
 
-	-- Render all cells
+	wrapper.set = function(prop, value)
+		if prop == "obj_rect" then
+			overallRect = value
+			wrapper.setPosition(value.x, value.y)
+		elseif prop == "width" then
+			overallRect.width = value
+			wrapper.setWidth(value)
+		end
+		return wrapper
+	end
+
+	wrapper.get = function(prop)
+		if prop == "obj_rect" then
+			return overallRect
+		end
+		return cellRefs[prop]
+	end
+
 	wrapper.render = function(dt)
 		for _, cell in ipairs(cells) do
 			cell.render(dt)
 		end
+		for cell, comp in pairs(props) do
+			local r = cell.getRect()
+
+			local editorX = r.x + r.width - (cell.editorWidth or 240) - (cell.padding or 10)
+			local editorY = r.y + (r.height - 30) / 2
+			local editorWidth = cell.editorWidth or 240
+			local editorHeight = 30
+
+			local new = arect.new(editorX, editorY, editorWidth, editorHeight)
+			if comp.set then
+				comp.set("obj_rect", new)
+			else
+				comp.obj_rect = new
+			end
+
+			if comp.render then
+				comp.render(dt)
+			elseif comp.drawWithExtras then
+				comp:drawWithExtras(new.x, new.y, new.width, new.height)
+			end
+		end
 	end
 
-	-- Get a specific cell or group
-	wrapper.get = function(name)
-		return cellRefs[name]
-	end
-
-	-- Get all cells
 	wrapper.getAll = function()
 		return cells
 	end
 
-	-- Update position of entire cell list
 	wrapper.setPosition = function(x, y)
-		local offsetY = 0
 		for _, cell in ipairs(cells) do
 			local cellRect = cell.getRect()
+			local offsetY = cellOffsets[cell] or 0
 			cell.set("obj_rect", arect.new(x, y + offsetY, cellRect.width, cellRect.height))
-			offsetY = offsetY + cellRect.height
 		end
 	end
 

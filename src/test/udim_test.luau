@@ -1,4 +1,4 @@
-local UDim = require("../enviroment/datatypes/UDim")
+local UDim = require("../environment/datatypes/UDim")
 
 local testing = zune.testing
 local expect = testing.expect

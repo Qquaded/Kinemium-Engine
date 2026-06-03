@@ -1,17 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 return function(objects, data)
@@ -39,13 +29,13 @@ return function(objects, data)
 						config.rounded[1],
 						config.rounded[2],
 						value,
-						c3tr(color, transparency) or raylib.const.WHITE
+						config.color:ToRaylib(transparency)
 					)
 				else
 					raylib.lib.DrawRectangleLinesEx(
 						rect:translate(config.obj_rect),
 						value,
-						c3tr(color, transparency) or raylib.const.WHITE
+						config.color:ToRaylib(transparency)
 					)
 				end
 			end)
@@ -80,7 +70,7 @@ return function(objects, data)
 
 	wrapper.setTransparency = function(t)
 		config.bgtransparency = t
-		config.raylib_color = c3tr(config.color, config.bgtransparency)
+		config.raylib_color = config.color:ToRaylib(t)
 		return wrapper
 	end
 

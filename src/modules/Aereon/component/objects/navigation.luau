@@ -1,18 +1,7 @@
 local raylib = require("@raylib")
-local structs = raylib.structs
-
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
+local imageTextButton = require("./imageTextButton")
 
 return function(objects, data)
 	local config = {
@@ -33,6 +22,7 @@ return function(objects, data)
 
 		-- Navigation items
 		items = data.items,
+		buttonInstances = {},
 
 		-- Layout
 		collapsedWidth = 72,
@@ -64,11 +54,9 @@ return function(objects, data)
 		onItemClick = data.onItemClick,
 	}
 
-	local function DrawText(text, posX, posY, fontSize, color)
-		raylib.lib.DrawTextEx(config.font, text, vector.create(posX, posY), fontSize, 1, color)
-	end
-
 	local wrapper = {}
+
+	wrapper.config = config
 
 	wrapper.set = function(prop, value)
 		if type(config[prop]) == "function" then
@@ -78,7 +66,23 @@ return function(objects, data)
 		return wrapper
 	end
 
+	wrapper.setSelected = function(index)
+		for i, item in ipairs(config.items) do
+			item.selected = (i == index)
+			if config.buttonInstances[i] then
+				config.buttonInstances[i].set(
+					"backgroundColor",
+					i == index and config.selectedColor or config.itemBackgroundColor
+				)
+				config.buttonInstances[i].set("textTransparency", 1 - config.textAlpha)
+			end
+		end
+		config.selectedIndex = index
+		return wrapper
+	end
+
 	wrapper.addItem = function(icon, itemType, label, texture)
+		local index = #config.items + 1
 		table.insert(config.items, {
 			icon = icon,
 			type = itemType or "icon",
@@ -86,92 +90,39 @@ return function(objects, data)
 			texture = texture,
 			selected = false,
 		})
-		return wrapper
-	end
 
-	wrapper.setSelected = function(index)
-		for i, item in ipairs(config.items) do
-			item.selected = (i == index)
+		if itemType ~= "divider" and itemType ~= "spacer" and itemType ~= "category" then
+			config.buttonInstances[index] = imageTextButton({}, {
+				x = 0,
+				y = 0,
+				width = config.itemSize,
+				height = config.itemSize,
+				text = label or "",
+				icon = texture,
+				font = config.font,
+				fontSize = 14,
+				iconPosition = "left",
+				gap = 8,
+				iconPadding = 12,
+				backgroundColor = config.itemBackgroundColor,
+				hoverColor = config.hoverColor,
+				pressColor = config.selectedColor,
+				textColor = config.textColor,
+				rounded = { 0.15, 8 },
+				onClick = function()
+					wrapper.setSelected(index)
+					if config.onItemClick then
+						config.onItemClick(config.items[index], index)
+					end
+				end,
+			})
 		end
-		config.selectedIndex = index
+
 		return wrapper
-	end
-
-	local function drawIcon(x, y, size, iconName, color)
-		local centerX = x + size / 2
-		local centerY = y + size / 2
-
-		if iconName == "home" then
-			raylib.lib.DrawRectangle(centerX - 6, centerY - 2, 12, 10, c3tr(color, 0))
-			raylib.lib.DrawTriangle(
-				vector.create(centerX, centerY - 8),
-				vector.create(centerX - 8, centerY - 2),
-				vector.create(centerX + 8, centerY - 2),
-				c3tr(color, 0)
-			)
-		elseif iconName == "compass" then
-			raylib.lib.DrawCircleLines(centerX, centerY, 8, c3tr(color, 0))
-			raylib.lib.DrawLineEx(
-				vector.create(centerX, centerY - 6),
-				vector.create(centerX, centerY + 6),
-				2,
-				c3tr(color, 0)
-			)
-		elseif iconName == "shirt" then
-			raylib.lib.DrawRectangle(centerX - 6, centerY - 2, 12, 10, c3tr(color, 0))
-			raylib.lib.DrawRectangle(centerX - 8, centerY - 4, 4, 6, c3tr(color, 0))
-			raylib.lib.DrawRectangle(centerX + 4, centerY - 4, 4, 6, c3tr(color, 0))
-		elseif iconName == "stats" then
-			raylib.lib.DrawRectangle(centerX - 8, centerY + 2, 3, 6, c3tr(color, 0))
-			raylib.lib.DrawRectangle(centerX - 3, centerY - 2, 3, 10, c3tr(color, 0))
-			raylib.lib.DrawRectangle(centerX + 2, centerY - 6, 3, 14, c3tr(color, 0))
-			raylib.lib.DrawRectangle(centerX + 7, centerY, 3, 8, c3tr(color, 0))
-		elseif iconName == "fire" then
-			raylib.lib.DrawCircle(centerX, centerY + 2, 6, c3tr(color, 0))
-			raylib.lib.DrawTriangle(
-				vector.create(centerX, centerY - 8),
-				vector.create(centerX - 6, centerY + 2),
-				vector.create(centerX + 6, centerY + 2),
-				c3tr(color, 0)
-			)
-		elseif iconName == "cube" then
-			raylib.lib.DrawRectangle(centerX - 6, centerY - 6, 12, 12, c3tr(color, 0))
-		elseif iconName == "cube-outline" then
-			raylib.lib.DrawRectangleLines(centerX - 6, centerY - 6, 12, 12, c3tr(color, 0))
-		elseif iconName == "add" then
-			raylib.lib.DrawRectangle(centerX - 1, centerY - 8, 2, 16, c3tr(color, 0))
-			raylib.lib.DrawRectangle(centerX - 8, centerY - 1, 16, 2, c3tr(color, 0))
-		elseif iconName == "settings" then
-			raylib.lib.DrawCircleLines(centerX, centerY, 6, c3tr(color, 0))
-			raylib.lib.DrawCircle(centerX, centerY, 3, c3tr(color, 0))
-		elseif iconName == "logout" then
-			raylib.lib.DrawLineEx(
-				vector.create(centerX - 6, centerY),
-				vector.create(centerX + 6, centerY),
-				2,
-				c3tr(color, 0)
-			)
-			raylib.lib.DrawLineEx(
-				vector.create(centerX + 2, centerY - 4),
-				vector.create(centerX + 6, centerY),
-				2,
-				c3tr(color, 0)
-			)
-			raylib.lib.DrawLineEx(
-				vector.create(centerX + 2, centerY + 4),
-				vector.create(centerX + 6, centerY),
-				2,
-				c3tr(color, 0)
-			)
-		else
-			raylib.lib.DrawCircle(centerX, centerY, 6, c3tr(color, 0))
-		end
 	end
 
 	wrapper.render = function(dt)
 		local r = config.obj_rect
-		local mousePos = raylib.lib.GetMousePosition()
-		local mousePressed = raylib.lib.IsMouseButtonPressed(0) == 1
 		local scrollWheel = raylib.lib.GetMouseWheelMove()
 
 		-- Check if mouse is hovering over the navigation
@@ -199,7 +150,7 @@ return function(objects, data)
 		end
 
 		-- Background
-		raylib.lib.DrawRectangle(r.x, r.y, config.currentWidth, r.height, c3tr(config.backgroundColor, 0))
+		raylib.lib.DrawRectangle(r.x, r.y, config.currentWidth, r.height, config.backgroundColor:ToRaylib(0))
 
 		-- Handle scrolling
 		if isHovering then
@@ -222,7 +173,7 @@ return function(objects, data)
 					currentY + config.spacing,
 					config.currentWidth - config.padding * 4,
 					config.dividerHeight,
-					c3tr(config.dividerColor, 0)
+					config.dividerColor:ToRaylib(0)
 				)
 				currentY = currentY + config.spacing * 2 + config.dividerHeight
 			elseif item.type == "spacer" then
@@ -241,82 +192,30 @@ return function(objects, data)
 				-- Draw category title (only visible when expanded)
 				if config.textAlpha > 0.1 then
 					local categoryText = item.label or "CATEGORY"
-					DrawText(
+					raylib.lib.DrawTextEx(
+						config.font,
 						categoryText,
-						r.x + config.padding * 2,
-						currentY + 4,
+						vector.create(r.x + config.padding * 2, currentY + 4),
 						10,
-						c3tr(config.categoryColor, 1 - config.textAlpha)
+						1,
+						config.categoryColor:ToRaylib(1 - config.textAlpha)
 					)
 				end
 				currentY = currentY + 20
 			else
-				-- Regular item
+				-- Regular item - use ImageTextButton
 				local itemX = config.isExpanded and r.x + config.padding * 1.5
 					or r.x + (config.currentWidth - config.itemSize) / 2 - collapseOffset
 				local itemRenderWidth = config.isExpanded and (config.currentWidth - config.padding * 3)
 					or config.itemSize + collapseOffset * 2
-				local itemRect = rect.new(itemX, currentY, itemRenderWidth, config.itemSize)
 
-				local isHovered = rect.MouseIsInRect(itemRect)
-				local isSelected = item.selected or config.selectedIndex == i
-
-				if isSelected then
-					config.indicatorTargetY = currentY + (config.itemSize - 28) / 2
-					config.indicatorHeight = 28
-				end
-
-				if isHovered then
-					config.hoveredIndex = i
-				end
-
-				-- Item background
-				local bgColor = config.itemBackgroundColor
-				if isSelected then
-					bgColor = config.selectedColor
-				elseif isHovered then
-					bgColor = config.hoverColor
-				end
-
-				raylib.lib.DrawRectangleRounded(rect:translate(itemRect), 0.15, 8, c3tr(bgColor, 0))
-				local iconColor = isSelected and config.selectedIconColor or config.iconColor
-
-				if item.texture ~= nil then
-					raylib.lib.DrawTexturePro(
-						item.texture.texture,
-						structs.Rectangle:new({ x = 0, y = 0, width = item.texture.x, height = item.texture.y }),
-						structs.Rectangle:new({
-							x = itemX + (config.itemSize - config.iconSize) / 2,
-							y = currentY + (config.itemSize - config.iconSize) / 2,
-							width = config.iconSize,
-							height = config.iconSize,
-						}),
-						vector.create(0, 0),
-						0,
-						iconColor:ToRaylib(0)
-					)
-				else
-					drawIcon(
-						itemX + (config.itemSize - config.iconSize) / 2,
-						currentY + (config.itemSize - config.iconSize) / 2,
-						config.iconSize,
-						item.icon,
-						iconColor
-					)
-				end
-
-				if item.label and config.textAlpha > 0.1 then
-					local textX = itemX + config.itemSize + 8
-					local textY = currentY + (config.itemSize - 14) / 2
-					DrawText(item.label, textX, textY, 14, c3tr(config.textColor, 1 - config.textAlpha))
-				end
-
-				-- Click handling
-				if isHovered and mousePressed then
-					wrapper.setSelected(i)
-					if config.onItemClick then
-						config.onItemClick(item, i)
-					end
+				local buttonInstance = config.buttonInstances[i]
+				if buttonInstance then
+					buttonInstance.set("obj_rect", rect.new(itemX, currentY, itemRenderWidth, config.itemSize))
+					buttonInstance.set("text", config.isExpanded and (item.label or "") or "")
+					buttonInstance.set("icon", item.texture)
+					buttonInstance.set("textTransparency", 1 - config.textAlpha)
+					buttonInstance.render(dt)
 				end
 
 				currentY = currentY + config.itemSize + config.spacing
@@ -339,7 +238,7 @@ return function(objects, data)
 				scrollbarY,
 				scrollbarWidth,
 				scrollbarHeight,
-				c3tr(config.iconColor, 0.3)
+				config.iconColor:ToRaylib(0.3)
 			)
 		end
 

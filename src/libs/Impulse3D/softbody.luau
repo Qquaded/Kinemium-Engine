@@ -126,7 +126,7 @@ function softbody.step(id: number, dt: number, gravity: Vector3Double)
 	local springs = sb.springs
 	local grav = sb.gravity or gravity
 
-	-- ── 1. Accumulate spring forces ──────────────────────────────────────────
+	--  1. Accumulate spring forces
 	for _, spring in ipairs(springs) do
 		if spring.broken then
 			continue
@@ -139,7 +139,7 @@ function softbody.step(id: number, dt: number, gravity: Vector3Double)
 		end
 
 		local delta = p2.position - p1.position
-		local dist = delta.Magnitude
+		local dist = delta:Magnitude()
 		if dist < 1e-9 then
 			continue
 		end
@@ -178,7 +178,7 @@ function softbody.step(id: number, dt: number, gravity: Vector3Double)
 		end
 	end
 
-	-- ── 2. Integrate particles ────────────────────────────────────────────────
+	--  2. Integrate particles
 	for _, p in ipairs(particles) do
 		if p.pinned then
 			table.clear(p.forces)
@@ -202,7 +202,7 @@ function softbody.step(id: number, dt: number, gravity: Vector3Double)
 		p.prevPos = p.position
 		p.position = p.position + p.velocity * dt
 
-		-- ── 3. Floor constraint ───────────────────────────────────────────────
+		--  3. Floor constraint
 		if p.position.Y <= 0 then
 			p.position = Vector3Double.new(p.position.X, 0, p.position.Z)
 			if p.velocity.Y < 0 then

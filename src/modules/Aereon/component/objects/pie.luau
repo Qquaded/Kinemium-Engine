@@ -1,17 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 return function(objects, data)
@@ -160,13 +150,13 @@ return function(objects, data)
 					vector.create(x1_outer, y1_outer),
 					vector.create(x2_outer, y2_outer),
 					vector.create(x1_inner, y1_inner),
-					c3tr(segmentColor, 0)
+					segmentColor:ToRaylib(0)
 				)
 				raylib.lib.DrawTriangle(
 					vector.create(x2_outer, y2_outer),
 					vector.create(x2_inner, y2_inner),
 					vector.create(x1_inner, y1_inner),
-					c3tr(segmentColor, 0)
+					segmentColor:ToRaylib(0)
 				)
 			end
 
@@ -179,7 +169,7 @@ return function(objects, data)
 				vector.create(divX1, divY1),
 				vector.create(divX2, divY2),
 				1,
-				c3tr(config.dividerColor, 0)
+				config.dividerColor:ToRaylib(0)
 			)
 
 			-- Draw texture icon
@@ -216,7 +206,7 @@ return function(objects, data)
 
 		-- Draw center circle
 		local centerColor = config.centerHovered and config.centerHoverColor or config.centerColor
-		raylib.lib.DrawCircle(config.centerX, config.centerY, config.innerRadius, c3tr(centerColor, 0))
+		raylib.lib.DrawCircle(config.centerX, config.centerY, config.innerRadius, centerColor:ToRaylib(0))
 
 		-- Center click handling
 		if config.centerHovered and mousePressed and config.onCenterClick then

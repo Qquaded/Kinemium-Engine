@@ -133,7 +133,7 @@ end
 -- Shared positional constraint impulse, weighted by invMass
 local function applyPositionalConstraint(bodyA, bodyB, worldAnchorA, worldAnchorB, dt)
 	local delta = worldAnchorB - worldAnchorA
-	local distance = delta.Magnitude
+	local distance = delta:Magnitude()
 
 	if distance <= 0.001 then
 		return
@@ -195,7 +195,7 @@ function joints.solveSpring(joint: SpringJoint, bodyA: any, bodyB: any, dt: numb
 	local worldAnchorB = bodyB.position + joint.anchorB
 
 	local delta = worldAnchorB - worldAnchorA
-	local distance = delta.Magnitude
+	local distance = delta:Magnitude()
 	local normal = distance > 1e-9 and delta / distance or Vector3Double.new(0, 0, 0)
 
 	local displacement = distance - joint.restLength
@@ -277,7 +277,7 @@ function joints.solveSlider(joint: SliderJoint, bodyA: any, bodyB: any, dt: numb
 
 	local targetPos = worldAnchorA + joint.axis * projection
 	local constraintDelta = worldAnchorB - targetPos
-	local distance = constraintDelta.Magnitude
+	local distance = constraintDelta:Magnitude()
 
 	if distance > 0.001 then
 		local invMassA = bodyA.invMass or 0
@@ -351,8 +351,8 @@ function joints.solveWheel(joint: WheelJoint, bodyA: any, bodyB: any, dt: number
 	-- Motor torque
 	if joint.motor then
 		local torqueAxis = Vector3Double.new(-joint.axis.Z, 0, joint.axis.X)
-		if torqueAxis.Magnitude > 1e-9 then
-			torqueAxis = torqueAxis.Unit
+		if torqueAxis:Magnitude() > 1e-9 then
+			torqueAxis = torqueAxis:Unit()
 			local torqueImpulse = torqueAxis * joint.motor.torque * dt
 			if bodyB.bodyType ~= "static" then
 				bodyB.angularVelocity = bodyB.angularVelocity + torqueImpulse * (invMassB > 0 and invMassB or 1)
@@ -364,7 +364,7 @@ function joints.solveWheel(joint: WheelJoint, bodyA: any, bodyB: any, dt: number
 	if joint.brake then
 		local brakeForce = joint.brake.torque * dt
 		local av = bodyB.angularVelocity
-		local avMag = av.Magnitude
+		local avMag = av:Magnitude()
 		if avMag > 1e-9 then
 			local brakeImpulse = av / avMag * math.min(brakeForce, avMag)
 			if bodyB.bodyType ~= "static" then
@@ -391,7 +391,7 @@ function joints.solvePiston(joint: PistonJoint, bodyA: any, bodyB: any, dt: numb
 
 	local targetPos = worldAnchorA + joint.axis * projection
 	local constraintDelta = worldAnchorB - targetPos
-	local distance = constraintDelta.Magnitude
+	local distance = constraintDelta:Magnitude()
 
 	local invMassA = bodyA.invMass or 0
 	local invMassB = bodyB.invMass or 0

@@ -47,21 +47,7 @@ function lang.process(code)
 				return code, ProcessedDataThread
 			end,
 		},
-		{
-			name = "extraOps",
-			gsub = function(code)
-				code = code:gsub("([%w_]+)%s*%+=%s*(.-);", "%1 = %1 + %2")
-				code = code:gsub("([%w_]+)%s*%-=%s*(.-);", "%1 = %1 - %2")
-				code = code:gsub("([%w_]+)%s*%*=%s*(.-);", "%1 = %1 * %2")
-				code = code:gsub("([%w_]+)%s*/=%s*(.-);", "%1 = %1 / %2")
-				code = code:gsub("!=", "~=")
-				code = code:gsub("&&", " and ")
-				code = code:gsub("||", " or ")
-				code = code:gsub("!%s*([%w_%(])", "not %1")
 
-				return code
-			end,
-		},
 		{
 			name = "include",
 			gsub = function(code: string)
@@ -154,8 +140,10 @@ function lang.process(code)
 				code = code:gsub("#undef%s+([%w_]+)\n", "%1 = nil\n")
 				-- #warning → print
 				code = code:gsub('#warning%s+"(.-)"\n', 'print("[WARNING] %1")\n')
+				code = code:gsub('#warning%s+(__KILANG_STR_%d+__)\n', 'print(%1)\n')
 				-- #error → error()
 				code = code:gsub('#error%s+"(.-)"\n', 'error("[ERROR] %1")\n')
+				code = code:gsub('#error%s+(__KILANG_STR_%d+__)\n', 'error(%1)\n')
 				return code
 			end,
 		},

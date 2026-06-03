@@ -1,69 +1,411 @@
-local rlservice = game:GetService("KinemiumRaylib")
+local RunService = game:GetService("RunService")
+if RunService:IsServer() then
+	return
+end
+
 local raylib = require("@raylib")
 local lib = raylib.lib
-local renderer = rlservice.renderer
 local aereon = import("@Aereon")
 local gui = aereon.gui
 
 local KinemiumFontService = game:GetService("KinemiumFontService")
-local StudioThemeService = game:GetService("StudioThemeService")
+local HttpService = game:GetService("HttpService")
+local Color3 = require("@Color3")
 
 local vend = KinemiumFontService.GetDefaultFont()
-local arect = require("@Arect")(raylib.lib)
 local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
-
-local backgroundColor = StudioThemeService.SelectedTheme.BackgroundColor
-local TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
-local GuiHandlesColor =
-	StudioThemeService.SelectedTheme.GuiHandlesColor:ToRaylib(StudioThemeService.SelectedTheme.GuiHandlesTransparency)
-local SecondaryBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor
-local SecondaryBackgroundColorRaylib = StudioThemeService.SelectedTheme.SecondaryBackgroundColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryBackgroundColorTransparency
-)
-local SecondaryTextColor = StudioThemeService.SelectedTheme.SecondaryTextColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryTextTransparency
-)
-local ImageColor =
-	StudioThemeService.SelectedTheme.ImageColor:ToRaylib(StudioThemeService.SelectedTheme.ImageTransparency)
-
-local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
-
 local logoPath = "./src/assets/images/icons/vanilla3/kinemium/KinemiumWhite.png"
 local kilLogo = KinemiumIconLoader.ToTexture(logoPath)
 
-local card = gui.itemcard({
-	x = 100,
-	y = 100,
-	width = 300,
-	height = 300,
+local activePluginPage = nil
 
-	title = "JS Kilang Superset",
-	description = "This adds a Javascript superset to kilang, lets you code games in JS!",
-	downloads = "67.41M",
-	likes = "67",
-	category = "Scripting",
+local StudioThemeService = game:GetService("StudioThemeService")
 
-	icon = kilLogo,
-	font = vend,
-	bannerImage = kilLogo,
+local boldFont = KinemiumFontService.GetBoldFont()
+local TextBoxClass = aereon.textbox(StudioThemeService.SelectedTheme, game)
+local marketplaceSearchBox
+local marketplaceFilterDropdown
+local marketplaceSearchText = ""
+local marketplaceFilter = "All"
+local marketplaceEntries = {}
+local marketplaceFilterOptions = { "All" }
 
-	onClick = function()
-		print("Card clicked!")
-	end,
+local function rebuildMarketplaceFilterOptions()
+	local options = { "All" }
+	local seen = {}
+	for _, entry in ipairs(marketplaceEntries) do
+		local manifest = entry.plugin.manifest or {}
+		local keywords = manifest.keywords or {}
+		local category = keywords[1] or "Plugin"
+		if not seen[category] then
+			seen[category] = true
+			table.insert(options, category)
+		end
+	end
+	marketplaceFilterOptions = options
+	if marketplaceFilterDropdown then
+		marketplaceFilterDropdown.set("options", options)
+		local idx = 1
+		for i, opt in ipairs(options) do
+			if opt == marketplaceFilter then
+				idx = i
+				break
+			end
+		end
+		marketplaceFilterDropdown.set("selectedIndex", idx)
+	end
+end
+
+local function applyMarketplaceFilter()
+	local query = string.lower(marketplaceSearchText or "")
+	for _, entry in ipairs(marketplaceEntries) do
+		local manifest = entry.plugin.manifest or {}
+		local name = string.lower(manifest.name or "")
+		local desc = string.lower(manifest.description or "")
+		local keywords = manifest.keywords or {}
+		local category = keywords[1] or "Plugin"
+		local matchesFilter = marketplaceFilter == "All" or category == marketplaceFilter
+		local matchesSearch = query == "" or string.find(name, query, 1, true) or string.find(desc, query, 1, true)
+		entry.card.set("visible", matchesFilter and matchesSearch)
+	end
+end
+
+local function createCard(plugin, textureData, thumbnailData)
+	local manifest = plugin.manifest
+	local card = gui.itemcard({
+		x = 0,
+		y = 0,
+		width = 320,
+		height = 360,
+		rounded = { 0.05, 12 },
+
+		title = manifest.name,
+		description = manifest.description or "No description provided.",
+		downloads = "0",
+		likes = "0",
+		category = manifest.keywords and manifest.keywords[1] or "Plugin",
+		icon = textureData,
+		bannerImage = thumbnailData,
+
+		font = vend,
+
+		backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		darkBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		textColor = StudioThemeService.SelectedTheme.TextColor,
+		dimTextColor = StudioThemeService.SelectedTheme.SecondaryTextColor,
+		categoryColor = StudioThemeService.SelectedTheme.Accent,
+
+		onClick = function()
+			activePluginPage = plugin.manifest.id
+		end,
+	})
+
+	return card
+end
+
+local function createPage(plugin, textureData, thumbnailData)
+	local manifest = plugin.manifest
+	local modcard
+	modcard = gui.modcard({
+		x = 20,
+		y = 20,
+		width = 1360,
+		height = 860,
+		font = vend,
+		boldFont = boldFont,
+
+		title = manifest.name,
+		description = manifest.description or "",
+		downloads = "0",
+		likes = "0",
+		category = manifest.keywords and manifest.keywords[1] or "Plugin",
+
+		sections = {
+			{ type = "heading", text = manifest.name },
+			{ type = "text", text = manifest.description or "No description provided." },
+		},
+
+		compatibility = {
+			game = "Kinemium Engine",
+			versions = { "1.0.0" },
+		},
+		platforms = { "Any" },
+		environments = { "Client-side", "Server-side" },
+		backgroundTransparency = 1,
+
+		accent = StudioThemeService.SelectedTheme.Accent,
+		tabBarBg = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		pageBg = StudioThemeService.SelectedTheme.BackgroundColor,
+		headerBg = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		iconBg = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		text = StudioThemeService.SelectedTheme.TextColor,
+		muted = StudioThemeService.SelectedTheme.SecondaryTextColor,
+		bg = StudioThemeService.SelectedTheme.BackgroundColor,
+		lightText = StudioThemeService.SelectedTheme.LightText,
+		sidebarBg = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		buttonBg = StudioThemeService.SelectedTheme.Accent,
+		buttonBgHover = StudioThemeService.SelectedTheme.Accent,
+		white = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+
+		icon = textureData,
+		bannerImage = thumbnailData,
+
+		onDownload = function()
+			modcard.set("downloadText", "Installing..")
+
+			local success, result = game.PluginLoader.DownloadPlugin(plugin.manifest, true)
+			if success then
+				modcard.set("downloadText", "Installed")
+			end
+		end,
+	})
+	return modcard
+end
+
+local pages = {}
+
+local plugins
+local isLoadingPlugins = false
+
+local function getImageExt(path)
+	if type(path) ~= "string" then
+		return ".png"
+	end
+	local ext = path:match("(%.[%a%d]+)$")
+	return ext or ".png"
+end
+
+local function fetchRemoteTexture(url, ext)
+	if type(url) ~= "string" or url == "" then
+		return nil
+	end
+	local ok, body = pcall(HttpService.GetAsync, HttpService, url, {
+		["User-Agent"] = "Kinemium-Engine",
+	})
+	if not ok or type(body) ~= "string" or #body == 0 then
+		return nil
+	end
+	return KinemiumIconLoader.ToTextureBuffer(buffer.fromstring(body), ext or getImageExt(url))
+end
+
+local marketplaceFlex = gui.flex({
+	direction = "row",
+	flexWrap = "wrap",
+	gap = 24,
+	padding = { left = 0, right = 0, top = 0, bottom = 0 },
+	autoHeight = true,
+	backgroundColor = Color3.new(0, 0, 0),
+	backgroundTransparency = 1,
+})
+
+local scrollArea = gui.scrollable({
+	child = marketplaceFlex,
+	scrollbarWidth = 8,
+	scrollbarColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+	scrollbarHoverColor = StudioThemeService.SelectedTheme.Accent,
+	scrollbarBackground = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+	scrollbarBackgroundTransparency = 0.7,
 })
 
 repeat
 	task.wait()
 until ishared.Home
 
-table.insert(ishared.Home.rendering, {
-	render = function(dt)
-		if ishared.Home.activePage ~= "Marketplace" then
-			return
+local arect = require("@arect")
+
+ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
+	local fade = function(col, a)
+		return col:ToRaylib(1 - (a or 1) * alpha)
+	end
+
+	if ishared.Home.activePage ~= "Marketplace" and ishared.Home.previousPage ~= "Marketplace" then
+		return
+	end
+
+	if not plugins and not isLoadingPlugins then
+		isLoadingPlugins = true
+		task.spawn(function()
+			plugins = game.PluginLoader.GetPluginsMarketplace()
+
+			for _, plugin in pairs(plugins) do
+				local textureData
+				if plugin.icon then
+					textureData = KinemiumIconLoader.ToTextureBuffer(plugin.icon, plugin.manifest.icon or ".png")
+				end
+				if not textureData then
+					textureData = kilLogo
+				end
+
+				local thumbnailData
+				if plugin.thumbnail then
+					thumbnailData =
+						KinemiumIconLoader.ToTextureBuffer(plugin.thumbnail, plugin.manifest.thumbnail or ".png")
+				end
+
+				local card = createCard(plugin, textureData, thumbnailData)
+				local page = createPage(plugin, textureData, thumbnailData)
+				marketplaceFlex.add(card)
+				pages[plugin.manifest.id] = page
+				table.insert(marketplaceEntries, { plugin = plugin, card = card })
+				rebuildMarketplaceFilterOptions()
+				applyMarketplaceFilter()
+
+				if not plugin.icon and plugin.iconUrl then
+					task.spawn(function()
+						local iconTexture =
+							fetchRemoteTexture(plugin.iconUrl, plugin.manifest.icon or getImageExt(plugin.iconUrl))
+						if iconTexture then
+							card.set("icon", iconTexture)
+							page.set("icon", iconTexture)
+						end
+					end)
+				end
+
+				if not plugin.thumbnail and plugin.thumbnailUrl then
+					task.spawn(function()
+						local thumbTexture = fetchRemoteTexture(
+							plugin.thumbnailUrl,
+							plugin.manifest.thumbnail or getImageExt(plugin.thumbnailUrl)
+						)
+						if thumbTexture then
+							card.set("bannerImage", thumbTexture)
+							page.set("bannerImage", thumbTexture)
+						end
+					end)
+				end
+
+				task.wait()
+			end
+			rebuildMarketplaceFilterOptions()
+			applyMarketplaceFilter()
+			isLoadingPlugins = false
+		end)
+	end
+
+	local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
+
+	if not plugins and marketplaceFlex.get("children") and #marketplaceFlex.get("children") == 0 then
+		if vend then
+			raylib.lib.DrawTextEx(
+				boldFont,
+				"Plugin Marketplace",
+				vector.create(100, 80 + slideOffset),
+				32,
+				1,
+				fade(StudioThemeService.SelectedTheme.TextColor, 1)
+			)
+			raylib.lib.DrawTextEx(
+				vend,
+				"Loading plugins...",
+				vector.create(100, 120 + slideOffset),
+				16,
+				1,
+				fade(StudioThemeService.SelectedTheme.SecondaryTextColor, 1)
+			)
+		end
+		return
+	end
+
+	if activePluginPage then
+		local page = pages[activePluginPage]
+		local pageX = 96
+		local pageY = 80 + slideOffset
+		local pageW = screenx - 100
+		local pageH = screeny - 100
+		if page then
+			page.set("obj_rect", arect.new(pageX, pageY, pageW, pageH))
+			page.render(dt)
 		end
 
-		screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
+		return
+	end
 
-		card.render(dt)
-	end,
-})
+	local startX = 100
+	local headerY = 80 + slideOffset
+	local headerDesc = 120 + slideOffset
+	local controlsY = headerDesc + 24
+	local searchHeight = 32
+	local dropdownWidth = 180
+	local gap = 12
+
+	if vend then
+		raylib.lib.DrawTextEx(
+			boldFont,
+			"Plugin Marketplace",
+			vector.create(startX, headerY),
+			32,
+			1,
+			fade(StudioThemeService.SelectedTheme.TextColor, 1)
+		)
+		raylib.lib.DrawTextEx(
+			vend,
+			"Discover tools and extensions for Kinemium Engine",
+			vector.create(startX, headerDesc),
+			16,
+			1,
+			fade(StudioThemeService.SelectedTheme.SecondaryTextColor, 1)
+		)
+	end
+
+	-- Search + Filter
+	if not marketplaceSearchBox then
+		marketplaceSearchBox = TextBoxClass.new({
+			padding = 8,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			textColor = StudioThemeService.SelectedTheme.TextColor,
+			placeholderColor = StudioThemeService.SelectedTheme.SecondaryTextColor,
+			cornerRadius = 0.2,
+			BackgroundTransparency = 0,
+			BorderTransparency = 1,
+			placeholder = "Search plugins...",
+			fontSize = 14,
+			escapeBlurs = false,
+			blurOnSubmit = false,
+			onChange = function(text)
+				marketplaceSearchText = text or ""
+				applyMarketplaceFilter()
+			end,
+		})
+	end
+
+	local searchWidth = screenx - 170 - dropdownWidth - gap
+	marketplaceSearchBox:drawWithExtras(startX, controlsY, searchWidth, searchHeight)
+	local currentSearch = marketplaceSearchBox:getText() or ""
+	if currentSearch ~= marketplaceSearchText then
+		marketplaceSearchText = currentSearch
+		applyMarketplaceFilter()
+	end
+
+	if not marketplaceFilterDropdown then
+		marketplaceFilterDropdown = gui.dropdown({
+			x = startX + searchWidth + gap,
+			y = controlsY,
+			width = dropdownWidth,
+			height = searchHeight,
+			options = marketplaceFilterOptions,
+			font = vend,
+			selectedIndex = 1,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			hoverColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			textColor = StudioThemeService.SelectedTheme.TextColor,
+			borderTransparency = 1,
+			onSelect = function(index, value)
+				marketplaceFilter = value or "All"
+				applyMarketplaceFilter()
+			end,
+		})
+	end
+	marketplaceFilterDropdown.set(
+		"obj_rect",
+		arect.new(startX + searchWidth + gap, controlsY, dropdownWidth, searchHeight)
+	)
+
+	-- Render scroll area
+	local scrollY = controlsY + searchHeight + 16
+	local scrollRect = arect.new(startX, scrollY, screenx - 170, screeny - (scrollY + 50))
+	scrollArea.set("obj_rect", scrollRect)
+	marketplaceFlex.set("width", screenx - 180)
+	scrollArea.render(dt)
+
+	marketplaceFilterDropdown.render(dt)
+end

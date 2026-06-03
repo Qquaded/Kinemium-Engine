@@ -66,12 +66,30 @@ Aereon.raylib = raylib
 Aereon.themes = themes
 Aereon.gui = gui
 
+local function syncDefaultFont(game)
+	if not game or not game.GetService then
+		return
+	end
+
+	local okService, fontService = pcall(function()
+		return game:GetService("KinemiumFontService")
+	end)
+	if not okService or not fontService or type(fontService.GetDefaultFont) ~= "function" then
+		return
+	end
+
+	local okFont, vend = pcall(fontService.GetDefaultFont)
+	if okFont and vend then
+		gui.SetFont(vend)
+	end
+end
+
 function Aereon.theme(name, new)
 	themes[name] = new
 end
 
 function Aereon.rect()
-	return rect(raylib.lib)
+	return rect
 end
 
 function Aereon.getOnStep()
@@ -79,6 +97,7 @@ function Aereon.getOnStep()
 end
 
 function Aereon.window(game, theme, priority)
+	syncDefaultFont(game)
 	local lib = window(raylib.lib, raylib.structs, game, function()
 		return theme
 	end)
@@ -91,11 +110,13 @@ function Aereon.window(game, theme, priority)
 end
 
 function Aereon.ide(theme, game)
+	syncDefaultFont(game)
 	local lib = ide(lib, themes[theme] or themes.default, Aereon, game)
 	return lib
 end
 
 function Aereon.textbox(theme, game)
+	syncDefaultFont(game)
 	local lib = textbox(lib, theme or themes.default, Aereon, game)
 	return lib
 end

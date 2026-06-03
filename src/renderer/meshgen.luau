@@ -160,7 +160,7 @@ function meshgen.autoSmooth(vertices: { any }, indices: { number }?, opts: any?)
 	local tolerance = opts.tolerance or EPSILON
 	local tol2 = tolerance * tolerance
 
-	-- ── 1. make sure we have zero-based indices ──────────────────────────────
+	--  1. make sure we have zero-based indices
 	local idxs
 	if indices then
 		idxs = indices
@@ -171,7 +171,7 @@ function meshgen.autoSmooth(vertices: { any }, indices: { number }?, opts: any?)
 		end
 	end
 
-	-- ── 2. position-weld: map every original vertex to a canonical position id
+	--  2. position-weld: map every original vertex to a canonical position id
 	--       so we can know which triangles truly share a corner in space.
 	local posId = table.create(#vertices) -- posId[vertIdx+1] = canonical pos id
 	local posList = {} -- list of {x,y,z}
@@ -216,7 +216,7 @@ function meshgen.autoSmooth(vertices: { any }, indices: { number }?, opts: any?)
 		end
 	end
 
-	-- ── 3. compute per-face flat normal ──────────────────────────────────────
+	--  3. compute per-face flat normal
 	local triCount = #idxs // 3
 	local faceNormals = table.create(triCount)
 
@@ -232,7 +232,7 @@ function meshgen.autoSmooth(vertices: { any }, indices: { number }?, opts: any?)
 		faceNormals[t + 1] = { nx, ny, nz }
 	end
 
-	-- ── 4. for each position, collect the faces that touch it ─────────────────
+	--  4. for each position, collect the faces that touch it
 	local posToFaces = {} -- posToFaces[posId] = { faceIdx, ... }
 	for t = 0, triCount - 1 do
 		for k = 1, 3 do
@@ -245,7 +245,7 @@ function meshgen.autoSmooth(vertices: { any }, indices: { number }?, opts: any?)
 		end
 	end
 
-	-- ── 5. for each (face, corner), accumulate normals from neighbouring faces
+	--  5. for each (face, corner), accumulate normals from neighbouring faces
 	--       whose angle with the current face is within the threshold.
 	--       Each unique (face, corner-posId) that shares a smooth group becomes
 	--       one output vertex.
@@ -723,6 +723,187 @@ function meshgen.buildMesh(vertices, indices, opts)
 	local mesh = r3d.R3D_LoadMesh(primitive, meshData, ffi.null, usage)
 	r3d.R3D_UnloadMeshData(meshData)
 	return mesh
+end
+
+function meshgen.buildMeshWithData(vertices, indices, opts)
+	local meshData = meshgen.buildMeshData(vertices, indices, opts)
+	if not meshData then
+		return nil
+	end
+	local primitive = (opts and opts.primitive) or meshgen.Primitive.Triangles
+	local usage = (opts and opts.usage) or meshgen.Usage.Static
+	local mesh = r3d.R3D_LoadMesh(primitive, meshData, ffi.null, usage)
+	-- meshData is intentionally NOT unloaded here
+	return { meshData, mesh }
+end
+
+function meshgen.extractModelMesh(model, meshIndex)
+	meshIndex = meshIndex or 0
+
+	local meshCount = buffer.readi32(model, r3dstructs.R3D_Model:offset("meshCount"))
+	if meshCount == 0 then
+		print("meshgen.extractModelMesh: model has no meshes")
+		return nil
+	end
+	if meshIndex >= meshCount then
+		print(`meshgen.extractModelMesh: meshIndex {meshIndex} out of range (0-{meshCount - 1})`)
+		return nil
+	end
+
+	-- Read material data from the model
+	local meshMaterialsPtr = ptrFromStructFieldBuf(model, r3dstructs.R3D_Model:offset("meshMaterials"))
+	local materialIndex = 0
+	if meshMaterialsPtr ~= ffi.null then
+		materialIndex = buffer.readi32(meshMaterialsPtr:read(meshIndex * 4, buffer.create(4), 0, 4), 0)
+	end
+
+	local materialsPtr = ptrFromStructFieldBuf(model, r3dstructs.R3D_Model:offset("materials"))
+	local materialBuf = nil
+	if materialsPtr ~= ffi.null then
+		local matSize = r3dstructs.R3D_Material:size()
+		materialBuf = materialsPtr:read(materialIndex * matSize, buffer.create(matSize), 0, matSize)
+	end
+
+	-- Read CPU-side mesh data from the model's meshData array
+	local meshDataPtr = ptrFromStructFieldBuf(model, r3dstructs.R3D_Model:offset("meshData"))
+	if meshDataPtr == ffi.null then
+		print("meshgen.extractModelMesh: model meshData pointer is null")
+		return nil
+	end
+
+	local meshDataSize = r3dstructs.R3D_MeshData:size()
+	local meshDataBuf = meshDataPtr:read(meshIndex * meshDataSize, buffer.create(meshDataSize), 0, meshDataSize)
+
+	local off = getOffsets()
+	local vertexCount = buffer.readi32(meshDataBuf, off.mdVertexCount)
+	local indexCount = buffer.readi32(meshDataBuf, off.mdIndexCount)
+
+	if vertexCount <= 0 then
+		print("meshgen.extractModelMesh: mesh has no vertices")
+		return nil
+	end
+
+	local verticesPtr = ptrFromStructFieldBuf(meshDataBuf, off.mdVertices)
+	local indicesPtr = ptrFromStructFieldBuf(meshDataBuf, off.mdIndices)
+
+	if verticesPtr == ffi.null then
+		print("meshgen.extractModelMesh: vertices pointer is null")
+		return nil
+	end
+
+	local vsize = off.vertexSize
+
+	-- First pass: read all vertex positions and compute AABB
+	local minX, minY, minZ = math.huge, math.huge, math.huge
+	local maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge
+
+	local positionsX = table.create(vertexCount)
+	local positionsY = table.create(vertexCount)
+	local positionsZ = table.create(vertexCount)
+
+	for i = 0, vertexCount - 1 do
+		local base = i * vsize
+		local px = verticesPtr:readf32(base + off.pos + 0)
+		local py = verticesPtr:readf32(base + off.pos + 4)
+		local pz = verticesPtr:readf32(base + off.pos + 8)
+
+		positionsX[i + 1] = px
+		positionsY[i + 1] = py
+		positionsZ[i + 1] = pz
+
+		if px < minX then minX = px end
+		if py < minY then minY = py end
+		if pz < minZ then minZ = pz end
+		if px > maxX then maxX = px end
+		if py > maxY then maxY = py end
+		if pz > maxZ then maxZ = pz end
+	end
+
+	-- Compute AABB dimensions and center
+	local sizeX = maxX - minX
+	local sizeY = maxY - minY
+	local sizeZ = maxZ - minZ
+	local centerX = (minX + maxX) * 0.5
+	local centerY = (minY + maxY) * 0.5
+	local centerZ = (minZ + maxZ) * 0.5
+
+	-- Protect against degenerate (zero-size) axes
+	if sizeX < EPSILON then sizeX = 1 end
+	if sizeY < EPSILON then sizeY = 1 end
+	if sizeZ < EPSILON then sizeZ = 1 end
+
+	-- Build normalized vertices: center at origin, scale to unit cube
+	-- Each axis is independently scaled so that the AABB maps to [-0.5, 0.5]
+	local invSizeX = 1 / sizeX
+	local invSizeY = 1 / sizeY
+	local invSizeZ = 1 / sizeZ
+
+	local verts = table.create(vertexCount)
+	for i = 0, vertexCount - 1 do
+		local base = i * vsize
+
+		-- Normalize position: center at origin, fit to unit cube
+		local px = (positionsX[i + 1] - centerX) * invSizeX
+		local py = (positionsY[i + 1] - centerY) * invSizeY
+		local pz = (positionsZ[i + 1] - centerZ) * invSizeZ
+
+		local nx = verticesPtr:readf32(base + off.normal + 0)
+		local ny = verticesPtr:readf32(base + off.normal + 4)
+		local nz = verticesPtr:readf32(base + off.normal + 8)
+
+		local u = verticesPtr:readf32(base + off.uv + 0)
+		local v = verticesPtr:readf32(base + off.uv + 4)
+
+		local cr = verticesPtr:readu8(base + off.color + 0)
+		local cg = verticesPtr:readu8(base + off.color + 1)
+		local cb = verticesPtr:readu8(base + off.color + 2)
+		local ca = verticesPtr:readu8(base + off.color + 3)
+
+		local tx = verticesPtr:readf32(base + off.tangent + 0)
+		local ty = verticesPtr:readf32(base + off.tangent + 4)
+		local tz = verticesPtr:readf32(base + off.tangent + 8)
+		local tw = verticesPtr:readf32(base + off.tangent + 12)
+
+		verts[i + 1] = {
+			position = { px, py, pz },
+			normal = { nx, ny, nz },
+			uv = { u, v },
+			color = { cr, cg, cb, ca },
+			tangent = { tx, ty, tz, tw },
+		}
+	end
+
+	-- Read indices
+	local idxs = nil
+	if indexCount > 0 and indicesPtr ~= ffi.null then
+		idxs = table.create(indexCount)
+		for i = 0, indexCount - 1 do
+			idxs[i + 1] = indicesPtr:readu32(i * 4)
+		end
+	end
+
+	-- Build a new GPU mesh from the normalized data
+	local result = meshgen.buildMeshWithData(verts, idxs, {
+		indicesAreZeroBased = true,
+	})
+
+	if not result then
+		print("meshgen.extractModelMesh: failed to build normalized mesh")
+		return nil
+	end
+
+	local cpuMeshData = result[1]
+	local gpuMesh = result[2]
+
+	return {
+		_meshgenHandle = gpuMesh,
+		_materialHandle = materialBuf,
+		_cpuMeshData = cpuMeshData,
+		aabb = {
+			min = { x = minX, y = minY, z = minZ },
+			max = { x = maxX, y = maxY, z = maxZ },
+		},
+	}
 end
 
 function meshgen.mergeMeshData(meshList)
@@ -1459,7 +1640,9 @@ function meshgen.buildFromTriangles(triangles, opts)
 	end
 	local newOpts = opts or {}
 	newOpts.indicesAreZeroBased = true
-	return meshgen.buildMesh(verts, indices, newOpts)
+	-- Use buildMeshWithData so we get both CPU data (for raycasting) and the
+	-- uploaded GPU mesh in a single pass, without building meshData twice.
+	return meshgen.buildMeshWithData(verts, indices, newOpts)
 end
 
 return meshgen

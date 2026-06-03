@@ -1,20 +1,5 @@
 local raylib = require("@raylib")
-local structs = raylib.structs
-
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
 local color3 = require("@Color3")
-
-local defaultFont = raylib.lib.GetFontDefault()
 
 return function(objects, data)
 	local config = {
@@ -28,11 +13,19 @@ return function(objects, data)
 
 	local wrapper = {}
 
+	wrapper.set = function(key, value)
+		config[key] = value
+	end
+
+	wrapper.get = function(key)
+		return config[key]
+	end
+
 	wrapper.render = function(dt)
 		if config.vertical then
-			raylib.lib.DrawRectangle(config.x, config.y, config.height, config.width, c3tr(config.color, 0))
+			raylib.lib.DrawRectangle(config.x, config.y, config.height, config.width, config.color:ToRaylib(0))
 		else
-			raylib.lib.DrawRectangle(config.x, config.y, config.width, config.height, c3tr(config.color, 0))
+			raylib.lib.DrawRectangle(config.x, config.y, config.width, config.height, config.color:ToRaylib(0))
 		end
 	end
 

@@ -1,18 +1,9 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
+local MouseCursor = require("@Kinemium.MouseCursor")
 
 local defaultFont = raylib.lib.GetFontDefault()
 
@@ -31,19 +22,34 @@ return function(objects, data)
 		secondaryTextColor = data.secondaryTextColor or color3.new(0.7, 0.7, 0.75),
 		fontSize = data.fontSize or 16,
 		spacing = data.spacing or 1,
+		backgroundTransparency = data.backgroundTransparency or 0,
+		borderTransparency = data.borderTransparency or 0,
 		onSelect = data.onSelect,
+		onExpand = data.onExpand,
+		onCollapse = data.onCollapse,
 		animProgress = 0,
 	}
 
 	local function drawText(text, x, y, fontSize, spacing, color)
 		if config.font then
-			raylib.lib.DrawTextEx(config.font, text, vector.create(x, y), fontSize, spacing, c3tr(color, 0))
+			raylib.lib.DrawTextEx(
+				config.font,
+				text,
+				vector.create(x, y),
+				fontSize,
+				spacing,
+				config.textColor:ToRaylib(0)
+			)
 		else
-			raylib.lib.DrawText(text, x, y, fontSize, c3tr(color, 0))
+			raylib.lib.DrawText(text, x, y, fontSize, config.textColor:ToRaylib(0))
 		end
 	end
 
 	local wrapper = {}
+
+	wrapper.get = function(prop)
+		return config[prop]
+	end
 
 	wrapper.set = function(prop, value)
 		if type(config[prop]) == "function" then
@@ -70,7 +76,12 @@ return function(objects, data)
 			config.animProgress = math.max(config.animProgress - dt * 8, 0)
 		end
 
-		raylib.lib.DrawRectangleRounded(rect:translate(r), 0.15, 10, c3tr(config.borderColor, 0))
+		raylib.lib.DrawRectangleRounded(
+			rect:translate(r),
+			0.15,
+			10,
+			config.borderColor:ToRaylib(config.borderTransparency)
+		)
 		raylib.lib.DrawRectangleRounded(
 			structs.Rectangle:new({
 				x = r.x + 1,
@@ -80,7 +91,7 @@ return function(objects, data)
 			}),
 			0.15,
 			10,
-			c3tr(config.backgroundColor, 0)
+			config.backgroundColor:ToRaylib(config.backgroundTransparency)
 		)
 
 		if rect.MouseIsInRect(r) and not config.expanded then
@@ -93,7 +104,7 @@ return function(objects, data)
 				}),
 				0.15,
 				10,
-				c3tr(config.hoverColor, 0.7)
+				config.hoverColor:ToRaylib(0.7)
 			)
 		end
 
@@ -101,7 +112,26 @@ return function(objects, data)
 		local textX = r.x + 12
 		local textY = r.y + (r.height - config.fontSize) / 2
 
+		-- Clip button text to button inner bounds (intersect with parent scissor if any)
+		local textClipX = r.x + 12
+		local textClipY = r.y
+		local textClipW = r.width - 24 - config.fontSize
+		local textClipH = r.height
+		local parentScissor = _G.__aereon_scissorStack and _G.__aereon_scissorStack[#_G.__aereon_scissorStack]
+		if parentScissor then
+			textClipX = math.max(textClipX, parentScissor.x)
+			textClipY = math.max(textClipY, parentScissor.y)
+			textClipW = math.max(0, math.min(textClipW, parentScissor.x + parentScissor.width - textClipX))
+			textClipH = math.max(0, math.min(textClipH, parentScissor.y + parentScissor.height - textClipY))
+		end
+		local wasScissorActive = parentScissor ~= nil
+		raylib.lib.BeginScissorMode(textClipX, textClipY, textClipW, textClipH)
 		drawText(selectedText, textX, textY, config.fontSize, config.spacing, config.textColor)
+		raylib.lib.EndScissorMode()
+		-- Restore parent scissor if it was active
+		if wasScissorActive then
+			raylib.lib.BeginScissorMode(parentScissor.x, parentScissor.y, parentScissor.width, parentScissor.height)
+		end
 
 		local arrowSize = 6
 		local arrowX = r.x + r.width - arrowSize - 12
@@ -113,24 +143,33 @@ return function(objects, data)
 				vector.create(arrowX, arrowY + arrowSize / 2),
 				vector.create(arrowX + arrowSize, arrowY + arrowSize / 2),
 				vector.create(arrowX + arrowSize / 2, arrowY - arrowSize / 2),
-				c3tr(config.secondaryTextColor, 0)
+				config.secondaryTextColor:ToRaylib(0)
 			)
 		else
 			raylib.lib.DrawTriangle(
 				vector.create(arrowX, arrowY - arrowSize / 2),
 				vector.create(arrowX + arrowSize, arrowY - arrowSize / 2),
 				vector.create(arrowX + arrowSize / 2, arrowY + arrowSize / 2),
-				c3tr(config.secondaryTextColor, 0)
+				config.secondaryTextColor:ToRaylib(0)
 			)
 		end
 
-		if rect.MouseIsInRect(r) then
+		if rect.MouseIsInRect(r) and not _G.__aereon_blockInput then
 			if raylib.lib.IsMouseButtonReleased(0) == 1 then
 				config.expanded = not config.expanded
+				if config.expanded then
+					if config.onExpand then
+						config.onExpand()
+					end
+				else
+					if config.onCollapse then
+						config.onCollapse()
+					end
+				end
 			end
-			raylib.lib.SetMouseCursor(raylib.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
+			MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
 		else
-			raylib.lib.SetMouseCursor(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
+			MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
 		end
 
 		if config.animProgress > 0.01 then
@@ -156,6 +195,12 @@ return function(objects, data)
 
 			local listX = math.clamp(r.x, margin, math.max(screenWidth - r.width - margin, margin))
 
+			-- Temporarily disable parent scissor so dropdown list is not clipped by scrollables/containers
+			local savedScissor = _G.__aereon_scissorStack and _G.__aereon_scissorStack[#_G.__aereon_scissorStack]
+			if savedScissor then
+				raylib.lib.EndScissorMode()
+			end
+
 			raylib.lib.DrawRectangleRounded(
 				structs.Rectangle:new({
 					x = listX + 2,
@@ -165,7 +210,7 @@ return function(objects, data)
 				}),
 				0.15,
 				10,
-				c3tr(color3.new(0, 0, 0), 0.3)
+				color3.new(0, 0, 0):ToRaylib(0.3)
 			)
 
 			raylib.lib.DrawRectangleRounded(
@@ -177,7 +222,7 @@ return function(objects, data)
 				}),
 				0.15,
 				10,
-				c3tr(config.borderColor, 0)
+				config.borderColor:ToRaylib(0)
 			)
 			raylib.lib.DrawRectangleRounded(
 				structs.Rectangle:new({
@@ -188,7 +233,7 @@ return function(objects, data)
 				}),
 				0.15,
 				10,
-				c3tr(config.backgroundColor, 0)
+				config.backgroundColor:ToRaylib(0)
 			)
 
 			for i, option in ipairs(config.options) do
@@ -209,11 +254,11 @@ return function(objects, data)
 							}),
 							0.12,
 							8,
-							c3tr(config.selectedColor, 0.5)
+							config.selectedColor:ToRaylib(0.5)
 						)
 					end
 
-					if rect.MouseIsInRect(itemRect) and config.expanded then
+					if rect.MouseIsInRect(itemRect) and config.expanded and not _G.__aereon_blockInput then
 						raylib.lib.DrawRectangleRounded(
 							structs.Rectangle:new({
 								x = itemRect.x,
@@ -223,12 +268,15 @@ return function(objects, data)
 							}),
 							0.12,
 							8,
-							c3tr(config.hoverColor, 0)
+							config.hoverColor:ToRaylib(0)
 						)
 
 						if raylib.lib.IsMouseButtonReleased(0) == 1 then
 							config.selectedIndex = i
 							config.expanded = false
+							if config.onCollapse then
+								config.onCollapse()
+							end
 							if config.onSelect then
 								config.onSelect(i, option)
 							end
@@ -244,6 +292,11 @@ return function(objects, data)
 						config.textColor
 					)
 				end
+			end
+
+			-- Restore parent scissor after drawing expanded dropdown list
+			if savedScissor then
+				raylib.lib.BeginScissorMode(savedScissor.x, savedScissor.y, savedScissor.width, savedScissor.height)
 			end
 		end
 	end

@@ -1,4 +1,4 @@
-local Color3 = require("../enviroment/datatypes/Color3")
+local Color3 = require("../environment/datatypes/Color3")
 
 local testing = zune.testing
 local expect = testing.expect

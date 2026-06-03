@@ -1,17 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 local defaultFont = raylib.lib.GetFontDefault()
@@ -45,7 +35,7 @@ return function(objects, data)
 				rect:translate(shadowRect),
 				config.rounded[1],
 				config.rounded[2],
-				c3tr(config.shadowColor, 0.9 + (i / config.elevation) * 0.1)
+				config.shadowColor:ToRaylib(0.9 + (i / config.elevation) * 0.1)
 			)
 		end
 
@@ -53,7 +43,7 @@ return function(objects, data)
 			rect:translate(r),
 			config.rounded[1],
 			config.rounded[2],
-			c3tr(config.backgroundColor, 0)
+			config.backgroundColor:ToRaylib(0)
 		)
 	end
 

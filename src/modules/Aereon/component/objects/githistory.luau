@@ -1,17 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 return function(objects, data)
@@ -94,7 +84,7 @@ return function(objects, data)
 			rect:translate(r),
 			config.rounded[1],
 			config.rounded[2],
-			c3tr(config.backgroundColor, 0)
+			config.backgroundColor:ToRaylib(0)
 		)
 
 		-- Handle scrolling
@@ -130,7 +120,7 @@ return function(objects, data)
 					itemRect.y,
 					itemRect.width,
 					itemRect.height,
-					c3tr(config.itemHoverColor, 0)
+					config.itemHoverColor:ToRaylib(0)
 				)
 			end
 
@@ -141,7 +131,7 @@ return function(objects, data)
 					vector.create(timelineX, itemY + 12),
 					vector.create(timelineX, itemY + config.itemHeight + 12),
 					2,
-					c3tr(lineColor, 0)
+					lineColor:ToRaylib(0)
 				)
 			end
 
@@ -150,21 +140,21 @@ return function(objects, data)
 			local dotSize = 8
 
 			if commit.type == "merge" then
-				raylib.lib.DrawCircle(timelineX, itemY + 12, dotSize / 2 + 2, c3tr(dotColor, 0))
+				raylib.lib.DrawCircle(timelineX, itemY + 12, dotSize / 2 + 2, dotColor:ToRaylib(0))
 			elseif commit.type == "tag" then
 				raylib.lib.DrawRectangle(
 					timelineX - dotSize / 2,
 					itemY + 12 - dotSize / 2,
 					dotSize,
 					dotSize,
-					c3tr(dotColor, 0)
+					dotColor:ToRaylib(0)
 				)
 			else
 				-- Circle for normal commit
-				raylib.lib.DrawCircle(timelineX, itemY + 12, dotSize / 2, c3tr(dotColor, 0))
+				raylib.lib.DrawCircle(timelineX, itemY + 12, dotSize / 2, dotColor:ToRaylib(0))
 			end
 
-			raylib.lib.DrawText(commit.text, contentX, itemY + 6, 12, c3tr(config.textColor, 0))
+			raylib.lib.DrawText(commit.text, contentX, itemY + 6, 12, config.textColor:ToRaylib(0))
 
 			if commit.branch then
 				local textWidth = raylib.lib.MeasureText(commit.text, 12)
@@ -184,15 +174,15 @@ return function(objects, data)
 					}),
 					0.5,
 					4,
-					c3tr(config.branchColor, 0.7)
+					config.branchColor:ToRaylib(0.7)
 				)
 
-				raylib.lib.DrawText(labelText, labelX + labelPadding, itemY + 7, 10, c3tr(color3.new(1, 1, 1), 0))
+				raylib.lib.DrawText(labelText, labelX + labelPadding, itemY + 7, 10, color3.new(1, 1, 1):ToRaylib(0))
 			end
 
 			if commit.tag then
 				local tagX = r.x + r.width - config.padding - 80
-				raylib.lib.DrawText(commit.tag, tagX, itemY + 6, 11, c3tr(config.tagColor, 0))
+				raylib.lib.DrawText(commit.tag, tagX, itemY + 6, 11, config.tagColor:ToRaylib(0))
 			end
 
 			if isHovered and mousePressed and config.onCommitClick then
@@ -219,7 +209,7 @@ return function(objects, data)
 				}),
 				0.5,
 				4,
-				c3tr(config.dimTextColor, 0.5)
+				config.dimTextColor:ToRaylib(0.5)
 			)
 		end
 

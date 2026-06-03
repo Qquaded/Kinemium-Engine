@@ -1,7 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 local defaultFont = raylib.lib.GetFontDefault()

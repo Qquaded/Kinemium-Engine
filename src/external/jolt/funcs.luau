@@ -1,6 +1,6 @@
 local ffi = zune.ffi
 
-local structs = require("./structs")
+local _structs = require("./structs")
 
 local funcs = {
 	JPH_JobSystem_Destroy = { returns = ffi.types.void, args = { ffi.types.pointer } },
@@ -763,6 +763,42 @@ local funcs = {
 		},
 	},
 
+	JPH_HingeConstraint_Create = {
+		returns = ffi.types.pointer, -- JPH_HingeConstraint*
+		args = {
+			ffi.types.pointer, -- JPH_HingeConstraintSettings*
+			ffi.types.pointer, -- JPH_Body*
+			ffi.types.pointer, -- JPH_Body*
+		},
+	},
+
+	JPH_SliderConstraint_Create = {
+		returns = ffi.types.pointer, -- JPH_SliderConstraint*
+		args = {
+			ffi.types.pointer, -- JPH_SliderConstraintSettings*
+			ffi.types.pointer, -- JPH_Body*
+			ffi.types.pointer, -- JPH_Body*
+		},
+	},
+
+	JPH_SixDOFConstraint_Create = {
+		returns = ffi.types.pointer, -- JPH_SixDOFConstraint*
+		args = {
+			ffi.types.pointer, -- JPH_SixDOFConstraintSettings*
+			ffi.types.pointer, -- JPH_Body*
+			ffi.types.pointer, -- JPH_Body*
+		},
+	},
+
+	JPH_DistanceConstraint_Create = {
+		returns = ffi.types.pointer, -- JPH_DistanceConstraint*
+		args = {
+			ffi.types.pointer, -- JPH_DistanceConstraintSettings*
+			ffi.types.pointer, -- JPH_Body*
+			ffi.types.pointer, -- JPH_Body*
+		},
+	},
+
 	JPH_FixedConstraint_GetTotalLambdaRotation = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.pointer },
@@ -785,6 +821,10 @@ local funcs = {
 	},
 	JPH_DistanceConstraint_GetTotalLambdaPosition = { returns = ffi.types.float, args = { ffi.types.pointer } },
 	JPH_PointConstraintSettings_Init = { returns = ffi.types.void, args = { ffi.types.pointer } },
+	JPH_PointConstraint_Create = {
+		returns = ffi.types.pointer,
+		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+	},
 	JPH_PointConstraint_GetSettings = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
 	JPH_PointConstraint_SetPoint1 = {
 		returns = ffi.types.void,
@@ -840,8 +880,8 @@ local funcs = {
 	JPH_HingeConstraint_GetMaxFrictionTorque = { returns = ffi.types.float, args = { ffi.types.pointer } },
 	JPH_HingeConstraint_SetMotorSettings = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
 	JPH_HingeConstraint_GetMotorSettings = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
-	JPH_HingeConstraint_SetMotorState = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
-	JPH_HingeConstraint_GetMotorState = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	JPH_HingeConstraint_SetMotorState = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.i32 } },
+	JPH_HingeConstraint_GetMotorState = { returns = ffi.types.i32, args = { ffi.types.pointer } },
 	JPH_HingeConstraint_SetTargetAngularVelocity = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.float },
@@ -890,8 +930,8 @@ local funcs = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.pointer },
 	},
-	JPH_SliderConstraint_SetMotorState = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
-	JPH_SliderConstraint_GetMotorState = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	JPH_SliderConstraint_SetMotorState = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.i32 } },
+	JPH_SliderConstraint_GetMotorState = { returns = ffi.types.i32, args = { ffi.types.pointer } },
 	JPH_SliderConstraint_SetTargetVelocity = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.float } },
 	JPH_SliderConstraint_GetTargetVelocity = { returns = ffi.types.float, args = { ffi.types.pointer } },
 	JPH_SliderConstraint_SetTargetPosition = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.float } },
@@ -943,27 +983,27 @@ local funcs = {
 	JPH_SixDOFConstraintSettings_Init = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	JPH_SixDOFConstraintSettings_MakeFreeAxis = {
 		returns = ffi.types.void,
-		args = { ffi.types.pointer, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32 },
 	},
 	JPH_SixDOFConstraintSettings_IsFreeAxis = {
 		returns = ffi.types.u8,
-		args = { ffi.types.pointer, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32 },
 	},
 	JPH_SixDOFConstraintSettings_MakeFixedAxis = {
 		returns = ffi.types.void,
-		args = { ffi.types.pointer, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32 },
 	},
 	JPH_SixDOFConstraintSettings_IsFixedAxis = {
 		returns = ffi.types.u8,
-		args = { ffi.types.pointer, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32 },
 	},
 	JPH_SixDOFConstraintSettings_SetLimitedAxis = {
 		returns = ffi.types.void,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.float, ffi.types.float },
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.float, ffi.types.float },
 	},
 	JPH_SixDOFConstraint_GetSettings = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
-	JPH_SixDOFConstraint_GetLimitsMin = { returns = ffi.types.float, args = { ffi.types.pointer, ffi.types.pointer } },
-	JPH_SixDOFConstraint_GetLimitsMax = { returns = ffi.types.float, args = { ffi.types.pointer, ffi.types.pointer } },
+	JPH_SixDOFConstraint_GetLimitsMin = { returns = ffi.types.float, args = { ffi.types.pointer, ffi.types.i32 } },
+	JPH_SixDOFConstraint_GetLimitsMax = { returns = ffi.types.float, args = { ffi.types.pointer, ffi.types.i32 } },
 	JPH_SixDOFConstraint_GetTotalLambdaPosition = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.pointer },
@@ -996,36 +1036,36 @@ local funcs = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.pointer },
 	},
-	JPH_SixDOFConstraint_IsFixedAxis = { returns = ffi.types.u8, args = { ffi.types.pointer, ffi.types.pointer } },
-	JPH_SixDOFConstraint_IsFreeAxis = { returns = ffi.types.u8, args = { ffi.types.pointer, ffi.types.pointer } },
+	JPH_SixDOFConstraint_IsFixedAxis = { returns = ffi.types.u8, args = { ffi.types.pointer, ffi.types.i32 } },
+	JPH_SixDOFConstraint_IsFreeAxis = { returns = ffi.types.u8, args = { ffi.types.pointer, ffi.types.i32 } },
 	JPH_SixDOFConstraint_GetLimitsSpringSettings = {
 		returns = ffi.types.void,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
 	},
 	JPH_SixDOFConstraint_SetLimitsSpringSettings = {
 		returns = ffi.types.void,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
 	},
 	JPH_SixDOFConstraint_SetMaxFriction = {
 		returns = ffi.types.void,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.float },
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.float },
 	},
-	JPH_SixDOFConstraint_GetMaxFriction = { returns = ffi.types.float, args = { ffi.types.pointer, ffi.types.pointer } },
+	JPH_SixDOFConstraint_GetMaxFriction = { returns = ffi.types.float, args = { ffi.types.pointer, ffi.types.i32 } },
 	JPH_SixDOFConstraint_GetRotationInConstraintSpace = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.pointer },
 	},
 	JPH_SixDOFConstraint_GetMotorSettings = {
 		returns = ffi.types.void,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
 	},
 	JPH_SixDOFConstraint_SetMotorState = {
 		returns = ffi.types.void,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.i32 },
 	},
 	JPH_SixDOFConstraint_GetMotorState = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer },
+		returns = ffi.types.i32,
+		args = { ffi.types.pointer, ffi.types.i32 },
 	},
 	JPH_SixDOFConstraint_SetTargetVelocityCS = {
 		returns = ffi.types.void,
@@ -1093,6 +1133,7 @@ local funcs = {
 		returns = ffi.types.pointer,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
 	},
+
 	JPH_BodyInterface_AddBody = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.u32, ffi.types.u8 },
@@ -1168,6 +1209,10 @@ local funcs = {
 	JPH_MeshShapeSettings_Create = {
 		returns = ffi.types.pointer,
 		args = { ffi.types.pointer, ffi.types.u32 },
+	},
+	JPH_MeshShapeSettings_CreateShape = {
+		returns = ffi.types.pointer,
+		args = { ffi.types.pointer },
 	},
 
 	-- Convex Hull shape

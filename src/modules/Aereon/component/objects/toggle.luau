@@ -1,17 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 return function(objects, data)
@@ -59,7 +49,7 @@ return function(objects, data)
 			config.offColor.B + (config.onColor.B - config.offColor.B) * config.animProgress
 		)
 
-		raylib.lib.DrawRectangleRounded(rect:translate(r), 0.5, 8, c3tr(currentColor, 0))
+		raylib.lib.DrawRectangleRounded(rect:translate(r), 0.5, 8, currentColor:ToRaylib(0))
 
 		local handleRadius = r.height * 0.35
 		local handlePadding = r.height * 0.15
@@ -68,9 +58,9 @@ return function(objects, data)
 		local handleX = handleMinX + (handleMaxX - handleMinX) * config.animProgress
 		local handleY = r.y + r.height / 2
 
-		raylib.lib.DrawCircleV(vector.create(handleX, handleY), handleRadius, c3tr(config.handleColor, 0))
+		raylib.lib.DrawCircleV(vector.create(handleX, handleY), handleRadius, config.handleColor:ToRaylib(0))
 
-		if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+		if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 			config.value = not config.value
 			if config.onChanged then
 				config.onChanged(config.value)

@@ -8,16 +8,36 @@ local root = zjoin("src")
 local entry = zjoin(root, "main.luau")
 
 local bin = zjoin("build")
+local sandboxEmbedRoot = zjoin(bin, ".embedded", root, "sandboxed")
+local sandboxEmbedGlob = zjoin(sandboxEmbedRoot, "**")
 
-local include = {
-	zjoin(root, "**", "*.luau*"),
-}
+local function normalizePath(path: string): string
+	return (path:gsub([[\]], "/"))
+end
+
+local function collectScriptIncludes(path: string, includes: { string })
+	if normalizePath(path) == "src/sandboxed" then
+		return
+	end
+
+	for _, entry in pairs(zune.fs.entries(path)) do
+		local entryPath = zjoin(path, entry.name)
+		if entry.kind == "directory" then
+			collectScriptIncludes(entryPath, includes)
+		elseif entry.kind == "file" and (entry.name:match("%.luau$") or entry.name:match("%.lua$")) then
+			table.insert(includes, entryPath)
+		end
+	end
+end
+
+local include = {}
+collectScriptIncludes(root, include)
 
 local assets = {
 	zjoin("**", ".luaurc"),
 	zjoin(root, "assets", "**"),
 	zjoin(root, "projects.toml"),
-	zjoin(root, "sandboxed", "**"),
+	sandboxEmbedGlob,
 }
 
 local function flagExists(flag: string)
@@ -31,6 +51,23 @@ local function flagExists(flag: string)
 end
 
 local ext = ""
+
+local function copySandboxedSources(source: string, target: string)
+	if zune.fs.stat(target).kind ~= "directory" then
+		zune.fs.makeDir(target, true)
+	end
+
+	for _, entry in pairs(zune.fs.entries(source)) do
+		local sourcePath = zjoin(source, entry.name)
+		local targetPath = zjoin(target, entry.name)
+
+		if entry.kind == "directory" then
+			copySandboxedSources(sourcePath, targetPath)
+		elseif entry.kind == "file" then
+			zune.fs.writeFile(targetPath .. ".kinesrc", zune.fs.readFile(sourcePath))
+		end
+	end
+end
 
 local function copyLibraries(ext, bin, path)
 	for _, f in pairs(zune.fs.entries(path)) do
@@ -48,6 +85,8 @@ local b_windows = flagExists("windows")
 local b_macos = flagExists("macos")
 local b_debian = flagExists("debian")
 local b_freebsd = flagExists("freebsd")
+
+local anyPlatform = b_windows or b_macos or b_debian or b_freebsd
 
 local b_args = {
 	"bundle",
@@ -96,6 +135,7 @@ local function buildExecutable(name, exec_ext, lib_ext)
 	copyLibraries(lib_ext, dir, zpath.join(root, "external"))
 
 	print("Copying assets")
+	copySandboxedSources(zjoin(root, "sandboxed"), sandboxEmbedRoot)
 	zune.fs.copy(zjoin(root, "assets"), zjoin(dir, "assets"), true)
 	table.insert(l_args, "--out=" .. l_exec)
 
@@ -108,23 +148,18 @@ local function buildExecutable(name, exec_ext, lib_ext)
 	print("successfully bundled at " .. l_exec)
 end
 
-if b_windows or zune.platform.os == "windows" then
+if b_windows or (not anyPlatform and zune.platform.os == "windows") then
 	buildExecutable("windows_x86-64", ".exe", "dll")
 end
 
-if b_macos or zune.platform.os == "macos" then
-	buildExecutable("macos_x86-64", ".app", "dll")
+if b_macos or (not anyPlatform and zune.platform.os == "macos") then
+	buildExecutable("macos_x86-64", ".app", "dylib")
 end
 
--- Zune's Linux release is compiled for Debian.
-if b_debian or zune.platform.os == "linux" then
+if b_debian or (not anyPlatform and zune.platform.os == "linux") then
 	buildExecutable("debian_x86-64", "", "so")
 end
 
--- There is no progress on proper FreeBSD support despite
--- an available native Zune executable.
--- Linux compatibility may need to be enabled by the user,
--- since the .so libraries are re-used from Linux.
-if b_freebsd or zune.platform.os == "freebsd" then
+if b_freebsd or (not anyPlatform and zune.platform.os == "freebsd") then
 	buildExecutable("freebsd_x86-64", "", "so")
 end

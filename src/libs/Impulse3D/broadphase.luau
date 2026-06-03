@@ -1,4 +1,4 @@
--- Impulse3D Broadphase — Uniform Grid Spatial Hash
+-- Impulse3D Broadphase - Uniform Grid Spatial Hash
 -- devcell
 --
 -- Usage per frame:
@@ -16,7 +16,7 @@ local Vector3Double = utility.Vector3Double
 
 function Broadphase.new(cellSize: number?)
 	local self = setmetatable({}, Broadphase)
-	self.cellSize = cellSize or 4 -- world-units per cell; tune for your scene
+	self.cellSize = cellSize or 4
 	self._cells = {} -- [cellKey] = { idA, idB, … }
 	self._bodyToCells = {} -- [bodyId] = { cellKey, … }
 	return self

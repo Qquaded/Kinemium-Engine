@@ -30,6 +30,7 @@ local JPH_QueueJobCallback = ffi.types.pointer
 local JPH_QueueJobsCallback = ffi.types.pointer
 local JPH_GroupFilter = ffi.types.pointer
 local JPH_PhysicsSystem = ffi.types.pointer
+local JPH_SoftBodySharedSettings = ffi.types.pointer
 
 local JPH_Vec3 = ffi.struct({
 	{ x = float },
@@ -169,7 +170,7 @@ export type JPH_RayCastSettings = typeof(JPH_RayCastSettings:new({}))
 
 local JPH_ConstraintSettings = ffi.struct({
 	{ enabled = ffi.types.u8 },
-	{ constraintPriority = ffi.types.u32 },
+	{ priority = ffi.types.u32 },
 	{ numVelocityStepsOverride = ffi.types.u32 },
 	{ numPositionStepsOverride = ffi.types.u32 },
 	{ drawConstraintSize = float },
@@ -297,6 +298,7 @@ export type JPH_FixedConstraintSettings = typeof(JPH_FixedConstraintSettings:new
 
 local JPH_DistanceConstraintSettings = ffi.struct({
 	{ base = JPH_ConstraintSettings },
+	{ space = ffi.types.i32 },
 	{ point1 = JPH_RVec3 },
 	{ point2 = JPH_RVec3 },
 	{ minDistance = float },
@@ -307,6 +309,7 @@ export type JPH_DistanceConstraintSettings = typeof(JPH_DistanceConstraintSettin
 
 local JPH_PointConstraintSettings = ffi.struct({
 	{ base = JPH_ConstraintSettings },
+	{ space = ffi.types.i32 },
 	{ point1 = JPH_RVec3 },
 	{ point2 = JPH_RVec3 },
 })
@@ -314,6 +317,7 @@ export type JPH_PointConstraintSettings = typeof(JPH_PointConstraintSettings:new
 
 local JPH_HingeConstraintSettings = ffi.struct({
 	{ base = JPH_ConstraintSettings },
+	{ space = ffi.types.i32 },
 	{ point1 = JPH_RVec3 },
 	{ hingeAxis1 = JPH_Vec3 },
 	{ normalAxis1 = JPH_Vec3 },
@@ -330,6 +334,7 @@ export type JPH_HingeConstraintSettings = typeof(JPH_HingeConstraintSettings:new
 
 local JPH_SliderConstraintSettings = ffi.struct({
 	{ base = JPH_ConstraintSettings },
+	{ space = ffi.types.i32 },
 	{ autoDetectPoint = ffi.types.u8 },
 	{ point1 = JPH_RVec3 },
 	{ sliderAxis1 = JPH_Vec3 },
@@ -376,6 +381,7 @@ export type JPH_SwingTwistConstraintSettings = typeof(JPH_SwingTwistConstraintSe
 
 local JPH_SixDOFConstraintSettings = ffi.struct({
 	{ base = JPH_ConstraintSettings },
+	{ space = ffi.types.i32 }, -- EConstraintSpace: 0=LocalToBodyCOM, 1=WorldSpace
 	{ position1 = JPH_RVec3 },
 	{ axisX1 = JPH_Vec3 },
 	{ axisY1 = JPH_Vec3 },
@@ -663,11 +669,6 @@ local JPH_VehicleDifferentialSettings = ffi.struct({
 })
 export type JPH_VehicleDifferentialSettings = typeof(JPH_VehicleDifferentialSettings:new({}))
 
--- Placeholder for arrays
-local function JPH_Array(type_, length)
-	return type_:array(length)
-end
-
 -- JPH_BodyCreationSettings
 local JPH_BodyCreationSettings = ffi.struct({
 	{ shape = JPH_Shape },
@@ -679,6 +680,22 @@ local JPH_BodyCreationSettings = ffi.struct({
 	{ userData = ffi.types.u64 },
 })
 export type JPH_BodyCreationSettings = typeof(JPH_BodyCreationSettings:new({}))
+
+local JPH_SoftBodyCreationSettings = ffi.struct({
+	{ sharedSettings = JPH_SoftBodySharedSettings },
+	{ position = JPH_RVec3 },
+	{ rotation = JPH_Quat },
+	{ layer = ffi.types.u32 },
+	{ userData = ffi.types.u64 },
+})
+export type JPH_SoftBodyCreationSettings = typeof(JPH_SoftBodyCreationSettings:new({}))
+
+local JPH_SoftBodyVertex = ffi.struct({
+	{ position = JPH_Vec3 },
+	{ velocity = JPH_Vec3 },
+	{ invMass = float },
+})
+export type JPH_SoftBodyVertex = typeof(JPH_SoftBodyVertex:new({}))
 
 local structs = {
 	JPH_CollideSettingsBase = JPH_CollideSettingsBase,
@@ -755,6 +772,8 @@ local structs = {
 	JPH_BodyInterface = JPH_BodyInterface,
 	JPH_BodyManager = JPH_BodyManager,
 	JPH_ShapeCast = JPH_ShapeCast,
+	JPH_SoftBodyCreationSettings = JPH_SoftBodyCreationSettings,
+	JPH_SoftBodyVertex = JPH_SoftBodyVertex,
 }
 
 return structs

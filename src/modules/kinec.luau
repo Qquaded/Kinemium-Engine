@@ -25,7 +25,6 @@ function kinec.runC(code)
 	for name, closure in pairs(closures) do
 		options.symbols[name] = closure
 	end
-	print(options)
 
 	local compiled = ffi.c.compile(code, options)
 	return compiled

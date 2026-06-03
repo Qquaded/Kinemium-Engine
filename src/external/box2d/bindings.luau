@@ -1330,6 +1330,8 @@ local funcs = {
 }
 
 local structs = {
+	b2Vec2 = b2Vec2,
+	b2Rot = b2Rot,
 	b2Version = b2Version,
 	b2RayCastInput = b2RayCastInput,
 	b2ShapeProxy = b2ShapeProxy,

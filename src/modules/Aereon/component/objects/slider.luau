@@ -1,17 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 local defaultFont = raylib.lib.GetFontDefault()
@@ -56,7 +46,7 @@ return function(objects, data)
 		local trackY = r.y + (r.height - trackHeight) / 2
 		local trackRect = rect.new(r.x, trackY, r.width, trackHeight)
 
-		if mouseDown and (config.dragging or rect.MouseIsInRect(r)) then
+		if mouseDown and (config.dragging or rect.MouseIsInRect(r)) and not _G.__aereon_blockInput then
 			config.dragging = true
 			local normalizedX = math.clamp((mousePos.x - r.x) / r.width, 0, 1)
 			config.value = config.min + normalizedX * (config.max - config.min)
@@ -67,19 +57,19 @@ return function(objects, data)
 			config.dragging = false
 		end
 
-		raylib.lib.DrawRectangleRounded(rect:translate(trackRect), 0.5, 8, c3tr(config.trackColor, 0))
+		raylib.lib.DrawRectangleRounded(rect:translate(trackRect), 0.5, 8, config.trackColor:ToRaylib(0))
 
 		local normalizedValue = (config.value - config.min) / (config.max - config.min)
 		local fillWidth = r.width * normalizedValue
 		local fillRect = rect.new(r.x, trackY, fillWidth, trackHeight)
 
-		raylib.lib.DrawRectangleRounded(rect:translate(fillRect), 0.5, 8, c3tr(config.fillColor, 0))
+		raylib.lib.DrawRectangleRounded(rect:translate(fillRect), 0.5, 8, config.fillColor:ToRaylib(0))
 
 		local handleX = r.x + fillWidth
 		local handleY = r.y + r.height / 2
 		local handleRadius = r.height * 0.6
 
-		raylib.lib.DrawCircleV(vector.create(handleX, handleY), handleRadius, c3tr(config.handleColor, 0))
+		raylib.lib.DrawCircleV(vector.create(handleX, handleY), handleRadius, config.handleColor:ToRaylib(0))
 	end
 
 	table.insert(objects, wrapper)

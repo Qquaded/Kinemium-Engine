@@ -2,6 +2,7 @@
 --!native
 
 local raylib = require("@raylib")
+local zembed = require("@zembed")
 local lib = raylib.lib
 local const = raylib.const
 local structs = raylib.structs
@@ -27,9 +28,9 @@ local function setShaderLoc(shaderBuf, locIndex, locValue)
 	locsPtr:writei32(locIndex * 4, locValue)
 end
 
-local function chooseShadowSize()
-	local freeMem = 0
-	if zune.platform and zune.platform.getFreeMemory then
+local function chooseShadowSize(freeMemOverride)
+	local freeMem = freeMemOverride or 0
+	if not freeMemOverride and zune.platform and zune.platform.getFreeMemory then
 		freeMem = zune.platform.getFreeMemory() or 0
 	end
 
@@ -50,7 +51,10 @@ local function ensureResources()
 
 	shadowSize = chooseShadowSize()
 
-	depthShader = lib.LoadShader("./src/assets/shaders/depth.vs", "./src/assets/shaders/depth.fs")
+	depthShader = lib.LoadShader(
+		zembed.AssetPath("kineasset://shaders/depth.vs"),
+		zembed.AssetPath("kineasset://shaders/depth.fs")
+	)
 	if lib.IsShaderValid(depthShader) == 0 then
 		warn("depth shader invalid")
 	end
@@ -64,6 +68,10 @@ local function ensureResources()
 
 	depthMaterial = lib.LoadMaterialDefault()
 	buffer.copy(depthMaterial, OFF_MATERIAL_SHADER, depthShader, SIZE_SHADER)
+end
+
+function Shadows.chooseShadowSize(freeMemOverride)
+	return chooseShadowSize(freeMemOverride)
 end
 
 function Shadows.GetShadowSize()

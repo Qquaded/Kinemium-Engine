@@ -1,4 +1,4 @@
-local Random = require("../enviroment/datatypes/Random")
+local Random = require("../environment/datatypes/Random")
 
 local testing = zune.testing
 local expect = testing.expect

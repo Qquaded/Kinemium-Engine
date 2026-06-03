@@ -9,8 +9,40 @@ cd build
 cmake --build .
 
 r3d
-cmake .. -DCMAKE_BUILD_TYPE=Release -DR3D_RAYLIB_VENDORED=ON -DR3D_ASSIMP_VENDORED=ON -DR3D_BUILD_EXAMPLES=ON -DR3D_BUILD_DOCS=OFF
+cmake -S . -B build -A x64 -DBUILD_SHARED_LIBS=ON -DR3D_RAYLIB_VENDORED=ON -DR3D_ASSIMP_VENDORED=ON -DR3D_BUILD_EXAMPLES=OFF -DR3D_BUILD_DOCS=OFF -DR3D_SHADOW_MAP_DIRECTIONAL_SIZE=512 -DR3D_SHADOW_MAP_SPOT_SIZE=512 -DR3D_SHADOW_MAP_OMNI_SIZE=512 -DR3D_PROBE_CAPTURE_SIZE=64 -DR3D_CUBEMAP_PREFILTER_SIZE=64 -DR3D_ENABLE_TRACELOG=0
+cmake --build build --config Release --parallel
+
+r3d linux
+rm -rf build
+cmake -S . -B build \
+  -DBUILD_SHARED_LIBS=ON \
+  -DR3D_RAYLIB_VENDORED=ON \
+  -DR3D_ASSIMP_VENDORED=ON \
+  -DR3D_BUILD_EXAMPLES=OFF \
+  -DR3D_BUILD_DOCS=OFF \
+  -DR3D_SHADOW_MAP_DIRECTIONAL_SIZE=512 \
+  -DR3D_SHADOW_MAP_SPOT_SIZE=512 \
+  -DR3D_SHADOW_MAP_OMNI_SIZE=512 \
+  -DR3D_PROBE_CAPTURE_SIZE=64 \
+  -DR3D_CUBEMAP_PREFILTER_SIZE=64 \
+  -DR3D_ENABLE_TRACELOG=0
+cmake --build build --config Release --parallel
+
+current r3d version: 0.9
 
 also do --config release when building pls devcell pls pls
 
 the binaries for SAIL is full (every format)
+ffmpeg
+# Since FFmpeg does not provide official macOS shared builds, clone it and build it
+git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg
+cd ffmpeg
+./configure --enable-shared --disable-static
+make -j$(sysctl -n hw.ncpu)
+# Copy the compiled .dylib files to src/external/sail/bin
+
+manifold
+cmake -S . -B build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+cd build
+cmake --build .
+# Copy libmanifold.dylib and libmanifoldc.dylib to src/external/manifold/bin

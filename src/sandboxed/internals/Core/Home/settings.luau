@@ -9,7 +9,7 @@ local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
 
 local vend = KinemiumFontService.GetDefaultFontSmall()
-local arect = require("@Arect")(raylib.lib)
+local arect = require("@arect")
 local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
 
 local ThirdBackgroundColor = StudioThemeService.SelectedTheme.ThirdBackgroundColor
@@ -20,6 +20,7 @@ StudioThemeService.SelectedTheme.GuiHandlesColor:ToRaylib(StudioThemeService.Sel
 local SecondaryBackgroundColorRaylib = StudioThemeService.SelectedTheme.SecondaryBackgroundColor:ToRaylib(
 	StudioThemeService.SelectedTheme.SecondaryBackgroundColorTransparency
 )
+local vsyncEnabled = false
 
 local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
@@ -27,6 +28,7 @@ KinemiumIconLoader.new("Add", "./src/assets/images/icons/vanilla3/ui/16x/200/Add
 
 local textbox = aereon.textbox(StudioThemeService.SelectedTheme, game)
 local group
+local configService = game:GetService("ConfigService")
 
 group = aereon.create({
 	frame = {
@@ -37,16 +39,7 @@ group = aereon.create({
 		height = screeny,
 		zindex = 1,
 	},
-	background = {
-		comp = "frame",
-		x = 0,
-		y = 0,
-		width = screenx,
-		height = screeny,
-		raylib_color = SecondaryBackgroundColorRaylib,
-		zindex = 2,
-		rounded = { 0, 10 },
-	},
+
 	title = {
 		comp = "label",
 		text = "Settings",
@@ -60,21 +53,64 @@ group = aereon.create({
 })
 
 local cells = gui.cellparser({
-	x = 120,
-	y = 150,
+	x = 0,
+	y = 0,
 	width = 800,
 
-	aboutSection = {
+	cameraSection = {
 		{
-			name = "Version 1.9.0",
+			name = "Camera speed",
+			description = "Change the movement speed of the camera.",
 			font = vend,
-			backgroundColor = ThirdBackgroundColor,
+			editor = textbox.new({
+				padding = 5,
+				placeholder = "10",
+				cornerRadius = 0.4,
+
+				fontSize = 14,
+				onSubmit = function(number)
+					configService.prop("camera_speed", number)
+				end,
+			}),
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 		},
 
 		{
-			name = "Documentation",
+			name = "Camera Sensitivity",
+			description = "Change the sensitivity of the camera.",
 			font = vend,
-			backgroundColor = ThirdBackgroundColor,
+			editor = textbox.new({
+				padding = 5,
+				placeholder = "0.003",
+				cornerRadius = 0.4,
+
+				fontSize = 14,
+				onSubmit = function(number)
+					configService.prop("camera_sens", number)
+				end,
+			}),
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		},
+	},
+
+	networking = {
+		{
+			name = "Marketplace Endpoint",
+			description = "Changes the marketplace endpoint used for fetching plugins.",
+			font = vend,
+			editorWidth = 250,
+			editor = textbox.new({
+				padding = 5,
+				placeholder = ENGINE_ENDPOINT.MARKETPLACE,
+				cornerRadius = 0.4,
+				text = ENGINE_ENDPOINT.MARKETPLACE,
+
+				fontSize = 14,
+				onSubmit = function(text)
+					ENGINE_ENDPOINT.MARKETPLACE = text
+				end,
+			}),
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 		},
 	},
 
@@ -83,49 +119,279 @@ local cells = gui.cellparser({
 			name = "Automatic updates",
 			description = "Turn this off to prevent updates.",
 			font = vend,
-			backgroundColor = ThirdBackgroundColor,
+			editor = gui.checkbox({}),
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		},
+		{
+			name = "Language",
+			description = "Change interface language.",
+			font = vend,
+			editor = gui.dropdown({
+				options = {
+					"English",
+					"Dutch",
+					"Swedish",
+					"Vietnamese",
+				},
+
+				onSelect = function(i, new)
+					configService.prop("gui_language", new)
+				end,
+			}),
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 		},
 		{
 			name = "Theme",
 			description = "Change display gui theme.",
 			font = vend,
-			backgroundColor = ThirdBackgroundColor,
-			editor = textbox.new({
-				padding = 5,
-				placeholder = "My Project",
-				cornerRadius = 0.8,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.dropdown({
+				options = {
+					"Dark",
+					"White",
+				},
 
-				fontSize = 14,
-				onSubmit = function(text)
-					print("Project name:", text)
+				onSelect = function(i, new)
+					configService.prop("gui_theme", new)
 				end,
 			}),
 			editorWidth = 200,
 		},
 		{
-			name = "Open project in VSCODE",
-			description = "This will boot VSCode whenever you open a project.",
+			name = "Icon Pack",
+			description = "Change display icon pack.",
 			font = vend,
-			backgroundColor = ThirdBackgroundColor,
-			editor = textbox.new({
-				padding = 5,
-				placeholder = "My Project",
-				cornerRadius = 0.8,
-
-				fontSize = 14,
-				onSubmit = function(text)
-					print("Project name:", text)
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.filePickerButton({
+				x = 10,
+				y = 10,
+				width = 250,
+				height = 30,
+				game = game,
+				path = "C:/path/to/some/file.png", -- The currently selected path
+				extensions = { { name = "Images", extensions = { "zip" } } }, -- Optional file extension filters
+				onPathSelected = function(newPath)
+					configService.prop("gui_iconpack", newPath)
 				end,
 			}),
 			editorWidth = 200,
 		},
 		{
-			name = "Language",
-			description = "Change display language.",
+			name = "Font",
+			description = "Change display font.",
 			font = vend,
-			backgroundColor = ThirdBackgroundColor,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.filePickerButton({
+				x = 10,
+				y = 10,
+				width = 250,
+				height = 30,
+				game = game,
+				path = "C:/path/to/some/file.png", -- The currently selected path
+				extensions = { { name = "Images", extensions = { "ttf", "otf" } } }, -- Optional file extension filters
+				onPathSelected = function(newPath)
+					configService.prop("gui_font", newPath)
+				end,
+			}),
+			editorWidth = 200,
+		},
+		{
+			name = "Open project in IDE",
+			description = "Launches the selected script editor; defaults to the engine's built-in editor.",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.dropdown({
+				options = {
+					"Default",
+					"VSCode",
+					"Zed",
+				},
+
+				onSelect = function(i, new: string)
+					configService.prop("code_editor_selected", new)
+				end,
+			}),
+			editorWidth = 200,
 		},
 	},
+
+	aboutSection = {
+		{
+			name = "Version " .. ENGINE_VERSION,
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		},
+
+		{
+			name = "Documentation",
+			font = vend,
+
+			editor = gui.textButton({
+				text = "Open",
+				onClick = function()
+					raylib.lib.OpenURL("https://deepwiki.com/Qquaded/Kinemium-Engine")
+				end,
+			}),
+
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+		},
+	},
+
+	playtesting = {
+		{
+			name = "Server playtest flags",
+			description = "Starts the server in playtest mode using the selected flags.",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = textbox.new({
+				padding = 5,
+				placeholder = "--headless",
+				cornerRadius = 0.4,
+
+				fontSize = 14,
+				onSubmit = function(text)
+					configService.prop("playtest_server_flags", text)
+				end,
+			}),
+			editorWidth = 200,
+		},
+
+		{
+			name = "Client playtest flags",
+			description = "Starts the client in playtest mode using the selected flags.",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = textbox.new({
+				padding = 5,
+				placeholder = "None",
+				cornerRadius = 0.4,
+
+				fontSize = 14,
+				onSubmit = function(text)
+					configService.prop("playtest_client_flags", text)
+				end,
+			}),
+			editorWidth = 200,
+		},
+	},
+
+	window = {
+		{
+			name = "Toggle Fullscreen",
+			description = "Makes the window fullscreen.",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.checkbox({
+				onChanged = function(new)
+					raylib.lib.ToggleFullscreen()
+				end,
+			}),
+			editorWidth = 200,
+		},
+
+		{
+			name = "Window title",
+			description = "Changes window title.",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = textbox.new({
+				padding = 5,
+				placeholder = "Kinemium Engine",
+				cornerRadius = 0.4,
+
+				fontSize = 14,
+				onSubmit = function(text)
+					raylib.lib.SetWindowTitle(text)
+				end,
+			}),
+			editorWidth = 200,
+		},
+
+		{
+			name = "VSync",
+			description = "Toggles VSync.",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.checkbox({
+				onChanged = function(new)
+					vsyncEnabled = new
+					configService.prop("vsync", new)
+
+					if vsyncEnabled then
+						raylib.lib.SetWindowState(raylib.const.ConfigFlags.FLAG_VSYNC_HINT)
+					else
+						raylib.lib.ClearWindowState(raylib.const.ConfigFlags.FLAG_VSYNC_HINT)
+					end
+				end,
+			}),
+			editorWidth = 200,
+		},
+
+		{
+			name = "Target FPS",
+			description = "Sets the target framerate (0 = unlimited).",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = textbox.new({
+				padding = 5,
+				placeholder = "60",
+				cornerRadius = 0.4,
+				numeric = true,
+				fontSize = 14,
+				onSubmit = function(text)
+					local fps = tonumber(text) or 0
+					configService.prop("target_fps", fps)
+					raylib.lib.SetTargetFPS(fps)
+				end,
+			}),
+			editorWidth = 200,
+		},
+
+		{
+			name = "Always on Top",
+			description = "Forces the window to stay above others.",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.checkbox({
+				onChanged = function(new)
+					configService.prop("window_topmost", new)
+					if new then
+						raylib.lib.SetWindowState(raylib.const.ConfigFlags.FLAG_WINDOW_TOPMOST)
+					else
+						raylib.lib.ClearWindowState(raylib.const.ConfigFlags.FLAG_WINDOW_TOPMOST)
+					end
+				end,
+			}),
+			editorWidth = 200,
+		},
+
+		{
+			name = "Borderless Windowed",
+			description = "Removes window borders and title bar.",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.checkbox({
+				onChanged = function(new)
+					configService.prop("window_undecorated", new)
+					if new then
+						raylib.lib.SetWindowState(raylib.const.ConfigFlags.FLAG_WINDOW_UNDECORATED)
+					else
+						raylib.lib.ClearWindowState(raylib.const.ConfigFlags.FLAG_WINDOW_UNDECORATED)
+					end
+				end,
+			}),
+			editorWidth = 200,
+		},
+	},
+})
+
+local scrollArea = gui.scrollable({
+	child = cells,
+	scrollbarWidth = 8,
+	scrollbarColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+	scrollbarHoverColor = StudioThemeService.SelectedTheme.Accent,
+	scrollbarBackground = StudioThemeService.SelectedTheme.ThirdBackgroundColor,
+	scrollbarBackgroundTransparency = 0.7,
 })
 
 group.frame.setTransparency(1)
@@ -134,21 +400,23 @@ repeat
 	task.wait()
 until ishared.Home
 
-table.insert(ishared.Home.rendering, {
-	render = function(dt)
-		if ishared.Home.activePage ~= "Settings" then
-			return
-		end
+ishared.Home.pages["Settings"] = function(dt, alpha, slideOffset)
+	if ishared.Home.activePage ~= "Settings" and ishared.Home.previousPage ~= "Settings" then
+		return
+	end
 
-		screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
+	screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
-		local x = 60
-		local y = 60
+	local x = 60
+	local y = 60 + slideOffset
 
-		group.frame.set("obj_rect", arect.new(x, y, screenx, screeny))
-		group.background.set("obj_rect", arect.new(x + 30, y + 30, screenx - 60, screeny - 60))
-		cells.setWidth(screenx - 150)
-		group.render(dt, { "newProjectPrompt" })
-		cells.render(dt)
-	end,
-})
+	group.frame.set("obj_rect", arect.new(x, y, screenx, screeny))
+	group.title.set("obj_rect", arect.new(x + 60, y + 60, 200, 30))
+
+	group.render(dt, { "newProjectPrompt" })
+
+	-- Render scroll area
+	scrollArea.set("obj_rect", arect.new(x + 60, y + 100, screenx - 120, screeny - 160))
+	cells.setWidth(screenx - 140)
+	scrollArea.render(dt)
+end

@@ -12,8 +12,6 @@ export type BodyManager = typeof(require("./body"))
 export type JointManager = typeof(joints)
 export type Vector3Double = typeof(Vector3Double.new(0, 0, 0))
 
--- Configuration
-
 physics.gravity = Vector3Double.new(0, -9.81, 0)
 physics.wind_direction = Vector3Double.new(0, 0, 0)
 physics.render = nil -- optional: (id, body, dt) -> ()
@@ -22,13 +20,9 @@ physics.substeps = 4
 physics.accumulator = 0
 physics.constraintIterations = 4
 physics.jointWarmStarting = true
-physics.broadphaseCellSize = 4 -- tune for your scene scale
-
--- Internal state
+physics.broadphaseCellSize = 4
 
 local _broadphase = Broadphase.new(physics.broadphaseCellSize)
--- activeContacts[pairKey] = { normal, penetration }
--- Tracks which body pairs are in contact for enter/stay/exit callbacks
 local _activeContacts = {}
 
 -- Helpers
@@ -154,7 +148,7 @@ function physics.step(body_manager: BodyManager, joint_manager: JointManager?, d
 end
 
 function physics.substep(body_manager: BodyManager, joint_manager: JointManager?, dt: number)
-	-- ── 1. Integrate forces & apply gravity/wind ──────────────────────────────
+	--  1. Integrate forces & apply gravity/wind
 	for id, body in pairs(body_manager.pool) do
 		if body.isSleeping or body.bodyType ~= "dynamic" then
 			continue
@@ -176,7 +170,7 @@ function physics.substep(body_manager: BodyManager, joint_manager: JointManager?
 		end
 	end
 
-	-- ── 2. Kinematic bodies ───────────────────────────────────────────────────
+	--  2. Kinematic bodies
 	for id, body in pairs(body_manager.pool) do
 		if body.isSleeping or body.bodyType ~= "kinematic" then
 			continue
@@ -184,7 +178,7 @@ function physics.substep(body_manager: BodyManager, joint_manager: JointManager?
 		body.velocity = body.velocity * math.pow(0.99, dt * physics.hertz)
 	end
 
-	-- ── 3. Integrate positions ────────────────────────────────────────────────
+	--  3. Integrate positions
 	for id, body in pairs(body_manager.pool) do
 		if body.isSleeping or body.bodyType == "static" then
 			continue
@@ -203,7 +197,7 @@ function physics.substep(body_manager: BodyManager, joint_manager: JointManager?
 		end
 	end
 
-	-- ── 4. Broadphase ─────────────────────────────────────────────────────────
+	--  4. Broadphase
 	_broadphase:clear()
 	for id, body in pairs(body_manager.pool) do
 		if not body.isSleeping then
@@ -213,7 +207,7 @@ function physics.substep(body_manager: BodyManager, joint_manager: JointManager?
 		end
 	end
 
-	-- ── 5. Narrowphase collision resolution ──────────────────────────────────
+	--  5. Narrowphase collision resolution
 	local newContacts = {}
 
 	for _, pair in ipairs(_broadphase:queryPairs()) do
@@ -277,7 +271,7 @@ function physics.substep(body_manager: BodyManager, joint_manager: JointManager?
 
 	_activeContacts = newContacts
 
-	-- ── 6. Floor constraint ───────────────────────────────────────────────────
+	--  6. Floor constraint
 	for id, body in pairs(body_manager.pool) do
 		if body.bodyType == "static" or body.isSleeping then
 			continue
@@ -305,17 +299,17 @@ function physics.substep(body_manager: BodyManager, joint_manager: JointManager?
 		end
 	end
 
-	-- ── 7. Solve joints ───────────────────────────────────────────────────────
+	--  7. Solve joints
 	if joint_manager then
 		joints.solveAll(body_manager, dt, physics.constraintIterations)
 	end
 
-	-- ── 8. Sleep state update ─────────────────────────────────────────────────
+	--  8. Sleep state update
 	for id, _ in pairs(body_manager.pool) do
 		body_manager.updateSleepState(id, dt)
 	end
 
-	-- ── 9. Render callback ────────────────────────────────────────────────────
+	--  9. Render callback
 	if physics.render then
 		for id, body in pairs(body_manager.pool) do
 			physics.render(id, body, dt)
@@ -363,7 +357,7 @@ function physics.raycast(
 	maxDist: number?
 ): RaycastResult?
 	local maxT = maxDist or math.huge
-	local dirUnit = direction.Unit
+	local dirUnit = direction:Unit()
 
 	local bestT = maxT
 	local bestResult: RaycastResult? = nil

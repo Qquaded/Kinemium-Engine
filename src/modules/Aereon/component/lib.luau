@@ -2,6 +2,7 @@ local raylib = require("@raylib")
 local _structs = raylib.structs
 local objects = {}
 local StyleSheet = require("./stylesheet")
+local MDXFormatter = require("./mdxFormatter")
 
 local _defaultFont = raylib.lib.GetFontDefault()
 
@@ -14,6 +15,9 @@ export type CreatedComponent = {
 
 local function create(path, data)
 	local styledData = StyleSheet.apply(data)
+	if styledData.font == nil and _defaultFont ~= nil then
+		styledData.font = _defaultFont
+	end
 	return require(path)(objects, styledData) :: CreatedComponent
 end
 
@@ -23,6 +27,12 @@ end
 comps.cellitem = function(data)
 	return create("./objects/cellItem", data)
 end
+comps.modcard = function(data)
+	return create("./objects/modcard", data)
+end
+comps.UICellList = function(data)
+	return create("./objects/UICellList", data)
+end
 comps.cellparser = function(data)
 	return create("./objects/cellparser", data)
 end
@@ -31,6 +41,9 @@ comps.profiler = function(data)
 end
 comps.button = function(data)
 	return create("./objects/button", data)
+end
+comps.servercard = function(data)
+	return create("./objects/serverCard", data)
 end
 comps.keyboard = function(data)
 	return create("./objects/keyboard", data)
@@ -141,6 +154,18 @@ comps.projectCard = function(data)
 	return create("./objects/projectCard", data)
 end
 
+comps.filePickerButton = function(data)
+	return create("./objects/filePickerButton", data)
+end
+
+comps.scrollable = function(data)
+	return create("./objects/scrollable", data)
+end
+
+comps.engineUIContainer = function(data)
+	return create("./objects/engineUIContainer", data)
+end
+
 comps.hstack = function(data)
 	data.direction = "horizontal"
 	return create("./objects/stack", data)
@@ -158,6 +183,7 @@ end
 -- Styling API
 comps.immediate = require("./objects/immediate")
 comps.stylesheet = StyleSheet
+comps.mdxFormatter = MDXFormatter
 
 local activeToasts = 0
 
@@ -189,6 +215,9 @@ end
 function comps.register(name, factory)
 	comps[name] = function(data)
 		local styledData = StyleSheet.apply(data)
+		if styledData.font == nil and _defaultFont ~= nil then
+			styledData.font = _defaultFont
+		end
 		return factory(objects, styledData)
 	end
 end

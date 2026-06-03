@@ -1,5 +1,5 @@
-local Vector2int16 = require("../enviroment/datatypes/Vector2int16")
-local Vector2 = require("../enviroment/datatypes/Vector2")
+local Vector2int16 = require("../environment/datatypes/Vector2int16")
+local Vector2 = require("../environment/datatypes/Vector2")
 
 local testing = zune.testing
 local expect = testing.expect

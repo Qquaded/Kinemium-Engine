@@ -1,18 +1,7 @@
 local raylib = require("@raylib")
-local structs = raylib.structs
-
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
+local effects = require("./effects")
 
 return function(objects, data)
 	local config = {
@@ -25,16 +14,30 @@ return function(objects, data)
 		textColor = data.textColor or color3.new(1, 1, 1),
 		rounded = data.rounded or { 0.3, 8 },
 		onClick = data.onClick,
-		currentColor = data.backgroundColor or color3.new(0.2, 0.2, 0.2),
+
+		backgroundTransparency = data.backgroundTransparency or 0,
 	}
+
+	local buttonEffects = effects({
+		baseColor = config.backgroundColor,
+		hoverColor = config.hoverColor,
+		pressColor = config.pressColor,
+		enableShadows = false,
+		enableGlow = false,
+		enablePress = true,
+	})
 
 	local wrapper = {}
 
 	wrapper.set = function(prop, value)
-		if type(config[prop]) == "function" then
-			return wrapper
-		end
 		config[prop] = value
+		if prop == "backgroundColor" then
+			buttonEffects.setBaseColor(value)
+		elseif prop == "hoverColor" then
+			buttonEffects.setHoverColor(value)
+		elseif prop == "pressColor" then
+			buttonEffects.setPressColor(value)
+		end
 		return wrapper
 	end
 
@@ -48,36 +51,22 @@ return function(objects, data)
 
 	wrapper.render = function(dt)
 		local r = config.obj_rect
-		local isHovered = rect.MouseIsInRect(r)
-		local isPressed = isHovered and raylib.lib.IsMouseButtonDown(0) == 1
 
-		local targetColor = config.backgroundColor
-		if isPressed then
-			targetColor = config.pressColor
-		elseif isHovered then
-			targetColor = config.hoverColor
-		end
+		-- Update effects
+		buttonEffects.setRect(r)
+		buttonEffects.update(dt)
 
-		config.currentColor = color3.new(
-			config.currentColor.R + (targetColor.R - config.currentColor.R) * 0.2,
-			config.currentColor.G + (targetColor.G - config.currentColor.G) * 0.2,
-			config.currentColor.B + (targetColor.B - config.currentColor.B) * 0.2
-		)
+		-- Render background only (no shadows/glow for legacy button)
+		local drawRect = buttonEffects.renderBackground(r, config.rounded, config.backgroundTransparency)
 
-		raylib.lib.DrawRectangleRounded(
-			rect:translate(r),
-			config.rounded[1],
-			config.rounded[2],
-			c3tr(config.currentColor, 0)
-		)
-
+		-- Text
 		local textWidth = raylib.lib.MeasureText(config.text, config.fontSize)
-		local textX = r.x + (r.width - textWidth) / 2
-		local textY = r.y + (r.height - config.fontSize) / 2
+		local textX = drawRect.x + (drawRect.width - textWidth) / 2
+		local textY = drawRect.y + (drawRect.height - config.fontSize) / 2
 
-		raylib.lib.DrawText(config.text, textX, textY, config.fontSize, c3tr(config.textColor, 0))
+		raylib.lib.DrawText(config.text, textX, textY, config.fontSize, config.textColor:ToRaylib(0))
 
-		if isHovered and raylib.lib.IsMouseButtonReleased(0) == 1 and config.onClick then
+		if buttonEffects.isHovered() and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput and config.onClick then
 			config.onClick()
 		end
 	end

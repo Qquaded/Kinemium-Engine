@@ -1,0 +1,14 @@
+[runtime.debug]
+detailed_error = true
+
+[resolvers.formatter]
+max_depth = 4
+use_color = true
+table_address = true
+recursive_Table = false
+buffer_max_display = 12
+
+[compiling]
+debug_level = 1
+optimization_level = 2
+native_code_gen = true

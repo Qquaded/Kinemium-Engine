@@ -1,17 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 local defaultFont = raylib.lib.GetFontDefault()
@@ -58,14 +48,14 @@ return function(objects, data)
 		local centerY = r.y + r.height / 2
 		local radius = r.width / 2
 
-		raylib.lib.DrawCircleV(vector.create(centerX, centerY), radius, c3tr(config.ringColor, 0))
+		raylib.lib.DrawCircleV(vector.create(centerX, centerY), radius, config.ringColor:ToRaylib(0))
 
 		if config.animProgress > 0.1 then
 			local fillRadius = radius * 0.5 * config.animProgress
-			raylib.lib.DrawCircleV(vector.create(centerX, centerY), fillRadius, c3tr(config.fillColor, 0))
+			raylib.lib.DrawCircleV(vector.create(centerX, centerY), fillRadius, config.fillColor:ToRaylib(0))
 		end
 
-		if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+		if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 			config.value = true
 			if config.onChanged then
 				config.onChanged(config.value)

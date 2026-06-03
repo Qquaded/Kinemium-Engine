@@ -9,7 +9,7 @@ TCPServer.ConnectedClients = {}
 local onRecieveCallbacks = {}
 
 local HEARTBEAT_TIMEOUT = 15
-local MAX_MESSAGE_SIZE = 100000
+local MAX_MESSAGE_SIZE = 4 * 1024 * 1024
 local MESSAGE_TIMEOUT = 10
 local MAX_CLIENTS = 130
 local MAX_MESSAGES_PER_CLIENT = 100
@@ -126,23 +126,29 @@ end
 function TCPServer:CheckRateLimit(client)
 	local currentTime = os.time()
 
-	if not client.rateLimitWindow then
-		client.rateLimitWindow = {}
+	local ring = client.rateLimitRing
+	if not ring then
+		ring = table.create(MAX_MESSAGES_PER_CLIENT, 0)
+		client.rateLimitRing = ring
+		client.rateLimitIndex = 0
+		client.rateLimitCount = 0
 	end
 
-	local filtered = {}
-	for _, timestamp in ipairs(client.rateLimitWindow) do
-		if currentTime - timestamp < 1 then
-			table.insert(filtered, timestamp)
+	local idx = client.rateLimitIndex
+
+	if client.rateLimitCount >= MAX_MESSAGES_PER_CLIENT then
+		local oldest = ring[idx + 1]
+		if oldest and currentTime - oldest < 1 then
+			return false
 		end
 	end
-	client.rateLimitWindow = filtered
 
-	if #client.rateLimitWindow >= MAX_MESSAGES_PER_CLIENT then
-		return false
+	ring[idx + 1] = currentTime
+	client.rateLimitIndex = (idx + 1) % MAX_MESSAGES_PER_CLIENT
+	if client.rateLimitCount < MAX_MESSAGES_PER_CLIENT then
+		client.rateLimitCount += 1
 	end
 
-	table.insert(client.rateLimitWindow, currentTime)
 	return true
 end
 

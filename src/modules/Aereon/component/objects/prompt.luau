@@ -1,18 +1,8 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
-
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
+local textButton = require("./textButton")
 
 local defaultFont = raylib.lib.GetFontDefault()
 
@@ -21,7 +11,7 @@ return function(objects, data)
 		obj_rect = rect.new(
 			data.x or data[1] or 0,
 			data.y or data[2] or 0,
-			data.width or data[3] or 600,
+			data.width or data[3] or 560,
 			data.height or data[4] or 200
 		),
 		title = data.title or "Prompt",
@@ -29,23 +19,24 @@ return function(objects, data)
 		visible = data.visible ~= false,
 
 		font = data.font or defaultFont,
-		backgroundColor = data.backgroundColor or color3.new(0.12, 0.13, 0.15),
+		backgroundColor = data.backgroundColor or color3.new(0.10, 0.11, 0.13),
 		overlayColor = data.overlayColor or color3.new(0, 0, 0),
-		titleColor = data.titleColor or color3.new(0.95, 0.95, 0.97),
-		messageColor = data.messageColor or color3.new(0.7, 0.72, 0.75),
-		borderColor = data.borderColor or color3.new(0.22, 0.23, 0.26),
+		titleColor = data.titleColor or color3.new(0.96, 0.96, 0.98),
+		messageColor = data.messageColor or color3.new(0.62, 0.64, 0.68),
+		borderColor = data.borderColor or color3.new(0.20, 0.22, 0.26),
+		accentColor = data.accentColor or color3.new(0.24, 0.48, 0.94),
 
-		titleFontSize = data.titleFontSize or 22,
-		messageFontSize = data.messageFontSize or 15,
+		titleFontSize = data.titleFontSize or 20,
+		messageFontSize = data.messageFontSize or 14,
 
-		padding = data.padding or 28,
-		rounded = data.rounded or { 0.12, 10 },
+		padding = data.padding or 26,
+		rounded = data.rounded or { 0.10, 12 },
 
 		buttons = data.buttons or {
-			{ text = "OK", onClick = nil, color = color3.new(0.2, 0.5, 0.9) },
+			{ text = "OK", onClick = nil, color = color3.new(0.22, 0.46, 0.92) },
 		},
-		buttonHeight = data.buttonHeight or 42,
-		buttonSpacing = data.buttonSpacing or 10,
+		buttonHeight = data.buttonHeight or 38,
+		buttonSpacing = data.buttonSpacing or 8,
 
 		bodyRenderer = data.bodyRenderer,
 		bodyHeight = data.bodyHeight or 0,
@@ -53,12 +44,14 @@ return function(objects, data)
 		showCloseButton = data.showCloseButton ~= false,
 		onClose = data.onClose,
 
-		animScale = 0,
+		-- Animation state
 		animAlpha = 0,
-		animSlideY = 0, -- 0 = off screen bottom, 1 = centered
+		animSlideY = 0,
+		animScale = 0,
 		closeButtonHover = 0,
 		buttonHoverStates = {},
 		isClosing = false,
+		buttonInstances = {},
 	}
 
 	local wrapper = {}
@@ -71,12 +64,16 @@ return function(objects, data)
 		return wrapper
 	end
 
+	wrapper.get = function(prop)
+		return config[prop]
+	end
+
 	wrapper.show = function()
 		config.visible = true
 		config.isClosing = false
-		config.animScale = 0
 		config.animAlpha = 0
 		config.animSlideY = 0
+		config.animScale = 0
 		return wrapper
 	end
 
@@ -93,6 +90,29 @@ return function(objects, data)
 	wrapper.setButtons = function(buttons)
 		config.buttons = buttons
 		config.buttonHoverStates = {}
+		config.buttonInstances = {}
+		for i, btn in ipairs(buttons) do
+			config.buttonInstances[i] = textButton({}, {
+				x = 0,
+				y = 0,
+				width = btn.width or 100,
+				height = config.buttonHeight,
+				text = btn.text,
+				backgroundColor = btn.color or color3.new(0.22, 0.24, 0.28),
+				hoverColor = btn.hoverColor or color3.new(0.32, 0.34, 0.38),
+				pressColor = btn.pressColor or color3.new(0.18, 0.20, 0.24),
+				textColor = color3.new(1, 1, 1),
+				fontSize = 14,
+				font = config.font,
+				rounded = { 0.20, 8 },
+				onClick = function()
+					if btn.onClick then
+						btn.onClick()
+					end
+					wrapper.hide()
+				end,
+			})
+		end
 		return wrapper
 	end
 
@@ -101,10 +121,10 @@ return function(objects, data)
 			return
 		end
 
+		-- Recalculate height from content if bodyHeight is set
 		if config.bodyHeight > 0 then
-			local titleH = config.title ~= "" and (config.titleFontSize + 16) or 0
-			local msgH = config.message ~= "" and (config.messageFontSize + 20) or 0
-
+			local titleH = config.title ~= "" and (config.titleFontSize + 14) or 0
+			local msgH = config.message ~= "" and (config.messageFontSize + 18) or 0
 			config.obj_rect.height = config.padding
 				+ titleH
 				+ msgH
@@ -114,9 +134,11 @@ return function(objects, data)
 				+ config.padding
 		end
 
+		-- Animate out
 		if config.isClosing then
-			config.animSlideY = config.animSlideY + (0 - config.animSlideY) * 0.2
-			config.animAlpha = config.animAlpha + (0 - config.animAlpha) * 0.2
+			config.animSlideY = config.animSlideY + (0 - config.animSlideY) * 0.18
+			config.animAlpha = config.animAlpha + (0 - config.animAlpha) * 0.18
+			config.animScale = config.animScale + (0 - config.animScale) * 0.18
 
 			if config.animSlideY < 0.01 and config.animAlpha < 0.01 then
 				config.visible = false
@@ -124,114 +146,103 @@ return function(objects, data)
 			end
 		else
 			-- Animate in
-			config.animSlideY = config.animSlideY + (1 - config.animSlideY) * 0.12
-			config.animAlpha = config.animAlpha + (1 - config.animAlpha) * 0.15
+			config.animSlideY = config.animSlideY + (1 - config.animSlideY) * 0.14 -- slide speed
+			config.animAlpha = config.animAlpha + (1 - config.animAlpha) * 0.16 -- fade speed
+			config.animScale = config.animScale + (1 - config.animScale) * 0.20 -- scale speed
 		end
 
-		config.animScale = config.animScale + (1 - config.animScale) * 0.18
+		local screenW = raylib.lib.GetScreenWidth()
+		local screenH = raylib.lib.GetScreenHeight()
 
-		local screenWidth = raylib.lib.GetScreenWidth()
-		local screenHeight = raylib.lib.GetScreenHeight()
+		-- Overlay
+		local overlayAlpha = config.animAlpha * 0.65
+		raylib.lib.DrawRectangle(0, 0, screenW, screenH, config.overlayColor:ToRaylib(1 - overlayAlpha))
 
-		-- Draw overlay background with lerped alpha
-		local overlayAlpha = config.animAlpha * 0.6
-		raylib.lib.DrawRectangle(0, 0, screenWidth, screenHeight, c3tr(config.overlayColor, 1 - overlayAlpha))
+		-- Resolve center position
+		local baseX = config.obj_rect.x == 0 and (screenW - config.obj_rect.width) / 2 or config.obj_rect.x
+		local baseY = config.obj_rect.y == 0 and (screenH - config.obj_rect.height) / 2 or config.obj_rect.y
 
-		local promptX = config.obj_rect.x
-		local promptY = config.obj_rect.y
-		if config.obj_rect.x == 0 and config.obj_rect.y == 0 then
-			promptX = (screenWidth - config.obj_rect.width) / 2
-			promptY = (screenHeight - config.obj_rect.height) / 2
-		end
+		-- Slide in from below
+		local currentY = screenH + (baseY - screenH) * config.animSlideY
 
-		-- Calculate slide position (starts below screen, moves to center)
-		local startY = screenHeight -- Start below screen
-		local targetY = promptY -- Center position
-		local currentY = startY + (targetY - startY) * config.animSlideY
+		-- Scale from center
+		local w = config.obj_rect.width * config.animScale
+		local h = config.obj_rect.height * config.animScale
+		local x = baseX + (config.obj_rect.width - w) / 2
+		local y = currentY + (config.obj_rect.height - h) / 2
 
-		local scaledWidth = config.obj_rect.width * config.animScale
-		local scaledHeight = config.obj_rect.height * config.animScale
-		local scaledX = promptX + (config.obj_rect.width - scaledWidth) / 2
-		local scaledY = currentY + (config.obj_rect.height - scaledHeight) / 2
+		local pr = rect.new(x, y, w, h) -- prompt rect (scaled)
 
-		local promptRect = rect.new(scaledX, scaledY, scaledWidth, scaledHeight)
-
-		local shadowOffset = 6
-		local shadowSpread = 3
-		for i = 0, shadowSpread do
-			local offset = shadowOffset + i * 2
-			local alpha = 0.92 + (i * 0.02)
+		-- Layered drop shadow
+		for i = 1, 5 do
+			local spread = i * 5
+			local alpha = 0.04 + (5 - i) * 0.04
 			raylib.lib.DrawRectangleRounded(
 				rect:translate(
-					rect.new(
-						promptRect.x + offset - i,
-						promptRect.y + offset,
-						promptRect.width + i * 2,
-						promptRect.height + i
-					)
+					rect.new(pr.x - spread * 0.5, pr.y + spread * 0.6, pr.width + spread, pr.height + spread * 0.5)
 				),
 				config.rounded[1],
 				config.rounded[2],
-				c3tr(color3.new(0, 0, 0), alpha)
+				color3.new(0, 0, 0):ToRaylib(1 - alpha)
 			)
 		end
 
+		-- Border
 		raylib.lib.DrawRectangleRounded(
-			rect:translate(promptRect),
+			rect:translate(pr),
 			config.rounded[1],
 			config.rounded[2],
-			c3tr(config.borderColor, 0)
+			config.borderColor:ToRaylib(0)
 		)
 
+		-- Background (inset 1px from border)
 		raylib.lib.DrawRectangleRounded(
-			rect:translate(rect.new(promptRect.x + 1, promptRect.y + 1, promptRect.width - 2, promptRect.height - 2)),
+			rect:translate(rect.new(pr.x + 1, pr.y + 1, pr.width - 2, pr.height - 2)),
 			config.rounded[1],
 			config.rounded[2],
-			c3tr(config.backgroundColor, 0)
+			config.backgroundColor:ToRaylib(0)
 		)
 
+		-- Close button
 		if config.showCloseButton then
-			local closeSize = 36
-			local closeX = promptRect.x + promptRect.width - config.padding - closeSize
-			local closeY = promptRect.y + config.padding
+			local closeSize = 30
+			local closeX = pr.x + pr.width - config.padding - closeSize + 4
+			local closeY = pr.y + config.padding - 2
 			local closeRect = rect.new(closeX, closeY, closeSize, closeSize)
-
 			local isCloseHovered = rect.MouseIsInRect(closeRect)
 
-			if isCloseHovered then
-				config.closeButtonHover = math.min(config.closeButtonHover + dt * 8, 1)
-			else
-				config.closeButtonHover = math.max(config.closeButtonHover - dt * 8, 0)
-			end
+			config.closeButtonHover = isCloseHovered and math.min(config.closeButtonHover + dt * 10, 1)
+				or math.max(config.closeButtonHover - dt * 10, 0)
 
 			if config.closeButtonHover > 0 then
 				raylib.lib.DrawRectangleRounded(
 					rect:translate(closeRect),
-					0.25,
+					0.3,
 					8,
-					c3tr(color3.new(0.8, 0.2, 0.2), 1 - config.closeButtonHover * 0.85)
+					color3.new(0.75, 0.18, 0.18):ToRaylib(1 - config.closeButtonHover * 0.9)
 				)
 			end
 
-			local lineOffset = 10
-			local lineThickness = 2
-			local xColor = color3.new(
-				0.6 + config.closeButtonHover * 0.4,
-				0.6 - config.closeButtonHover * 0.4,
-				0.6 - config.closeButtonHover * 0.4
+			local lp = 9
+			local lt = 1.5
+			local iconAlpha = 0.45 + config.closeButtonHover * 0.55
+			local xCol = color3.new(
+				0.55 + config.closeButtonHover * 0.45,
+				0.55 - config.closeButtonHover * 0.35,
+				0.55 - config.closeButtonHover * 0.35
 			)
 
 			raylib.lib.DrawLineEx(
-				vector.create(closeX + lineOffset, closeY + lineOffset),
-				vector.create(closeX + closeSize - lineOffset, closeY + closeSize - lineOffset),
-				lineThickness,
-				c3tr(xColor, 0)
+				vector.create(closeX + lp, closeY + lp),
+				vector.create(closeX + closeSize - lp, closeY + closeSize - lp),
+				lt,
+				xCol:ToRaylib(1 - iconAlpha)
 			)
 			raylib.lib.DrawLineEx(
-				vector.create(closeX + closeSize - lineOffset, closeY + lineOffset),
-				vector.create(closeX + lineOffset, closeY + closeSize - lineOffset),
-				lineThickness,
-				c3tr(xColor, 0)
+				vector.create(closeX + closeSize - lp, closeY + lp),
+				vector.create(closeX + lp, closeY + closeSize - lp),
+				lt,
+				xCol:ToRaylib(1 - iconAlpha)
 			)
 
 			if isCloseHovered and raylib.lib.IsMouseButtonReleased(0) == 1 then
@@ -242,120 +253,77 @@ return function(objects, data)
 			end
 		end
 
-		local contentY = promptRect.y + config.padding
+		-- Content layout
+		local contentY = pr.y + config.padding
 
-		-- Draw title
+		-- Title
 		if config.title ~= "" then
 			raylib.lib.DrawTextEx(
-				config.font or defaultFont,
+				config.font,
 				config.title,
-				vector.create(promptRect.x + config.padding, contentY),
+				vector.create(pr.x + config.padding, contentY),
 				config.titleFontSize,
 				1,
-				c3tr(config.titleColor, 0)
+				config.titleColor:ToRaylib(0)
 			)
-			contentY = contentY + config.titleFontSize + 16
+			contentY = contentY + config.titleFontSize + 14
 		end
 
-		-- Draw message
+		-- Message
 		if config.message ~= "" then
 			raylib.lib.DrawTextEx(
-				config.font or defaultFont,
+				config.font,
 				config.message,
-				vector.create(promptRect.x + config.padding, contentY),
+				vector.create(pr.x + config.padding, contentY),
 				config.messageFontSize,
-				1,
-				c3tr(config.messageColor, 0)
+				0.5,
+				config.messageColor:ToRaylib(0)
 			)
-			contentY = contentY + config.messageFontSize + 20
+			contentY = contentY + config.messageFontSize + 18
 		end
 
-		-- Render body content
+		-- Body renderer
 		if config.bodyRenderer then
-			local bodyWidth = promptRect.width - config.padding * 2
-			local bodyHeight = config.bodyHeight > 0 and config.bodyHeight
-				or (
-					promptRect.height
-					- (contentY - promptRect.y)
-					- config.padding
-					- config.buttonHeight
-					- config.buttonSpacing
-				)
+			local bodyW = pr.width - config.padding * 2
+			local bodyH = config.bodyHeight > 0 and config.bodyHeight
+				or (pr.height - (contentY - pr.y) - config.padding - config.buttonHeight - config.buttonSpacing)
 
-			config.bodyRenderer(dt, promptRect.x + config.padding, contentY, bodyWidth, bodyHeight)
-			contentY = contentY + bodyHeight + config.buttonSpacing
+			config.bodyRenderer(dt, pr.x + config.padding, contentY, bodyW, bodyH)
+			contentY = contentY + bodyH + config.buttonSpacing
 		end
 
-		-- Draw buttons
-		local totalButtonWidth = 0
-		for i, button in ipairs(config.buttons) do
-			local btnWidth = button.width or 110
-			totalButtonWidth = totalButtonWidth + btnWidth
+		-- Buttons (right-aligned)
+		local totalBtnW = 0
+		for i, btn in ipairs(config.buttons) do
+			totalBtnW = totalBtnW + (btn.width or 100)
 			if i < #config.buttons then
-				totalButtonWidth = totalButtonWidth + config.buttonSpacing
+				totalBtnW = totalBtnW + config.buttonSpacing
 			end
 		end
 
-		local buttonY = promptRect.y + promptRect.height - config.padding - config.buttonHeight
-		local buttonX = promptRect.x + promptRect.width - config.padding - totalButtonWidth
+		local btnY = pr.y + pr.height - config.padding - config.buttonHeight
+		local btnX = pr.x + pr.width - config.padding - totalBtnW
 
-		for i, button in ipairs(config.buttons) do
-			local btnWidth = button.width or 110
-			local btnRect = rect.new(buttonX, buttonY, btnWidth, config.buttonHeight)
+		-- Thin separator above buttons
+		raylib.lib.DrawLineEx(
+			vector.create(pr.x + config.padding, btnY - config.buttonSpacing),
+			vector.create(pr.x + pr.width - config.padding, btnY - config.buttonSpacing),
+			1,
+			config.borderColor:ToRaylib(0.55)
+		)
 
-			local isHovered = rect.MouseIsInRect(btnRect)
+		-- Create button instances if they don't exist
+		if #config.buttonInstances == 0 and #config.buttons > 0 then
+			wrapper.setButtons(config.buttons)
+		end
 
-			if not config.buttonHoverStates[i] then
-				config.buttonHoverStates[i] = 0
-			end
-
-			if isHovered then
-				config.buttonHoverStates[i] = math.min(config.buttonHoverStates[i] + dt * 10, 1)
-			else
-				config.buttonHoverStates[i] = math.max(config.buttonHoverStates[i] - dt * 10, 0)
-			end
-
-			local btnColor = button.color or color3.new(0.25, 0.27, 0.3)
-			local hoverBrightness = 0.15 * config.buttonHoverStates[i]
-			local hoverColor = color3.new(
-				math.min(btnColor.R + hoverBrightness, 1),
-				math.min(btnColor.G + hoverBrightness, 1),
-				math.min(btnColor.B + hoverBrightness, 1)
-			)
-
-			-- Button shadow
-			raylib.lib.DrawRectangleRounded(
-				rect:translate(rect.new(btnRect.x + 2, btnRect.y + 2, btnRect.width, btnRect.height)),
-				0.22,
-				8,
-				c3tr(color3.new(0, 0, 0), 0.8)
-			)
-
-			-- Button background
-			raylib.lib.DrawRectangleRounded(rect:translate(btnRect), 0.22, 8, c3tr(hoverColor, 0))
-
-			-- Button text
-			local textSize = raylib.lib.MeasureTextEx(config.font or defaultFont, button.text, 15, 1)
-			local textX = buttonX + (btnWidth - textSize.x) / 2
-			local textY = buttonY + (config.buttonHeight - textSize.y) / 2
-
-			raylib.lib.DrawTextEx(
-				config.font or defaultFont,
-				button.text,
-				vector.create(textX, textY),
-				15,
-				1,
-				c3tr(color3.new(1, 1, 1), 0)
-			)
-
-			if isHovered and raylib.lib.IsMouseButtonReleased(0) == 1 then
-				if button.onClick then
-					button.onClick()
-				end
-				wrapper.hide()
-			end
-
-			buttonX = buttonX + btnWidth + config.buttonSpacing
+		-- Update and render buttons
+		for i, btnInstance in ipairs(config.buttonInstances) do
+			local btn = config.buttons[i]
+			local bw = btn.width or 100
+			btnInstance.set("obj_rect", rect.new(btnX, btnY, bw, config.buttonHeight))
+			btnInstance.render(dt)
+			btnX = btnX + bw + config.buttonSpacing
 		end
 	end
 

@@ -61,7 +61,7 @@ function raycast:GetMouseRay(camera)
 	local ray = lib.GetScreenToWorldRay(mouse, camera)
 
 	local position = mem.toVector3(ray, 0)
-	local direction = mem.toVector3(ray, 8)
+	local direction = mem.toVector3(ray, 12)
 
 	return { position = position, direction = direction, ray = ray }
 end

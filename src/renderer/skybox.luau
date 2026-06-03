@@ -1,4 +1,5 @@
 local rl = require("@raylib")
+local zembed = require("@zembed")
 local ffi = zune.ffi
 local lib = rl.lib
 
@@ -39,6 +40,7 @@ local function FromCubemap(paths)
 	local sizes = {}
 
 	for i, path in ipairs(paths) do
+		path = zembed.AssetPath(path)
 		imgs[i] = lib.LoadImage(path)
 
 		local buf = imgs[i]
@@ -120,8 +122,10 @@ function skybox.Load(png)
 	skybox.Mesh = lib.GenMeshCube(1, 1, 1)
 	skybox.Model = lib.LoadModelFromMesh(skybox.Mesh)
 
-	skybox.Shader =
-		lib.LoadShader("./src/assets/sky/default/shader/skybox.vs", "./src/assets/sky/default/shader/skybox.fs")
+	skybox.Shader = lib.LoadShader(
+		zembed.AssetPath("kineasset://sky/default/shader/skybox.vs"),
+		zembed.AssetPath("kineasset://sky/default/shader/skybox.fs")
+	)
 
 	local envLoc = lib.GetShaderLocation(skybox.Shader, "environmentMap")
 	assert(envLoc ~= -1, "skybox shader missing uniform: environmentMap")
@@ -129,7 +133,7 @@ function skybox.Load(png)
 	setShaderLoc(skybox.Shader, rl.const.ShaderLocationIndex.SHADER_LOC_MAP_CUBEMAP, envLoc)
 	setMaterialShaderOnModel(skybox.Model, skybox.Shader)
 
-	local img = lib.LoadImage(png or "./src/assets/sky/default/images/cubemap.png")
+	local img = lib.LoadImage(zembed.AssetPath(png or "kineasset://sky/default/images/cubemap.png"))
 	skybox.CubeMap = lib.LoadTextureCubemap(img, const.CubemapLayout.CUBEMAP_LAYOUT_CROSS_FOUR_BY_THREE)
 	lib.UnloadImage(img)
 

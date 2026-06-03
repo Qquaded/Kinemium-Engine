@@ -2,81 +2,118 @@
 local IsPlaytesting = false
 
 local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
-local clients = {}
 local playtestService = game:GetService("PlaytestService")
+local KineFileService = game:GetService("KineFileService")
+
+local RunService = game:GetService("RunService")
+if RunService:IsServer() then
+	return
+end
 
 repeat
 	task.wait()
 until ishared.NewCategoryToolbar
 local NewCategoryToolbar = ishared.NewCategoryToolbar
 
+local Process = game:GetService("Process")
+local processes = {}
+
+local playerCount = 1
+local offlinePlayerCount = 1
+
 NewCategoryToolbar:Fire("Playtest", {
 	elements = {
 		{
 			type = "ImageButton",
-			text = "Playtest",
+			text = "Play Test",
 			callback = function()
 				if IsPlaytesting then
 					return
 				end
-				print("playtesting..")
 
-				playtestService.CreatePlaytestAsync()
+				playtestService.CreatePlaytestAsync(ishared.GameName or "Game")
 				IsPlaytesting = true
 			end,
 			hoverTransparency = 0.5,
 			hoverColor = Color3.new(0, 0, 0),
 			roundness = 0.2,
-			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Play.svg"),
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Play.png"),
 		},
 		{
 			type = "ImageButton",
 
 			callback = function()
-				local playtestService = game:GetService("PlaytestService")
-
 				if not IsPlaytesting then
 					return
 				end
-				print("Stopping the simulation")
 
-				playtestService.StopCurrentPlaytest()
+				playtestService.StopCurrentPlaytest(ishared.GameName or "Game")
 				IsPlaytesting = false
+				for _, client in pairs(processes) do
+					Process.ForceKill(client)
+				end
 			end,
 			hoverTransparency = 0.5,
 			text = "Stop",
 			hoverColor = Color3.new(1, 0, 0),
 			roundness = 0.2,
-			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Pause.svg"),
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Pause.png"),
 		},
+
 		{
 			type = "ImageButton",
-			text = "Run Multiple",
+			text = "New Client",
 			callback = function()
-				table.insert(
-					clients,
-					task.spawn(function()
-						zune.process.create(zune.fs.getExePath(), {
-							"run",
-							"game",
-							"--client",
-							"--dhs",
-						})
-					end)
-				)
-
 				task.spawn(function()
-					zune.process.create(zune.fs.getExePath(), {
-						"run",
-						"game",
-						"--server",
-					})
+					table.insert(
+						processes,
+						Process.RunProcessZune({
+							"run",
+							"engine",
+							"--client",
+							"--username",
+							"Player" .. playerCount,
+						})
+					)
+					playerCount += 1
 				end)
 			end,
 			hoverTransparency = 0.5,
 			hoverColor = Color3.new(0, 0, 0),
 			roundness = 0.2,
-			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/MultipleDevices.svg"),
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/MultipleDevices.png"),
+		},
+		{
+			type = "ImageButton",
+			text = "Offline Client",
+			callback = function()
+				task.spawn(function()
+					local gameName = ishared.GameName or "Game"
+
+					pcall(function()
+						zune.fs.deleteFile("./.temp/offline_" .. gameName .. ".kine")
+					end)
+
+					KineFileService.ExportGameAsFile("./.temp/", "offline_" .. gameName)
+
+					Process.RunProcessZune({
+						"run",
+						"game",
+						"--client",
+						"--offline",
+						"--no-multiplayer",
+						"--blob",
+						"./.temp/offline_" .. gameName .. ".kine",
+						"--username",
+						"OfflinePlayer" .. offlinePlayerCount,
+					})
+					offlinePlayerCount += 1
+				end)
+			end,
+			hoverTransparency = 0.5,
+			hoverColor = Color3.new(0, 0, 0),
+			roundness = 0.2,
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/NetworkController.png"),
 		},
 	},
 })

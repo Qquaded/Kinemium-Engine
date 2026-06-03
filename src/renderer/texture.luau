@@ -2,10 +2,11 @@ return function(lib, structs)
 	local zembed = require("@zembed")
 
 	local function LoadTextureFromFile(path: string)
-		return lib.LoadTexture(path)
+		return lib.LoadTexture(zembed.AssetPath(path))
 	end
 
 	local function LoadTextureFromFileAsync(path: string)
+		path = zembed.AssetPath(path)
 		local success, data: buffer? = zune.fs.readFileSync(path, true)
 		if success then
 			local image = lib.LoadImageFromMemory(lib.GetFileExtension(path), data, buffer.len(data))
@@ -19,23 +20,14 @@ return function(lib, structs)
 	end
 
 	local function GetMaterials()
-		local path = "./src/assets/materials/compressed"
+		local path = zembed.AssetPath("kineasset://materials/compressed")
 		local fs = zune.fs
+		local entries = fs.entries(path)
 
-		local entries
-		if zembed.IsEmbedded() then
-			entries = zembed.GetFilesThatHas([[assets\materials\compressed]])
-		else
-			entries = fs.entries(path)
-		end
-
-		local result = {}		
+		local result = {}
 		for i, v in pairs(entries) do
-			if zembed.IsEmbedded() then
-				local basename = fs.path.basename(v)
-				result[basename:gsub("(%.%w+)", "")] = "../" .. v
-			elseif v.kind == "directory" then
-				local directoryPath = "src/assets/materials/compressed/" .. v.name
+			if v.kind == "directory" then
+				local directoryPath = fs.path.join(path, v.name)
 				local components = fs.entries(directoryPath)
 
 				local albedo, normal, orm
@@ -50,14 +42,14 @@ return function(lib, structs)
 						orm = objectPath
 					end
 				end
-				
+
 				result[v.name] = {
 					albedo = albedo,
 					normal = normal,
 					orm = orm
 				}
 			else
-				local objectPath = "src/assets/materials/compressed/" .. v.name
+				local objectPath = fs.path.join(path, v.name)
 				result[v.name:gsub("(%.%w+)", "")] = {
 					albedo = objectPath,
 					normal = nil,

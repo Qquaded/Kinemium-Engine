@@ -1,5 +1,5 @@
-local UDim2 = require("../enviroment/datatypes/UDim2")
-local Vector2 = require("../enviroment/datatypes/Vector2")
+local UDim2 = require("../environment/datatypes/UDim2")
+local Vector2 = require("../environment/datatypes/Vector2")
 
 local testing = zune.testing
 local expect = testing.expect

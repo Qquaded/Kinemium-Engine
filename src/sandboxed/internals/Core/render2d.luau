@@ -1,33 +1,19 @@
 -- devcell
+local RunService = game:GetService("RunService")
+if RunService:IsServer() then
+	return
+end
 
 local KinemiumRaylib = game:GetService("KinemiumRaylib")
 local EngineSignal = game.EngineSignal
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local renderer = KinemiumRaylib.renderer
-local rl = KinemiumRaylib.lib
+local renderer = KinemiumRaylib.GetRenderer()
+local rl = KinemiumRaylib.GetLib()
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
 
 local vend = KinemiumFontService.GetDefaultFont()
-
-local backgroundColor =
-	StudioThemeService.SelectedTheme.BackgroundColor:ToRaylib(StudioThemeService.SelectedTheme.BackgroundTransparency)
-local TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
-local GuiHandlesColor =
-	StudioThemeService.SelectedTheme.GuiHandlesColor:ToRaylib(StudioThemeService.SelectedTheme.GuiHandlesTransparency)
-local SecondaryBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryBackgroundColorTransparency
-)
-local SecondaryTextColor = StudioThemeService.SelectedTheme.SecondaryTextColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryTextTransparency
-)
-local ImageColor =
-	StudioThemeService.SelectedTheme.ImageColor:ToRaylib(StudioThemeService.SelectedTheme.ImageTransparency)
-
-if FlagExists("client") then
-	return
-end
 
 if FlagExists("cli") then
 	return
@@ -80,14 +66,17 @@ local window = aereon.window(game)
 
 repeat
 	task.wait()
-until frame.AbsolutePosition
+until frame.AbsolutePosition and frame.AbsoluteSize
+
+local initialPos = frame.AbsolutePosition or vector.create(0, 0)
+local initialSize = frame.AbsoluteSize or vector.create(800, 600)
 
 local ideWindow = window.create({
 	title = "Script Editor",
-	x = frame.AbsolutePosition.X,
-	y = frame.AbsolutePosition.Y,
-	width = frame.AbsoluteSize.X,
-	height = frame.AbsoluteSize.Y,
+	x = initialPos.X,
+	y = initialPos.Y,
+	width = initialSize.X,
+	height = initialSize.Y,
 	enabled = false,
 })
 
@@ -104,7 +93,11 @@ local viewportWindow = window.create({
 --]]
 
 ideWindow.stepped = function(data)
-	ide.draw(ideWindow.x, ideWindow.y + 30, vector.create(ideWindow.width, ideWindow.height), 50)
+	ideWindow.x = 0
+	ideWindow.y = 30
+	ideWindow.width = rl.GetRenderWidth()
+	ideWindow.height = rl.GetRenderHeight() - 30
+	ide.draw(0, 60, vector.create(rl.GetRenderWidth(), rl.GetRenderHeight() - 60), 50)
 
 	if currentObject then
 		if currentObject.IsOverridden then
@@ -127,15 +120,6 @@ renderer.Pool.new("2d", function(data)
 	local mainTheme = StudioThemeService.SelectedTheme
 
 	ideWindow.enabled = enableIDE
-
-	aereon.step(dt, mainTheme.aereon)
+	window.update(dt)
+	window.draw(dt, mainTheme)
 end)
-
---[[
-viewportWindow.stepped = function(data)
-	viewport_x = data.x
-	viewport_y = data.y + 30
-	viewport_width = data.width
-	viewport_height = data.height - 30
-end
---]]

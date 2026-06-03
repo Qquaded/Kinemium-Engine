@@ -1,4 +1,4 @@
-local Axes = require("../enviroment/datatypes/Axes")
+local Axes = require("../environment/datatypes/Axes")
 
 local testing = zune.testing
 local expect = testing.expect

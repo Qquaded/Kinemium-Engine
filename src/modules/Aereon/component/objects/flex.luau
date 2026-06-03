@@ -1,7 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 local color3 = require("@Color3")
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local LayoutEngine = require("../../../LayoutEngine")
 
 return function(objects, data)
@@ -28,7 +28,15 @@ return function(objects, data)
 	end
 
 	wrapper.set = function(prop, value)
-		config[prop] = value
+		if prop == "width" then
+			config.obj_rect = rect.new(config.obj_rect.x, config.obj_rect.y, value, config.obj_rect.height)
+		elseif prop == "height" then
+			config.obj_rect = rect.new(config.obj_rect.x, config.obj_rect.y, config.obj_rect.width, value)
+		elseif prop == "obj_rect" then
+			config.obj_rect = value
+		else
+			config[prop] = value
+		end
 		return wrapper
 	end
 
@@ -108,6 +116,9 @@ return function(objects, data)
 						item._actualHeight
 					)
 				)
+			end
+			if child.render then
+				child.render(dt)
 			end
 		end
 	end

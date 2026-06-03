@@ -1,7 +1,5 @@
-local rlservice = game:GetService("KinemiumRaylib")
 local raylib = require("@raylib")
 local lib = raylib.lib
-local renderer = rlservice.renderer
 local aereon = import("@Aereon")
 local gui = aereon.gui
 
@@ -9,40 +7,47 @@ local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
 
 local vend = KinemiumFontService.GetDefaultFont()
-local arect = require("@Arect")(raylib.lib)
-local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
-
+local arect = require("@arect")
+local boldFont = KinemiumFontService.GetBoldFont()
 local backgroundColor = StudioThemeService.SelectedTheme.BackgroundColor
-local TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
-local GuiHandlesColor =
-	StudioThemeService.SelectedTheme.GuiHandlesColor:ToRaylib(StudioThemeService.SelectedTheme.GuiHandlesTransparency)
 local SecondaryBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor
-local SecondaryBackgroundColorRaylib = StudioThemeService.SelectedTheme.SecondaryBackgroundColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryBackgroundColorTransparency
-)
-local SecondaryTextColor = StudioThemeService.SelectedTheme.SecondaryTextColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryTextTransparency
-)
-local ImageColor =
-	StudioThemeService.SelectedTheme.ImageColor:ToRaylib(StudioThemeService.SelectedTheme.ImageTransparency)
 
 local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
-local logoPath = "./src/assets/images/icons/vanilla3/kinemium/KinemiumWhite.png"
-local kilLogo = KinemiumIconLoader.ToTexture(logoPath)
-
 local categories = require("@apidumpbrowser")
+local api_endpoint = ENGINE_ENDPOINT.API :: string
+local HTTPService = game:GetService("HttpService")
 
-local browser = gui.apibrowser({
+local browser
+browser = gui.apibrowser({
 	x = 50,
 	y = 50,
 	categories = categories,
 	width = 800,
 	height = 600,
 	fontSize = 25,
+	game = game,
 	font = vend,
 	onItemSelect = function(item)
-		print("Selected:", item.name, item.type)
+		if item.type == "class" then
+			browser.setClassDescription(item.name, "# Loading..")
+
+			task.spawn(function()
+				local endpoint = api_endpoint .. item.name
+				local data = HTTPService:GetAsync(endpoint)
+
+				if string.find(data, "404") then
+					browser.setClassDescription(
+						item.name,
+						[[# 404
+						Documentation about this class is not found, You can check the docs here: https://kinemium-docs.vercel.app/docs]]
+					)
+					return
+				end
+
+				browser.setClassDescription(item.name, data)
+			end)
+		end
 	end,
 })
 
@@ -50,18 +55,43 @@ repeat
 	task.wait()
 until ishared.Home
 
-table.insert(ishared.Home.rendering, {
-	render = function(dt)
-		if ishared.Home.activePage ~= "API" then
-			return
-		end
+ishared.Home.pages["API"] = function(dt, alpha, slideOffset)
+	local fade = function(col, a)
+		return col:ToRaylib(1 - (a or 1) * alpha)
+	end
 
-		screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
+	if ishared.Home.activePage ~= "API" and ishared.Home.previousPage ~= "API" then
+		return
+	end
 
-		browser.set("backgroundColor", backgroundColor)
-		browser.set("headerColor", SecondaryBackgroundColor)
+	screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
-		browser.set("obj_rect", arect.new(70, 60, screenx - 60, screeny - 60))
-		browser.render(dt)
-	end,
-})
+	local startX = 100
+	local headerY = 80 + slideOffset
+	local headerDesc = 120 + slideOffset
+
+	if vend then
+		raylib.lib.DrawTextEx(
+			boldFont,
+			"API Documentation",
+			vector.create(startX, headerY),
+			32,
+			1,
+			fade(StudioThemeService.SelectedTheme.TextColor, 1)
+		)
+		raylib.lib.DrawTextEx(
+			vend,
+			"Explore the Kinemium Engine API and builtin services",
+			vector.create(startX, headerDesc),
+			16,
+			1,
+			fade(StudioThemeService.SelectedTheme.SecondaryTextColor, 1)
+		)
+	end
+
+	browser.set("backgroundColor", backgroundColor)
+	browser.set("headerColor", SecondaryBackgroundColor)
+
+	browser.set("obj_rect", arect.new(startX, 160 + slideOffset, screenx - 130, screeny - 190))
+	browser.render(dt)
+end

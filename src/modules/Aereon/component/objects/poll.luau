@@ -1,17 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
-
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 return function(objects, data)
@@ -116,7 +106,7 @@ return function(objects, data)
 			rect:translate(r),
 			config.rounded[1],
 			config.rounded[2],
-			c3tr(config.backgroundColor, 0)
+			config.backgroundColor:ToRaylib(0)
 		)
 
 		local currentY = r.y + config.padding
@@ -149,7 +139,7 @@ return function(objects, data)
 		end
 
 		for _, line in ipairs(questionLines) do
-			raylib.lib.DrawText(line, r.x + config.padding, currentY, fontSize, c3tr(config.textColor, 0))
+			raylib.lib.DrawText(line, r.x + config.padding, currentY, fontSize, config.textColor:ToRaylib(0))
 			currentY = currentY + 20
 		end
 
@@ -178,7 +168,7 @@ return function(objects, data)
 				bgColor = config.optionHoverColor
 			end
 
-			raylib.lib.DrawRectangleRounded(rect:translate(optionRect), 0.1, 8, c3tr(bgColor, 0))
+			raylib.lib.DrawRectangleRounded(rect:translate(optionRect), 0.1, 8, bgColor:ToRaylib(0))
 
 			-- Progress bar if voted or closed
 			if config.userVoted or config.closed then
@@ -193,7 +183,7 @@ return function(objects, data)
 						}),
 						0.1,
 						8,
-						c3tr(config.progressBarColor, 0.5)
+						config.progressBarColor:ToRaylib(0.5)
 					)
 				end
 			end
@@ -222,13 +212,13 @@ return function(objects, data)
 					contentX + config.avatarSize / 2,
 					avatarCenterY,
 					config.avatarSize / 2,
-					c3tr(config.dimTextColor, 0.3)
+					config.dimTextColor:ToRaylib(0.3)
 				)
 				contentX = contentX + config.avatarSize + 12
 			end
 
 			-- Option text
-			raylib.lib.DrawText(option.text, contentX, optionRect.y + 12, 13, c3tr(config.textColor, 0))
+			raylib.lib.DrawText(option.text, contentX, optionRect.y + 12, 13, config.textColor:ToRaylib(0))
 
 			-- Vote count and percentage (right side)
 			if config.userVoted or config.closed then
@@ -241,7 +231,7 @@ return function(objects, data)
 					optionRect.x + optionRect.width - percentWidth - 12,
 					optionRect.y + 10,
 					16,
-					c3tr(config.textColor, 0)
+					config.textColor:ToRaylib(0)
 				)
 
 				local voteWidth = raylib.lib.MeasureText(voteText, 11)
@@ -250,7 +240,7 @@ return function(objects, data)
 					optionRect.x + optionRect.width - voteWidth - 12,
 					optionRect.y + 32,
 					11,
-					c3tr(config.dimTextColor, 0)
+					config.dimTextColor:ToRaylib(0)
 				)
 			end
 
@@ -270,7 +260,7 @@ return function(objects, data)
 			footerText = footerText .. " • Poll closed"
 		end
 
-		raylib.lib.DrawText(footerText, r.x + config.padding, currentY, 12, c3tr(config.dimTextColor, 0))
+		raylib.lib.DrawText(footerText, r.x + config.padding, currentY, 12, config.dimTextColor:ToRaylib(0))
 
 		for _, m in pairs(config.modifiers) do
 			m()

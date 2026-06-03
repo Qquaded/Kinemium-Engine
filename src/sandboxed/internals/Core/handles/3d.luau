@@ -1,11 +1,17 @@
 -- devcell
 
+local RunService = game:GetService("RunService")
+if RunService:IsServer() then
+	return
+end
+
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
 local rlservice = game:GetService("KinemiumRaylib")
 local raylib = require("@raylib")
+local UserInputService = game:GetService("UserInputService")
 
-if zune.platform.os == "linux" then
+if UserInputService:GetOS() == Enum.Platform.Linux then
 	-- linux not supported Yet........................
 	return
 end
@@ -16,33 +22,100 @@ end
 
 local lib = raylib.lib
 local const = raylib.const
-local renderer = rlservice.renderer
+local renderer = rlservice.GetRenderer()
 local Selection = game:GetService("Selection")
-local os = zune.platform.os
 local freecam = renderer.Freecam
-local focusTargetCF = nil
+local _focusTargetCF = nil
 local vend = KinemiumFontService.GetDefaultFont()
-local focusAlpha = 0
+local _focusAlpha = 0
 local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
-local grid = 1
+local moveIcon = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Move.png")
+local rotIcon = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Rotate.png")
+
+ishared.isToolsActive = false
+ishared.Grid = 1
+ishared.ForceMoveObject = false -- Disabled by default to prevent accidental dragging
+ishared.RotationStep = 15
+
 local aereon = require("@Aereon")
+local Movement, Resize, Rotation = Instance.new("Handles"), Instance.new("Handles"), Instance.new("Handles")
+
+Movement.Style = Enum.HandlesStyle.Movement
+Resize.Style = Enum.HandlesStyle.Resize
+Rotation.Style = Enum.HandlesStyle.Rotation
 
 local MoveOffsets = {}
 local MoveStartPivot = nil
 local MoveDragging = false
 
+local RotOffsets = {}
+local RotStartPivot = nil
+local RotDragging = false
+
+local ScaleOffsets = {}
+local ScaleStartPivot = nil
+local ScaleDragging = false
+
 local textbox = aereon.textbox(StudioThemeService.SelectedTheme, game)
 
+local snapMoveEnabled = true
+local snapRotEnabled = true
+
 local function snap(v)
-	return math.round(v / grid) * grid
+	if not snapMoveEnabled then
+		return v
+	end
+	return math.round(v / ishared.Grid) * ishared.Grid
 end
 
 local function snapVec3(v)
 	return Vector3.new(snap(v.X), snap(v.Y), snap(v.Z))
 end
 
+local function isModel(obj)
+	return obj ~= nil and obj.ClassName == "Model"
+end
+
+local function getObjectPivot(obj)
+	if obj == nil then
+		return nil
+	end
+	if isModel(obj) then
+		return obj:GetPivot()
+	elseif obj.CFrame ~= nil then
+		return obj.CFrame
+	end
+	return nil
+end
+
+local function setObjectCFrame(obj, cf)
+	if obj == nil or cf == nil then
+		return
+	end
+	if isModel(obj) then
+		obj:PivotTo(cf)
+	elseif obj.CFrame ~= nil then
+		obj.CFrame = cf
+	end
+end
+
+local function getObjectExtents(obj)
+	if obj == nil then
+		return Vector3.new(1, 1, 1)
+	end
+	if isModel(obj) then
+		local s = obj:GetExtentsSize()
+		return Vector3.new(math.max(s.X, 0.001), math.max(s.Y, 0.001), math.max(s.Z, 0.001))
+	elseif obj.Size ~= nil then
+		return obj.Size
+	end
+	return Vector3.new(1, 1, 1)
+end
+
+--
+
 local function isMovable(object)
-	return object:GetMetadata("IsMovable")
+	return object:IsA("BasePart") or isModel(object) or object:GetMetadata("IsMovable")
 end
 
 local function getSelectionCenter()
@@ -55,8 +128,9 @@ local function getSelectionCenter()
 	local count = 0
 
 	for _, obj in ipairs(selection) do
-		if obj.BaseClass == "BasePart" then
-			sum += obj.CFrame.Position
+		local pivot = getObjectPivot(obj)
+		if pivot ~= nil then
+			sum += pivot.Position
 			count += 1
 		end
 	end
@@ -74,15 +148,16 @@ local gridInput = textbox.new({
 	font = vend,
 	maxLength = 56,
 	numeric = true,
+	suffix = "    studs",
 	numericMin = 0,
 	numericMax = 10000,
 	numericPrecision = 1,
 	showStepButtons = true,
 	onChange = function(new)
 		if tonumber(new) and tonumber(new) > 0 then
-			grid = tonumber(new)
+			ishared.Grid = tonumber(new)
 		else
-			grid = 1
+			ishared.Grid = 1
 		end
 	end,
 })
@@ -101,24 +176,26 @@ local rotateGrid = textbox.new({
 	showStepButtons = true,
 	onChange = function(new)
 		if tonumber(new) and tonumber(new) > 0 then
-			grid = tonumber(new)
+			ishared.RotationStep = tonumber(new)
 		else
-			grid = 1
+			ishared.RotationStep = 15
+		end
+		if Rotation then
+			Rotation.RotationSnap = snapRotEnabled and ishared.RotationStep or 0
 		end
 	end,
 })
 
-local StartCFrame
-local StartSize
-
 local gizmo = import("@gizmo")
-local flags = gizmo.Flags
+local _flags = gizmo.Flags
+Rotation.RotationSnap = ishared.RotationStep
 
-local Movement, Resize = Instance.new("Handles"), Instance.new("Handles")
-Movement.Style = Enum.HandlesStyle.Movement
-Resize.Style = Enum.HandlesStyle.Resize
+--  Movement
 
-connection = Movement.MouseDrag:Connect(function(newCF)
+local _moveConnection = Movement.MouseDrag:Connect(function(newCF)
+	if not ishared.ForceMoveObject then
+		return
+	end
 	local selection = Selection:Get()
 	if #selection == 0 then
 		return
@@ -133,10 +210,14 @@ connection = Movement.MouseDrag:Connect(function(newCF)
 
 		for _, obj in ipairs(selection) do
 			if isMovable(obj) then
-				table.insert(
-					MoveOffsets,
-					{ obj = obj, pos = MoveStartPivot:ToObjectSpace(obj.CFrame), size = obj.Size }
-				)
+				local pivot = getObjectPivot(obj)
+				if pivot ~= nil then
+					table.insert(MoveOffsets, {
+						obj = obj,
+						pos = MoveStartPivot:ToObjectSpace(pivot),
+						size = getObjectExtents(obj),
+					})
+				end
 			end
 		end
 	end
@@ -145,63 +226,189 @@ connection = Movement.MouseDrag:Connect(function(newCF)
 	local snappedPivot = CFrame.new(snappedPos) * (newCF - newCF.Position)
 
 	for _, offset in ipairs(MoveOffsets) do
-		local part = offset.obj
-		if part and part.Parent then
+		local obj = offset.obj
+		if obj and obj.Parent then
 			local finalCF = snappedPivot * offset.pos
-			local o = part.Orientation
-			local res: CFrame = finalCF * CFrame.Angles(math.rad(o.X), math.rad(o.Y), math.rad(o.Z))
-			if part.Position then
-				part.Position = res.Position
+			setObjectCFrame(obj, finalCF)
+		end
+	end
+end)
+
+--  Rotation
+
+local _rotationConnection = Rotation.MouseDrag:Connect(function(newCF)
+	if not ishared.ForceMoveObject then
+		return
+	end
+	local selection = Selection:Get()
+	if #selection == 0 then
+		return
+	end
+
+	if not RotDragging then
+		RotDragging = true
+		RotOffsets = {}
+
+		local center = getSelectionCenter()
+		RotStartPivot = CFrame.new(center)
+
+		for _, obj in ipairs(selection) do
+			if isMovable(obj) then
+				local pivot = getObjectPivot(obj)
+				if pivot ~= nil then
+					table.insert(RotOffsets, {
+						obj = obj,
+						rel = RotStartPivot:ToObjectSpace(pivot),
+					})
+				end
 			end
-			if part.CFrame then
-				part.CFrame = res
+		end
+	end
+
+	-- Rotation is already snapped by the Handles gizmo
+	local snappedCF = newCF
+
+	for _, offset in ipairs(RotOffsets) do
+		local obj = offset.obj
+		if obj and obj.Parent then
+			setObjectCFrame(obj, snappedCF * offset.rel)
+		end
+	end
+end)
+
+--  Scale / Resize
+
+local _resizeConnection = Resize.MouseDrag:Connect(function(newCF, newSize)
+	if not ishared.ForceMoveObject then
+		return
+	end
+	local selection = Selection:Get()
+	if #selection == 0 then
+		return
+	end
+
+	if not ScaleDragging then
+		ScaleDragging = true
+		ScaleOffsets = {}
+
+		local center = getSelectionCenter()
+		ScaleStartPivot = CFrame.new(center)
+
+		for _, obj in ipairs(selection) do
+			if isMovable(obj) then
+				local pivot = getObjectPivot(obj)
+				if pivot ~= nil then
+					local entry = {
+						obj = obj,
+						rel = ScaleStartPivot:ToObjectSpace(pivot),
+						startSize = getObjectExtents(obj),
+						lastScale = 1,
+					}
+
+					table.insert(ScaleOffsets, entry)
+				end
+			end
+		end
+	end
+
+	local snappedSize = snapVec3(newSize)
+
+	for _, offset in ipairs(ScaleOffsets) do
+		local obj = offset.obj
+		if obj and obj.Parent then
+			if isModel(obj) then
+				-- Compute a uniform target scale factor relative to drag-start size,
+				-- then derive the per-frame delta so ScaleTo stays non-cumulative.
+				local startSize = offset.startSize
+				local avgStart = (startSize.X + startSize.Y + startSize.Z) / 3
+				local avgNew = (snappedSize.X + snappedSize.Y + snappedSize.Z) / 3
+				local targetScale = math.max(avgNew / avgStart, 0.001)
+				local delta = targetScale / offset.lastScale
+				obj:ScaleTo(delta)
+				offset.lastScale = targetScale
+				obj:PivotTo(newCF * offset.rel)
+			else
+				-- BasePart: apply size and position directly
+				obj.Size = snappedSize
+				obj.CFrame = newCF * offset.rel
 			end
 		end
 	end
 end)
 
-local handlestype = "MOVEMENT"
-local ScaleDragging = true
+local handlestype = ""
 
 -- Read Offsets:
 -- 0, 4, 8 = Position (x,y,z) (Vector3)
 -- 12, 16, 20, 24 = Rotation (x,y,z,w) (Quaternion)
 -- 28, 32, 36 = Scale (x,y,z) (Vector3)
 
-local connection
+-- Expose updateAdornees for external use
+ishared.Update3DHandles = updateAdornees
+
+--  Selection signals
 
 Selection.SelectionAdded:Connect(function(selected)
 	Movement.Adornee = nil
 	Resize.Adornee = nil
-
-	if connection then
-		connection:Disconnect()
-	end
+	Rotation.Adornee = nil
 
 	MoveDragging = false
+	RotDragging = false
+	ScaleDragging = false
 	MoveOffsets = {}
+	RotOffsets = {}
+	ScaleOffsets = {}
 
 	if selected then
 		if not isMovable(selected) then
 			return
 		end
 		if handlestype == "MOVEMENT" then
-			Resize.Adornee = nil
 			Movement.Adornee = selected
 		elseif handlestype == "SCALE" then
 			Resize.Adornee = selected
+		elseif handlestype == "ROTATE" then
+			Rotation.Adornee = selected
 		end
 	end
 end)
 
+local function updateAdornees()
+	local selected = Selection:Get()[1]
+	Movement.Adornee = nil
+	Resize.Adornee = nil
+	Rotation.Adornee = nil
+
+	if selected and isMovable(selected) then
+		if handlestype == "MOVEMENT" then
+			Movement.Adornee = selected
+		elseif handlestype == "SCALE" then
+			Resize.Adornee = selected
+		elseif handlestype == "ROTATE" then
+			Rotation.Adornee = selected
+		end
+	end
+end
+
+--  Focus
+
 local function Focus()
 	local selected = Selection:Get()[1]
+	if not selected then
+		return
+	end
 	local padding = 20
 
-	local partPos = selected.CFrame.Position
-	local camCF = freecam.GetCFrame()
+	-- Works for both BaseParts (via CFrame.Position) and Models (via GetPivot)
+	local pivot = getObjectPivot(selected)
+	if not pivot then
+		return
+	end
+	local partPos = pivot.Position
 
-	local dir = (camCF.Position - partPos)
+	local camCF = freecam.GetCFrame()
+	local dir = camCF.Position - partPos
 	if dir:Magnitude() < 1e-4 then
 		dir = Vector3.new(0, 0, -1)
 	else
@@ -209,15 +416,32 @@ local function Focus()
 	end
 
 	local newCamPos = partPos + dir * padding
-	focusTargetCF = CFrame.lookAt(newCamPos, partPos)
-	focusAlpha = 0
+	_focusTargetCF = CFrame.lookAt(newCamPos, partPos)
+	_focusAlpha = 0
 end
 
+--  Render loop
+
 renderer.Pool.new("gizmo", function()
+	if ishared.MouseDragging then
+		Movement.Adornee = nil
+		Resize.Adornee = nil
+		Rotation.Adornee = nil
+	end
+
 	Movement.render(Movement, renderer, game)
 	Resize.render(Resize, renderer, game)
+	Rotation.render(Rotation, renderer, game)
 
-	local selected = Selection:Get()[1]
+	local selection = Selection:Get()
+	local selected = selection[1]
+
+	-- Reset dragging states when mouse is released
+	if lib.IsMouseButtonDown(const.MouseButton.MOUSE_BUTTON_LEFT) == 0 then
+		MoveDragging = false
+		RotDragging = false
+		ScaleDragging = false
+	end
 
 	if selected then
 		if not isMovable(selected) then
@@ -228,51 +452,46 @@ renderer.Pool.new("gizmo", function()
 			if not Movement.Transform then
 				return
 			end
-		elseif handlestype == "SCALE" then
-			if connection then
-				connection:Disconnect()
+			local newCF = CFrame.new(snapVec3(Movement.Transform.Position))
+			if selected:IsA("BasePart") then
+				selected.CFrame = newCF
+			elseif selected:IsA("Model") then
+				selected:PivotTo(newCF)
 			end
-
-			if not ScaleDragging then
-				StartCFrame = selected.CFrame
-				StartSize = selected.Size
-				ScaleDragging = true
-			end
-
-			connection = Resize.MouseDrag:Connect(function(newCF)
-				local startPos = StartCFrame.Position
-				local t = newCF.Position
-
-				local dx = (t.X - startPos.X)
-				local dy = (t.Y - startPos.Y)
-				local dz = (t.Z - startPos.Z)
-
-				local newSize = snapVec3(
-					Vector3.new(
-						math.max(StartSize.X + dx, grid),
-						math.max(StartSize.Y + dy, grid),
-						math.max(StartSize.Z + dz, grid)
-					)
-				)
-
-				local offset = Vector3.new(
-					(newSize.X - StartSize.X) / 2,
-					(newSize.Y - StartSize.Y) / 2,
-					(newSize.Z - StartSize.Z) / 2
-				)
-
-				--selected.Size = newSize
-				--selected.CFrame = StartCFrame + offset
-			end)
 		end
+
+		if handlestype == "ROTATE" then
+			if not Rotation.Transform then
+				return
+			end
+
+			local pos = Rotation.Transform.Position
+
+			local x, y, z = Rotation.Transform:ToOrientation()
+
+			local snap = math.rad(15) -- 15 degree snapping
+
+			x = math.round(x / snap) * snap
+			y = math.round(y / snap) * snap
+			z = math.round(z / snap) * snap
+
+			local newCF = CFrame.new(pos) * CFrame.fromOrientation(x, y, z)
+
+			if selected:IsA("BasePart") then
+				selected.CFrame = newCF
+			elseif selected:IsA("Model") then
+				selected:PivotTo(newCF)
+			end
+		end
+
 		if lib.IsKeyDown(const.KeyboardKey.KEY_F) == 1 then
 			Focus()
 		end
+
 		if lib.IsKeyPressed(const.KeyboardKey.KEY_Z) == 1 then
 			local center = getSelectionCenter()
 			if center then
 				local camCF = freecam.GetCFrame()
-
 				local dir = (center - camCF.Position):Unit()
 				local zoomAmount = 10
 
@@ -281,26 +500,29 @@ renderer.Pool.new("gizmo", function()
 				end
 
 				local newPos = camCF.Position + dir * zoomAmount
-				focusTargetCF = CFrame.lookAt(newPos, center)
-				focusAlpha = 0
+				_focusTargetCF = CFrame.lookAt(newPos, center)
+				_focusAlpha = 0
 			end
 		end
+
 		if lib.IsKeyPressed(const.KeyboardKey.KEY_HOME) == 1 then
 			freecam.SetCFrame(CFrame.new(Vector3.new(0, 20, 40), Vector3.zero))
 		end
 	else
 		MoveDragging = false
-		MoveOffsets = {}
+		RotDragging = false
 		ScaleDragging = false
+		MoveOffsets = {}
+		RotOffsets = {}
+		ScaleOffsets = {}
 	end
-	if focusTargetCF then
-		local camCF = freecam.GetCFrame()
 
-		focusAlpha = math.min(focusAlpha + 0.08, 1) -- speed (0.08 slower, 0.2 faster)
-		freecam.SetCFrame(focusTargetCF)
+	if _focusTargetCF then
+		_focusAlpha = math.min(_focusAlpha + 0.08, 1)
+		freecam.SetCFrame(_focusTargetCF)
 
-		if focusAlpha >= 1 then
-			focusTargetCF = nil
+		if _focusAlpha >= 1 then
+			_focusTargetCF = nil
 		end
 	end
 end)
@@ -311,7 +533,8 @@ game.EngineSignal:Connect(function(Route)
 	end
 end)
 
--- Toolbar functionality
+--  Toolbar
+
 repeat
 	task.wait()
 until ishared.NewCategoryToolbar
@@ -323,35 +546,40 @@ NewCategoryToolbar:Fire("Tools", {
 			type = "ImageButton",
 			text = "Move",
 			callback = function()
+				ishared.isToolsActive = true
 				handlestype = "MOVEMENT"
+				updateAdornees()
 			end,
 			hoverTransparency = 0.5,
 			hoverColor = Color3.new(0, 0, 0),
 			roundness = 0.2,
-			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Move.svg"),
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Move.png"),
 		},
 		{
 			type = "ImageButton",
-
 			callback = function()
+				ishared.isToolsActive = true
 				handlestype = "ROTATE"
+				updateAdornees()
 			end,
 			hoverTransparency = 0.5,
 			text = "Rotate",
 			hoverColor = Color3.new(0, 0, 0),
 			roundness = 0.2,
-			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Rotate.svg"),
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Rotate.png"),
 		},
 		{
 			type = "ImageButton",
 			text = "Resize",
 			callback = function()
 				handlestype = "SCALE"
+				ishared.isToolsActive = true
+				updateAdornees()
 			end,
 			hoverTransparency = 0.5,
 			hoverColor = Color3.new(0, 0, 0),
 			roundness = 0.2,
-			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Size.svg"),
+			texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Size.png"),
 		},
 		{
 			type = "Separator",
@@ -360,20 +588,138 @@ NewCategoryToolbar:Fire("Tools", {
 			type = "Custom",
 			width = 250,
 			render = function(arect, data)
-				local x, y = data.x, data.y
-				local width, height = data.width, data.height + 25
+				local x, y = data.x, data.y + 15
+				local width, height = data.width, data.height
 
-				lib.DrawRectangle(x, y, width, height, raylib.const.WHITE)
+				-- layout config
+				local padding = 12
+				local spacing = 8
+				local rowHeight = 26
+				local checkboxSize = 16
+				local smallIconSize = 16
+				local geoSize = 28
 
-				local textboxWidth = 60 -- small width for numbers
-				local textboxHeight = height -- keep full rectangle height
-				local textboxX = x + width - textboxWidth - 10 -- right edge with 10px padding
-				local textboxY = y -- top aligned
+				-- vertical centering
+				local contentHeight = rowHeight * 2 + spacing
+				local startY = y + (height - contentHeight) / 2
 
-				-- both textboxes occupy the same vertical space
-				gridInput:drawWithExtras(textboxX, textboxY, textboxWidth, textboxHeight)
-				rotateGrid:drawWithExtras(textboxX + textboxWidth + 2, textboxY, textboxWidth, textboxHeight)
+				local row1Y = startY
+				local row2Y = startY + rowHeight + spacing
+
+				-- theme
+				local iconColor = StudioThemeService.SelectedTheme.ImageColor:ToRaylib(0)
+				local textColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(0)
+
+				-- === COLUMN POSITIONS ===
+				local cbX = x + padding
+				local iconX = cbX + checkboxSize + 10
+				local textboxX = iconX + smallIconSize + 10
+				local textboxWidth = width - (textboxX - x) - padding
+
+				-- mouse
+				local mx, my = lib.GetMouseX(), lib.GetMouseY()
+				local function isHovered(rx, ry, rw, rh)
+					return mx >= rx and mx <= rx + rw and my >= ry and my <= ry + rh
+				end
+
+				-- === CHECKBOX DRAW FUNCTION ===
+				local function drawCheckbox(px, py, state)
+					local hovered = isHovered(px, py, checkboxSize, checkboxSize)
+
+					local bg = state and Color3.new(0.2, 0.5, 0.9):ToRaylib(0)
+						or (
+							hovered and Color3.new(0.3, 0.3, 0.3):ToRaylib(0)
+							or Color3.new(0.18, 0.18, 0.18):ToRaylib(0)
+						)
+
+					lib.DrawRectangleRounded(
+						raylib.structs.Rectangle:new({
+							x = px,
+							y = py,
+							width = checkboxSize,
+							height = checkboxSize,
+						}),
+						0.25,
+						4,
+						bg
+					)
+
+					if state then
+						lib.DrawLineEx(
+							vector.create(px + 3, py + 9),
+							vector.create(px + 7, py + 13),
+							2,
+							raylib.const.WHITE
+						)
+						lib.DrawLineEx(
+							vector.create(px + 7, py + 13),
+							vector.create(px + 13, py + 4),
+							2,
+							raylib.const.WHITE
+						)
+					end
+
+					return hovered
+				end
+
+				-- === ROW 1 (MOVE) ===
+				local cbMoveY = row1Y + (rowHeight - checkboxSize) / 2
+				local moveHovered = drawCheckbox(cbX, cbMoveY, snapMoveEnabled)
+
+				if moveHovered and lib.IsMouseButtonPressed(0) == 1 then
+					snapMoveEnabled = not snapMoveEnabled
+				end
+
+				if moveIcon then
+					lib.DrawTexturePro(
+						moveIcon.texture,
+						raylib.structs.Rectangle:new({ x = 0, y = 0, width = moveIcon.x, height = moveIcon.y }),
+						raylib.structs.Rectangle:new({
+							x = iconX,
+							y = row1Y + (rowHeight - smallIconSize) / 2,
+							width = smallIconSize,
+							height = smallIconSize,
+						}),
+						vector.create(0, 0),
+						0,
+						iconColor
+					)
+				end
+
+				gridInput:drawWithExtras(textboxX, row1Y, textboxWidth, rowHeight)
+
+				-- === ROW 2 (ROTATE) ===
+				local cbRotY = row2Y + (rowHeight - checkboxSize) / 2
+				local rotHovered = drawCheckbox(cbX, cbRotY, snapRotEnabled)
+
+				if rotHovered and lib.IsMouseButtonPressed(0) == 1 then
+					snapRotEnabled = not snapRotEnabled
+					if Rotation then
+						Rotation.RotationSnap = snapRotEnabled and ishared.RotationStep or 0
+					end
+				end
+
+				if rotIcon then
+					lib.DrawTexturePro(
+						rotIcon.texture,
+						raylib.structs.Rectangle:new({ x = 0, y = 0, width = rotIcon.x, height = rotIcon.y }),
+						raylib.structs.Rectangle:new({
+							x = iconX,
+							y = row2Y + (rowHeight - smallIconSize) / 2,
+							width = smallIconSize,
+							height = smallIconSize,
+						}),
+						vector.create(0, 0),
+						0,
+						iconColor
+					)
+				end
+
+				rotateGrid:drawWithExtras(textboxX, row2Y, textboxWidth, rowHeight)
 			end,
+		},
+		{
+			type = "Separator",
 		},
 	},
 })

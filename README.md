@@ -116,7 +116,7 @@ There are a set of predefined scripts in there as examples, but you can change a
 
 # Can I make my games have modding support?
 Yes! there is a modding service called KinemiumModService (said up there)<br>
-This lets you add mods to your game, and you can set the enviroment of your said mods!
+This lets you add mods to your game, and you can set the environment of your said mods!
 
 # How do I spell Kinemium?
 Ki-nem-yum!!
@@ -137,7 +137,7 @@ Ki-nem-yum!!
 - Webview
 - Luau
 - and most importantly.. Zune
-kv1.10.4
+kv1.10.7
 
 # Do you like cats?
 <img width="444" height="200" alt="Silly Cat.... Hello.... Random Person...." src="https://github.com/user-attachments/assets/21672df2-d59e-4a6d-aee1-3b89c9263627" />

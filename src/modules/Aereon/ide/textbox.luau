@@ -2,6 +2,7 @@ local rl = require("@raylib")
 local ideBuffer = require("./idebuffer")
 local EnumMap = require("@EnumMap")
 local Color3 = require("@Color3")
+local MouseCursor = require("@Kinemium.MouseCursor")
 
 local structs = rl.structs
 local const = rl.const
@@ -194,11 +195,11 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		self.BorderTransparency = config.BorderTransparency or 0
 		self.TextColor = config.TextColor
 
-		-- Configuration
 		self.multiline = false
 		self.placeholder = config.placeholder or ""
 		self.fontSize = config.fontSize or 16
 		self.padding = config.padding or 5
+		self.font = config.font or vend
 		self.showLineNumbers = config.showLineNumbers and self.multiline
 		self.readOnly = config.readOnly or false
 		self.maxLength = config.maxLength
@@ -274,7 +275,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		self.keyRepeatConfig = {
 			initialDelay = config.keyRepeatInitialDelay or 0.5, -- seconds before acceleration starts
 			minInterval = config.keyRepeatMinInterval or 0.02, -- fastest repeat interval
-			acceleration = config.keyRepeatAcceleration or 0.85, -- multiply interval by this each repeat
+			acceleration = config.keyRepeatAcceleration or 0.01, -- multiply interval by this each repeat
 		}
 
 		-- Slider state
@@ -282,18 +283,17 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		self.sliderValue = config.defaultValue or config.sliderMin or 0
 
 		-- Theme
-		local default_theme = theme.ide
-			or {
-				BackgroundColor = Color3.new(0.07, 0.07, 0.07),
-				TextColor = Color3.new(1, 1, 1),
-				PlaceholderColor = Color3.new(0.5, 0.5, 0.5),
-				SelectionColor = Color3.new(0, 0.4, 0.8),
-				BorderColor = Color3.new(0.3, 0.3, 0.3),
-				currentLineColor = Color3.new(0.1, 0.1, 0.1),
-				ErrorColor = Color3.new(1, 0.2, 0.2),
-				MatchBracketColor = Color3.new(1, 1, 0),
-				SearchHighlightColor = Color3.new(1, 0.8, 0),
-			}
+		local default_theme = {
+			BackgroundColor = Color3.new(0.07, 0.07, 0.07),
+			TextColor = Color3.new(1, 1, 1),
+			PlaceholderColor = Color3.new(0.5, 0.5, 0.5),
+			SelectionColor = Color3.new(0, 0.4, 0.8),
+			BorderColor = Color3.new(0.3, 0.3, 0.3),
+			currentLineColor = Color3.new(0.1, 0.1, 0.1),
+			ErrorColor = Color3.new(1, 0.2, 0.2),
+			MatchBracketColor = Color3.new(1, 1, 0),
+			SearchHighlightColor = Color3.new(1, 0.8, 0),
+		}
 
 		self.theme = {
 			background = (config.backgroundColor or default_theme.BackgroundColor):ToRaylib(
@@ -312,7 +312,6 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			statusBarBackground = (config.statusBarBackgroundColor or Color3.new(0.05, 0.05, 0.05)):ToRaylib(0),
 			popupBackground = (config.popupBackgroundColor or Color3.new(0.1, 0.1, 0.1)):ToRaylib(0),
 			shadow = (config.shadowColor or Color3.new(0, 0, 0)):ToRaylib(self.shadowTransparency),
-			-- New theme colors
 			hyperlink = (config.hyperlinkColor or Color3.new(0.3, 0.5, 1)):ToRaylib(0),
 			scrollbar = (config.scrollbarColor or Color3.new(0.3, 0.3, 0.3)):ToRaylib(0),
 			scrollbarHover = (config.scrollbarHoverColor or Color3.new(0.4, 0.4, 0.4)):ToRaylib(0),
@@ -1237,12 +1236,12 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				end
 
 				-- Draw label
-				raylib.DrawTextEx(vend, item.label or "", vector.create(x + 12, itemY + 6), 14, 1, self.theme.text)
+				raylib.DrawTextEx(self.font, item.label or "", vector.create(x + 12, itemY + 6), 14, 1, self.theme.text)
 
 				-- Draw shortcut
 				if item.shortcut then
 					raylib.DrawTextEx(
-						vend,
+						self.font,
 						item.shortcut,
 						vector.create(x + menuWidth - 50, itemY + 6),
 						12,
@@ -1334,7 +1333,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				local previewText = #line > 0 and line:sub(1, math.min(#line, 30)) or ""
 				if #previewText > 0 then
 					raylib.DrawTextEx(
-						vend,
+						self.font,
 						previewText,
 						vector.create(minimapX + 2, lineY),
 						6,
@@ -1565,6 +1564,8 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		end
 
 		-- Draw current line highlight
+		raylib.BeginScissorMode(math.floor(x), math.floor(y), math.floor(width), math.floor(height - statusBarHeight))
+
 		if self.isFocused and self.multiline and self.lineHighlight then
 			local c = self.buffer.cursor
 			local lineY = y + self.padding + (c.line - 1) * lineHeight - self.scrollY
@@ -1666,7 +1667,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		if isEmpty and not self.isFocused and #self.placeholder > 0 then
 			-- Draw placeholder
 			raylib.DrawTextEx(
-				vend,
+				self.font,
 				self.placeholder,
 				vector.create(x + gutterWidth + self.padding, y + self.padding),
 				self.fontSize,
@@ -1686,7 +1687,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 						or (i == self.buffer.cursor.line and self.isFocused) and self.theme.text
 						or Color3.new(0.5, 0.5, 0.5):ToRaylib(0)
 					raylib.DrawTextEx(
-						vend,
+						self.font,
 						lineNumberText,
 						vector.create(x + 5, yLine),
 						self.fontSize,
@@ -1724,18 +1725,18 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 
 					for _, tok in ipairs(tokens) do
 						raylib.DrawTextEx(
-							vend,
+							self.font,
 							tok.text,
 							vector.create(xPos, yLine),
 							self.fontSize,
 							spacing,
 							tok.color or self.theme.text
 						)
-						xPos += raylib.MeasureTextEx(vend, tok.text, self.fontSize, spacing).x
+						xPos += raylib.MeasureTextEx(self.font, tok.text, self.fontSize, spacing).x
 					end
 				else
 					raylib.DrawTextEx(
-						vend,
+						self.font,
 						displayLine,
 						vector.create(x + gutterWidth + self.padding, yLine),
 						self.fontSize,
@@ -1758,6 +1759,8 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			end
 		end
 
+		raylib.EndScissorMode()
+
 		-- Draw status bar
 		if statusBarHeight > 0 then
 			local sbY = y + height - statusBarHeight
@@ -1779,10 +1782,10 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 
 			if self.validationError then
 				statusText = "❌ " .. self.validationError
-				raylib.DrawTextEx(vend, statusText, vector.create(x + 8, sbY + 5), 12, 1, self.theme.error)
+				raylib.DrawTextEx(self.font, statusText, vector.create(x + 8, sbY + 5), 12, 1, self.theme.error)
 			elseif #statusText > 0 then
 				raylib.DrawTextEx(
-					vend,
+					self.font,
 					statusText,
 					vector.create(x + 8, sbY + 5),
 					12,
@@ -1824,7 +1827,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					function(c, t)
 						return c:ToRaylib(t)
 					end,
-					vend,
+					self.font,
 					spacing,
 					self.TextColor or self.theme.text,
 					self.theme.popupBackground,
@@ -1910,7 +1913,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 						raylib.DrawRectangle(acX, itemY, acWidth, acItemHeight, Color3.new(0.2, 0.4, 0.8):ToRaylib(0))
 					end
 
-					raylib.DrawTextEx(vend, itemText, vector.create(acX + 5, itemY + 4), 14, 1, self.theme.text)
+					raylib.DrawTextEx(self.font, itemText, vector.create(acX + 5, itemY + 4), 14, 1, self.theme.text)
 				end
 			end
 		end
@@ -1943,7 +1946,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			end
 
 			raylib.DrawTextEx(
-				vend,
+				self.font,
 				"Find: " .. self.search.query,
 				vector.create(boxX + 10, boxY + 12),
 				14,
@@ -1954,7 +1957,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			if #self.search.results > 0 then
 				local resText = string.format("%d/%d", self.search.currentIndex, #self.search.results)
 				raylib.DrawTextEx(
-					vend,
+					self.font,
 					resText,
 					vector.create(boxX + boxW - 50, boxY + 12),
 					14,
@@ -1965,7 +1968,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 
 			if self.replace.active then
 				raylib.DrawTextEx(
-					vend,
+					self.font,
 					"Replace: " .. self.replace.query,
 					vector.create(boxX + 10, boxY + 52),
 					14,
@@ -2103,7 +2106,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 
 		-- Set cursor
 		if isInBounds then
-			raylib.SetMouseCursor(EnumMap.KinemiumMouseCursor.MOUSE_CURSOR_IBEAM.Value)
+			MouseCursor.request(EnumMap.KinemiumMouseCursor.MOUSE_CURSOR_IBEAM.Value)
 		end
 
 		-- Handle keyboard input
@@ -2326,47 +2329,52 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			end
 		end
 
+		local function getRepeatInterval(repeatCount)
+			if repeatCount <= 0 then
+				return self.keyRepeat.initialDelay
+			end
+
+			return math.max(
+				self.keyRepeat.minInterval,
+				self.keyRepeat.initialDelay * (self.keyRepeat.acceleration ^ repeatCount)
+			)
+		end
+
 		-- Backspace with acceleration
-		if raylib.IsKeyDown(const.KeyboardKey.KEY_BACKSPACE) == 1 then
+		local backspacePressed = raylib.IsKeyPressed(const.KeyboardKey.KEY_BACKSPACE) == 1
+		local backspaceDown = raylib.IsKeyDown(const.KeyboardKey.KEY_BACKSPACE) == 1
+		if backspacePressed or backspaceDown then
 			local currentTime = os.clock()
-			local timeSinceLast = currentTime - self.keyRepeat.lastBackspaceTime
 			local shouldDelete = false
 
 			-- Handle selection deletion on first press
-			if self.buffer.selection.active then
+			if self.buffer.selection.active and backspacePressed then
 				self:saveHistory()
 				self.buffer:deleteSelection()
+				self.keyRepeat.lastBackspaceTime = currentTime
+				self.keyRepeat.backspaceCount = 0
 				if self.onChange then
 					self.onChange(self:getText())
 				end
 				self:validate()
 				self:updateAutocomplete()
 			else
-				-- Initial delay before acceleration starts
-				if self.keyRepeat.backspaceCount == 0 then
-					if timeSinceLast > self.keyRepeat.initialDelay then
-						shouldDelete = true
-						self.keyRepeat.backspaceCount = 1
-					end
-				else
-					-- Calculate accelerated interval
-					local interval = self.keyRepeat.minInterval
-					for i = 1, self.keyRepeat.backspaceCount do
-						interval = interval / self.keyRepeat.acceleration
-					end
-					interval = math.max(interval, self.keyRepeat.minInterval)
-
-					if timeSinceLast > interval then
+				if backspacePressed then
+					shouldDelete = true
+					self.keyRepeat.backspaceCount = 0
+				elseif backspaceDown then
+					local interval = getRepeatInterval(self.keyRepeat.backspaceCount)
+					local timeSinceLast = currentTime - self.keyRepeat.lastBackspaceTime
+					if timeSinceLast >= interval then
 						shouldDelete = true
 						self.keyRepeat.backspaceCount = self.keyRepeat.backspaceCount + 1
 					end
 				end
 
-				self.keyRepeat.lastBackspaceTime = currentTime
-
 				if shouldDelete then
 					self:saveHistory()
 					self.buffer:backspace()
+					self.keyRepeat.lastBackspaceTime = currentTime
 					if self.onChange then
 						self.onChange(self:getText())
 					end
@@ -2375,50 +2383,45 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				end
 			end
 		else
-			-- Reset backspace count when key is released
+			-- Reset backspace repeat state when key is released
 			self.keyRepeat.backspaceCount = 0
+			self.keyRepeat.lastBackspaceTime = 0
 		end
 
 		-- Delete key with acceleration
-		if raylib.IsKeyDown(const.KeyboardKey.KEY_DELETE) == 1 then
+		local deletePressed = raylib.IsKeyPressed(const.KeyboardKey.KEY_DELETE) == 1
+		local deleteDown = raylib.IsKeyDown(const.KeyboardKey.KEY_DELETE) == 1
+		if deletePressed or deleteDown then
 			local currentTime = os.clock()
-			local timeSinceLast = currentTime - self.keyRepeat.lastDeleteTime
 			local shouldDelete = false
 
 			-- Handle selection deletion on first press
-			if self.buffer.selection.active then
+			if self.buffer.selection.active and deletePressed then
 				self:saveHistory()
 				self.buffer:deleteSelection()
+				self.keyRepeat.lastDeleteTime = currentTime
+				self.keyRepeat.deleteCount = 0
 				if self.onChange then
 					self.onChange(self:getText())
 				end
 				self:validate()
 			else
-				-- Initial delay before acceleration starts
-				if self.keyRepeat.deleteCount == 0 then
-					if timeSinceLast > self.keyRepeat.initialDelay then
-						shouldDelete = true
-						self.keyRepeat.deleteCount = 1
-					end
-				else
-					-- Calculate accelerated interval
-					local interval = self.keyRepeat.minInterval
-					for i = 1, self.keyRepeat.deleteCount do
-						interval = interval / self.keyRepeat.acceleration
-					end
-					interval = math.max(interval, self.keyRepeat.minInterval)
-
-					if timeSinceLast > interval then
+				if deletePressed then
+					shouldDelete = true
+					self.keyRepeat.deleteCount = 0
+				elseif deleteDown then
+					local interval = getRepeatInterval(self.keyRepeat.deleteCount)
+					local timeSinceLast = currentTime - self.keyRepeat.lastDeleteTime
+					if timeSinceLast >= interval then
 						shouldDelete = true
 						self.keyRepeat.deleteCount = self.keyRepeat.deleteCount + 1
 					end
 				end
 
-				self.keyRepeat.lastDeleteTime = currentTime
-
 				if shouldDelete then
 					self:saveHistory()
 					self.buffer:delete()
+					self.keyRepeat.lastDeleteTime = currentTime
 					if self.onChange then
 						self.onChange(self:getText())
 					end
@@ -2426,8 +2429,9 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				end
 			end
 		else
-			-- Reset delete count when key is released
+			-- Reset delete repeat state when key is released
 			self.keyRepeat.deleteCount = 0
+			self.keyRepeat.lastDeleteTime = 0
 		end
 
 		-- Escape key
@@ -2596,6 +2600,11 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 					self.buffer:deleteSelection()
 				end
 				local text = raylib.GetClipboardText()
+
+				if text == zune.ffi.null then
+					return
+				end
+
 				local bufferLength = buffer.len(text:span())
 				local data = buffer.readstring(text:span(), 0, bufferLength - 1)
 				data = string.gsub(data, "\r\n", "\n")
@@ -2682,7 +2691,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		if self.label then
 			if self.labelPosition == "top" then
 				raylib.DrawTextEx(
-					vend,
+					self.font,
 					self.label,
 					vector.create(x, y),
 					self.fontSize - 2,
@@ -2693,7 +2702,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				actualTextboxHeight = height - self.fontSize - self.labelGap
 			elseif self.labelPosition == "left" then
 				raylib.DrawTextEx(
-					vend,
+					self.font,
 					self.label,
 					vector.create(x, y + (height / 2) - (self.fontSize / 2)),
 					self.fontSize - 2,
@@ -2759,7 +2768,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			local prefixX = actualTextboxX - prefixWidth + self.prefixGap
 			local posY = actualTextboxY + (actualTextboxHeight / 2) - (self.fontSize / 2)
 			raylib.DrawTextEx(
-				vend,
+				self.font,
 				self.prefix,
 				vector.create(prefixX, posY),
 				self.fontSize - 2,
@@ -2773,7 +2782,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		if self.suffix then
 			local suffixX = actualTextboxX + actualTextboxWidth + self.suffixGap
 			raylib.DrawTextEx(
-				vend,
+				self.font,
 				self.suffix,
 				vector.create(suffixX, actualTextboxY + (actualTextboxHeight / 2) - (self.fontSize / 2)),
 				self.fontSize - 2,
@@ -2801,11 +2810,13 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				upHovered and Color3.new(0.15, 0.15, 0.15):ToRaylib(0) or Color3.new(0.1, 0.1, 0.1):ToRaylib(0)
 			)
 			raylib.DrawRectangleLines(btnX, actualTextboxY, btnW, btnH, self.theme.border)
-			raylib.DrawTextEx(vend, "+", vector.create(btnX + 4, actualTextboxY + 2), 10, 1, self.theme.text)
+			raylib.DrawTextEx(self.font, "+", vector.create(btnX + 4, actualTextboxY + 2), 10, 1, self.theme.text)
 
 			if raylib.IsMouseButtonPressed(0) == 1 and upHovered then
 				self:incrementNumeric()
-				self.onSubmit(self:getText())
+				if self.onSubmit then
+					self.onSubmit(self:getText())
+				end
 			end
 
 			-- Down button
@@ -2820,11 +2831,20 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				downHovered and Color3.new(0.15, 0.15, 0.15):ToRaylib(0) or Color3.new(0.1, 0.1, 0.1):ToRaylib(0)
 			)
 			raylib.DrawRectangleLines(btnX, actualTextboxY + btnH, btnW, btnH, self.theme.border)
-			raylib.DrawTextEx(vend, "-", vector.create(btnX + 4, actualTextboxY + btnH + 2), 10, 1, self.theme.text)
+			raylib.DrawTextEx(
+				self.font,
+				"-",
+				vector.create(btnX + 4, actualTextboxY + btnH + 2),
+				10,
+				1,
+				self.theme.text
+			)
 
 			if raylib.IsMouseButtonPressed(0) == 1 and downHovered then
 				self:decrementNumeric()
-				self.onSubmit(self:getText())
+				if self.onSubmit then
+					self.onSubmit(self:getText())
+				end
 			end
 		end
 
@@ -2927,7 +2947,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		if self.label and self.labelPosition == "right" then
 			local labelX = actualTextboxX + actualTextboxWidth + self.labelGap
 			raylib.DrawTextEx(
-				vend,
+				self.font,
 				self.label,
 				vector.create(labelX, actualTextboxY + (actualTextboxHeight / 2) - (self.fontSize / 2)),
 				self.fontSize - 2,

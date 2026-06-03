@@ -1,7 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 local color3 = require("@Color3")
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 
 return function(objects, data)
 	local config = {
@@ -29,7 +29,15 @@ return function(objects, data)
 	end
 
 	wrapper.set = function(prop, value)
-		config[prop] = value
+		if prop == "width" then
+			config.obj_rect = rect.new(config.obj_rect.x, config.obj_rect.y, value, config.obj_rect.height)
+		elseif prop == "height" then
+			config.obj_rect = rect.new(config.obj_rect.x, config.obj_rect.y, config.obj_rect.width, value)
+		elseif prop == "obj_rect" then
+			config.obj_rect = value
+		else
+			config[prop] = value
+		end
 		return wrapper
 	end
 
@@ -71,6 +79,9 @@ return function(objects, data)
 							rect.new(x, config.obj_rect.y + currentOffset, childRect.width, childRect.height)
 						)
 					end
+					if child.render then
+						child.render(dt)
+					end
 					currentOffset = currentOffset + childRect.height + config.spacing
 					maxWidth = math.max(maxWidth, childRect.width)
 				else
@@ -86,6 +97,9 @@ return function(objects, data)
 							"obj_rect",
 							rect.new(config.obj_rect.x + currentOffset, y, childRect.width, childRect.height)
 						)
+					end
+					if child.render then
+						child.render(dt)
 					end
 					currentOffset = currentOffset + childRect.width + config.spacing
 					maxHeight = math.max(maxHeight, childRect.height)

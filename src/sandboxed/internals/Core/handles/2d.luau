@@ -1,10 +1,15 @@
 -- devcell
 
+local RunService = game:GetService("RunService")
+if RunService:IsServer() then
+	return
+end
+
 local rlservice = game:GetService("KinemiumRaylib")
 local raylib = require("@raylib")
 local lib = raylib.lib
 local structs = raylib.structs
-local renderer = rlservice.renderer
+local renderer = rlservice.GetRenderer()
 local Selection = game:GetService("Selection")
 
 local KinemiumFontService = game:GetService("KinemiumFontService")
@@ -29,7 +34,7 @@ local dragStartMouse = nil
 local dragStartPos = nil
 local dragStartSize = nil
 
-local Arect = require("@Arect")(raylib.lib)
+local Arect = require("@arect")
 
 Selection.SelectionAdded:Connect(function(selected) end)
 

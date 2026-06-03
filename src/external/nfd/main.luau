@@ -20,7 +20,7 @@ local const = require("./constants")
 local libLocation = "./src/external/nfd/bin/nfd." .. ffi.suffix
 local zembed = require("@zembed")
 if zembed.IsEmbedded() then
-	libLocation = "./nfd." .. ffi.suffix
+	libLocation = zembed.RuntimePath("nfd." .. ffi.suffix)
 end
 
 local lib = ffi.dlopen(libLocation, funcs)

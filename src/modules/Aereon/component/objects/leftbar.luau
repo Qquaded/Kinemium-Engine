@@ -1,7 +1,7 @@
 local raylib = require("@raylib")
 local structs = raylib.structs
 
-local rect = require("@arect")(raylib.lib)
+local rect = require("@arect")
 local color3 = require("@Color3")
 
 return function(objects, data)
@@ -11,13 +11,13 @@ return function(objects, data)
 		modifiers = {},
 
 		-- Styling
-		backgroundColor = color3.new(0.18, 0.18, 0.20),
+		backgroundColor = color3.new(0.04, 0.04, 0.05),
 		backgroundTransparency = 0,
-		hoverColor = color3.new(0.25, 0.35, 0.50),
-		activeColor = color3.new(0.30, 0.50, 0.70),
-		separatorColor = color3.new(0.12, 0.12, 0.14),
-		iconColor = color3.new(0.75, 0.75, 0.78),
-		activeIconColor = color3.new(0.95, 0.95, 1.0),
+		hoverColor = color3.new(0.12, 0.12, 0.14),
+		activeColor = color3.new(0.08, 0.35, 0.22),
+		separatorColor = color3.new(0.15, 0.15, 0.18),
+		iconColor = color3.new(0.65, 0.65, 0.70),
+		activeIconColor = color3.new(0.12, 0.75, 0.45),
 
 		-- Button configuration
 		buttons = data.buttons or {},
@@ -227,9 +227,16 @@ return function(objects, data)
 				if isActive then
 					raylib.lib.DrawRectangleRounded(
 						rect:translate(centeredBtnRect),
-						0.15,
+						0.1,
 						4,
-						config.activeColor:ToRaylib(0)
+						config.activeColor:ToRaylib(0.3)
+					)
+					raylib.lib.DrawRectangle(
+						centeredBtnRect.x - 4,
+						centeredBtnRect.y + 4,
+						3,
+						centeredBtnRect.height - 8,
+						config.activeIconColor:ToRaylib(0)
 					)
 				elseif isHovered then
 					raylib.lib.DrawRectangleRounded(

@@ -131,15 +131,6 @@ export type Fns = {
 		scale: Vector3,
 		tint: Color
 	) -> (),
-	DrawModelPoints: (model: Model, position: Vector3, scale: float, tint: Color) -> (),
-	DrawModelPointsEx: (
-		model: Model,
-		position: Vector3,
-		rotationAxis: Vector3,
-		rotationAngle: float,
-		scale: Vector3,
-		tint: Color
-	) -> (),
 	DrawBoundingBox: (box: BoundingBox, color: Color) -> (),
 	DrawBillboard: (camera: FFIPointer, texture: Texture2D, position: Vector3, scale: float, tint: Color) -> (),
 	DrawBillboardRec: (
@@ -189,9 +180,6 @@ export type Fns = {
 	SetModelMeshMaterial: (model: FFIPointer, meshId: int, materialId: int) -> (),
 	LoadModelAnimations: (fileName: cstring, animCount: FFIPointer) -> FFIPointer,
 	UpdateModelAnimation: (model: Model, anim: ModelAnimation, frame: int) -> (),
-	UpdateModelAnimationBones: (model: Model, anim: ModelAnimation, frame: int) -> (),
-	UnloadModelAnimation: (anim: ModelAnimation) -> (),
-	UnloadModelAnimations: (animations: FFIPointer, animCount: int) -> (),
 	IsModelAnimationValid: (model: Model, anim: ModelAnimation) -> bool,
 	CheckCollisionSpheres: (center1: Vector3, radius1: float, center2: Vector3, radius2: float) -> bool,
 	CheckCollisionBoxes: (box1: BoundingBox, box2: BoundingBox) -> bool,
@@ -265,10 +253,6 @@ return {
 		DrawModelWires = fn(void, { Model, Vector3, float, Color }),
 		-- void DrawModelWiresEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint);
 		DrawModelWiresEx = fn(void, { Model, Vector3, Vector3, float, Vector3, Color }),
-		-- void DrawModelPoints(Model model, Vector3 position, float scale, Color tint);
-		DrawModelPoints = fn(void, { Model, Vector3, float, Color }),
-		-- void DrawModelPointsEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint);
-		DrawModelPointsEx = fn(void, { Model, Vector3, Vector3, float, Vector3, Color }),
 		-- void DrawBoundingBox(BoundingBox box, Color color);
 		DrawBoundingBox = fn(void, { BoundingBox, Color }),
 		-- void DrawBillboard(Camera camera, Texture2D texture, Vector3 position, float scale, Color tint);
@@ -336,12 +320,6 @@ return {
 		LoadModelAnimations = fn(ffi.types.pointer, { cstring, ffi.types.pointer }),
 		-- void UpdateModelAnimation(Model model, ModelAnimation anim, int frame);
 		UpdateModelAnimation = fn(void, { Model, ModelAnimation, int }),
-		-- void UpdateModelAnimationBones(Model model, ModelAnimation anim, int frame);
-		UpdateModelAnimationBones = fn(void, { Model, ModelAnimation, int }),
-		-- void UnloadModelAnimation(ModelAnimation anim);
-		UnloadModelAnimation = fn(void, { ModelAnimation }),
-		-- void UnloadModelAnimations(ModelAnimation *animations, int animCount);
-		UnloadModelAnimations = fn(void, { ffi.types.pointer, int }),
 		-- bool IsModelAnimationValid(Model model, ModelAnimation anim);
 		IsModelAnimationValid = fn(bool, { Model, ModelAnimation }),
 		-- bool CheckCollisionSpheres(Vector3 center1, float radius1, Vector3 center2, float radius2);

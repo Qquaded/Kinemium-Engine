@@ -6,7 +6,7 @@ local CFrame = require("@CFrame")
 local Vector3 = require("@Vector3")
 
 local MOUSE_SENSITIVITY = 0.003
-local MOVE_SPEED = 10
+local MOVE_VELOCITY = 10
 
 local camCF = CFrame.new(0, 5, 10) -- initial camera CFrame
 
@@ -60,7 +60,7 @@ local function UpdateFreecam(delta: number, Kinemium_camera)
 	local wheelMove = lib.GetMouseWheelMove()
 
 	local move = (forward * forwardInput + right * sideway + up * vertical + forward * (wheelMove * 5.0))
-		* MOVE_SPEED
+		* MOVE_VELOCITY
 		* delta
 	local targetCF = CFrame.new(camCF.Position + move):WithRotation(camCF.Rotation)
 	camCF = targetCF
@@ -77,7 +77,7 @@ return {
 	Update = UpdateFreecam,
 
 	SetSpeed = function(v)
-		MOVE_SPEED = v
+		MOVE_VELOCITY = v
 	end,
 
 	SetSensitivity = function(v)

@@ -168,6 +168,7 @@ function KiRend.new(config: KiRendConf)
 		fonts = {},
 		sounds = {},
 	}
+	local renderer_font_resolver
 	local renderer_watching_keys = {}
 	local renderer_draw_calls = {}
 	local renderer_instanced_draw_calls = {}
@@ -256,6 +257,10 @@ function KiRend.new(config: KiRendConf)
 		},
 
 		Font = {
+			SetResolver = function(resolver)
+				renderer_font_resolver = resolver
+			end,
+
 			new = function(name, fontPath, size)
 				if renderer_storage.fonts[name] then
 					return renderer_storage.fonts[name]
@@ -269,7 +274,18 @@ function KiRend.new(config: KiRendConf)
 			end,
 
 			Get = function(name)
-				return renderer_storage.fonts[name]
+				local font = renderer_storage.fonts[name]
+				if font or not renderer_font_resolver then
+					return font
+				end
+
+				local success, result = pcall(renderer_font_resolver, name)
+				if not success then
+					warn(result)
+					return nil
+				end
+
+				return renderer_storage.fonts[name] or result
 			end,
 
 			getFontTexture = function(name)
@@ -621,7 +637,6 @@ function KiRend.new(config: KiRendConf)
 		renderer_eventbus:Fire("PreRender", frameTime)
 		renderer_eventbus:Fire("RenderStepped", frameTime)
 
-		-- Key watching (no-op in headless — keys are never down, but hooks still fire)
 		local keyboardListenStart = os.clock()
 		perf_stats.input_key_ms = (os.clock() - keyboardListenStart) * 1000
 
@@ -672,10 +687,18 @@ function KiRend.new(config: KiRendConf)
 		isRunning = true
 		lastFrameTime = os.clock()
 
-		while lib and isRunning do
+		while isRunning do
+			local frameStart = os.clock()
 			time += frameTime
 			frameCount += 1
 			rendererObject:step(time)
+
+			local sleepTime = frameTime - (os.clock() - frameStart)
+			if sleepTime > 0 then
+				task.wait(sleepTime)
+			else
+				task.wait(0) -- yield to avoid starving other threads
+			end
 
 			if maxFrames and frameCount >= maxFrames then
 				break

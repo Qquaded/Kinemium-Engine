@@ -1,7 +1,6 @@
 local wrapper = {}
 
 local io = zune.io
-local process = zune.process
 local task = zune.task
 
 function wrapper:init(callback)
@@ -20,10 +19,10 @@ function wrapper:init(callback)
 
 			if not line:match("^%s*$") then
 				callback(line)
+			else
+				task.wait(0.1)
 			end
 		end
-
-		process.exit(0)
 	end)
 end
 

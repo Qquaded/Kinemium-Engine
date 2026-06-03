@@ -4,9 +4,9 @@ local rl = require("@raylib")
 local ideBuffer = require("./idebuffer")
 local EnumMap = require("@EnumMap")
 local Color3 = require("@Color3")
+local MouseCursor = require("@Kinemium.MouseCursor")
 local syntax = require("./syntax")
 local autocomplete = require("./autocomplete")
-local ligatures = require("./ligatures")
 local luau = zune.luau
 
 local structs = rl.structs
@@ -1131,9 +1131,9 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 		end
 
 		if rect.MouseIsInRect(background) then
-			raylib.SetMouseCursor(EnumMap.KinemiumMouseCursor.MOUSE_CURSOR_IBEAM.Value)
+			MouseCursor.request(EnumMap.KinemiumMouseCursor.MOUSE_CURSOR_IBEAM.Value)
 		else
-			raylib.SetMouseCursor(EnumMap.KinemiumMouseCursor.MOUSE_CURSOR_DEFAULT.Value)
+			MouseCursor.request(EnumMap.KinemiumMouseCursor.MOUSE_CURSOR_DEFAULT.Value)
 			if raylib.IsMouseButtonReleased(0) == 1 then
 				if editor.isActive then
 					editor.isActive = false
@@ -1794,6 +1794,11 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 						editor.text:deleteSelection()
 					end
 					local text = raylib.GetClipboardText()
+
+					if text == zune.ffi.null then
+						return
+					end
+
 					local bufferLength = buffer.len(text:span())
 					local data = buffer.readstring(text:span(), 0, bufferLength - 1)
 

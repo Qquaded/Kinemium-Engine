@@ -2,11 +2,14 @@
 --!native
 
 local raylib = require("./external/raylib")
+local zembed = require("@zembed")
 local task = zune.task
 local KiRend = {}
 --local raygui = require("@raygui")
 
 -- DEPENDENCIES
+local Vector2 = require("@Vector2")
+local MouseCursor = require("@Kinemium.MouseCursor")
 local skybox = require("./renderer/skybox")
 local texture = require("./renderer/texture")
 local signal = require("@Kinemium.signal")
@@ -17,6 +20,9 @@ local utils = require("@bufferutils")
 local r3d = require("@r3d")
 local rlib = r3d.lib
 
+local cachedMousePos = Vector2.new(0, 0)
+local cachedMouseDelta = Vector2.new(0, 0)
+
 -- TYPES
 export type KiRendConf = {
 	width: number,
@@ -24,6 +30,10 @@ export type KiRendConf = {
 	maxFps: number,
 	title: string,
 	vsync: boolean?,
+	renderScale: number?,
+	autoScale3D: boolean?,
+	max3DRenderPixels: number?,
+	min3DRenderScale: number?,
 }
 
 -- RAYLIB INIT
@@ -38,14 +48,24 @@ function KiRend.new(config: KiRendConf)
 
 	lib.SetTraceLogLevel(const.TraceLogLevel.LOG_ERROR)
 
-	local useVsync = if config.vsync == nil then false else config.vsync
-	local windowFlags = bit32.bor(const.ConfigFlags.FLAG_WINDOW_RESIZABLE)
+	local useVsync = true
+	local useWindowMSAA = FlagExists("windowmsaa")
+	local windowFlags = bit32.bor(const.ConfigFlags.FLAG_WINDOW_RESIZABLE, const.ConfigFlags.FLAG_INTERLACED_HINT)
+	if useWindowMSAA then
+		windowFlags = bit32.bor(windowFlags, const.ConfigFlags.FLAG_MSAA_4X_HINT)
+		config.max3DRenderPixels = 3240000
+	end
 	if useVsync then
 		windowFlags = bit32.bor(windowFlags, const.ConfigFlags.FLAG_VSYNC_HINT)
 	end
+	if FlagExists("highdpi") then
+		windowFlags = bit32.bor(windowFlags, const.ConfigFlags.FLAG_WINDOW_HIGHDPI)
+	end
 	lib.SetConfigFlags(windowFlags)
-
-	lib.InitWindow(config.width, config.height, config.title)
+	local ok, err = pcall(lib.InitWindow, config.width, config.height, config.title)
+	if not ok then
+		error("Failed to initialize window: " .. tostring(err))
+	end
 
 	if lib.WindowShouldClose() == 0 then
 		lib.BeginDrawing()
@@ -60,14 +80,28 @@ function KiRend.new(config: KiRendConf)
 	end
 	lib.SetExitKey(0)
 
-	rlib.R3D_Init(config.width, config.height)
-	rlib.R3D_SetUpscaleMode(2)
-	rlib.R3D_SetAntiAliasingMode(1)
-	rlib.R3D_SetTextureWrap(raylib.const.TextureWrap.TEXTURE_WRAP_REPEAT)
+	ok, err = pcall(rlib.R3D_Init, config.width, config.height)
+	if not ok then
+		error("Failed to initialize R3D: " .. tostring(err))
+	end
+	pcall(rlib.R3D_SetUpscaleMode, 1)
+	pcall(rlib.R3D_SetTextureWrap, raylib.const.TextureWrap.TEXTURE_WRAP_REPEAT)
 
 	local lastRenderWidth, lastRenderHeight = config.width, config.height
+	local requested3DRenderScale = math.clamp(config.renderScale or 1, 0.1, 1)
+	local autoScale3D = if config.autoScale3D == nil then true else config.autoScale3D
+	local max3DRenderPixels = config.max3DRenderPixels or (1920 * 1080)
+	local min3DRenderScale = math.clamp(config.min3DRenderScale or 0.5, 0.1, 1)
+	local internalRenderWidth, internalRenderHeight = config.width, config.height
+	local actual3DRenderScale = 1
+
+	local sortedPoolCache = {}
+	local sortedPoolDirty = {}
 
 	local function getSortedPool(pool)
+		if sortedPoolCache[pool] and not sortedPoolDirty[pool] then
+			return sortedPoolCache[pool]
+		end
 		local sorted = {}
 		for id, entry in pairs(pool) do
 			table.insert(sorted, { id = id, entry = entry })
@@ -75,10 +109,11 @@ function KiRend.new(config: KiRendConf)
 		table.sort(sorted, function(a, b)
 			return a.entry.priority < b.entry.priority
 		end)
+		sortedPoolCache[pool] = sorted
+		sortedPoolDirty[pool] = false
 		return sorted
 	end
 
-	local blur = require("./renderer/guiblur")
 	local activeCamera
 
 	local renderer_eventbus = signal.new()
@@ -100,13 +135,19 @@ function KiRend.new(config: KiRendConf)
 	local renderer_storage = {
 		fonts = {},
 	}
+	local renderer_font_resolver
 	local renderer_watching_keys = {}
 	local renderer_draw_calls = {}
 	local renderer_instanced_draw_calls = {}
 	local renderer_decal_draw_calls = {}
+	local draw_calls_count = 0
+	local instanced_draw_calls_count = 0
+	local decal_draw_calls_count = 0
 	local renderer_instance_buffers_to_unload = {}
 	local renderer_meshes = {}
+	local renderer_mousedata = {}
 	local ENGINE_PROFILER = {}
+
 	local perf_stats = {
 		frame_ms = 0,
 		fps = 0,
@@ -127,10 +168,48 @@ function KiRend.new(config: KiRendConf)
 		render3d_update_ms = 0,
 		gc_ms = 0,
 		gc_last = os.clock(),
+		render_width = config.width,
+		render_height = config.height,
+		render_scale = 1,
 	}
-
-	local newBlurInstance = blur.Init(config.width, config.height)
 	local rendererObject
+
+	local function compute3DResolution(targetWidth, targetHeight)
+		local scale = requested3DRenderScale
+		if autoScale3D and max3DRenderPixels > 0 then
+			local pixelCount = targetWidth * targetHeight
+			if pixelCount > max3DRenderPixels then
+				scale = math.min(scale, math.sqrt(max3DRenderPixels / pixelCount))
+			end
+		end
+
+		scale = math.clamp(scale, min3DRenderScale, 1)
+
+		local width = math.max(1, math.floor(targetWidth * scale + 0.5))
+		local height = math.max(1, math.floor(targetHeight * scale + 0.5))
+		return width, height, scale
+	end
+
+	print(3)
+
+	local function apply3DResolution(targetWidth, targetHeight)
+		local width, height, scale = compute3DResolution(targetWidth, targetHeight)
+		internalRenderWidth = width
+		internalRenderHeight = height
+		actual3DRenderScale = scale
+		perf_stats.render_width = width
+		perf_stats.render_height = height
+		perf_stats.render_scale = scale
+
+		print("resolution..")
+		rlib.R3D_SetResolution(width, height)
+		print(6)
+		return width, height, scale
+	end
+
+	print(4)
+
+	apply3DResolution(config.width, config.height)
 
 	rendererObject = {
 		Mesh = meshlib,
@@ -140,15 +219,81 @@ function KiRend.new(config: KiRendConf)
 		Raylib = raylib,
 		Texture = texture(lib, structs),
 		Enable3D = true,
-		Blur = newBlurInstance,
+		Enable3DRT = false,
+		EnableUIRT = false,
+		TDRT = nil,
+		UIRT = nil,
 
 		DrawFps = true,
 		ShowPerfOverlay = false,
 		PerfStats = perf_stats,
+		Internal3DRenderScale = actual3DRenderScale,
+		Max3DRenderPixels = max3DRenderPixels,
+
+		LoadImageAsTex = function(path)
+			path = zembed.AssetPath(path)
+			local ok, image = pcall(lib.LoadImage, path)
+			if not ok or not image then
+				error("Failed to load image: " .. tostring(path))
+			end
+			local buf = utils.wrap(lib.LoadTextureFromImage(image), structs.Texture2D)
+
+			local texture_raw = buf:getraw()
+			pcall(raylib.lib.SetTextureFilter, texture_raw, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
+			pcall(raylib.lib.SetTextureWrap, texture_raw, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
+			pcall(raylib.lib.GenTextureMipmaps, texture_raw)
+
+			return buf:getraw(), image
+		end,
+
+		ImproveTexture = function(texture)
+			pcall(raylib.lib.SetTextureFilter, texture, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
+			pcall(raylib.lib.SetTextureWrap, texture, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
+			pcall(raylib.lib.GenTextureMipmaps, texture)
+		end,
 
 		SetDimension = function(self, dimension: "2D" | "3D")
 			Dimension = dimension
 		end,
+
+		Set3DRenderScale = function(self, scale)
+			requested3DRenderScale = math.clamp(scale or 1, min3DRenderScale, 1)
+			local renderWidth, renderHeight = lib.GetRenderWidth(), lib.GetRenderHeight()
+			local width, height, actualScale = apply3DResolution(renderWidth, renderHeight)
+			self.Internal3DRenderScale = actualScale
+			return width, height, actualScale
+		end,
+
+		SetAutoScale3D = function(self, enabled)
+			autoScale3D = enabled ~= false
+			local renderWidth, renderHeight = lib.GetRenderWidth(), lib.GetRenderHeight()
+			local width, height, actualScale = apply3DResolution(renderWidth, renderHeight)
+			self.Internal3DRenderScale = actualScale
+			return width, height, actualScale
+		end,
+
+		SetMax3DRenderPixels = function(self, pixels)
+			if type(pixels) == "number" and pixels > 0 then
+				max3DRenderPixels = math.floor(pixels)
+			else
+				max3DRenderPixels = 0
+			end
+			self.Max3DRenderPixels = max3DRenderPixels
+			local renderWidth, renderHeight = lib.GetRenderWidth(), lib.GetRenderHeight()
+			local width, height, actualScale = apply3DResolution(renderWidth, renderHeight)
+			self.Internal3DRenderScale = actualScale
+			return width, height, actualScale
+		end,
+
+		Get3DRenderResolution = function()
+			return {
+				width = internalRenderWidth,
+				height = internalRenderHeight,
+				scale = actual3DRenderScale,
+			}
+		end,
+
+		perfstats = perf_stats,
 
 		RuntimeLibrary = {
 			lib = lib,
@@ -176,6 +321,10 @@ function KiRend.new(config: KiRendConf)
 		},
 
 		Font = {
+			SetResolver = function(resolver)
+				renderer_font_resolver = resolver
+			end,
+
 			new = function(name, fontPath, size)
 				local buf = utils.wrap(lib.LoadFontEx(fontPath, size, nil, 0), structs.Font)
 
@@ -191,7 +340,18 @@ function KiRend.new(config: KiRendConf)
 			end,
 
 			Get = function(name)
-				return renderer_storage.fonts[name]
+				local font = renderer_storage.fonts[name]
+				if font or not renderer_font_resolver then
+					return font
+				end
+
+				local success, result = pcall(renderer_font_resolver, name)
+				if not success then
+					print("Font resolver error: " .. tostring(result))
+					return nil
+				end
+
+				return renderer_storage.fonts[name] or result
 			end,
 
 			getFontTexture = function(name)
@@ -201,30 +361,42 @@ function KiRend.new(config: KiRendConf)
 			end,
 
 			Remove = function(name)
-				renderer_storage.fonts[name] = nil
+				local font = renderer_storage.fonts[name]
+				if font then
+					lib.UnloadFont(font)
+					renderer_storage.fonts[name] = nil
+				end
 			end,
 		},
 
 		MeshPool = {
 			DrawMesh = function(mesh, material, matrix, begin, End)
-				table.insert(renderer_draw_calls, {
-					mesh = mesh,
-					material = material,
-					matrix = matrix,
-					Begin = begin,
-					End = End,
-				})
+				draw_calls_count = draw_calls_count + 1
+				local drawCall = renderer_draw_calls[draw_calls_count]
+				if not drawCall then
+					drawCall = {}
+					renderer_draw_calls[draw_calls_count] = drawCall
+				end
+				drawCall.mesh = mesh
+				drawCall.material = material
+				drawCall.matrix = matrix
+				drawCall.Begin = begin
+				drawCall.End = End
 			end,
 			DrawMeshInstanced = function(mesh, material, instances, count, begin, End, unloadAfterFrame)
-				table.insert(renderer_instanced_draw_calls, {
-					mesh = mesh,
-					material = material,
-					instances = instances,
-					count = count,
-					Begin = begin,
-					End = End,
-					unloadAfterFrame = unloadAfterFrame == true,
-				})
+				instanced_draw_calls_count = instanced_draw_calls_count + 1
+				local drawCall = renderer_instanced_draw_calls[instanced_draw_calls_count]
+				if not drawCall then
+					drawCall = {}
+					renderer_instanced_draw_calls[instanced_draw_calls_count] = drawCall
+				end
+				drawCall.mesh = mesh
+				drawCall.material = material
+				drawCall.instances = instances
+				drawCall.count = count
+				drawCall.Begin = begin
+				drawCall.End = End
+				drawCall.unloadAfterFrame = unloadAfterFrame == true
 			end,
 
 			CreateMaterial = function(texture, shader)
@@ -284,12 +456,16 @@ function KiRend.new(config: KiRendConf)
 
 		DecalPool = {
 			DrawDecal = function(decal, transform, begin, End)
-				table.insert(renderer_decal_draw_calls, {
-					decal = decal,
-					transform = transform,
-					Begin = begin,
-					End = End,
-				})
+				decal_draw_calls_count = decal_draw_calls_count + 1
+				local drawCall = renderer_decal_draw_calls[decal_draw_calls_count]
+				if not drawCall then
+					drawCall = {}
+					renderer_decal_draw_calls[decal_draw_calls_count] = drawCall
+				end
+				drawCall.decal = decal
+				drawCall.transform = transform
+				drawCall.Begin = begin
+				drawCall.End = End
 			end,
 		},
 
@@ -315,6 +491,7 @@ function KiRend.new(config: KiRendConf)
 				}
 
 				pool[id] = poolEntry
+				sortedPoolDirty[pool] = true
 
 				return id
 			end,
@@ -322,14 +499,26 @@ function KiRend.new(config: KiRendConf)
 			SetPriority = function(id, newPriority: number)
 				if renderer_pool.gui[id] then
 					renderer_pool.gui[id].priority = newPriority
+					sortedPoolDirty[renderer_pool.gui] = true
 				elseif renderer_pool.object[id] then
 					renderer_pool.object[id].priority = newPriority
+					sortedPoolDirty[renderer_pool.object] = true
 				elseif renderer_pool.gizmos[id] then
 					renderer_pool.gizmos[id].priority = newPriority
+					sortedPoolDirty[renderer_pool.gizmos] = true
 				end
 			end,
 
 			Destroy = function(id)
+				if renderer_pool.gui[id] then
+					sortedPoolDirty[renderer_pool.gui] = true
+				end
+				if renderer_pool.object[id] then
+					sortedPoolDirty[renderer_pool.object] = true
+				end
+				if renderer_pool.gizmos[id] then
+					sortedPoolDirty[renderer_pool.gizmos] = true
+				end
 				renderer_pool.gui[id] = nil
 				renderer_pool.object[id] = nil
 				renderer_pool.gizmos[id] = nil
@@ -338,6 +527,7 @@ function KiRend.new(config: KiRendConf)
 
 		Audio = {
 			new = function(audioPath, volume, pitch)
+				audioPath = zembed.AssetPath(audioPath)
 				local sound = lib.LoadSound(audioPath)
 				if volume then
 					lib.SetSoundVolume(sound, volume)
@@ -515,7 +705,7 @@ function KiRend.new(config: KiRendConf)
 	end
 
 	function rendererObject:SetIcon(Texture)
-		local engineIcon = lib.LoadImage(Texture)
+		local engineIcon = lib.LoadImage(zembed.AssetPath(Texture))
 		lib.SetWindowIcon(engineIcon)
 	end
 
@@ -536,6 +726,40 @@ function KiRend.new(config: KiRendConf)
 
 	function rendererObject:InitAudioDevice()
 		lib.InitAudioDevice()
+	end
+
+	function rendererObject:DrawRenderTexture(rendertex, improveQuality)
+		local width = lib.GetRenderWidth()
+		local height = lib.GetRenderHeight()
+
+		local destRec = structs.Rectangle:new({
+			x = 0,
+			y = 0,
+			width = width,
+			height = height,
+		})
+
+		local tex = utils.extract.texture(rendertex)
+
+		local sourceRec = structs.Rectangle:new({
+			x = 0,
+			y = 0,
+			width = width,
+			height = -height,
+		})
+
+		if improveQuality then
+			rendererObject.ImproveTexture(tex)
+		end
+
+		lib.DrawTexturePro(
+			tex,
+			sourceRec,
+			destRec,
+			vector.create(0, 0),
+			0,
+			structs.Color:new({ r = 255, g = 255, b = 255, a = 255 })
+		)
 	end
 
 	function rendererObject:Render3D()
@@ -566,15 +790,25 @@ function KiRend.new(config: KiRendConf)
 		end
 		perf_stats.render3d_update_ms = (os.clock() - render3DUpdateStart) * 1000
 
-		meshCalls = #renderer_draw_calls
-		instancedBatches = #renderer_instanced_draw_calls
+		meshCalls = draw_calls_count
+		instancedBatches = instanced_draw_calls_count
 
 		perf_stats.call3d_ms = 0
 		local callStart = os.clock()
-		if #renderer_draw_calls > 0 or #renderer_instanced_draw_calls > 0 or #renderer_decal_draw_calls > 0 then
+		if draw_calls_count > 0 or instanced_draw_calls_count > 0 or decal_draw_calls_count > 0 then
 			if Dimension == "3D" then
-				rlib.R3D_Begin(activeCamera)
-				for _, drawCall in ipairs(renderer_draw_calls) do
+				if not rendererObject.TDRT and rendererObject.Enable3DRT then
+					rendererObject.TDRT = lib.LoadRenderTexture(internalRenderWidth, internalRenderHeight)
+				end
+				--
+				if rendererObject.Enable3DRT and rendererObject.TDRT then
+					rlib.R3D_BeginEx(rendererObject.TDRT, activeCamera)
+				else
+					rlib.R3D_Begin(activeCamera)
+				end
+
+				for i = 1, draw_calls_count do
+					local drawCall = renderer_draw_calls[i]
 					if drawCall.Begin then
 						drawCall.Begin()
 					end
@@ -583,7 +817,8 @@ function KiRend.new(config: KiRendConf)
 						drawCall.End()
 					end
 				end
-				for _, drawCall in ipairs(renderer_instanced_draw_calls) do
+				for i = 1, instanced_draw_calls_count do
+					local drawCall = renderer_instanced_draw_calls[i]
 					instancedInstances += drawCall.count or 0
 					if drawCall.Begin then
 						drawCall.Begin()
@@ -596,7 +831,8 @@ function KiRend.new(config: KiRendConf)
 						table.insert(renderer_instance_buffers_to_unload, drawCall.instances)
 					end
 				end
-				for _, drawCall in ipairs(renderer_decal_draw_calls) do
+				for i = 1, decal_draw_calls_count do
+					local drawCall = renderer_decal_draw_calls[i]
 					if drawCall.Begin then
 						drawCall.Begin()
 					end
@@ -612,9 +848,32 @@ function KiRend.new(config: KiRendConf)
 				table.clear(renderer_instance_buffers_to_unload)
 			end
 		end
-		table.clear(renderer_draw_calls)
-		table.clear(renderer_instanced_draw_calls)
-		table.clear(renderer_decal_draw_calls)
+		for i = 1, draw_calls_count do
+			local d = renderer_draw_calls[i]
+			d.mesh = nil
+			d.material = nil
+			d.matrix = nil
+			d.Begin = nil
+			d.End = nil
+		end
+		for i = 1, instanced_draw_calls_count do
+			local d = renderer_instanced_draw_calls[i]
+			d.mesh = nil
+			d.material = nil
+			d.instances = nil
+			d.Begin = nil
+			d.End = nil
+		end
+		for i = 1, decal_draw_calls_count do
+			local d = renderer_decal_draw_calls[i]
+			d.decal = nil
+			d.transform = nil
+			d.Begin = nil
+			d.End = nil
+		end
+		draw_calls_count = 0
+		instanced_draw_calls_count = 0
+		decal_draw_calls_count = 0
 		perf_stats.call3d_ms = (os.clock() - callStart) * 1000
 
 		for _, item in ipairs(getSortedPool(renderer_pool.gizmos)) do
@@ -637,9 +896,23 @@ function KiRend.new(config: KiRendConf)
 		perf_stats.instanced_instances = instancedInstances
 		perf_stats.batches_3d = meshCalls + instancedBatches
 		perf_stats.render3d_ms = (os.clock() - render3DStart) * 1000
+
+		if rendererObject.Enable3DRT and rendererObject.TDRT then
+			rendererObject:DrawRenderTexture(rendererObject.TDRT, actual3DRenderScale < 1)
+		end
 	end
 
 	function rendererObject:Render2D()
+		if rendererObject.EnableUIRT and not rendererObject.UIRT then
+			rendererObject.UIRT = lib.LoadRenderTexture(lib.GetRenderWidth(), lib.GetRenderHeight())
+			print("Render Texture Created")
+			return -- skip a frame
+		end
+		MouseCursor.beginFrame()
+		if rendererObject.UIRT and rendererObject.EnableUIRT then
+			lib.BeginTextureMode(rendererObject.UIRT)
+			lib.ClearBackground(const.BLANK)
+		end
 		local uiStart = os.clock()
 		for _, v in pairs(renderer_hooks.Before2D) do
 			v(rendererObject.RuntimeLibrary)
@@ -695,9 +968,12 @@ function KiRend.new(config: KiRendConf)
 					perf_stats.scene_roots_3d
 				),
 				string.format(
-					"3D Drawcalls: %.3f ms | 3D Pool Update: %.3f ms",
+					"3D Drawcalls: %.3f ms | 3D Pool Update: %.3f ms | Internal: %dx%d (%.0f%%)",
 					perf_stats.call3d_ms,
-					perf_stats.render3d_update_ms
+					perf_stats.render3d_update_ms,
+					perf_stats.render_width,
+					perf_stats.render_height,
+					perf_stats.render_scale * 100
 				),
 				string.format("Input: %.3f ms | Key Process: %.3f ms", perf_stats.input_ms, perf_stats.input_key_ms),
 				string.format(
@@ -711,8 +987,18 @@ function KiRend.new(config: KiRendConf)
 			lib.DrawText(text, 10, lib.GetRenderHeight() - 10 - (#string.split(text, "\n") + 1) * size, size, color)
 		end
 
+		if rendererObject.UIRT and rendererObject.EnableUIRT then
+			lib.EndTextureMode()
+
+			rendererObject:DrawRenderTexture(rendererObject.UIRT)
+		end
+
+		MouseCursor.commitFrame()
+
 		perf_stats.ui_ms = (os.clock() - uiStart) * 1000
 	end
+
+	renderer_eventbus:SetHistoryLimit(0)
 
 	function rendererObject:step(time)
 		local frameStart = os.clock()
@@ -723,10 +1009,31 @@ function KiRend.new(config: KiRendConf)
 		profileNextFrame()
 		profileBegin("Update")
 
+		local mousePos = lib.GetMousePosition()
+		local delta = lib.GetMouseDelta()
+
+		cachedMousePos.x = mousePos.x
+		cachedMousePos.y = mousePos.y
+		cachedMouseDelta.x = delta.x
+		cachedMouseDelta.y = delta.y
+		renderer_mousedata.position = cachedMousePos
+		renderer_mousedata.delta = cachedMouseDelta
+		renderer_mousedata.mouse_wheel_move = lib.GetMouseWheelMove()
+		renderer_mousedata.mouse_wheel_delta = lib.GetMouseDelta()
+		renderer_mousedata.is_cursor_hidden = lib.IsCursorHidden() == 1
+		renderer_mousedata.is_cursor_inbounds = lib.IsCursorOnScreen() == 1
+		renderer_mousedata.Button1IsDown = lib.IsMouseButtonDown(0) == 1
+		renderer_mousedata.Button1Down = lib.IsMouseButtonPressed(0) == 1
+		renderer_mousedata.Button1Released = lib.IsMouseButtonReleased(0) == 1
+		renderer_mousedata.Button2IsDown = lib.IsMouseButtonDown(1) == 1
+		renderer_mousedata.Button2Down = lib.IsMouseButtonPressed(1) == 1
+		renderer_mousedata.Button2Released = lib.IsMouseButtonReleased(1) == 1
+		renderer_eventbus:Fire("MouseData", renderer_mousedata)
+
 		local delta = lib.GetFrameTime()
 
 		profileBegin("GC")
-		if os.clock() - perf_stats.gc_last >= 10 then
+		if os.clock() - perf_stats.gc_last >= 3 then
 			local gcStart = os.clock()
 			zune.luau.garbagecollect()
 			perf_stats.gc_ms = (os.clock() - gcStart) * 1000
@@ -753,8 +1060,24 @@ function KiRend.new(config: KiRendConf)
 				and (renderWidth ~= lastRenderWidth or renderHeight ~= lastRenderHeight)
 			then
 				lastRenderWidth, lastRenderHeight = renderWidth, renderHeight
-				rlib.R3D_SetResolution(renderWidth, renderHeight)
-				renderer_eventbus:Fire("WindowResized", renderWidth, renderHeight)
+				local internalWidth, internalHeight, actualScale = apply3DResolution(renderWidth, renderHeight)
+				rendererObject.Internal3DRenderScale = actualScale
+				renderer_eventbus:Fire(
+					"WindowResized",
+					renderWidth,
+					renderHeight,
+					internalWidth,
+					internalHeight,
+					actualScale
+				)
+				if rendererObject.Enable3DRT and rendererObject.TDRT then
+					lib.UnloadRenderTexture(rendererObject.TDRT)
+					rendererObject.TDRT = lib.LoadRenderTexture(internalWidth, internalHeight)
+				end
+				if rendererObject.EnableUIRT and rendererObject.UIRT then
+					lib.UnloadRenderTexture(rendererObject.UIRT)
+					rendererObject.UIRT = lib.LoadRenderTexture(renderWidth, renderHeight)
+				end
 			end
 		end
 
@@ -872,10 +1195,18 @@ function KiRend.new(config: KiRendConf)
 				dispatch_ms = perf_stats.dispatch_ms,
 				render3d_update_ms = perf_stats.render3d_update_ms,
 				gc_ms = perf_stats.gc_ms,
+				render_width = perf_stats.render_width,
+				render_height = perf_stats.render_height,
+				render_scale = perf_stats.render_scale,
 			},
 			windowSize = {
 				width = lib.GetRenderWidth(),
 				height = lib.GetRenderHeight(),
+			},
+			internal3DSize = {
+				width = internalRenderWidth,
+				height = internalRenderHeight,
+				scale = actual3DRenderScale,
 			},
 		}
 	end

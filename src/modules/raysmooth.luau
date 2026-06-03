@@ -3,10 +3,6 @@
 local Smooth = {}
 local active = {}
 
-local function lerp(a, b, t)
-	return a + (b - a) * t
-end
-
 function Smooth:Get(key)
 	local d = active[key]
 	return d and d.current or nil

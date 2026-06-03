@@ -98,7 +98,12 @@ local funcs = {
 	NFD_Quit = { returns = ffi.types.void, args = {} },
 	NFD_OpenDialogN = {
 		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		args = {
+			ffi.types.pointer, -- nfdnchar_t**
+			ffi.types.pointer, -- filter list
+			ffi.types.u32, -- filterCount
+			ffi.types.pointer, -- defaultPath
+		},
 	},
 	NFD_OpenDialogU8 = {
 		returns = ffi.types.i32,
@@ -119,7 +124,12 @@ local funcs = {
 	},
 	NFD_OpenDialogMultipleN = {
 		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		args = {
+			ffi.types.pointer, -- nfdpathset_t**
+			ffi.types.pointer, -- filter list
+			ffi.types.u32, -- filterCount
+			ffi.types.pointer, -- defaultPath
+		},
 	},
 	NFD_OpenDialogMultipleU8 = {
 		returns = ffi.types.pointer,
@@ -135,7 +145,13 @@ local funcs = {
 	},
 	NFD_SaveDialogN = {
 		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		args = {
+			ffi.types.pointer, -- nfdnchar_t**
+			ffi.types.pointer, -- filter list
+			ffi.types.u32, -- filterCount
+			ffi.types.pointer, -- defaultPath
+			ffi.types.pointer, -- defaultName
+		},
 	},
 	NFD_SaveDialogU8 = {
 		returns = ffi.types.pointer,

@@ -26,7 +26,7 @@ end
 
 local libLocation = "./src/external/raylib/native/bin/raylib-gizmo." .. ffi.suffix
 if zembed.IsEmbedded() then
-	libLocation = "./raylib-gizmo." .. ffi.suffix
+	libLocation = zembed.RuntimePath("raylib-gizmo." .. ffi.suffix)
 end
 
 type Fns = {

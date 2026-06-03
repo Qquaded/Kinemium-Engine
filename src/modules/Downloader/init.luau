@@ -40,7 +40,7 @@ function Downloader.download(url: string, dest: string, maxSize: number?)
 	end
 
 	fs.writeFile(dest, res.body :: buffer)
-	return dest
+	return res.body
 end
 
 function Downloader.extract(archive: buffer, outDir: string, filter: ExtractFilter?, rename: RenameRule?)

@@ -5,686 +5,7 @@ local Color3 = require("@Color3")
 local cachedIcons = {}
 local cachedTextures = {}
 
-local completions = {
-	{ label = "function", type = "keyword", icon = "Keyword.png" },
-	{ label = "local", type = "keyword", icon = "Keyword.png" },
-	{ label = "return", type = "keyword", icon = "Keyword.png" },
-	{ label = "if", type = "keyword", icon = "Keyword.png" },
-	{ label = "then", type = "keyword", icon = "Keyword.png" },
-	{ label = "else", type = "keyword", icon = "Keyword.png" },
-	{ label = "elseif", type = "keyword", icon = "Keyword.png" },
-	{ label = "while", type = "keyword", icon = "Keyword.png" },
-	{ label = "for", type = "keyword", icon = "Keyword.png" },
-	{ label = "do", type = "keyword", icon = "Keyword.png" },
-	{ label = "break", type = "keyword", icon = "Keyword.png" },
-	{ label = "continue", type = "keyword", icon = "Keyword.png" },
-	{ label = "in", type = "keyword", icon = "Keyword.png" },
-	{ label = "repeat", type = "keyword", icon = "Keyword.png" },
-	{ label = "until", type = "keyword", icon = "Keyword.png" },
-	{ label = "nil", type = "keyword", icon = "Keyword.png" },
-	{ label = "true", type = "keyword", icon = "Keyword.png" },
-	{ label = "false", type = "keyword", icon = "Keyword.png" },
-	{ label = "and", type = "keyword", icon = "Keyword.png" },
-	{ label = "or", type = "keyword", icon = "Keyword.png" },
-	{ label = "not", type = "keyword", icon = "Keyword.png" },
-	{ label = "end", type = "keyword", icon = "Keyword.png" },
-
-	{ label = "print", type = "function", icon = "Function.png", args = { "..." } },
-	{ label = "warn", type = "function", icon = "Function.png", args = { "..." } },
-	{ label = "error", type = "function", icon = "Function.png", args = { "message", "level" } },
-	{ label = "assert", type = "function", icon = "Function.png", args = { "v", "message" } },
-	{ label = "typeof", type = "function", icon = "Function.png", args = { "v" } },
-	{ label = "type", type = "function", icon = "Function.png", args = { "v" } },
-	{ label = "require", type = "function", icon = "Method.png", args = { "module" } },
-	{ label = "import", type = "function", icon = "Method.png", args = { "path" } },
-	{ label = "include", type = "function", icon = "Method.png", args = { "path" } },
-	{ label = "pairs", type = "function", icon = "Function.png", args = { "t" } },
-	{ label = "ipairs", type = "function", icon = "Function.png", args = { "t" } },
-	{ label = "next", type = "function", icon = "Function.png", args = { "t", "last" } },
-	{ label = "tonumber", type = "function", icon = "Function.png", args = { "e", "base" } },
-	{ label = "tostring", type = "function", icon = "Function.png", args = { "e" } },
-	{ label = "getmetatable", type = "function", icon = "Function.png", args = { "obj" } },
-	{ label = "setmetatable", type = "function", icon = "Function.png", args = { "obj", "mt" } },
-
-	{
-		label = "table",
-		type = "library",
-		icon = "Module.png",
-		members = {
-			{ label = "insert", type = "method", icon = "Method.png", args = { "t", "v" } },
-			{ label = "remove", type = "method", icon = "Method.png", args = { "t", "pos" } },
-			{ label = "sort", type = "method", icon = "Method.png", args = { "t", "comp" } },
-			{ label = "concat", type = "method", icon = "Method.png", args = { "t", "sep" } },
-			{ label = "find", type = "method", icon = "Method.png", args = { "t", "v" } },
-			{ label = "clear", type = "method", icon = "Method.png", args = { "t" } },
-		},
-	},
-	{
-		label = "math",
-		type = "library",
-		icon = "Module.png",
-		members = {
-			{ label = "abs", type = "method", icon = "Method.png", args = { "x" } },
-			{ label = "floor", type = "method", icon = "Method.png", args = { "x" } },
-			{ label = "ceil", type = "method", icon = "Method.png", args = { "x" } },
-			{ label = "sin", type = "method", icon = "Method.png", args = { "x" } },
-			{ label = "cos", type = "method", icon = "Method.png", args = { "x" } },
-			{ label = "tan", type = "method", icon = "Method.png", args = { "x" } },
-			{ label = "sqrt", type = "method", icon = "Method.png", args = { "x" } },
-			{ label = "random", type = "method", icon = "Method.png", args = { "m", "n" } },
-			{ label = "min", type = "method", icon = "Method.png", args = { "..." } },
-			{ label = "max", type = "method", icon = "Method.png", args = { "..." } },
-			{ label = "pi", type = "constant", icon = "Variable.png" },
-			{ label = "huge", type = "constant", icon = "Variable.png" },
-		},
-	},
-	{
-		label = "string",
-		type = "library",
-		icon = "Module.png",
-		members = {
-			{ label = "sub", type = "method", icon = "Method.png", args = { "s", "i", "j" } },
-			{ label = "find", type = "method", icon = "Method.png", args = { "s", "p", "init" } },
-			{ label = "gsub", type = "method", icon = "Method.png", args = { "s", "p", "r" } },
-			{ label = "match", type = "method", icon = "Method.png", args = { "s", "p" } },
-			{ label = "lower", type = "method", icon = "Method.png", args = { "s" } },
-			{ label = "upper", type = "method", icon = "Method.png", args = { "s" } },
-			{ label = "len", type = "method", icon = "Method.png", args = { "s" } },
-			{ label = "format", type = "method", icon = "Method.png", args = { "s", "..." } },
-		},
-	},
-
-	{
-		label = "task",
-		type = "library",
-		icon = "Module.png",
-		members = {
-			{ label = "wait", type = "method", icon = "Method.png", args = { "t" } },
-			{ label = "spawn", type = "method", icon = "Method.png", args = { "f", "..." } },
-			{ label = "defer", type = "method", icon = "Method.png", args = { "f", "..." } },
-			{ label = "delay", type = "method", icon = "Method.png", args = { "t", "f", "..." } },
-		},
-	},
-
-	{
-		label = "CFrame",
-		type = "library",
-		icon = "Module.png",
-		members = {
-			{
-				label = "new",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"x",
-					"y",
-					"z",
-				},
-			},
-			{
-				label = "ToQuaternion",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "__mul",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"a",
-					"b",
-				},
-			},
-			{
-				label = "Inverse",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "Lerp",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"target",
-					"alpha",
-				},
-			},
-			{
-				label = "PointToWorldSpace",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"point",
-				},
-			},
-			{
-				label = "ToWorldSpace",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"cf",
-				},
-			},
-			{
-				label = "lookAt",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"pos",
-					"target",
-					"up",
-				},
-			},
-			{
-				label = "GetComponents",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "GetRightVector",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "GetUpVector",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "GetLookVector",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "IsSamePosition",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"other",
-					"epsilon",
-				},
-			},
-			{
-				label = "IsSameRotation",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"other",
-					"epsilon",
-				},
-			},
-			{
-				label = "IsSameTransform",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"other",
-					"epsilon",
-				},
-			},
-			{
-				label = "PointToObjectSpace",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"point",
-				},
-			},
-			{
-				label = "GetPosition",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "GetRotation",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "Orthonormalize",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "FastInverse",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "DistanceTo",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"other",
-				},
-			},
-			{
-				label = "IsClose",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"other",
-					"epsilon",
-				},
-			},
-			{
-				label = "TransformPoint",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"point",
-				},
-			},
-			{
-				label = "TransformVector",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"vec",
-				},
-			},
-			{
-				label = "WithPosition",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"pos",
-				},
-			},
-			{
-				label = "WithRotation",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"rot",
-				},
-			},
-			{
-				label = "GetAxes",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "GetBasisVectors",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "FacingDirection",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"dir",
-					"up",
-				},
-			},
-			{
-				label = "RotateAroundAxis",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"axis",
-					"angle",
-				},
-			},
-			{
-				label = "RotateAroundPoint",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"point",
-					"axis",
-					"angle",
-				},
-			},
-			{
-				label = "ProjectPointOntoPlane",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"point",
-					"normal",
-				},
-			},
-			{
-				label = "Mirror",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"normal",
-				},
-			},
-			{
-				label = "ClampPosition",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"min",
-					"max",
-				},
-			},
-			{
-				label = "Delta",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"other",
-				},
-			},
-			{
-				label = "ApproximatelyIdentity",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"epsilon",
-				},
-			},
-			{
-				label = "GetYawPitchRoll",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "WithYawPitchRoll",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"yaw",
-					"pitch",
-					"roll",
-				},
-			},
-			{
-				label = "FlattenY",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "IsFinite",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "ToObjectSpace",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"cf",
-				},
-			},
-			{
-				label = "VectorToWorldSpace",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"vec",
-				},
-			},
-			{
-				label = "VectorToObjectSpace",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"vec",
-				},
-			},
-			{
-				label = "fromEulerAnglesXYZ",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"x",
-					"y",
-					"z",
-				},
-			},
-			{
-				label = "fromEulerAnglesYXZ",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"y",
-					"x",
-					"z",
-				},
-			},
-			{
-				label = "fromAxisAngle",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"axis",
-					"angle",
-				},
-			},
-			{
-				label = "__add",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"a",
-					"b",
-				},
-			},
-			{
-				label = "__sub",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"a",
-					"b",
-				},
-			},
-			{
-				label = "__eq",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"a",
-					"b",
-				},
-			},
-			{
-				label = "fromMatrix",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"pos",
-					"x",
-					"y",
-					"z",
-				},
-			},
-			{
-				label = "ToEulerAnglesXYZ",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "Sanitize",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "MoveLocal",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"offset",
-				},
-			},
-			{
-				label = "TranslateLocal",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"x",
-					"y",
-					"z",
-				},
-			},
-			{
-				label = "AlignUp",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"normal",
-				},
-			},
-			{
-				label = "SnapPosition",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"grid",
-				},
-			},
-			{
-				label = "SnapRotation",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"step",
-				},
-			},
-			{
-				label = "ToRelative",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"parent",
-				},
-			},
-			{
-				label = "FromRelative",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"parent",
-					"relative",
-				},
-			},
-			{
-				label = "Slerp",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"target",
-					"alpha",
-				},
-			},
-			{
-				label = "Angles",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"x",
-					"y",
-					"z",
-				},
-			},
-			{
-				label = "__tostring",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "ToTable",
-				type = "method",
-				icon = "Method.png",
-				args = {},
-			},
-			{
-				label = "FromTable",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"tbl",
-				},
-			},
-			{
-				label = "ToRaylibMatrixScale",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"scale",
-					"structs",
-				},
-			},
-			{
-				label = "fromQuaternion",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"x",
-					"y",
-					"z",
-					"w",
-					"pos",
-				},
-			},
-			{
-				label = "ToRaylibMatrix",
-				type = "method",
-				icon = "Method.png",
-				args = {
-					"structs",
-				},
-			},
-		},
-	},
-
-	{
-		label = "game",
-		type = "global",
-		icon = "Service.png",
-		members = {
-			{ label = "GetService", type = "method", icon = "Method.png", args = { "name" } },
-		},
-	},
-	{ label = "workspace", type = "global", icon = "Service.png" },
-	{ label = "Lighting", type = "global", icon = "Service.png" },
-	{ label = "Players", type = "global", icon = "Service.png" },
-	{ label = "ReplicatedStorage", type = "global", icon = "Service.png" },
-	{
-		label = "Vector3",
-		type = "class",
-		icon = "Struct.png",
-		members = { { label = "new", icon = "Method.png", args = { "x", "y", "z" } } },
-	},
-
-	{
-		label = "Color3",
-		type = "class",
-		icon = "Struct.png",
-		members = { { label = "new", icon = "Method.png", args = { "r", "g", "b" } } },
-	},
-	{
-		label = "Instance",
-		type = "class",
-		icon = "Class.png",
-		members = { { label = "new", icon = "Method.png", args = { "className", "parent" } } },
-	},
-	{ label = "Enum", type = "class", icon = "Enum.png" },
-}
+local completions = require("./k_completions")
 
 local dynamicVariables = {}
 
@@ -722,44 +43,130 @@ end
 
 local function indexVariables(editor, game)
 	dynamicVariables = {}
-	for _, line in ipairs(editor.text.lines) do
-		-- Match local X = game:GetService("Y")
-		local varName, serviceName =
-			line:match("local%s+([%w_]+)%s*=%s*game:GetService%s*%(%s*[\"']([^\"']+)[\"']%s*%)")
-		if varName and serviceName then
-			local success, service = pcall(function()
-				return game:GetService(serviceName)
-			end)
-			if success and service then
-				dynamicVariables[varName] = {
-					type = "service",
-					name = serviceName,
-					members = getObjectMembers(service),
-				}
-			end
-		end
 
-		-- Match local X = require(path/instance)
-		local varName2, requirePath = line:match("local%s+([%w_]+)%s*=%s*require%s*%(%s*[\"']([^\"']+)[\"']%s*%)")
-		if varName2 and requirePath then
-			local success, lib = pcall(function()
-				return require(requirePath)
-			end)
-			if success and lib then
-				dynamicVariables[varName2] = {
-					type = "library",
-					name = requirePath,
-					members = getObjectMembers(lib),
-				}
+	local src = editor:getCode()
+	local success, ast = pcall(function()
+		return zune.luau.parse(src)
+	end)
+
+	if not success or not ast or not ast.root then
+		return
+	end
+
+	local function walkBlock(block)
+		if block.tag == "block" and block.statements then
+			for _, stmt in ipairs(block.statements) do
+				if stmt.tag == "local" or stmt.tag == "assign" then
+					local vars = stmt.variables
+					local vals = stmt.values
+					if vars and vals then
+						for i, varContainer in ipairs(vars) do
+							local valContainer = vals[i]
+							if varContainer.node and valContainer and valContainer.node then
+								local varName
+								if stmt.tag == "local" then
+									varName = varContainer.node.name and varContainer.node.name.text
+								elseif stmt.tag == "assign" then
+									if varContainer.node.tag == "global" or varContainer.node.tag == "local" then
+										varName = varContainer.node.name and varContainer.node.name.text
+									end
+								end
+
+								if varName then
+									local val = valContainer.node
+									if val.tag == "call" and val.func then
+										local func = val.func
+										if func.tag == "indexname" then
+											local expr = func.expression
+											local index = func.index and func.index.text
+											if expr and expr.tag == "global" then
+												local globalName = expr.name and expr.name.text
+
+												if globalName == "Instance" and index == "new" then
+													local arg = val.arguments
+														and val.arguments[1]
+														and val.arguments[1].node
+													if arg and arg.tag == "string" then
+														local pcallSuccess, inst = pcall(function()
+															return Instance.new(arg.text)
+														end)
+														if pcallSuccess and inst then
+															dynamicVariables[varName] = {
+																type = "instance",
+																name = arg.text,
+																members = getObjectMembers(inst),
+															}
+														end
+													end
+												elseif globalName == "game" and index == "GetService" then
+													local arg = val.arguments
+														and val.arguments[1]
+														and val.arguments[1].node
+													if arg and arg.tag == "string" then
+														local pcallSuccess, service = pcall(function()
+															return game:GetService(arg.text)
+														end)
+														if pcallSuccess and service then
+															dynamicVariables[varName] = {
+																type = "service",
+																name = arg.text,
+																members = getObjectMembers(service),
+															}
+														end
+													end
+												end
+											end
+										elseif func.tag == "global" and func.name and func.name.text == "require" then
+											local arg = val.arguments and val.arguments[1] and val.arguments[1].node
+											if arg and arg.tag == "string" then
+												local pcallSuccess, lib = pcall(function()
+													return require(arg.text)
+												end)
+												if pcallSuccess and lib then
+													dynamicVariables[varName] = {
+														type = "library",
+														name = arg.text,
+														members = getObjectMembers(lib),
+													}
+												end
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
 			end
 		end
 	end
+
+	local function walk(node)
+		if type(node) ~= "table" then
+			return
+		end
+		if node.tag == "block" then
+			walkBlock(node)
+		end
+
+		for k, v in pairs(node) do
+			if type(v) == "table" and k ~= "location" and k ~= "position" then
+				walk(v)
+			end
+		end
+	end
+	walk(ast.root)
 end
 
 local function getCurrentWord(editor)
 	local c = editor.text.cursor
 	local line = editor.text.lines[c.line] or ""
 	local beforeCursor = line:sub(1, c.col - 1)
+
+	local instanceClass = beforeCursor:match("Instance%.new%s*%(%s*[\"']([%w_]*)$")
+	if instanceClass then
+		return instanceClass, "Instance.new", true
+	end
 
 	-- Check for member access (e.g., math.)
 	local library, memberPart = beforeCursor:match("([%w_]+)%.([%w_]*)$")
@@ -810,19 +217,30 @@ local function updateAutocomplete(editor, game)
 	end
 
 	if isMember then
-		-- Search for the library in completions
-		local libraryItem
-		for _, item in ipairs(completions) do
-			if item.label == libraryName then
-				libraryItem = item
-				break
+		if libraryName == "Instance.new" then
+			for _, item in ipairs(completions) do
+				if item.type == "class" then
+					if item.label:lower():sub(1, #word) == word:lower() and not seen[item.label] then
+						table.insert(items, item)
+						seen[item.label] = true
+					end
+				end
 			end
-		end
+		else
+			-- Search for the library in completions
+			local libraryItem
+			for _, item in ipairs(completions) do
+				if item.label == libraryName then
+					libraryItem = item
+					break
+				end
+			end
 
-		if libraryItem and libraryItem.members then
-			addIfMatch(libraryItem.members)
-		elseif dynamicVariables[libraryName] then
-			addIfMatch(dynamicVariables[libraryName].members)
+			if libraryItem and libraryItem.members then
+				addIfMatch(libraryItem.members)
+			elseif dynamicVariables[libraryName] then
+				addIfMatch(dynamicVariables[libraryName].members)
+			end
 		end
 	else
 		addIfMatch(completions)
@@ -1030,12 +448,7 @@ return {
 			local acX, acY = editor.autocomplete.currentX, editor.autocomplete.currentY
 			local background = rect.new(acX, acY, acWidth, acHeight)
 
-			raylib.DrawRectangleRounded(
-				rect:translate(background),
-				0.1,
-				15,
-				Color3.new(0.12, 0.12, 0.12):ToRaylib(0)
-			)
+			raylib.DrawRectangleRounded(rect:translate(background), 0.1, 15, Color3.new(0.12, 0.12, 0.12):ToRaylib(0))
 			raylib.DrawRectangleRoundedLinesEx(
 				rect:translate(background),
 				0.1,
