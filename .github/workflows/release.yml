@@ -36,6 +36,10 @@ jobs:
       - name: Install tools
         run: rokit install --no-trust-check
 
+      - name: Create sandboxed embed dir
+        shell: bash
+        run: mkdir -p build/.embedded/src/sandboxed
+
       - name: Build engine
         run: zune run build --${{ matrix.flag }}
 
