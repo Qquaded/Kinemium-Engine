@@ -32,6 +32,9 @@ end
 if FlagExists("headless") then
 	return
 end
+if FlagExists("client") then
+	return
+end
 
 local aereon = require("@Aereon")
 local gui = aereon.gui
@@ -272,8 +275,14 @@ datatypes["string"] = {
 			onClick = function()
 				local FileDialogService = game:GetService("FileDialogService")
 				local exts = isSoundProp
-						and { { name = "Audio", extensions = { "mp3", "wav", "ogg", "flac" } }, { name = "All Files", extensions = { "*" } } }
-					or { { name = "Images", extensions = { "png", "jpg", "jpeg", "bmp" } }, { name = "All Files", extensions = { "*" } } }
+						and {
+							{ name = "Audio", extensions = { "mp3", "wav", "ogg", "flac" } },
+							{ name = "All Files", extensions = { "*" } },
+						}
+					or {
+						{ name = "Images", extensions = { "png", "jpg", "jpeg", "bmp" } },
+						{ name = "All Files", extensions = { "*" } },
+					}
 				local path = FileDialogService.RequestFile(exts)
 				if path then
 					selected[propName] = path
@@ -321,23 +330,24 @@ datatypes["string"] = {
 			local btnY = previewY + 6
 			local isPlaying = sel.Playing
 			local playBtnRect = { x = btnX, y = btnY, width = btnSize, height = btnSize }
-			rl.DrawRectangleRounded(
-				structs.Rectangle:new(playBtnRect),
-				0.3, 8,
-				Theme.BackgroundColor:ToRaylib(0)
-			)
+			rl.DrawRectangleRounded(structs.Rectangle:new(playBtnRect), 0.3, 8, Theme.BackgroundColor:ToRaylib(0))
 
 			local btnLabel = isPlaying and "||" or ">"
 			rl.DrawTextEx(
-				vend, btnLabel,
+				vend,
+				btnLabel,
 				vector.create(btnX + (btnSize - 8) / 2, btnY + (btnSize - 14) / 2),
-				14, 1, Theme.TextColor:ToRaylib(0)
+				14,
+				1,
+				Theme.TextColor:ToRaylib(0)
 			)
 
 			if
 				rl.IsMouseButtonPressed(0) == 1
-				and mousePos.x >= playBtnRect.x and mousePos.x <= playBtnRect.x + playBtnRect.width
-				and mousePos.y >= playBtnRect.y and mousePos.y <= playBtnRect.y + playBtnRect.height
+				and mousePos.x >= playBtnRect.x
+				and mousePos.x <= playBtnRect.x + playBtnRect.width
+				and mousePos.y >= playBtnRect.y
+				and mousePos.y <= playBtnRect.y + playBtnRect.height
 			then
 				if isPlaying then
 					sel:Pause()
@@ -360,8 +370,10 @@ datatypes["string"] = {
 
 			-- Slider interaction (sets target value directly)
 			local isDragging = rl.IsMouseButtonDown(0) == 1
-				and mousePos.x >= sliderX and mousePos.x <= sliderX + sliderW
-				and mousePos.y >= sliderY and mousePos.y <= sliderY + sliderH
+				and mousePos.x >= sliderX
+				and mousePos.x <= sliderX + sliderW
+				and mousePos.y >= sliderY
+				and mousePos.y <= sliderY + sliderH
 
 			if isDragging then
 				comps.volumeDisplay = math.clamp((mousePos.x - sliderX) / sliderW, 0, 1)
@@ -375,7 +387,8 @@ datatypes["string"] = {
 			-- Track background
 			rl.DrawRectangleRounded(
 				structs.Rectangle:new({ x = sliderX, y = trackY, width = sliderW, height = trackH }),
-				0.5, 4,
+				0.5,
+				4,
 				Color3.new(0.15, 0.15, 0.15):ToRaylib(0)
 			)
 
@@ -384,7 +397,8 @@ datatypes["string"] = {
 			if fillW > 0 then
 				rl.DrawRectangleRounded(
 					structs.Rectangle:new({ x = sliderX, y = trackY, width = fillW, height = trackH }),
-					0.5, 4,
+					0.5,
+					4,
 					Color3.new(0.02, 0.5, 1):ToRaylib(0)
 				)
 			end
@@ -398,19 +412,23 @@ datatypes["string"] = {
 			-- File name
 			local fileName = propValue:match("[^/\\]+$") or propValue
 			rl.DrawTextEx(
-				vend, fileName,
+				vend,
+				fileName,
 				vector.create(ex + 8, previewY + previewH - 38),
-				12, 1, Theme.TextColor:ToRaylib(0)
+				12,
+				1,
+				Theme.TextColor:ToRaylib(0)
 			)
 
 			-- Status
-			local status = sel.IsLoaded
-					and (sel.Playing and "Playing" or "Stopped")
-				or "Not Loaded"
+			local status = sel.IsLoaded and (sel.Playing and "Playing" or "Stopped") or "Not Loaded"
 			rl.DrawTextEx(
-				vend, status,
+				vend,
+				status,
 				vector.create(ex + 8, previewY + previewH - 22),
-				11, 1, Theme.SecondaryTextColor:ToRaylib(0)
+				11,
+				1,
+				Theme.SecondaryTextColor:ToRaylib(0)
 			)
 		elseif isImagePath(propValue) then
 			local previewH = 170

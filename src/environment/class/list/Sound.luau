@@ -125,8 +125,6 @@ return {
 		-- description: "Plays the audio with an optional fade duration."
 		-- args: "self: table, fadeDuration: number"
 		instance.Play = function(self, fadeDuration)
-			print("Play called, IsLoaded:", self.IsLoaded, "Playing:", self.Playing)
-			print("_raylibSound:", self._raylibSound)
 			if self.IsLoaded and not self.Playing then
 				fadeTo(1.0, fadeDuration)
 				if self.IsStream then
