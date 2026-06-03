@@ -1,0 +1,81 @@
+name: Build and Release Kinemium Engine
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            flag: windows
+            folder: windows_x86-64
+          - os: macos-latest
+            flag: macos
+            folder: macos_x86-64
+          - os: ubuntu-latest
+            flag: debian
+            folder: debian_x86-64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.1.2
+
+      - name: Install tools
+        run: rokit install --no-trust-check
+
+      - name: Build engine
+        run: zune run build --${{ matrix.flag }}
+
+      - name: Remove .embedded folder
+        shell: bash
+        run: rm -rf build/${{ matrix.folder }}/.embedded
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.folder }}
+          path: build/${{ matrix.folder }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Zip each platform build
+        run: |
+          cd artifacts
+          for dir in */; do
+            name="${dir%/}"
+            zip -r "../${name}.zip" "$dir"
+          done
+          cd ..
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Kinemium Engine ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            windows_x86-64.zip
+            macos_x86-64.zip
+            debian_x86-64.zip
