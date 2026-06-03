@@ -143,6 +143,8 @@ local function buildExecutable(name, exec_ext, lib_ext)
 
 	local exec: ProcessRunResult = zune.process.run(zune.fs.getExePath(), l_args)
 	if not exec.ok then
+		print("STDOUT: " .. tostring(exec.stdout))
+		print("STDERR: " .. tostring(exec.stderr))
 		error("could not bundle executable: " .. tostring(exec.stderr))
 	end
 	print("successfully bundled at " .. l_exec)
