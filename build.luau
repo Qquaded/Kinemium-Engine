@@ -36,7 +36,6 @@ collectScriptIncludes(root, include)
 local assets = {
 	zjoin("**", ".luaurc"),
 	zjoin(root, "assets", "**"),
-	zjoin(root, "projects.toml"),
 	sandboxEmbedGlob,
 }
 
