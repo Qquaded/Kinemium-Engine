@@ -124,18 +124,10 @@ Ki-nem-yum!!
 # This project uses
 - Raylib
 - Manifold
+- GameNetworkingSockets
 - Box2D
 - Jolt Physics
-- Discord RPC
-- Steam SDK
-- Sail
-- Webview
 - Native File Dialog (NFD)
-- raylib-gizmo
-- Python (runtime)
-- QuickJS (runtime)
-- Webview
-- Luau
 - and most importantly.. Zune
 kv1.10.7
 
