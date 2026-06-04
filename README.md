@@ -1,9 +1,25 @@
 <img width="2727" height="978" alt="KinemiumFull" src="https://github.com/user-attachments/assets/1792beb7-d877-453d-ab3f-2d86cd434239" />
 
-[<img width="50" height="50" alt="image" src="https://github.com/user-attachments/assets/83c3a863-d290-487f-b073-fed9caa6832f" />
-](https://discord.gg/7byuxfYtAP)
+<p align="center">
+  <a href="https://kinemiumengine.discourse.group/">
+    <img src="https://img.shields.io/badge/Forum-Discourse-orange?logo=discourse&logoColor=white" alt="Discourse Forum" /></a>
+  &nbsp;
+  <a href="https://discord.gg/hv6hKfKjk5">
+    <img src="https://img.shields.io/discord/1442958989863157927?logo=discord&logoColor=white&label=Discord&color=5865F2" alt="Chat on Discord" /></a>
+  &nbsp;
+  <a href="https://kinemium-docs.vercel.app/docs">
+    <img src="https://img.shields.io/badge/Docs-kinemium-blue?logo=readthedocs&logoColor=white" alt="Documentation" /></a>
+  &nbsp;
+  <a href="https://kinemium.ftp.sh/">
+    <img src="https://img.shields.io/badge/Website-kinemium.ftp.sh-informational?logo=firefox&logoColor=white" alt="Website" /></a>
+  &nbsp;
+  <a href="https://kinemium.ftp.sh/marketplace/">
+    <img src="https://img.shields.io/badge/Marketplace-plugins-success?logo=lua&logoColor=white" alt="Marketplace" /></a>
+  &nbsp;
+  <a href="https://kinemium.ftp.sh/articles/">
+    <img src="https://img.shields.io/badge/Articles-blog-blueviolet?logo=hashnode&logoColor=white" alt="Articles" /></a>
+</p>
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Qquaded/Kinemium-Engine)
 ## Introduction
 Kinemium is a sandbox engine written in Luau (Zune Runtime). It includes a custom scripting language called Kilang, with Luau-style syntax and additional features.
 
@@ -55,7 +71,6 @@ or connected to Roblox Corporation. Roblox is a trademark of Roblox Corporation
 - Workspace
 
 ## Kinemium Custom Services
-*(All custom services start with Kinemium.)*
 - KinemiumFFIService
 - KinemiumFontService
 - KinemiumIconLoader
@@ -107,7 +122,7 @@ example command with a flag:<br>
 ```zune run game --headless```<br>
 
 # Preview
-<img width="991" height="800" alt="image" src="https://github.com/user-attachments/assets/7e29dc74-0518-465a-a502-ea6ae0972bc3" />
+<img width="1460" height="750" alt="image" src="https://github.com/user-attachments/assets/587c0765-c09d-48da-8dba-9c53c8e8c9dd" />
 <img width="1391" height="944" alt="image" src="https://github.com/user-attachments/assets/419b7324-5586-467b-a8f5-774217e87ed7" />
 
 # How do I add scripts?
