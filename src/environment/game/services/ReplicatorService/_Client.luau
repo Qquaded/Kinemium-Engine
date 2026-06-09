@@ -698,35 +698,55 @@ function Client.init(context)
 		end
 	end
 
+	local isSyncingCharacter = false
+
 	local function syncPlayerCharacterBindingForModel(model)
-		if DEBUG_CREATE_TRACE then
-			print(
-				`[Replicator][Client] syncCharBindingForModel: ${model and model.Name or "nil"} class=${model and model.ClassName or "?"}`
-			)
+		if isSyncingCharacter then
+			return
 		end
+		isSyncingCharacter = true
+		local function finish()
+			isSyncingCharacter = false
+		end
+
 		if not model or model.ClassName ~= "Model" then
-			print(`[Replicator][Client]   -> skipped (not a Model)`)
+			finish()
 			return
 		end
 
 		local playersService = game:GetService("Players")
 		local uid = model.GetAttribute and model:GetAttribute("__characterUserId")
 		local player = nil
+
 		if type(uid) == "number" then
 			player = playersService:GetPlayerByUserId(uid)
 		end
 		if not player then
 			player = playersService:GetPlayerByName(model.Name)
 		end
+		-- Fallback: search lookup for a Player object matching by name/userId
 		if not player then
+			for _, obj in pairs(lookup) do
+				if obj and obj.ClassName == "Player" then
+					if (type(uid) == "number" and obj.UserId == uid) or obj.Name == model.Name then
+						player = obj
+						break
+					end
+				end
+			end
+		end
+		if not player then
+			finish()
 			return
 		end
 
 		if not model.FindFirstChildOfClass or not model:FindFirstChildOfClass("Humanoid") then
+			finish()
 			return
 		end
 
 		assignCharacterToPlayer(player, model)
+		finish()
 	end
 
 	local function restoreHumanoidRigForModel(model)
@@ -910,6 +930,7 @@ function Client.init(context)
 					localPlayer.UserId = object.UserId
 					localPlayer.Parent = playersService
 					lookup[netId] = localPlayer
+					playersService.LocalPlayer = localPlayer
 					continue
 				end
 
@@ -924,6 +945,9 @@ function Client.init(context)
 					existingPlayer.Name = object.Name
 					existingPlayer.Parent = playersService
 					lookup[netId] = existingPlayer
+					if playersService.LocalPlayer == nil then
+						playersService.LocalPlayer = existingPlayer
+					end
 					continue
 				else
 					print(
@@ -1466,6 +1490,19 @@ function Client.init(context)
 		local object = lookup[payload.object]
 		if object then
 			if object.ClassName == "Player" then
+				local playersService = game:GetService("Players")
+				if object == playersService.LocalPlayer then
+					lookup[payload.object] = nil
+					remoteTargets[payload.object] = nil
+					outboundOwnedPatchEntries[payload.object] = nil
+					processedCreateNetIds[payload.object] = nil
+					if pendingSnapshots[payload.object] then
+						pendingSnapshotsCount = math.max(0, pendingSnapshotsCount - 1)
+						pendingSnapshots[payload.object] = nil
+					end
+					unmonitorObject(object)
+					return
+				end
 				destroyCharacterModelsForPlayer(object)
 			elseif object.ClassName == "Model" then
 				detachCharacterModel(object)
@@ -1608,30 +1645,35 @@ function Client.init(context)
 	)
 
 	networkService:RegisterMessageHandler(Protocol.Channels.Control, Protocol.Kinds.WorldLoaded, function(_, payload)
-		print("[Replicator][Client] ===== WorldLoaded signal received =====")
 		if worldLoadedHandled then
-			print("[Replicator][Client] WorldLoaded already handled, ignoring duplicate")
-			return -- already sent ClientReady; ignore any duplicate WorldLoaded
+			return
 		end
 		worldLoadedHandled = true
-		print(
-			`[Replicator][Client] WorldLoaded received (server tick={payload and payload.tick or "?"}), waiting for deferred processing...`
-		)
 		task.spawn(function()
-			-- Wait a bit for any in-flight creates/patches to finish processing
 			task.wait(0.5)
-			print(
-				"[Replicator][Client] Sending ClientReady to server (isConnected="
-					.. tostring(networkService.IsClientConnected)
-					.. ")"
-			)
 			networkService:SendToServer(
 				Protocol.Channels.Control,
 				Protocol.Kinds.ClientReady,
 				{ tick = networkService:GetCurrentTick() },
 				true
 			)
-			print("[Replicator][Client] ClientReady sent successfully")
+			-- Start character binding retry here, not at module load time
+			task.spawn(function()
+				local MAX_RETRIES = 30
+				for attempt = 1, MAX_RETRIES do
+					local localPlayer = game:GetService("Players").LocalPlayer
+					if localPlayer and localPlayer.Character ~= nil then
+						break
+					end
+					if localPlayer then
+						syncPlayerCharacterBindingForPlayer(localPlayer)
+						if localPlayer.Character ~= nil then
+							break
+						end
+					end
+					task.wait(1)
+				end
+			end)
 		end)
 	end)
 

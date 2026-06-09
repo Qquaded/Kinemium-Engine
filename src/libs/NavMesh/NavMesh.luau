@@ -146,7 +146,7 @@ function NavMeshBuilder:ConnectPolygons(idA: number, idB: number)
 
 	for _, va in ipairs(polyA.vertices) do
 		for _, vb in ipairs(polyB.vertices) do
-			if (va - vb).Magnitude < tolerance then
+			if (va - vb):Magnitude() < tolerance then
 				shared = true
 				break
 			end
@@ -185,11 +185,11 @@ function NavMeshBuilder:AutoConnectNeighbors()
 	for idA, polyA in pairs(self.polygons) do
 		for idB, polyB in pairs(self.polygons) do
 			if idA < idB then
-				local dist = (polyA.center - polyB.center).Magnitude
+				local dist = (polyA.center - polyB.center):Magnitude()
 				local maxEdge = 0
 				for _, v in ipairs(polyA.vertices) do
 					for _, w in ipairs(polyB.vertices) do
-						local d = (v - w).Magnitude
+						local d = (v - w):Magnitude()
 						if d > maxEdge then
 							maxEdge = d
 						end
@@ -318,7 +318,7 @@ function NavMeshQuery:FindPath(startPos: Vector3, endPos: Vector3): PathResult
 		return {
 			success = true,
 			path = { startPos, endPos },
-			length = (startPoint - endPoint).Magnitude,
+			length = (startPoint - endPoint):Magnitude(),
 		}
 	end
 
@@ -339,7 +339,7 @@ function NavMeshQuery:FindPath(startPos: Vector3, endPos: Vector3): PathResult
 	local function heuristic(a: number, b: number): number
 		local polyA = self.mesh.polygons[a]
 		local polyB = self.mesh.polygons[b]
-		return (polyA.center - polyB.center).Magnitude
+		return (polyA.center - polyB.center):Magnitude()
 	end
 
 	local startNode = createNode(startPolyId, 0, heuristic(startPolyId, endPolyId), nil)
@@ -369,7 +369,7 @@ function NavMeshQuery:FindPath(startPos: Vector3, endPos: Vector3): PathResult
 
 				if node.parent then
 					local parentPoly = self.mesh.polygons[node.parent.polygonId]
-					totalLength = totalLength + (poly.center - parentPoly.center).Magnitude
+					totalLength = totalLength + (poly.center - parentPoly.center):Magnitude()
 				end
 
 				node = node.parent
@@ -377,7 +377,7 @@ function NavMeshQuery:FindPath(startPos: Vector3, endPos: Vector3): PathResult
 
 			table.insert(path, endPos)
 			local endPoly = self.mesh.polygons[endPolyId]
-			totalLength = totalLength + (endPoly.center - endPoint).Magnitude
+			totalLength = totalLength + (endPoly.center - endPoint):Magnitude()
 
 			return {
 				success = true,
@@ -394,7 +394,9 @@ function NavMeshQuery:FindPath(startPos: Vector3, endPos: Vector3): PathResult
 			if not closedSet[neighborId] then
 				local neighborPoly = self.mesh.polygons[neighborId]
 				local heightPenalty = math.abs(currentPoly.height - neighborPoly.height) * 2.0
-				local tentativeG = currentNode.g + (currentPoly.center - neighborPoly.center).Magnitude + heightPenalty
+				local tentativeG = currentNode.g
+					+ (currentPoly.center - neighborPoly.center):Magnitude()
+					+ heightPenalty
 
 				local existingNode = nodeMap[neighborId]
 				if not existingNode or tentativeG < existingNode.g then
@@ -436,7 +438,7 @@ function NavMeshQuery:Raycast(origin: Vector3, direction: Vector3, maxDistance: 
 					local intersection = origin2D + dir2D * t
 					local edgeToPoint = intersection - v1
 					local edgeProj = edgeToPoint * edge
-					if edgeProj >= 0 and edgeProj <= edge.Magnitude * edge.Magnitude then
+					if edgeProj >= 0 and edgeProj <= edge:Magnitude() * edge:Magnitude() then
 						closestHit = {
 							polygonId = id,
 							point = Vector3.new(intersection.X, poly.height, intersection.Y),
@@ -782,8 +784,8 @@ function NavMesh:SmoothPath(path: { Vector3 }, iterations: number?): { Vector3 }
 			local curr = result[i]
 			local next = result[i + 1]
 
-			local directDist = (prev - next).Magnitude
-			local viaDist = (prev - curr).Magnitude + (curr - next).Magnitude
+			local directDist = (prev - next):Magnitude()
+			local viaDist = (prev - curr):Magnitude() + (curr - next):Magnitude()
 
 			if viaDist - directDist > 0.5 then
 				table.insert(newPath, curr)

@@ -37,6 +37,30 @@ local function worldToChunk(pos)
 	return math.floor(pos.X / CHUNK_SIZE), math.floor(pos.Y / CHUNK_SIZE), math.floor(pos.Z / CHUNK_SIZE)
 end
 
+local function profileBegin(name)
+	if ENGINE_PROFILER then
+		ENGINE_PROFILER:Begin(name)
+	end
+end
+
+local function profileSetCounter(name, value)
+	if ENGINE_PROFILER then
+		ENGINE_PROFILER:SetCounter(name, value)
+	end
+end
+
+local function profileNextFrame()
+	if ENGINE_PROFILER then
+		ENGINE_PROFILER:NextFrame()
+	end
+end
+
+local function profileEnd()
+	if ENGINE_PROFILER then
+		ENGINE_PROFILER:End()
+	end
+end
+
 Workspace.InitRenderer = function(renderer, signal, game)
 	table.clear(chunks)
 	table.clear(chunkList)
@@ -367,7 +391,13 @@ Workspace.InitRenderer = function(renderer, signal, game)
 						chunk.instanceDataDirty = true
 					end
 				end
-			elseif prop == "Material" or prop == "Shape" or prop == "MeshObject" or prop == "Destroyed" then
+			elseif
+				prop == "Material"
+				or prop == "Shape"
+				or prop == "MeshObject"
+				or prop == "_mesh"
+				or prop == "Destroyed"
+			then
 				markChunkDirty(rawget(part, "__workspaceChunk"), true)
 				rawset(part, "__materialDirty", true)
 				rawset(part, "__matrixDirty", true)
@@ -498,8 +528,56 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 	signal:Connect(function(route, data) end)
 
+	local function readInstanceField(obj, key)
+		local value = rawget(obj, key)
+		if value == nil then
+			value = obj[key]
+		end
+		return value
+	end
+
 	local function isRenderable(obj)
-		return obj.BaseClass == "BasePart"
+		return obj.BaseClass == "BasePart" or readInstanceField(obj, "_mesh") ~= nil
+	end
+
+	local function hasCustomMesh(obj)
+		return obj and readInstanceField(obj, "_mesh") ~= nil
+	end
+
+	local function getPartRenderScale(part)
+		if hasCustomMesh(part) then
+			return Vector3.new(1, 1, 1)
+		end
+		return part.Size
+	end
+
+	local function getPartUvScale(part)
+		local size = part and part.Size
+		if size and size.X ~= nil and size.Y ~= nil and size.Z ~= nil then
+			return size
+		end
+		return Vector3.new(1, 1, 1)
+	end
+
+	local function getRenderableMesh(obj)
+		if not obj then
+			return nil, nil, nil
+		end
+
+		local mesh = readInstanceField(obj, "_mesh")
+		if mesh then
+			return mesh, readInstanceField(obj, "_materialHandle"), readInstanceField(obj, "_cpuMeshData")
+		end
+
+		local meshObject = obj.MeshObject
+		if meshObject then
+			mesh = meshObject._mesh or meshObject._meshgenHandle
+			if mesh then
+				return mesh, meshObject._materialHandle, meshObject._cpuMeshData
+			end
+		end
+
+		return nil, nil, nil
 	end
 
 	local function visitSubtree(root, callback)
@@ -531,8 +609,8 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		end
 	end
 
-	local function unregisterWorkspaceObject(v)
-		if isRenderable(v) then
+	local function untrackRenderable(v)
+		if isRenderable(v) or rawget(v, "__workspaceRenderableIndex") ~= nil then
 			local conn = rawget(v, "__workspaceRenderConn")
 			if conn and conn.Disconnect then
 				conn:Disconnect()
@@ -540,8 +618,6 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			rawset(v, "__workspaceRenderConn", nil)
 			removePart(v)
 		end
-		pool[v.UniqueId] = nil
-		IdPool[v.UniqueId] = nil
 		local idx = rawget(v, "__workspaceRenderableIndex")
 		if idx then
 			local lastIndex = #renderablePool
@@ -553,6 +629,15 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			end
 			rawset(v, "__workspaceRenderableIndex", nil)
 		end
+		if pool[v.UniqueId] then
+			pool[v.UniqueId]._renderable = false
+		end
+	end
+
+	local function unregisterWorkspaceObject(v)
+		untrackRenderable(v)
+		pool[v.UniqueId] = nil
+		IdPool[v.UniqueId] = nil
 	end
 
 	Workspace.DescendantAdded:Connect(function(v)
@@ -570,6 +655,17 @@ Workspace.InitRenderer = function(renderer, signal, game)
 					(os.clock() - startTime) * 1000
 				)
 			)
+		end
+	end)
+
+	Workspace.DescendantChanged:Connect(function(v, prop)
+		if prop == "_mesh" then
+			if isRenderable(v) then
+				registerWorkspaceObject(v)
+				markChunkDirty(rawget(v, "__workspaceChunk"), true)
+			elseif rawget(v, "__workspaceRenderableIndex") ~= nil then
+				untrackRenderable(v)
+			end
 		end
 	end)
 
@@ -715,14 +811,8 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		local shapeName = part.Shape and part.Shape.Value
 		local materialName = part.Material and part.Material.Value
 
-		local mesh = nil
-		local customMaterial = nil
-		if isMeshPart then
-			if part.MeshObject and part.MeshObject._meshgenHandle then
-				mesh = part.MeshObject._meshgenHandle
-				customMaterial = part.MeshObject._materialHandle
-			end
-		elseif shapeName then
+		local mesh, customMaterial = getRenderableMesh(part)
+		if not mesh and not isMeshPart and shapeName then
 			local meshData = preloadedMeshes and preloadedMeshes[shapeName]
 			if meshData then
 				mesh = meshData[2]
@@ -739,7 +829,12 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			matData = reusableCustomMatData
 		else
 			if not materialName then
-				return
+				if not hasCustomMesh(part) then
+					return
+				end
+				materialName = "__fallback"
+			elseif hasCustomMesh(part) and not loadedMaterials[materialName] then
+				loadMaterial(materialName, true)
 			end
 			matData = loadedMaterials[materialName] or loadMaterial(materialName) or fallbackMaterial
 		end
@@ -751,10 +846,11 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		-- Cache the transform matrix per-part. Only recomputed when CFrame or Size
 		-- changes (invalidated via watchRenderablePart). For static/anchored maps
 		-- this eliminates the matrix decompose + multiply every frame.
+		local renderScale = getPartRenderScale(part)
 		local matrix = rawget(part, "__cachedMatrix")
 		local isMatrixDirty = rawget(part, "__matrixDirty")
 		if not matrix or isMatrixDirty then
-			matrix = cf:ToRaylibMatrixScale(size, raylib.structs)
+			matrix = cf:ToRaylibMatrixScale(renderScale, raylib.structs)
 			rawset(part, "__cachedMatrix", matrix)
 			rawset(part, "__matrixDirty", false)
 		end
@@ -793,8 +889,9 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 			buffer.writei32(tmpMaterial, OFF_MATERIAL_CULL_MODE, R3D_CULL_BACK)
 
-			buffer.writef32(tmpMaterial, OFF_MATERIAL_UVSCALE, size.X)
-			buffer.writef32(tmpMaterial, OFF_MATERIAL_UVSCALE + 4, size.Z)
+			local uvScale = getPartUvScale(part)
+			buffer.writef32(tmpMaterial, OFF_MATERIAL_UVSCALE, uvScale.X)
+			buffer.writef32(tmpMaterial, OFF_MATERIAL_UVSCALE + 4, uvScale.Z)
 
 			local materialShader = mtsh_sh[materialName]
 			local applyPerObject = materialShader and (materialShader.Apply3Dbj or materialShader.Apply3DObj)
@@ -909,7 +1006,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 					local part = parts[i]
 					local cf = part.CFrame
 					local position = cf and cf.Position or part.Position
-					local size = part.Size
+					local size = getPartRenderScale(part)
 					local qx, qy, qz, qw = cf:ToQuaternion()
 					local color = part.Color
 					local r, g, b = color:ToRGB()
@@ -953,7 +1050,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				local part = parts[i]
 				local cf = part.CFrame
 				local position = cf and cf.Position or part.Position
-				local size = part.Size
+				local size = getPartRenderScale(part)
 				local qx, qy, qz, qw = cf:ToQuaternion()
 				local color = part.Color
 				local r, g, b = color:ToRGB()
@@ -1059,43 +1156,49 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 			-- Deduplication: build a compact transform+size fingerprint and
 			-- skip this part if one with the same shape already exists.
-			do
-				local cf = part.CFrame
-				local sz = part.Size
-				if
-					not cf
-					or not cf.Position
-					or cf.ToQuaternion == nil
-					or not sz
-					or sz.X == nil
-					or sz.Y == nil
-					or sz.Z == nil
-				then
-					rawset(part, "__workspaceDuplicate", true)
-					continue
-				end
+			-- CSG/custom mesh parts are never deduplicated (they often share
+			-- the operand's CFrame but must still draw their unique geometry).
+			if not hasCustomMesh(part) then
+				do
+					local cf = part.CFrame
+					local sz = part.Size
+					if
+						not cf
+						or not cf.Position
+						or cf.ToQuaternion == nil
+						or not sz
+						or sz.X == nil
+						or sz.Y == nil
+						or sz.Z == nil
+					then
+						rawset(part, "__workspaceDuplicate", true)
+						continue
+					end
 
-				local pos = cf.Position
-				local qx, qy, qz, qw = cf:ToQuaternion()
-				-- Normalise quaternion sign so q and -q hash identically.
-				if qw < 0 then
-					qx, qy, qz, qw = -qx, -qy, -qz, -qw
+					local pos = cf.Position
+					local qx, qy, qz, qw = cf:ToQuaternion()
+					-- Normalise quaternion sign so q and -q hash identically.
+					if qw < 0 then
+						qx, qy, qz, qw = -qx, -qy, -qz, -qw
+					end
+					local f = math.floor
+					local key = string.format(
+						"%d,%d,%d,%d,%d,%d",
+						f(pos.X * 10),
+						f(pos.Y * 10),
+						f(pos.Z * 10),
+						f(sz.X * 10),
+						f(sz.Y * 10),
+						f(sz.Z * 10)
+					)
+					if globalSeenTransforms[key] then
+						rawset(part, "__workspaceDuplicate", true)
+						continue
+					end
+					globalSeenTransforms[key] = true
+					rawset(part, "__workspaceDuplicate", false)
 				end
-				local f = math.floor
-				local key = string.format(
-					"%d,%d,%d,%d,%d,%d",
-					f(pos.X * 10),
-					f(pos.Y * 10),
-					f(pos.Z * 10),
-					f(sz.X * 10),
-					f(sz.Y * 10),
-					f(sz.Z * 10)
-				)
-				if globalSeenTransforms[key] then
-					rawset(part, "__workspaceDuplicate", true)
-					continue
-				end
-				globalSeenTransforms[key] = true
+			else
 				rawset(part, "__workspaceDuplicate", false)
 			end
 
@@ -1103,21 +1206,15 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			local shapeName = part.Shape and part.Shape.Value
 			local materialName = part.Material and part.Material.Value
 
-			local mesh = nil
+			local mesh, customMaterial = getRenderableMesh(part)
 			local meshKey = ""
-			local customMaterial = nil
-			if isMeshPart then
-				local meshObject = part.MeshObject
-				if meshObject and meshObject._meshgenHandle then
-					mesh = meshObject._meshgenHandle
-					customMaterial = meshObject._materialHandle
-					-- Batch by the actual GPU mesh handle instead of per-object identity.
-					-- This lets repeated MeshParts that share the same uploaded mesh
-					-- collapse into one instanced batch even when their mesh objects
-					-- are distinct Luau instances.
-					meshKey = "meshobj_" .. tostring(mesh)
-				end
-			elseif shapeName then
+			if mesh then
+				-- Batch by the actual GPU mesh handle instead of per-object identity.
+				-- This lets repeated objects that share the same uploaded mesh
+				-- collapse into one instanced batch even when their mesh objects
+				-- are distinct Luau instances.
+				meshKey = "meshobj_" .. tostring(mesh)
+			elseif not isMeshPart and shapeName then
 				local meshData = preloadedMeshes and preloadedMeshes[shapeName]
 				if meshData then
 					mesh = meshData[2]
@@ -1131,16 +1228,20 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				matData = reusableCustomMatData
 				materialName = "__custom_" .. tostring(customMaterial)
 			else
+				if materialName and hasCustomMesh(part) and not loadedMaterials[materialName] then
+					loadMaterial(materialName, true)
+				end
 				matData = materialName and loadedMaterials[materialName]
 					or loadMaterial(materialName)
 					or fallbackMaterial
+				materialName = materialName or "__fallback"
 			end
 
 			if not mesh or not matData then
 				continue
 			end
 
-			local materialShader = mtsh_sh[materialName]
+			local materialShader = materialName and mtsh_sh[materialName]
 			local hasPerObjectShader = materialShader and (materialShader.Apply3Dbj or materialShader.Apply3DObj)
 			local isOpaque = isPartOpaque(part)
 			local canInstance = Workspace.UseGpuInstancing
@@ -1901,8 +2002,11 @@ Workspace.InitRenderer = function(renderer, signal, game)
 
 			-- Resolve CPU mesh data for the per-triangle test.
 			local cpuMeshData
-			if part:IsA("MeshPart") and part.MeshObject then
-				cpuMeshData = part.MeshObject._cpuMeshData
+			local _, _, customCpuMeshData = getRenderableMesh(part)
+			if customCpuMeshData then
+				cpuMeshData = customCpuMeshData
+			elseif part:IsA("MeshPart") or part._mesh ~= nil then
+				return
 			else
 				local shapeName = part.Shape and part.Shape.Name and string.lower(part.Shape.Name)
 				if shapeName == "ball" then
@@ -1920,7 +2024,7 @@ Workspace.InitRenderer = function(renderer, signal, game)
 			end
 
 			-- Exact per-triangle mesh test.
-			local matrix = part.CFrame:ToRaylibMatrixScale(part.Size, structs)
+			local matrix = part.CFrame:ToRaylibMatrixScale(getPartRenderScale(part), structs)
 			local ok, collision = pcall(rlib.R3D_RaycastMesh, ray, cpuMeshData, matrix)
 			if not ok or not collision then
 				return
@@ -2141,12 +2245,14 @@ Workspace.InitRenderer = function(renderer, signal, game)
 		end)
 
 		renderer.Pool.new("3d", function(...)
+			profileBegin("Workspace Chunk Rendering")
 			local _st = os.clock()
 			drawChunks(...)
 			local _dur = os.clock() - _st
 			if _dur > 0.05 then
 				print(string.format("[Workspace] drawChunks took %.2f ms", _dur * 1000))
 			end
+			profileEnd()
 		end)
 	end
 end

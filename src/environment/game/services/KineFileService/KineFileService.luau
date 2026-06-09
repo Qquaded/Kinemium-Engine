@@ -9,6 +9,7 @@ local zembed = require("@zembed")
 local fs = zune.fs
 local process = zune.process
 local os = zune.platform.os
+local zune_path = _G.ZUNE_EMBEDDED
 
 local assetsaver = require("@assetsaver")
 
@@ -34,7 +35,7 @@ local defaultFlags = {
 }
 
 local function buildEngine()
-	local res = process.run(fs.getExePath(), { "run", "build" })
+	local res = process.run(zune_path or fs.getExePath(), { "run", "build" })
 	return res
 end
 
@@ -176,7 +177,7 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		ExportGameAsExecutable = function(gameName)
 			local assets, old_props = assetsaver:GetGameAssets(datamodel)
 
-			buildEngine()
+			local res = buildEngine()
 
 			local platform = buildNames[zune.platform.os]
 			local buildFolder = `./build/{platform}`

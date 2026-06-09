@@ -39,6 +39,12 @@ return {
 
 		local syncingTransform = false
 
+		local function syncMeshObject(meshObject)
+			instance._mesh = meshObject and (meshObject._mesh or meshObject._meshgenHandle) or nil
+			instance._cpuMeshData = meshObject and meshObject._cpuMeshData or nil
+			instance._materialHandle = meshObject and meshObject._materialHandle or nil
+		end
+
 		local function syncFromCFrame(cf)
 			if not cf or not cf.Position then
 				return
@@ -64,6 +70,8 @@ return {
 			props.CFrame = props.CFrame:WithPosition(position)
 		end
 
+		syncMeshObject(instance.MeshObject)
+
 		instance.Changed:Connect(function(property, value)
 			if syncingTransform then
 				return
@@ -76,6 +84,11 @@ return {
 				syncingTransform = true
 				syncFromPosition(value)
 				syncingTransform = false
+			elseif property == "MeshObject" then
+				syncMeshObject(value)
+				renderer.EventBus:Fire("UpdatePart", instance)
+			elseif property == "_mesh" or property == "_cpuMeshData" or property == "Material" then
+				renderer.EventBus:Fire("UpdatePart", instance)
 			elseif property == "Parent" then
 				renderer.EventBus:Fire("UpdatePart", instance)
 			end

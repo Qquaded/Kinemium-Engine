@@ -1,7 +1,6 @@
--- editablemesh_demo (grass)
 --[[
-local PATCH_SIZE = 30 -- world-units square
-local BLADE_COUNT = 100000
+local PATCH_SIZE = 10 -- world-units square
+local BLADE_COUNT = 1000
 local BLADE_HEIGHT = 0.8
 local BLADE_WIDTH = 0.06
 local BLADE_SEGS = 1 -- quad rows per blade (more = smoother curve)

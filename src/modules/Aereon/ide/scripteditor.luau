@@ -7,6 +7,7 @@ local Color3 = require("@Color3")
 local MouseCursor = require("@Kinemium.MouseCursor")
 local syntax = require("./syntax")
 local autocomplete = require("./autocomplete")
+local beautifier = require("./beautifier")
 local luau = zune.luau
 
 local structs = rl.structs
@@ -548,47 +549,33 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 	function editor:format()
 		self:beginTextEdit()
 
-		local openers = { ["then"] = true, ["do"] = true, ["function"] = true, ["repeat"] = true, ["{"] = true }
-		local closers = { ["end"] = true, ["until"] = true, ["}"] = true }
-		local middle = { ["else"] = true, ["elseif"] = true }
-		-- ... (rest of format) ...
+		local ok, parse = pcall(function()
+			return zune.luau.parse(self:getCode())
+		end)
 
-		local currentIndent = 0
-		local newLines = {}
-
-		for i, line in ipairs(self.text.lines) do
-			local trimmed = line:gsub("^%s+", ""):gsub("%s+$", "")
-			if trimmed == "" then
-				table.insert(newLines, "")
-				continue
-			end
-
-			local firstWord = trimmed:match("^([%w_]+)") or trimmed:match("^([%{}])")
-			local shouldDedent = closers[firstWord] or middle[firstWord]
-
-			if shouldDedent then
-				currentIndent = math.max(0, currentIndent - 1)
-			end
-
-			table.insert(newLines, string.rep("\t", currentIndent) .. trimmed)
-
-			local net = 0
-			for word in trimmed:gmatch("[%w_{}]+") do
-				if openers[word] then
-					net += 1
-				elseif closers[word] then
-					net -= 1
-				end
-			end
-
-			if middle[firstWord] then
-				net += 1
-			end
-
-			currentIndent = math.max(0, currentIndent + net)
+		if not ok or not parse then
+			self:endTextEdit()
+			return
 		end
 
-		self.text.lines = newLines
+		local formatted = beautifier.format(parse)
+
+		-- ensure we always end up with lines
+		if type(formatted) == "string" then
+			formatted = string.split(formatted, "\n")
+		end
+
+		if type(formatted) ~= "table" then
+			self:endTextEdit()
+			return
+		end
+
+		self.text.lines = formatted
+
+		-- reset cursor safely
+		self.text.cursor.line = math.clamp(self.text.cursor.line, 1, #self.text.lines)
+		self.text.cursor.col = math.clamp(self.text.cursor.col, 1, #self.text.lines[self.text.cursor.line] + 1)
+
 		self:endTextEdit()
 		self._highlightCache = {}
 		self:updateLSP()

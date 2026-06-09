@@ -74,7 +74,6 @@ function NetworkPropSync:CheckPropHasAuthority(objectNetId, propName, localPeerI
 end
 
 -- Detect if a property value has changed (duplicate detection)
--- Based on Polytoria's _lastSyncedValues cache
 function NetworkPropSync:HasValueChanged(objectNetId, propName, newValue)
 	local key = `{objectNetId}:{propName}`
 	local lastValue = self._lastSyncedValues[key]
@@ -119,7 +118,6 @@ function NetworkPropSync:HasValueChanged(objectNetId, propName, newValue)
 end
 
 -- Check unreliable throttling
--- Based on Polytoria's unreliable throttling (NetworkedObject.cs:1134-1151)
 function NetworkPropSync:ShouldThrottleUnreliable(objectNetId, propName)
 	local syncVar = self:GetSyncVar(objectNetId, propName)
 	if not syncVar or not syncVar.Unreliable then
@@ -139,7 +137,6 @@ function NetworkPropSync:ShouldThrottleUnreliable(objectNetId, propName)
 end
 
 -- Queue a property update for batched broadcasting (server -> clients)
--- Based on Polytoria's BroadcastPropUpdate (NetworkPropSync.cs:280-298)
 function NetworkPropSync:BroadcastPropUpdate(objectNetId, propName, propValue, excludeSession)
 	local syncVar = self:GetSyncVar(objectNetId, propName)
 
@@ -168,7 +165,6 @@ function NetworkPropSync:BroadcastPropUpdate(objectNetId, propName, propValue, e
 end
 
 -- Flush batched property updates
--- Based on Polytoria's batch flushing in Process (NetworkPropSync.cs:55-70)
 function NetworkPropSync:FlushBatch()
 	if #self._batchBroadcasts == 0 then
 		return
@@ -243,7 +239,6 @@ function NetworkPropSync:FlushBatch()
 end
 
 -- Client -> Server property update
--- Based on Polytoria's BroadcastPropUpdateToServer (NetworkPropSync.cs:308-339)
 function NetworkPropSync:BroadcastPropUpdateToServer(objectNetId, propName, propValue, objectAuthorityPeerId)
 	local localPeerId = self._networkService.LocalPeerID or 0
 

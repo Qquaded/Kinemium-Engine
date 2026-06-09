@@ -2,7 +2,7 @@
 local UDim = require("@UDim")
 
 local propTable = {
-	CornerRadius = UDim.new(0, 15),
+	CornerRadius = UDim.new(0, 0),
 	Exponent = 4,
 	Name = "UISquircle",
 	BaseClass = "Kinemium.uimodifier",

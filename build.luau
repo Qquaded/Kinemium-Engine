@@ -145,6 +145,14 @@ local function buildExecutable(name, exec_ext, lib_ext)
 	if not exec.ok then
 		error("could not bundle executable: " .. tostring(exec.stderr))
 	end
+
+	local workingPath = zune.fs.getExePath()
+	local read = zune.fs.readFile(workingPath, true)
+	zune.fs.writeFile(zjoin(dir, "zune" .. exec_ext), read)
+
+	local buildSrc = zune.fs.readFile("build.luau")
+	zune.fs.writeFile(zjoin(dir, "build.luau"), buildSrc)
+
 	print("successfully bundled at " .. l_exec)
 end
 

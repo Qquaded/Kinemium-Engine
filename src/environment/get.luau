@@ -338,7 +338,7 @@ return function(renderer, Kinemium_camera)
 		end
 	end
 
-	data.zune = {}
+	data.zune = 0
 
 	local c_api = capi(data)
 

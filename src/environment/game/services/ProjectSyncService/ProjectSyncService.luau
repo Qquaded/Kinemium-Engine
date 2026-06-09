@@ -1203,7 +1203,7 @@ ProjectSyncService.InitRenderer = function(renderer, renderer_signal, game)
 				state.lastError = tostring(err)
 				activeState = nil
 				stopState(state, true)
-				error(err)
+				print("Failed syncing project: " .. err)
 			end
 
 			return snapshotState(state)

@@ -299,8 +299,8 @@ export type Fns = {
 	manifold_meshgl_size: () -> int,
 	manifold_meshgl_tangent_length: (m: FFIPointer) -> int,
 	manifold_meshgl_tri_length: (m: FFIPointer) -> int,
-	manifold_meshgl_tri_verts: (mem: FFIPointer, m: FFIPointer) -> FFIPointer,
-	manifold_meshgl_vert_properties: (mem: FFIPointer, m: FFIPointer) -> FFIPointer,
+	manifold_meshgl_tri_verts: (m: FFIPointer) -> FFIPointer,
+	manifold_meshgl_vert_properties: (m: FFIPointer) -> FFIPointer,
 	manifold_meshgl_vert_properties_length: (m: FFIPointer) -> int,
 	manifold_meshgl_w_options: (
 		mem: FFIPointer,

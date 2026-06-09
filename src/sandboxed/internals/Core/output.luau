@@ -167,6 +167,14 @@ local box = textbox.new({
 
 local window = aereon.window(game, nil, 1)
 
+window.focused = function(window)
+	_G.IsHoveringOnWindow = true
+end
+
+window.unfocused = function(window)
+	_G.IsHoveringOnWindow = false
+end
+
 local function create_window(title, frame)
 	local initialPos = frame.AbsolutePosition or vector.create(0, 0)
 	local initialSize = frame.AbsoluteSize or vector.create(800, 200)

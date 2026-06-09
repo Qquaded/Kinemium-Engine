@@ -16,7 +16,7 @@ local KineFileService = game:GetService("KineFileService")
 local RBXModelImporter = game:GetService("RBXModelImporter")
 local Selection = game:GetService("Selection")
 
-if game.Context ~= Enum.GameContext.Editor or FlagExists("cli") or FlagExists("headless") or FlagExists("client") then
+if game.Context ~= Enum.GameContext.Editor or FlagExists("cli") or FlagExists("headless") then
 	return
 end
 
@@ -229,6 +229,7 @@ local searchBox = textbox.new({
 })
 
 KinemiumIconLoader.new("Filter", "./src/assets/images/icons/Configuration.png")
+
 local filterIcon = KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("Filter"))
 
 local addMenuSearchBox = textbox.new({
@@ -1247,7 +1248,14 @@ local explorerWindow = window.create({
 	width = frame.AbsoluteSize.X,
 	height = frame.AbsoluteSize.Y,
 })
-explorerWindow._contentHeight = 0
+
+window.focused = function(window)
+	_G.IsHoveringOnWindow = true
+end
+
+window.unfocused = function(window)
+	_G.IsHoveringOnWindow = false
+end
 
 local renderer = KinemiumRaylib.GetRenderer()
 local StudioThemeService = game:GetService("StudioThemeService")

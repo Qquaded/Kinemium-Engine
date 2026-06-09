@@ -1496,6 +1496,10 @@ local funcs = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
 	},
+	JPH_Body_GetMotionProperties = {
+		returns = ffi.types.pointer,
+		args = { ffi.types.pointer },
+	},
 	JPH_MotionProperties_ScaleToMass = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.float } },
 	JPH_RayCast_GetPointOnRay = {
 		returns = ffi.types.void,

@@ -163,6 +163,19 @@ local function pruneOwnershipImpactCache(now)
 	end
 end
 
+local function updatePhysicalProps(part)
+	local bodyID = bodiesMap[part]
+	local bodyPtr = bodyPointerMap[part]
+	if not bodyID or not bodyPtr then
+		return
+	end
+
+	local physicalProperties = part.CustomPhysicalProperties
+	jolt.lib.JPH_Body_SetFriction(bodyPtr, physicalProperties.Friction)
+	local motionProps = jolt.lib.JPH_Body_GetMotionProperties(bodyPtr)
+	jolt.lib.JPH_MotionProperties_ScaleToMass(motionProps, part.Mass)
+end
+
 local reusableJoltVec3 = { x = 0, y = 0, z = 0 }
 local function ToJoltVec3(vec3)
 	reusableJoltVec3.x = vec3.X
@@ -1043,9 +1056,12 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 
 				local connection = part.Changed:Connect(function(property)
 					local bodyID = bodiesMap[part]
-					if not bodyID then
+					local bodyPtr = bodyPointerMap[part]
+					if not bodyID or not bodyPtr then
 						return
 					end
+
+					updatePhysicalProps(part)
 
 					if
 						property == "Size"
@@ -1070,7 +1086,6 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 						trackBodyMotion(part, bodyID, newMotion)
 						bodyTransformDirty[part] = true
 					elseif property == "CanCollide" or property == "CollisionGroup" then
-						-- Hot-swap the object layer to enable/disable collision filtering
 						local newLayer = getLayerForPart(part)
 						lib.JPH_BodyInterface_SetObjectLayer(bodyInterface, bodyID, newLayer)
 					elseif property == "Position" or property == "CFrame" then
@@ -1091,10 +1106,14 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 
 			UpdatePart = function(part)
 				local body = bodiesMap[part]
-				if not body then
+				local bodyPtr = bodyPointerMap[part]
+				if not body or not bodyPtr then
 					return
 				end
+
+				updatePhysicalProps(part)
 				updateBodyShape(part, bodyInterface, body)
+
 				if part.Anchored then
 					syncBodyTransformFromPart(part, bodyInterface, body)
 					bodyTransformDirty[part] = nil

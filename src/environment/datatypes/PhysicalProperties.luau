@@ -1,7 +1,7 @@
-local CustomPhysicalProperties = {}
-CustomPhysicalProperties.__index = CustomPhysicalProperties
+local PhysicalProperties = {}
+PhysicalProperties.__index = PhysicalProperties
 
-export type CustomPhysicalProperties = {
+export type PhysicalProperties = {
 	Density: number?,
 	Friction: number?,
 	Elasticity: number?,
@@ -9,14 +9,14 @@ export type CustomPhysicalProperties = {
 	ElasticityWeight: number?,
 }
 
-function CustomPhysicalProperties.new(
+function PhysicalProperties.new(
 	density: number?,
 	friction: number?,
 	elasticity: number?,
 	frictionWeight: number?,
 	elasticityWeight: number?
 )
-	local self = setmetatable({}, CustomPhysicalProperties)
+	local self = setmetatable({}, PhysicalProperties)
 
 	self.Density = density or 0.7
 	self.Friction = friction or 0.3
@@ -27,8 +27,8 @@ function CustomPhysicalProperties.new(
 	return self
 end
 
-function CustomPhysicalProperties:Clone()
-	return CustomPhysicalProperties.new(
+function PhysicalProperties:Clone()
+	return PhysicalProperties.new(
 		self.Density,
 		self.Friction,
 		self.Elasticity,
@@ -37,7 +37,7 @@ function CustomPhysicalProperties:Clone()
 	)
 end
 
-function CustomPhysicalProperties:Equals(other: CustomPhysicalProperties)
+function PhysicalProperties:Equals(other: PhysicalProperties)
 	return self.Density == other.Density
 		and self.Friction == other.Friction
 		and self.Elasticity == other.Elasticity
@@ -45,9 +45,9 @@ function CustomPhysicalProperties:Equals(other: CustomPhysicalProperties)
 		and self.ElasticityWeight == other.ElasticityWeight
 end
 
-function CustomPhysicalProperties:ToTable()
+function PhysicalProperties:ToTable()
 	return {
-		type = "CustomPhysicalProperties",
+		type = "PhysicalProperties",
 		Density = self.Density,
 		Friction = self.Friction,
 		Elasticity = self.Elasticity,
@@ -56,15 +56,9 @@ function CustomPhysicalProperties:ToTable()
 	}
 end
 
-function CustomPhysicalProperties.FromTable(tbl)
-	assert(tbl.type == "CustomPhysicalProperties")
-	return CustomPhysicalProperties.new(
-		tbl.Density,
-		tbl.Friction,
-		tbl.Elasticity,
-		tbl.FrictionWeight,
-		tbl.ElasticityWeight
-	)
+function PhysicalProperties.FromTable(tbl)
+	assert(tbl.type == "PhysicalProperties")
+	return PhysicalProperties.new(tbl.Density, tbl.Friction, tbl.Elasticity, tbl.FrictionWeight, tbl.ElasticityWeight)
 end
 
-return CustomPhysicalProperties
+return PhysicalProperties

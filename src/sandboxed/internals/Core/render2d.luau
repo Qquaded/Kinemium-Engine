@@ -15,6 +15,30 @@ local StudioThemeService = game:GetService("StudioThemeService")
 
 local vend = KinemiumFontService.GetDefaultFont()
 
+local function profileBegin(name)
+	if ENGINE_PROFILER then
+		ENGINE_PROFILER:Begin(name)
+	end
+end
+
+local function profileSetCounter(name, value)
+	if ENGINE_PROFILER then
+		ENGINE_PROFILER:SetCounter(name, value)
+	end
+end
+
+local function profileNextFrame()
+	if ENGINE_PROFILER then
+		ENGINE_PROFILER:NextFrame()
+	end
+end
+
+local function profileEnd()
+	if ENGINE_PROFILER then
+		ENGINE_PROFILER:End()
+	end
+end
+
 if FlagExists("cli") then
 	return
 end
@@ -119,7 +143,9 @@ renderer.Pool.new("2d", function(data)
 	local dt = rl.GetFrameTime()
 	local mainTheme = StudioThemeService.SelectedTheme
 
+	profileBegin("Aereon render")
 	ideWindow.enabled = enableIDE
 	window.update(dt)
 	window.draw(dt, mainTheme)
+	profileEnd()
 end)

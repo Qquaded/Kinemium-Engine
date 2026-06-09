@@ -18,6 +18,9 @@ return {
 			local adornee = instance.Adornee
 			if adornee and adornee.BaseClass == "BasePart" then
 				local CFrame = adornee.CFrame
+				if not CFrame then
+					return
+				end
 				local Pos = CFrame.Position
 				local Size = adornee.Size
 				raylib.lib.DrawCubeV(

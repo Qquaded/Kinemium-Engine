@@ -40,6 +40,16 @@ local function colorRGBA(v: any): (number, number, number, number)
 	return 255, 255, 255, 255
 end
 
+local function numericResult(value: any): number
+	if type(value) == "number" then
+		return value
+	end
+	if value and value ~= ffi.null then
+		return buffer.readu32(value, 0)
+	end
+	return 0
+end
+
 local function allocManifold()
 	return lib.manifold_alloc_manifold()
 end
@@ -58,12 +68,10 @@ function gen.box(sx: number?, sy: number?, sz: number?, center: boolean?): any
 	sx = sx or 1
 	sy = sy or sx
 	sz = sz or sx
-	if center == nil or center == true then
-		local hx, hy, hz = sx * 0.5, sy * 0.5, sz * 0.5
-		lib.manifold_box(m, -hx, -hy, -hz, hx, hy, hz)
-	else
-		lib.manifold_box(m, 0, 0, 0, sx, sy, sz)
+	if center == nil then
+		center = true
 	end
+	lib.manifold_cube(m, sx, sy, sz, center and 1 or 0)
 	return m
 end
 
@@ -178,9 +186,9 @@ local function readMeshGL(m: any, opts: any?)
 		end
 	end
 
-	local numVert = use64 and lib.manifold_meshgl64_num_vert(mesh) or lib.manifold_meshgl_num_vert(mesh)
-	local numTri = use64 and lib.manifold_meshgl64_num_tri(mesh) or lib.manifold_meshgl_num_tri(mesh)
-	local numProp = use64 and lib.manifold_meshgl64_num_prop(mesh) or lib.manifold_meshgl_num_prop(mesh)
+	local numVert = numericResult(use64 and lib.manifold_meshgl64_num_vert(mesh) or lib.manifold_meshgl_num_vert(mesh))
+	local numTri = numericResult(use64 and lib.manifold_meshgl64_num_tri(mesh) or lib.manifold_meshgl_num_tri(mesh))
+	local numProp = numericResult(use64 and lib.manifold_meshgl64_num_prop(mesh) or lib.manifold_meshgl_num_prop(mesh))
 	if numVert <= 0 then
 		if use64 then
 			lib.manifold_delete_meshgl64(mesh)
@@ -199,10 +207,21 @@ local function readMeshGL(m: any, opts: any?)
 		return nil
 	end
 
-	local propsPtr = use64 and lib.manifold_meshgl64_vert_properties(mesh, mesh)
-		or lib.manifold_meshgl_vert_properties(mesh, mesh)
-	local triPtr = use64 and lib.manifold_meshgl64_tri_verts(mesh, mesh) or lib.manifold_meshgl_tri_verts(mesh, mesh)
+	local propsLen = numericResult(lib.manifold_meshgl_vert_properties_length(mesh))
+	local triLen = numericResult(lib.manifold_meshgl_tri_length(mesh))
 
+	local bytesPer = use64 and 8 or 4
+
+	local propsByteSize = numVert * numProp * bytesPer
+	local triBytesSize = numTri * 3 * (use64 and 8 or 4)
+
+	local propsMem = ffi.alloc(propsLen * bytesPer, bytesPer)
+	local triMem = ffi.alloc(triLen * (use64 and 8 or 4), use64 and 8 or 4)
+
+	local propsPtr = use64 and lib.manifold_meshgl64_vert_properties(propsMem, mesh)
+		or lib.manifold_meshgl_vert_properties(propsMem, mesh)
+	local triPtr = use64 and lib.manifold_meshgl64_tri_verts(triMem, mesh)
+		or lib.manifold_meshgl_tri_verts(triMem, mesh)
 	if propsPtr == ffi.null or triPtr == ffi.null then
 		if use64 then
 			lib.manifold_delete_meshgl64(mesh)
@@ -213,11 +232,16 @@ local function readMeshGL(m: any, opts: any?)
 		return nil
 	end
 
-	local bytesPer = use64 and 8 or 4
 	local readFloat = use64 and function(ptr: any, offset: number)
 		return ptr:readf64(offset)
 	end or function(ptr: any, offset: number)
 		return ptr:readf32(offset)
+	end
+	local indexBytes = use64 and 8 or 4
+	local readIndex = use64 and function(ptr: any, offset: number)
+		return ptr:readu64(offset)
+	end or function(ptr: any, offset: number)
+		return ptr:readu32(offset)
 	end
 
 	local useColor = opts.color ~= nil
@@ -246,10 +270,10 @@ local function readMeshGL(m: any, opts: any?)
 	local indices = table.create(numTri * 3)
 	for i = 0, numTri - 1 do
 		local base = i * 3
-		local off = i * 12
-		indices[base + 1] = triPtr:readu32(off + 0)
-		indices[base + 2] = triPtr:readu32(off + 4)
-		indices[base + 3] = triPtr:readu32(off + 8)
+		local off = base * indexBytes
+		indices[base + 1] = readIndex(triPtr, off + 0 * indexBytes)
+		indices[base + 2] = readIndex(triPtr, off + 1 * indexBytes)
+		indices[base + 3] = readIndex(triPtr, off + 2 * indexBytes)
 	end
 
 	if use64 then
@@ -283,7 +307,18 @@ local function buildOptsFromManifold(opts: any?)
 	out.generateTangents = opts.generateTangents
 	out.weld = opts.weld
 	out.weldTolerance = opts.weldTolerance
+	out.generateUVs = opts.generateUVs
 	return out
+end
+
+local function prepareManifoldVertices(verts, opts: any?)
+	if not verts then
+		return nil
+	end
+	if opts == nil or opts.generateUVs ~= false then
+		meshgen.uvBoxProject(verts)
+	end
+	return verts
 end
 
 function gen.buildMeshFromManifold(m: any, opts: any?)
@@ -291,6 +326,7 @@ function gen.buildMeshFromManifold(m: any, opts: any?)
 	if not verts then
 		return nil
 	end
+	prepareManifoldVertices(verts, opts)
 	return meshgen.buildMesh(verts, indices, buildOptsFromManifold(opts))
 end
 
@@ -299,7 +335,17 @@ function gen.buildMeshDataFromManifold(m: any, opts: any?)
 	if not verts then
 		return nil
 	end
+	prepareManifoldVertices(verts, opts)
 	return meshgen.buildMeshData(verts, indices, buildOptsFromManifold(opts))
+end
+
+function gen.buildMeshWithDataFromManifold(m: any, opts: any?)
+	local verts, indices = readMeshGL(m, opts)
+	if not verts then
+		return nil
+	end
+	prepareManifoldVertices(verts, opts)
+	return meshgen.buildMeshWithData(verts, indices, buildOptsFromManifold(opts))
 end
 
 function gen.manifoldFromMeshData(vertices: { any }, indices: { number }?, opts: any?): any
@@ -419,7 +465,14 @@ function gen.buildSphere(radius: number?, segments: number?, opts: any?)
 	return buildAndFree(gen.sphere(radius, segments), opts)
 end
 
-function gen.buildCylinder(radius: number?, height: number?, segments: number?, center: boolean?, radiusTop: number?, opts: any?)
+function gen.buildCylinder(
+	radius: number?,
+	height: number?,
+	segments: number?,
+	center: boolean?,
+	radiusTop: number?,
+	opts: any?
+)
 	return buildAndFree(gen.cylinder(radius, height, segments, center, radiusTop), opts)
 end
 

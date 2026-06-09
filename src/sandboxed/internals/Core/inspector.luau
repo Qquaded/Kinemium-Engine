@@ -42,6 +42,14 @@ local window = aereon.window(game)
 local arect = aereon.rect()
 local textbox = aereon.textbox(Theme, game)
 
+window.focused = function(window)
+	_G.IsHoveringOnWindow = true
+end
+
+window.unfocused = function(window)
+	_G.IsHoveringOnWindow = false
+end
+
 local CATEGORY_ORDER = { "Object", "Appearance", "Transform", "Behavior", "Other" }
 local CATEGORY_HEADER_HEIGHT = 22
 local CELL_HEIGHT = 30

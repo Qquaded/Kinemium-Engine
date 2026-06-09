@@ -12,7 +12,6 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 	local KinemiumFontService = game:GetService("KinemiumFontService")
 	local zembed = require("@zembed")
 
-	-- Global registries across all window systems (prevents click-through)
 	if not _G.__aereon_allWindows then
 		_G.__aereon_allWindows = {}
 	end
@@ -318,8 +317,8 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 			parent = data.parent or nil,
 			tabs = data.tabs or nil,
 			activeTab = initialTab,
-			focused = function() end,
-			unfocused = function() end,
+			focused = data.focused or function() end,
+			unfocused = data.unfocused or function() end,
 			_titleBarH = 28,
 			_tabBarH = 28,
 			_savedX = data.x,
@@ -1032,7 +1031,10 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 
 					if not wd.DisableClipping then
 						raylib.BeginScissorMode(wx, wy + contentOffsetY, ww, contentH)
-						table.insert(_G.__aereon_scissorStack, { x = wx, y = wy + contentOffsetY, width = ww, height = contentH })
+						table.insert(
+							_G.__aereon_scissorStack,
+							{ x = wx, y = wy + contentOffsetY, width = ww, height = contentH }
+						)
 					end
 
 					-- Block input for non-topmost windows to prevent click-through

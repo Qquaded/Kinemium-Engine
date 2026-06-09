@@ -6,6 +6,12 @@ local completions = {
 		args = { "..." },
 	},
 	{
+		label = "print",
+		type = "function",
+		icon = "Function.png",
+		args = { "..." },
+	},
+	{
 		label = "log",
 		type = "function",
 		icon = "Function.png",

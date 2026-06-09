@@ -51,7 +51,7 @@ local function project(v)
 	return Vector2.new(256 + v.X * scale, 256 + v.Y * scale)
 end
 
-RunService.RenderStepped:Connect(function(dt)
+RunService.RenderSteppaed:Connect(function(dt)
 	angle += dt
 
 	editableImage:Sharpen()

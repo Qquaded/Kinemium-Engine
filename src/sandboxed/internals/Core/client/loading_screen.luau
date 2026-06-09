@@ -1,10 +1,14 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local NetworkService = game:GetService("NetworkService")
+local KinemiumRaylib = game:GetService("KinemiumRaylib")
 
 if RunService:IsServer() or not RunService:IsClient() then
 	return
 end
+
+local Arclib = require("@Arc")
+local Arc = Arclib:init(KinemiumRaylib.GetRenderer(), game)
 
 local server_address = GetFlagValue("address") or "127.0.0.1"
 local server_port = GetFlagValue("port") or "1234"
@@ -18,22 +22,7 @@ end
 print("loading_screen got player")
 local player = Players.LocalPlayer
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "LoadingScreen"
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.ZIndex = 999
-screenGui.Parent = player.PlayerGui
-
-local background = Instance.new("Frame")
-background.Name = "Background"
-background.Size = UDim2.new(1, 0, 1, 0)
-background.Position = UDim2.new(0, 0, 0, 0)
-background.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-background.Parent = screenGui
-
 local displayLines = {}
-
-print(info)
 
 if info then
 	local serverName = info.name or "Unknown Server"
@@ -86,35 +75,60 @@ end
 
 local fullText = table.concat(displayLines, "\n")
 
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Name = "TitleText"
-titleLabel.Text = (info and info.name) or "Kinemium Server"
-titleLabel.Size = UDim2.new(1, 0, 0, 50)
-titleLabel.Position = UDim2.new(0, 0, 0.25, 0)
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.TextSize = 42
-titleLabel.BackgroundTransparency = 1
-titleLabel.Parent = background
+local screenGui = Arc.ScreenGui({
+	Name = "LoadingScreen",
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	ZIndex = 999,
 
-local statsLabel = Instance.new("TextLabel")
-statsLabel.Name = "StatsText"
-statsLabel.Text = fullText
-statsLabel.Size = UDim2.new(0.6, 0, 0.4, 0)
-statsLabel.Position = UDim2.new(0.2, 0, 0.35, 0)
-statsLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
-statsLabel.TextSize = 20
-statsLabel.BackgroundTransparency = 1
-statsLabel.Parent = background
+	Arc.Frame({
+		Name = "Background",
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundColor3 = Color3.fromRGB(18, 18, 22),
 
-local loadingLabel = Instance.new("TextLabel")
-loadingLabel.Name = "LoadingIndicator"
-loadingLabel.Text = "Waiting for server..."
-loadingLabel.Size = UDim2.new(1, 0, 0, 40)
-loadingLabel.Position = UDim2.new(0, 0, 0.85, 0)
-loadingLabel.TextColor3 = Color3.fromRGB(140, 140, 160)
-loadingLabel.TextSize = 18
-loadingLabel.BackgroundTransparency = 1
-loadingLabel.Parent = background
+		Arc.TextLabel({
+			Name = "TitleText",
+			Text = (info and info.name) or "Kinemium Server",
+			Size = UDim2.new(1, 0, 0, 50),
+			Position = UDim2.new(0, 0, 0.25, 0),
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextSize = 42,
+			BackgroundTransparency = 1,
+		}),
+
+		Arc.TextLabel({
+			Name = "StatsText",
+			Text = fullText,
+			Size = UDim2.new(0.6, 0, 0.4, 0),
+			Position = UDim2.new(0.2, 0, 0.35, 0),
+			TextColor3 = Color3.fromRGB(200, 200, 210),
+			TextSize = 20,
+			BackgroundTransparency = 1,
+		}),
+
+		Arc.UILoadingSpinner({
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 20, 1, -20),
+			BackgroundTransparency = 1,
+			Size = UDim2.new(0, 30, 0, 30),
+		}),
+
+		Arc.TextLabel({
+			Name = "LoadingIndicator",
+			Text = "Waiting for server...",
+			Size = UDim2.new(1, 0, 0, 40),
+			Position = UDim2.new(0, 0, 0.85, 0),
+			TextColor3 = Color3.fromRGB(140, 140, 160),
+			TextSize = 18,
+			BackgroundTransparency = 1,
+		}),
+	}),
+})
+
+print(screenGui)
+screenGui.Parent = player.PlayerGui
+
+local background = screenGui.Background
+local loadingLabel = background.LoadingIndicator
 
 task.spawn(function()
 	local dots = 0

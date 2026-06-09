@@ -12,7 +12,6 @@ local BLACKLISTED_TYPES = {
 	["function"] = true,
 	["userdata"] = true,
 	["FFIPointer"] = true,
-	["buffer"] = true,
 }
 
 local SKIP_PROPS = {
@@ -109,6 +108,13 @@ local TYPE_DESERIALIZERS = {
 
 		return nil
 	end,
+	Buf = function(v)
+		if type(v.value) ~= "string" then
+			return nil
+		end
+		local decoded = zune.serde.base64.decode(v.value)
+		return buffer.fromstring(decoded)
+	end,
 }
 
 local warnedUnknownTypeTags = {}
@@ -130,7 +136,7 @@ local workers = {}
 local pendingRequests = {}
 local reqIdCounter = 0
 local nextWorkerIndex = 1
-local MAX_WORKERS = 14
+local MAX_WORKERS = 18
 
 local function initWorkers()
 	if #workers > 0 then
@@ -169,6 +175,10 @@ local function sanitizeForThread(value, seen)
 	local valueType = type(value)
 	if valueType == "number" or valueType == "string" or valueType == "boolean" or value == nil then
 		return value
+	end
+
+	if valueType == "buffer" then
+		return { __buf = zune.serde.base64.encode(buffer.tostring(value)) }
 	end
 
 	if valueType ~= "table" then
@@ -234,9 +244,6 @@ local function decompress(str)
 	return res.result
 end
 
--- Shared visited set, reused across properties within the same object
--- to avoid creating hundreds of tiny tables per serialize_object call.
--- Cleared between properties to prevent cross-contamination.
 local sharedVisited = {}
 
 local function serialize_value(value, visited)
@@ -248,6 +255,10 @@ local function serialize_value(value, visited)
 
 	if luaType == "number" or luaType == "string" or luaType == "boolean" or value == nil then
 		return value, true
+	end
+
+	if luaType == "buffer" then
+		return { type = "Buf", value = zune.serde.base64.encode(buffer.tostring(value)) }, true
 	end
 
 	if BLACKLISTED_TYPES[luaType] then
@@ -284,7 +295,6 @@ local function serialize_value(value, visited)
 		if datatype and value ~= datatype and datatype.ToTable then
 			return datatype.ToTable(value), true
 		end
-		-- Unknown typed table  check if we have a deserializer for it
 		if not TYPE_DESERIALIZERS[robloxType] then
 			return nil, false
 		end
@@ -332,26 +342,31 @@ local function serialize_object(object, obj_visited)
 		uid = props.UniqueId,
 	}
 
-	-- Serialize properties  reuse a single visited table, clearing between props
 	local visited = sharedVisited
 	local resultProps = result.p
 	for propname, propvalue in pairs(props) do
 		if SKIP_PROPS[propname] then
 			continue
 		end
-		if type(propname) == "string" and string.sub(propname, 1, 1) == "_" and propname ~= "_parentID" then
-			continue
-		end
 		local propType = type(propname)
-		if propType == "buffer" or type(propvalue) == "buffer" then
+		if string.sub(propname, 1, 1) == "_" and propname ~= "_mesh" then
+			print("Got _")
 			continue
 		end
-		-- Use the shared visited set, cleared after each property
+		if propType == "buffer" or type(propvalue) == "buffer" then
+			resultProps[propname] = {
+				type = "Buf",
+				value = zune.serde.base64.encode(buffer.tostring(propvalue)),
+			}
+			print("Saved buffer: " .. propname)
+			print(`Buffer length: #{buffer.len(propvalue)}`)
+			print(propvalue)
+			continue
+		end
 		local serialized, ok = serialize_value(propvalue, visited)
 		if ok then
 			resultProps[propname] = serialized
 		end
-		-- Fast clear: only wipe keys that were actually set
 		for k in pairs(visited) do
 			visited[k] = nil
 		end
@@ -471,8 +486,6 @@ SerializationService.InitRenderer = function(renderer, renderer_signal, datamode
 					id_map[objTbl.uid] = obj
 				end
 
-				-- Set properties directly without pcall per property.
-				-- Invalid property writes are non-fatal in this engine.
 				local objProps = obj._props
 				for k, v in pairs(objTbl.p) do
 					objProps[k] = deserialize_value(v)

@@ -40,6 +40,7 @@ return {
 		instance._vertexFaceUVs = {} -- vertexId -> {faceId -> uvId}
 		instance._vertexFaceNormals = {} -- vertexId -> {faceId -> normalId}
 
+		instance._mesh = nil
 		instance._meshgenHandle = nil
 		instance._geometryDirty = true
 
@@ -96,6 +97,9 @@ return {
 
 			for _, descendant in ipairs(workspace:GetDescendants()) do
 				if descendant:IsA("MeshPart") and descendant.MeshObject == instance then
+					descendant._mesh = instance._mesh
+					descendant._cpuMeshData = instance._cpuMeshData
+					descendant._materialHandle = instance._materialHandle
 					renderer.EventBus:Fire("UpdatePart", descendant)
 				end
 			end
@@ -704,6 +708,7 @@ return {
 			local rawVertices, indices = buildRawGeometry(self)
 
 			if #rawVertices == 0 then
+				self._mesh = nil
 				self._meshgenHandle = nil
 				self._cpuMeshData = nil
 				self._geometryDirty = false
@@ -737,9 +742,11 @@ return {
 			local result = meshgen.buildMeshWithData(rawVertices, indices, buildOpts)
 			if result then
 				self._cpuMeshData = result[1]
+				self._mesh = result[2]
 				self._meshgenHandle = result[2]
 			else
 				self._cpuMeshData = nil
+				self._mesh = nil
 				self._meshgenHandle = nil
 			end
 			self._geometryDirty = false

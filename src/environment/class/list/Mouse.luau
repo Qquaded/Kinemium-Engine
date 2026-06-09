@@ -325,7 +325,7 @@ return {
 							continue
 						end
 
-						local isMesh = part:IsA("MeshPart")
+						local isMesh = part:IsA("MeshPart") or part._mesh ~= nil
 						local shapeName = not isMesh
 								and (part.Shape and part.Shape.Name and string.lower(part.Shape.Name) or "block")
 							or nil
@@ -344,7 +344,8 @@ return {
 						local cpuMeshData = nil
 
 						if isMesh then
-							if part.MeshObject then
+							cpuMeshData = part._cpuMeshData
+							if not cpuMeshData and part.MeshObject then
 								cpuMeshData = part.MeshObject._cpuMeshData
 							end
 						else

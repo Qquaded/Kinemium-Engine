@@ -25,6 +25,7 @@ enumTable.PluginIntents = {
 	Physics = 11,
 	Serialization = 13,
 	Debugging = 14,
+	CSG = 15,
 }
 
 enumTable.KinemiumUpscaleMode = {

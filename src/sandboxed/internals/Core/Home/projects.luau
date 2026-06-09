@@ -12,6 +12,9 @@ local aereon = require("@Aereon")
 local gui = aereon.gui
 local rect = require("@Arect")
 local transparent = Color3.new(1, 1, 1):ToRaylib(0.5)
+local zembed = require("@zembed")
+
+_G.IsHoveringOnWindow = true
 
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
@@ -138,6 +141,7 @@ local function generateProjectCards()
 				ishared.EnableHomescreen = false
 				ProjectSyncService:StartSyncing(ishared.FolderPath)
 				renderer:SetDimension("3D")
+				_G.IsHoveringOnWindow = true
 			end,
 		})
 
@@ -218,6 +222,10 @@ group = aereon.create({
 					local gnInput = gameNameInput:getText()
 					local projInput = projectPath:getText()
 					local path = "./src/projects/" .. gnInput
+
+					if zembed.IsEmbedded() then
+						path = "./projects/" .. gnInput
+					end
 
 					if gnInput == "" then
 						return

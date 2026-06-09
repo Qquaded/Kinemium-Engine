@@ -35,11 +35,11 @@ local function resetRenderTexture(object, width, height)
 end
 
 local function getRenderableMesh(part)
-	if part:IsA("MeshPart") then
-		if part.MeshObject and part.MeshObject._meshgenHandle then
-			return part.MeshObject._meshgenHandle
-		end
-		return nil
+	if part._mesh then
+		return part._mesh
+	end
+	if part:IsA("MeshPart") and part.MeshObject then
+		return part.MeshObject._mesh or part.MeshObject._meshgenHandle
 	end
 	if not sharedPreloadedMeshes or not part.Shape or not part.Shape.Value then
 		return nil

@@ -4,20 +4,26 @@ local Color3 = require("@Color3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")
 local signal = require("@Kinemium.signal")
+local manifold = require("@manifold")
+local PhysicalProperties = require("@PhysicalProperties")
 
 local propTable = {
 	Position = Vector3.new(0, 10, 0),
-	Size = Vector3.new(4, 4, 4),
+	Size = Vector3.new(2, 1, 4),
 	Color = Color3.new(1, 1, 1),
-	Material = Enum.Material.debug,
+	Material = Enum.Material.SmoothPlastic,
 	Transparency = 0,
 	Anchored = true,
 	NeonEnergy = 5.0,
 	CanCollide = true,
 	CollisionGroup = "Default",
 	Velocity = Vector3.new(0, 0, 0),
+	CustomPhysicalProperties = PhysicalProperties.new(1, 1, 0, 1, 0),
+	CurrentPhysicalProperties = PhysicalProperties.new(1, 1, 0, 1, 0),
 	MeshScale = 1,
 	Mass = 1,
+	AudioCanCollide = true,
+	EnableFluidForces = false,
 	Restitution = 0.5,
 	Elasticity = 0.5,
 	Friction = 0.3,
@@ -32,9 +38,12 @@ local propTable = {
 	ElapsedTime = 0,
 	Name = "Part",
 	BaseClass = "BasePart",
+
 	_mesh = nil,
+	_manifoldptr = nil,
 
 	Touched = signal.new(),
+	TouchEnded = signal.new(),
 
 	-- Velocity
 	AssemblyAngularVelocity = Vector3.new(0, 0, 0),
@@ -85,17 +94,62 @@ return {
 			props.CFrame = props.CFrame:WithPosition(position)
 		end
 
+		renderer.EventBus:Fire("UpdatePart", instance)
+		instance:SetProperties(propTable)
+		syncFromCFrame(instance.CFrame)
+
+		-- api
+
 		-- description: "Applies physics impulse."
 		-- args: "self: table, v: Vector3"
-		propTable.ApplyImpulse = function(self, v)
+		function instance:ApplyImpulse(v)
 			if KinemiumPhysicsService then
 				KinemiumPhysicsService.ApplyImpulse(instance, v)
 			end
 		end
 
-		renderer.EventBus:Fire("UpdatePart", instance)
-		instance:SetProperties(propTable)
-		syncFromCFrame(instance.CFrame)
+		-- description: "Applies physics impulse at a specified position."
+		-- args: "self: table, v: Vector3"
+		function instance:ApplyImpulseAtPosition(v)
+			-- add impulse at position feature
+			if KinemiumPhysicsService then
+				KinemiumPhysicsService.ApplyImpulse(instance, v)
+			end
+		end
+
+		-- description: "Returns whether the parts can collide with each other."
+		-- args: "self: table, part: Part"
+		function instance:CanCollideWith(part)
+			-- add support
+		end
+
+		local function UpdateManifoldPointer()
+			if instance.Shape == Enum.PartType.Block then
+				manifold.gen.free(instance._manifoldptr)
+				instance._manifoldptr = manifold.gen.box(instance.Size.X, instance.Size.Y, instance.Size.Z)
+			elseif instance.Shape == Enum.PartType.Ball then
+				local radius = instance.Size.X * 0.5
+				manifold.gen.free(instance._manifoldptr)
+				instance._manifoldptr = manifold.gen.sphere(radius, 32)
+			elseif instance.Shape == Enum.PartType.Cylinder then
+				local radius = instance.Size.X * 0.5
+				local height = instance.Size.Y
+				local segments = 24
+
+				manifold.gen.free(instance._manifoldptr)
+				instance._manifoldptr = manifold.gen.cylinder(radius, height, segments, true, radius)
+			end
+		end
+
+		UpdateManifoldPointer()
+
+		instance.Destroying:Connect(function()
+			instance.Touched = nil
+			instance.TouchEnded = nil
+			instance._mesh = nil
+
+			manifold.gen.free(instance._manifoldptr)
+		end)
 
 		instance.Changed:Connect(function(property, value)
 			if syncingTransform then
@@ -112,6 +166,8 @@ return {
 				syncingTransform = false
 			elseif property == "Parent" then
 				renderer.EventBus:Fire("UpdatePart", instance)
+			elseif property == "Size" then
+				UpdateManifoldPointer()
 			end
 		end)
 

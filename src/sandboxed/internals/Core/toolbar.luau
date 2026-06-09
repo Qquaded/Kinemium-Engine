@@ -74,6 +74,14 @@ local scrollableToolbar
 local gui = aereon.gui
 local componentCache = {}
 
+window.focused = function(window)
+	_G.IsHoveringOnWindow = true
+end
+
+window.unfocused = function(window)
+	_G.IsHoveringOnWindow = false
+end
+
 local tooltipState = {
 	hoveredKey = nil,
 	hoverTimer = 0,

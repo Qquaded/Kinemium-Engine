@@ -317,8 +317,6 @@ local _resizeConnection = Resize.MouseDrag:Connect(function(newCF, newSize)
 		local obj = offset.obj
 		if obj and obj.Parent then
 			if isModel(obj) then
-				-- Compute a uniform target scale factor relative to drag-start size,
-				-- then derive the per-frame delta so ScaleTo stays non-cumulative.
 				local startSize = offset.startSize
 				local avgStart = (startSize.X + startSize.Y + startSize.Z) / 3
 				local avgNew = (snappedSize.X + snappedSize.Y + snappedSize.Z) / 3
