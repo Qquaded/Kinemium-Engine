@@ -6,9 +6,32 @@ local propTable = {
 	Adornee = nil,
 	OutlineColor = Color3.fromRGB(255, 255, 255),
 	OutlineTransparency = 1,
+	OutlineThickness = 1.0,
 	FillColor = Color3.fromRGB(0, 174, 255),
 	FillTransparency = 0.5,
 }
+
+local function drawRotatedCube(rl, cf, size, color, fill, outlineThickness)
+	local p = cf.Position
+	local qx, qy, qz, qw = cf:ToQuaternion()
+	qw = math.clamp(qw, -1, 1)
+	local angle = math.deg(2 * math.acos(qw))
+	local s = math.sqrt(1 - qw * qw)
+	local ax, ay, az
+	if s < 0.001 then
+		ax, ay, az = 1, 0, 0
+	else
+		ax, ay, az = qx / s, qy / s, qz / s
+	end
+	rl.rlPushMatrix()
+	rl.rlTranslatef(p.X, p.Y, p.Z)
+	rl.rlRotatef(angle, ax, ay, az)
+	rl.DrawCubeV(vector.create(0, 0, 0), vector.create(size.X, size.Y, size.Z), fill)
+	rl.rlSetLineWidth(outlineThickness or 1.0)
+	rl.DrawCubeWiresV(vector.create(0, 0, 0), vector.create(size.X, size.Y, size.Z), color)
+	rl.rlSetLineWidth(1.0) -- reset after
+	rl.rlPopMatrix()
+end
 
 return {
 	class = "Highlight",
@@ -21,17 +44,16 @@ return {
 				if not CFrame then
 					return
 				end
-				local Pos = CFrame.Position
+
 				local Size = adornee.Size
-				raylib.lib.DrawCubeV(
-					vector.create(Pos.X, Pos.Y, Pos.Z),
-					vector.create(Size.X, Size.Y, Size.Z),
-					instance.FillColor:ToRaylib(instance.FillTransparency)
-				)
-				raylib.lib.DrawCubeWiresV(
-					vector.create(Pos.X, Pos.Y, Pos.Z),
-					vector.create(Size.X, Size.Y, Size.Z),
-					instance.OutlineColor:ToRaylib(instance.OutlineTransparency)
+
+				drawRotatedCube(
+					raylib.lib,
+					CFrame,
+					Size,
+					instance.OutlineColor:ToRaylib(instance.OutlineTransparency),
+					instance.FillColor:ToRaylib(instance.FillTransparency),
+					instance.OutlineThickness
 				)
 			end
 		end)

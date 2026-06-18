@@ -91,7 +91,7 @@ function NetworkReplicateSync:SerializeObject(object)
 		local allProps = object:GetProperties()
 		if type(allProps) == "table" then
 			for propName, propValue in pairs(allProps) do
-				if propName ~= "Parent" and propName ~= "ClassName" then
+				if propName ~= "Parent" and propName ~= "ClassName" and not (object.ClassName == "Player" and propName == "Character") then
 					props[propName] = propValue
 				end
 			end

@@ -28,6 +28,12 @@ return function(objects, data)
 
 		recentColors = {},
 		maxRecentColors = 30,
+
+		dh = 0,
+		ds = 1,
+		dv = 1,
+		da = 0,
+		lerpSpeed = 12, -- higher = snappier
 	}
 
 	local function updateColor()
@@ -84,6 +90,11 @@ return function(objects, data)
 	end
 
 	wrapper.render = function(dt)
+		config.dh = config.dh + (config.h - config.dh) * math.min(config.lerpSpeed * dt, 1)
+		config.ds = config.ds + (config.s - config.ds) * math.min(config.lerpSpeed * dt, 1)
+		config.dv = config.dv + (config.v - config.dv) * math.min(config.lerpSpeed * dt, 1)
+		config.da = config.da + (config.a - config.da) * math.min(config.lerpSpeed * dt, 1)
+
 		local r = config.obj_rect
 		local fnt = config.font
 		local fs = config.fontSize
@@ -188,8 +199,8 @@ return function(objects, data)
 		)
 
 		-- SV cursor
-		local cursorX = svRect.x + config.s * svRect.width
-		local cursorY = svRect.y + (1 - config.v) * svRect.height
+		local cursorX = svRect.x + config.ds * svRect.width
+		local cursorY = svRect.y + (1 - config.dv) * svRect.height
 		raylib.lib.DrawCircleV(vector.create(cursorX, cursorY), 7, color3.new(1, 1, 1):ToRaylib(0))
 		raylib.lib.DrawCircleV(
 			vector.create(cursorX, cursorY),
@@ -211,7 +222,7 @@ return function(objects, data)
 			)
 		end
 		-- Hue thumb
-		local hueX = hueRect.x + config.h * hueRect.width
+		local hueX = hueRect.x + config.dh * hueRect.width
 		local hueMidY = hueRect.y + hueRect.height / 2
 		raylib.lib.DrawCircleV(vector.create(hueX, hueMidY), 8, color3.new(1, 1, 1):ToRaylib(0))
 		raylib.lib.DrawCircleV(vector.create(hueX, hueMidY), 6, color3.fromHSV(config.h, 1, 1):ToRaylib(0))
@@ -240,7 +251,7 @@ return function(objects, data)
 			structs.Color:new({ r = r_val, g = g_val, b = b_val, a = 255 })
 		)
 		-- Alpha thumb
-		local alphaX = alphaRect.x + config.a * alphaRect.width
+		local alphaX = alphaRect.x + config.da * alphaRect.width
 		local alphaMidY = alphaRect.y + alphaRect.height / 2
 		raylib.lib.DrawCircleV(vector.create(alphaX, alphaMidY), 8, color3.new(1, 1, 1):ToRaylib(0))
 		raylib.lib.DrawCircleV(

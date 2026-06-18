@@ -348,9 +348,11 @@ local function serialize_object(object, obj_visited)
 		if SKIP_PROPS[propname] then
 			continue
 		end
+		if object.ClassName == "Player" and propname == "Character" then
+			continue
+		end
 		local propType = type(propname)
 		if string.sub(propname, 1, 1) == "_" and propname ~= "_mesh" then
-			print("Got _")
 			continue
 		end
 		if propType == "buffer" or type(propvalue) == "buffer" then

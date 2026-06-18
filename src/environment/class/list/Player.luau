@@ -1,5 +1,6 @@
 -- description: "Represents a user connected to the game."
 local signal = require("@Kinemium.signal")
+local Enum = require("@EnumMap")
 
 local baseProps = {
 	Name = "Player",
@@ -11,6 +12,10 @@ local baseProps = {
 	MaxHealth = 100,
 	WalkSpeed = 16,
 	JumpPower = 50,
+	CameraMode = Enum.CameraMode.Classic,
+
+	CameraMaxZoomDistance = 80,
+	CameraMinZoomDistance = 0.1,
 }
 
 local function makeProps()

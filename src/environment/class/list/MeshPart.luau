@@ -1,6 +1,6 @@
 -- description: "Renders a 3D Mesh in 3D Space."
 local Vector3 = require("@Vector3")
-local Part = require("./Part")
+local Part = require("@Part")
 local Enum = require("@EnumMap")
 
 local propTable = {

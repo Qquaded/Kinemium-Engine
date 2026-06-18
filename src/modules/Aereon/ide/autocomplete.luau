@@ -1,162 +1,10 @@
-local raylib = require("@raylib")
-local const = raylib.const
-local Color3 = require("@Color3")
+local Autocomplete = {}
 
 local cachedIcons = {}
+local raylib = require("@raylib")
+local const = raylib.const
 local cachedTextures = {}
-
-local completions = require("./k_completions")
-
-local dynamicVariables = {}
-
-local function getObjectMembers(obj)
-	local members = {}
-	if type(obj) ~= "table" and type(obj) ~= "userdata" then
-		return members
-	end
-
-	local seen = {}
-
-	local function addMembers(t)
-		for k, v in pairs(t) do
-			if type(k) == "string" and not seen[k] then
-				local memberType = type(v) == "function" and "method" or "variable"
-				local icon = memberType == "method" and "Method.png" or "Variable.png"
-				table.insert(members, { label = k, type = memberType, icon = icon })
-				seen[k] = true
-			end
-		end
-	end
-
-	addMembers(obj)
-	local mt = getmetatable(obj)
-	if mt and mt.__index then
-		if type(mt.__index) == "table" then
-			addMembers(mt.__index)
-		elseif type(mt.__index) == "function" then
-			-- Can't easily introspect a function __index without calling it
-		end
-	end
-
-	return members
-end
-
-local function indexVariables(editor, game)
-	dynamicVariables = {}
-
-	local src = editor:getCode()
-	local success, ast = pcall(function()
-		return zune.luau.parse(src)
-	end)
-
-	if not success or not ast or not ast.root then
-		return
-	end
-
-	local function walkBlock(block)
-		if block.tag == "block" and block.statements then
-			for _, stmt in ipairs(block.statements) do
-				if stmt.tag == "local" or stmt.tag == "assign" then
-					local vars = stmt.variables
-					local vals = stmt.values
-					if vars and vals then
-						for i, varContainer in ipairs(vars) do
-							local valContainer = vals[i]
-							if varContainer.node and valContainer and valContainer.node then
-								local varName
-								if stmt.tag == "local" then
-									varName = varContainer.node.name and varContainer.node.name.text
-								elseif stmt.tag == "assign" then
-									if varContainer.node.tag == "global" or varContainer.node.tag == "local" then
-										varName = varContainer.node.name and varContainer.node.name.text
-									end
-								end
-
-								if varName then
-									local val = valContainer.node
-									if val.tag == "call" and val.func then
-										local func = val.func
-										if func.tag == "indexname" then
-											local expr = func.expression
-											local index = func.index and func.index.text
-											if expr and expr.tag == "global" then
-												local globalName = expr.name and expr.name.text
-
-												if globalName == "Instance" and index == "new" then
-													local arg = val.arguments
-														and val.arguments[1]
-														and val.arguments[1].node
-													if arg and arg.tag == "string" then
-														local pcallSuccess, inst = pcall(function()
-															return Instance.new(arg.text)
-														end)
-														if pcallSuccess and inst then
-															dynamicVariables[varName] = {
-																type = "instance",
-																name = arg.text,
-																members = getObjectMembers(inst),
-															}
-														end
-													end
-												elseif globalName == "game" and index == "GetService" then
-													local arg = val.arguments
-														and val.arguments[1]
-														and val.arguments[1].node
-													if arg and arg.tag == "string" then
-														local pcallSuccess, service = pcall(function()
-															return game:GetService(arg.text)
-														end)
-														if pcallSuccess and service then
-															dynamicVariables[varName] = {
-																type = "service",
-																name = arg.text,
-																members = getObjectMembers(service),
-															}
-														end
-													end
-												end
-											end
-										elseif func.tag == "global" and func.name and func.name.text == "require" then
-											local arg = val.arguments and val.arguments[1] and val.arguments[1].node
-											if arg and arg.tag == "string" then
-												local pcallSuccess, lib = pcall(function()
-													return require(arg.text)
-												end)
-												if pcallSuccess and lib then
-													dynamicVariables[varName] = {
-														type = "library",
-														name = arg.text,
-														members = getObjectMembers(lib),
-													}
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-
-	local function walk(node)
-		if type(node) ~= "table" then
-			return
-		end
-		if node.tag == "block" then
-			walkBlock(node)
-		end
-
-		for k, v in pairs(node) do
-			if type(v) == "table" and k ~= "location" and k ~= "position" then
-				walk(v)
-			end
-		end
-	end
-	walk(ast.root)
-end
+local Color3 = require("@Color3")
 
 local function getCurrentWord(editor)
 	local c = editor.text.cursor
@@ -177,100 +25,342 @@ local function getCurrentWord(editor)
 	return beforeCursor:match("([%w_]+)$") or "", nil, false
 end
 
-local function getDynamicCompletions(editor)
-	local dynamic = {}
-	local seen = {}
-	for _, line in ipairs(editor.text.lines) do
-		for word in line:gmatch("[%w_]+") do
-			if #word > 2 and not seen[word] then
-				table.insert(dynamic, { label = word, type = "variable", icon = "Variable.png" })
-				seen[word] = true
-			end
-		end
+local function tokText(t)
+	if type(t) == "table" then
+		return t.text or ""
 	end
-	return dynamic
+	return tostring(t or "")
 end
 
-local function updateAutocomplete(editor, game)
-	if editor.text.selection.active then
-		editor.autocomplete.visible = false
-		return
+local function unwrap(entry)
+	if type(entry) == "table" and entry.node ~= nil then
+		return entry.node
+	end
+	return entry
+end
+
+-- Collect all declared identifiers from the AST, tagged with kind
+-- Returns: { [name] = { kind = "local"|"function"|"param", line = N } }
+local function collectDeclarations(root)
+	local decls = {}
+
+	local function reg(name, kind, node)
+		if type(name) ~= "string" or #name == 0 then
+			return
+		end
+		local line = node and node.location and node.location.begin.line
+		if not decls[name] then
+			decls[name] = { kind = kind, line = line }
+		end
 	end
 
-	local word, libraryName, isMember = getCurrentWord(editor)
+	local walk -- forward decl
 
-	if #word < 1 and not isMember then
-		editor.autocomplete.visible = false
-		return
+	local function walkBlock(block)
+		if type(block) ~= "table" then
+			return
+		end
+		for _, stmt in ipairs(block.statements or {}) do
+			walk(stmt)
+		end
+	end
+
+	local function walkFunctionBody(body, kind)
+		if not body then
+			return
+		end
+		-- self parameter
+		if body.self then
+			reg("self", "param", body)
+		end
+		-- named parameters
+		for _, entry in ipairs(body.parameters or {}) do
+			local ln = entry.node or entry
+			local n = ln.node or ln
+			local name = tokText(n.name)
+			reg(name, "param", n)
+		end
+		-- vararg isn't a name, skip
+		walkBlock(body.body)
+	end
+
+	walk = function(node)
+		if type(node) ~= "table" then
+			return
+		end
+		local tag = node.tag
+
+		if tag == "local" then
+			for _, entry in ipairs(node.variables or {}) do
+				local ln = entry.node or entry
+				local n = ln.node or ln
+				reg(tokText(n.name), "local", n)
+			end
+			-- still walk values for nested functions
+			for _, entry in ipairs(node.values or {}) do
+				local vn = unwrap(entry)
+				if type(vn) == "table" and vn.tag == "function" then
+					walkFunctionBody(vn.body or vn, "param")
+				end
+			end
+		elseif tag == "localfunction" then
+			local name = tokText((node.name or {}).name or node.name)
+			reg(name, "function", node)
+			walkFunctionBody(node.body, "param")
+		elseif tag == "function" then
+			-- global/member function declaration: name is an expr node
+			local nameNode = node.name
+			if type(nameNode) == "table" then
+				if nameNode.tag == "global" then
+					reg(tokText(nameNode.name), "function", node)
+				elseif nameNode.tag == "indexname" then
+					-- e.g. MyClass.method — register the root name only
+					local root = nameNode.expression
+					if type(root) == "table" and root.tag == "global" then
+						reg(tokText(root.name), "variable", node)
+					end
+				end
+			end
+			walkFunctionBody(node.body, "param")
+		elseif tag == "assign" then
+			for _, entry in ipairs(node.variables or {}) do
+				local vn = unwrap(entry)
+				if type(vn) == "table" and vn.tag == "global" then
+					reg(tokText(vn.name), "variable", node)
+				end
+			end
+		elseif tag == "forin" then
+			for _, entry in ipairs(node.variables or {}) do
+				local ln = entry.node or entry
+				local n = ln.node or ln
+				reg(tokText(n.name), "local", n)
+			end
+			walkBlock(node.body)
+		elseif tag == "for" then
+			local var = node.variable
+			local n = (var and (var.node or var)) or {}
+			reg(tokText(n.name), "local", n)
+			walkBlock(node.body)
+		elseif tag == "conditional" then
+			walkBlock(node.consequent)
+			for _, ei in ipairs(node.elseifs or {}) do
+				walkBlock(ei.consequent)
+			end
+			if node.antecedent then
+				walkBlock(node.antecedent)
+			end
+		elseif tag == "while" or tag == "repeat" or tag == "do" then
+			walkBlock(node.body)
+		end
+	end
+
+	walkBlock(root)
+	return decls
+end
+
+-- Infer what's being typed at the cursor:
+-- Returns: word (string being completed), context (nil | "member"), contextName (string | nil)
+-- e.g. typing "math.fl"  → "fl", "member", "math"
+--      typing "Instance.new("Pa" → "Pa", "instance_new", nil
+--      typing "foo"  → "foo", nil, nil
+local function parseContext(line, col)
+	local before = line:sub(1, col - 1)
+
+	-- Instance.new("PartialClass
+	local instClass = before:match("Instance%.new%s*%(%s*[\"']([%w_]*)$")
+	if instClass then
+		return instClass, "instance_new", nil
+	end
+
+	-- member access: foo.bar or foo:bar
+	local obj, accessor, member = before:match("([%w_]+)([%.%:])([%w_]*)$")
+	if obj then
+		return member, "member", obj, accessor
+	end
+
+	-- plain identifier
+	local word = before:match("([%w_]*)$") or ""
+	return word, nil, nil, nil
+end
+
+-- Score a completion item for sorting: exact-prefix > case-insensitive prefix > contains
+local function matchScore(label, word)
+	if #word == 0 then
+		return 1
+	end
+	local lw = word:lower()
+	local ll = label:lower()
+	if label:sub(1, #word) == word then
+		return 3
+	end -- exact case prefix
+	if ll:sub(1, #lw) == lw then
+		return 2
+	end -- icase prefix
+	if ll:find(lw, 1, true) then
+		return 1
+	end -- contains
+	return 0
+end
+
+--[[
+    Main entry point.
+
+    editor: same shape as your existing code uses
+      editor.text.cursor  { line, col }
+      editor.text.lines   array of strings
+
+    staticCompletions: your existing k_completions table
+      each entry: { label, type, icon, members? (for libraries/classes), args? }
+
+    Returns: array of completion items sorted by relevance
+      each: { label, type, icon, args? }
+--]]
+function Autocomplete.getCompletions(editor, staticCompletions, ast)
+	local c = editor.text.cursor
+	local line = editor.text.lines[c.line] or ""
+
+	local word, context, contextName, accessor = parseContext(line, c.col)
+
+	if #word < 1 and not context then
+		return {}
 	end
 
 	local items = {}
 	local seen = {}
 
-	local function addIfMatch(list)
-		for _, item in ipairs(list) do
-			if item.label:lower():sub(1, #word) == word:lower() and item.label ~= word and not seen[item.label] then
-				table.insert(items, item)
-				seen[item.label] = true
-			end
+	local function add(label, type_, icon, args)
+		if seen[label] then
+			return
 		end
+		local score = matchScore(label, word)
+		if score == 0 then
+			return
+		end
+		-- don't suggest the exact word already typed
+		if label == word then
+			return
+		end
+		seen[label] = true
+		table.insert(items, { label = label, type = type_, icon = icon, args = args, score = score })
 	end
 
-	if isMember then
-		if libraryName == "Instance.new" then
-			for _, item in ipairs(completions) do
-				if item.type == "class" then
-					if item.label:lower():sub(1, #word) == word:lower() and not seen[item.label] then
-						table.insert(items, item)
-						seen[item.label] = true
-					end
-				end
+	if context == "instance_new" then
+		-- only class completions
+		for _, item in ipairs(staticCompletions) do
+			if item.type == "class" then
+				add(item.label, item.type, item.icon or "Class.png", item.args)
 			end
-		else
-			-- Search for the library in completions
-			local libraryItem
-			for _, item in ipairs(completions) do
-				if item.label == libraryName then
-					libraryItem = item
-					break
+		end
+	elseif context == "member" then
+		-- look up contextName in static completions first
+		local found = false
+		for _, item in ipairs(staticCompletions) do
+			if item.label == contextName and item.members then
+				for _, m in ipairs(item.members) do
+					add(m.label, m.type, m.icon, m.args)
 				end
+				found = true
+				break
 			end
+		end
 
-			if libraryItem and libraryItem.members then
-				addIfMatch(libraryItem.members)
-			elseif dynamicVariables[libraryName] then
-				addIfMatch(dynamicVariables[libraryName].members)
+		-- fall back to AST-derived dynamic members if static didn't cover it
+		-- (your existing dynamicVariables table can be passed in here)
+		if not found and ast and ast.dynamicVariables then
+			local dv = ast.dynamicVariables[contextName]
+			if dv and dv.members then
+				for _, m in ipairs(dv.members) do
+					add(m.label, m.type, m.icon, m.args)
+				end
 			end
 		end
 	else
-		addIfMatch(completions)
-		addIfMatch(getDynamicCompletions(editor))
+		-- global scope: static + AST-declared names
+		for _, item in ipairs(staticCompletions) do
+			-- skip member-only items (those only live under a library)
+			if item.type ~= "member" then
+				add(item.label, item.type, item.icon, item.args)
+			end
+		end
 
-		for varName, data in pairs(dynamicVariables) do
-			if varName:lower():sub(1, #word) == word:lower() and varName ~= word and not seen[varName] then
-				table.insert(items, {
-					label = varName,
-					type = data.type,
-					icon = data.type == "service" and "Service.png" or "Module.png",
-				})
-				seen[varName] = true
+		-- AST declarations
+		if ast and ast.root then
+			local decls = collectDeclarations(ast.root)
+			for name, info in pairs(decls) do
+				if not seen[name] and matchScore(name, word) > 0 then
+					local icon = info.kind == "function" and "Method.png" or "Variable.png"
+					seen[name] = true
+					table.insert(items, { label = name, type = info.kind, icon = icon, score = matchScore(name, word) })
+				end
 			end
 		end
 	end
 
-	if #items > 0 then
-		table.sort(items, function(a, b)
-			return a.label < b.label
-		end)
-		editor.autocomplete.items = items
-		editor.autocomplete.visible = true
-		editor.autocomplete.selectedIndex = 1
-	else
-		editor.autocomplete.visible = false
+	-- sort: higher score first, then alphabetical
+	table.sort(items, function(a, b)
+		if a.score ~= b.score then
+			return a.score > b.score
+		end
+		return a.label < b.label
+	end)
+
+	-- strip internal score field before returning
+	for _, item in ipairs(items) do
+		item.score = nil
 	end
+
+	return items
 end
 
-local function completeWord(editor)
+-- Convenience: get just the word being typed (for the calling code to know
+-- how many chars to delete on completion)
+function Autocomplete.getCurrentWord(editor)
+	local c = editor.text.cursor
+	local line = editor.text.lines[c.line] or ""
+	local word, context, contextName, accessor = parseContext(line, c.col)
+	return word, context, contextName, accessor
+end
+
+function Autocomplete.cycleSnippet(editor)
+	if not editor.snippet or not editor.snippet.active then
+		return false
+	end
+
+	editor.snippet.index = editor.snippet.index + 1
+	if editor.snippet.index > #editor.snippet.positions then
+		editor.snippet.active = false
+		editor.text.selection.active = false
+
+		local lastArg = editor.snippet.positions[#editor.snippet.positions]
+		editor.text.cursor.col = editor.snippet.startCol + lastArg["end"] + 2
+		return true
+	end
+
+	local arg = editor.snippet.positions[editor.snippet.index]
+
+	editor.text.cursor.col = editor.snippet.startCol + arg["end"]
+	editor.text.selection.active = true
+	editor.text.selection.startLine = editor.snippet.line
+	editor.text.selection.startCol = editor.snippet.startCol + arg.start
+	editor.text.selection.endLine = editor.snippet.line
+	editor.text.selection.endCol = editor.snippet.startCol + arg["end"]
+
+	return true
+end
+
+function Autocomplete.getIndentLevel(line)
+	local tabs = line:match("^\t+")
+	if tabs then
+		return #tabs
+	end
+	local spaces = line:match("^ +")
+	if spaces then
+		return math.floor(#spaces / 4)
+	end
+	return 0
+end
+
+function Autocomplete.completeWord(editor)
 	if not editor.autocomplete.visible or #editor.autocomplete.items == 0 then
 		return
 	end
@@ -322,201 +412,155 @@ local function completeWord(editor)
 	editor.autocomplete.visible = false
 end
 
-local function cycleSnippet(editor)
-	if not editor.snippet or not editor.snippet.active then
-		return false
-	end
+function Autocomplete.step(
+	editor,
+	x,
+	gutterwidth,
+	padding,
+	measureTextWidth,
+	fontSize,
+	spaces,
+	lineHeight,
+	autocompletetheme,
+	rect,
+	raylib,
+	Color3ToRaylib,
+	vend,
+	spacing,
+	theme_text,
+	theme_secondary,
+	y,
+	dt,
+	IconLoader
+)
+	if editor.isActive and editor.autocomplete.visible then
+		local c = editor.text.cursor
+		local textBeforeCursor = editor.text.lines[c.line]:sub(1, c.col - 1)
+		local cx = x + gutterwidth + padding + measureTextWidth(textBeforeCursor, fontSize, spacing)
+		local cy = y + padding + (c.line - 1) * lineHeight - editor.scrollY
 
-	editor.snippet.index = editor.snippet.index + 1
-	if editor.snippet.index > #editor.snippet.positions then
-		editor.snippet.active = false
-		editor.text.selection.active = false
+		local acWidth = 240 -- wider for icons
+		local acItemHeight = 24
+		local acPadding = 8
+		local iconSize = 16
+		local maxVisible = 10
+		local acHeight = math.min(#editor.autocomplete.items, maxVisible) * acItemHeight
 
-		local lastArg = editor.snippet.positions[#editor.snippet.positions]
-		editor.text.cursor.col = editor.snippet.startCol + lastArg["end"] + 2
-		return true
-	end
+		local viewportW, viewportH
+		if type(raylib.GetRenderWidth) == "function" and type(raylib.GetRenderHeight) == "function" then
+			viewportW = raylib.GetRenderWidth()
+			viewportH = raylib.GetRenderHeight()
+		elseif type(raylib.GetScreenWidth) == "function" and type(raylib.GetScreenHeight) == "function" then
+			viewportW = raylib.GetScreenWidth()
+			viewportH = raylib.GetScreenHeight()
+		else
+			viewportW = x + acWidth + 8
+			viewportH = y + acHeight + 8
+		end
 
-	local arg = editor.snippet.positions[editor.snippet.index]
+		local pad = 4
+		local minX = pad
+		local maxX = math.max(minX, viewportW - acWidth - pad)
+		local minY = pad
+		local maxY = math.max(minY, viewportH - acHeight - pad)
 
-	editor.text.cursor.col = editor.snippet.startCol + arg["end"]
-	editor.text.selection.active = true
-	editor.text.selection.startLine = editor.snippet.line
-	editor.text.selection.startCol = editor.snippet.startCol + arg.start
-	editor.text.selection.endLine = editor.snippet.line
-	editor.text.selection.endCol = editor.snippet.startCol + arg["end"]
+		local belowY = cy + lineHeight + 5
+		local aboveY = cy - acHeight - 5
+		local spaceAbove = cy - minY
+		local spaceBelow = (viewportH - pad) - (cy + lineHeight)
 
-	return true
-end
+		local targetY
+		if spaceAbove >= acHeight or spaceAbove >= spaceBelow then
+			targetY = aboveY
+		else
+			targetY = belowY
+		end
 
-local function getIndentLevel(line)
-	local tabs = line:match("^\t+")
-	if tabs then
-		return #tabs
-	end
-	local spaces = line:match("^ +")
-	if spaces then
-		return math.floor(#spaces / 4)
-	end
-	return 0
-end
+		local targetX = math.clamp(cx, minX, maxX)
+		targetY = math.clamp(targetY, minY, maxY)
 
-return {
-	completions = completions,
-	getCurrentWord = getCurrentWord,
-	updateAutocomplete = updateAutocomplete,
-	indexVariables = indexVariables,
-	completeWord = completeWord,
-	cycleSnippet = cycleSnippet,
-	getIndentLevel = getIndentLevel,
-	step = function(
-		editor,
-		x,
-		gutterwidth,
-		padding,
-		measureTextWidth,
-		fontSize,
-		spaces,
-		lineHeight,
-		autocompletetheme,
-		rect,
-		raylib,
-		Color3ToRaylib,
-		vend,
-		spacing,
-		theme_text,
-		theme_secondary,
-		y,
-		dt,
-		IconLoader
-	)
-		if editor.isActive and editor.autocomplete.visible then
-			local c = editor.text.cursor
-			local textBeforeCursor = editor.text.lines[c.line]:sub(1, c.col - 1)
-			local cx = x + gutterwidth + padding + measureTextWidth(textBeforeCursor, fontSize, spacing)
-			local cy = y + padding + (c.line - 1) * lineHeight - editor.scrollY
+		editor.autocomplete.targetX = targetX
+		editor.autocomplete.targetY = targetY
 
-			local acWidth = 240 -- wider for icons
-			local acItemHeight = 24
-			local acPadding = 8
-			local iconSize = 16
-			local maxVisible = 10
-			local acHeight = math.min(#editor.autocomplete.items, maxVisible) * acItemHeight
+		local lerpFactor = 1 - math.exp(-editor.autocomplete.lerpSpeed * dt)
+		editor.autocomplete.currentX = (editor.autocomplete.currentX or targetX)
+			+ (targetX - (editor.autocomplete.currentX or targetX)) * lerpFactor
+		editor.autocomplete.currentY = (editor.autocomplete.currentY or targetY)
+			+ (targetY - (editor.autocomplete.currentY or targetY)) * lerpFactor
 
-			local viewportW, viewportH
-			if type(raylib.GetRenderWidth) == "function" and type(raylib.GetRenderHeight) == "function" then
-				viewportW = raylib.GetRenderWidth()
-				viewportH = raylib.GetRenderHeight()
-			elseif type(raylib.GetScreenWidth) == "function" and type(raylib.GetScreenHeight) == "function" then
-				viewportW = raylib.GetScreenWidth()
-				viewportH = raylib.GetScreenHeight()
-			else
-				viewportW = x + acWidth + 8
-				viewportH = y + acHeight + 8
+		local acX, acY = editor.autocomplete.currentX, editor.autocomplete.currentY
+		local background = rect.new(acX, acY, acWidth, acHeight)
+
+		raylib.DrawRectangleRounded(rect:translate(background), 0.1, 15, Color3.new(0.12, 0.12, 0.12):ToRaylib(0))
+		raylib.DrawRectangleRoundedLinesEx(
+			rect:translate(background),
+			0.1,
+			15,
+			1,
+			Color3.new(0.2, 0.2, 0.2):ToRaylib(0)
+		)
+
+		for i = 1, math.min(#editor.autocomplete.items, maxVisible) do
+			local item = editor.autocomplete.items[i]
+			local itemY = acY + (i - 1) * acItemHeight
+			--local itemRect = rect.new(acX, itemY, acWidth, acItemHeight)
+
+			if i == editor.autocomplete.selectedIndex then
+				raylib.DrawRectangleRounded(
+					rect:translate(rect.new(acX + 2, itemY + 1, acWidth - 4, acItemHeight - 2)),
+					0.1,
+					15,
+					Color3.new(0.04, 0.35, 0.61):ToRaylib(0) -- VS Code blue
+				)
 			end
 
-			local pad = 4
-			local minX = pad
-			local maxX = math.max(minX, viewportW - acWidth - pad)
-			local minY = pad
-			local maxY = math.max(minY, viewportH - acHeight - pad)
+			local iconPath = cachedIcons[item.icon] or IconLoader.Get(item.icon)
+			if iconPath then
+				cachedIcons[item.icon] = iconPath
+				local textureData = cachedTextures[iconPath]
+				if not textureData then
+					textureData = IconLoader.ToTexture(iconPath)
+					cachedTextures[iconPath] = textureData
+				end
 
-			local belowY = cy + lineHeight + 5
-			local aboveY = cy - acHeight - 5
-			local spaceAbove = cy - minY
-			local spaceBelow = (viewportH - pad) - (cy + lineHeight)
-
-			local targetY
-			if spaceAbove >= acHeight or spaceAbove >= spaceBelow then
-				targetY = aboveY
-			else
-				targetY = belowY
-			end
-
-			local targetX = math.clamp(cx, minX, maxX)
-			targetY = math.clamp(targetY, minY, maxY)
-
-			editor.autocomplete.targetX = targetX
-			editor.autocomplete.targetY = targetY
-
-			local lerpFactor = 1 - math.exp(-editor.autocomplete.lerpSpeed * dt)
-			editor.autocomplete.currentX = (editor.autocomplete.currentX or targetX)
-				+ (targetX - (editor.autocomplete.currentX or targetX)) * lerpFactor
-			editor.autocomplete.currentY = (editor.autocomplete.currentY or targetY)
-				+ (targetY - (editor.autocomplete.currentY or targetY)) * lerpFactor
-
-			local acX, acY = editor.autocomplete.currentX, editor.autocomplete.currentY
-			local background = rect.new(acX, acY, acWidth, acHeight)
-
-			raylib.DrawRectangleRounded(rect:translate(background), 0.1, 15, Color3.new(0.12, 0.12, 0.12):ToRaylib(0))
-			raylib.DrawRectangleRoundedLinesEx(
-				rect:translate(background),
-				0.1,
-				15,
-				1,
-				Color3.new(0.2, 0.2, 0.2):ToRaylib(0)
-			)
-
-			for i = 1, math.min(#editor.autocomplete.items, maxVisible) do
-				local item = editor.autocomplete.items[i]
-				local itemY = acY + (i - 1) * acItemHeight
-				--local itemRect = rect.new(acX, itemY, acWidth, acItemHeight)
-
-				if i == editor.autocomplete.selectedIndex then
-					raylib.DrawRectangleRounded(
-						rect:translate(rect.new(acX + 2, itemY + 1, acWidth - 4, acItemHeight - 2)),
-						0.1,
-						15,
-						Color3.new(0.04, 0.35, 0.61):ToRaylib(0) -- VS Code blue
+				if textureData and textureData.texture then
+					local iconX = acX + acPadding
+					local iconY = itemY + (acItemHeight - iconSize) / 2
+					raylib.DrawTexturePro(
+						textureData.texture,
+						rect:translate(rect.new(0, 0, textureData.x, textureData.y)),
+						rect:translate(rect.new(iconX, iconY, iconSize, iconSize)),
+						vector.create(0, 0),
+						0,
+						const.WHITE
 					)
 				end
-
-				local iconPath = cachedIcons[item.icon] or IconLoader.Get(item.icon)
-				if iconPath then
-					cachedIcons[item.icon] = iconPath
-					local textureData = cachedTextures[iconPath]
-					if not textureData then
-						textureData = IconLoader.ToTexture(iconPath)
-						cachedTextures[iconPath] = textureData
-					end
-
-					if textureData and textureData.texture then
-						local iconX = acX + acPadding
-						local iconY = itemY + (acItemHeight - iconSize) / 2
-						raylib.DrawTexturePro(
-							textureData.texture,
-							rect:translate(rect.new(0, 0, textureData.x, textureData.y)),
-							rect:translate(rect.new(iconX, iconY, iconSize, iconSize)),
-							vector.create(0, 0),
-							0,
-							const.WHITE
-						)
-					end
-				end
-
-				raylib.DrawTextEx(
-					vend,
-					item.label,
-					vector.create(acX + acPadding + iconSize + 6, itemY + (acItemHeight - (fontSize - 4)) / 2),
-					fontSize - 4,
-					spacing,
-					theme_text
-				)
-
-				local typeText = item.type
-				local tw = measureTextWidth(typeText, fontSize - 6, spacing)
-				raylib.DrawTextEx(
-					vend,
-					typeText,
-					vector.create(acX + acWidth - tw - acPadding, itemY + (acItemHeight - (fontSize - 6)) / 2),
-					fontSize - 6,
-					spacing,
-					Color3.new(0.6, 0.6, 0.6):ToRaylib(0)
-				)
 			end
-		else
-			editor.autocomplete.currentX = editor.autocomplete.targetX
-			editor.autocomplete.currentY = editor.autocomplete.targetY
+
+			raylib.DrawTextEx(
+				vend,
+				item.label,
+				vector.create(acX + acPadding + iconSize + 6, itemY + (acItemHeight - (fontSize - 4)) / 2),
+				fontSize - 4,
+				spacing,
+				theme_text
+			)
+
+			local typeText = item.type
+			local tw = measureTextWidth(typeText, fontSize - 6, spacing)
+			raylib.DrawTextEx(
+				vend,
+				typeText,
+				vector.create(acX + acWidth - tw - acPadding, itemY + (acItemHeight - (fontSize - 6)) / 2),
+				fontSize - 6,
+				spacing,
+				Color3.new(0.6, 0.6, 0.6):ToRaylib(0)
+			)
 		end
-	end,
-}
+	else
+		editor.autocomplete.currentX = editor.autocomplete.targetX
+		editor.autocomplete.currentY = editor.autocomplete.targetY
+	end
+end
+
+return Autocomplete

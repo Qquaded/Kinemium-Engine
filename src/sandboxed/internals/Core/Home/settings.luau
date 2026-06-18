@@ -12,15 +12,13 @@ local vend = KinemiumFontService.GetDefaultFontSmall()
 local arect = require("@arect")
 local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
 
-local ThirdBackgroundColor = StudioThemeService.SelectedTheme.ThirdBackgroundColor
-
 local backgroundColor = StudioThemeService.SelectedTheme.BackgroundColor
 local TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
 StudioThemeService.SelectedTheme.GuiHandlesColor:ToRaylib(StudioThemeService.SelectedTheme.GuiHandlesTransparency)
-local SecondaryBackgroundColorRaylib = StudioThemeService.SelectedTheme.SecondaryBackgroundColor:ToRaylib(
-	StudioThemeService.SelectedTheme.SecondaryBackgroundColorTransparency
-)
+local doResize = true
+local KinemiumRaylib = game:GetService("KinemiumRaylib")
 local vsyncEnabled = false
+local renderer = KinemiumRaylib.GetRenderer()
 
 local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
@@ -140,6 +138,7 @@ local cells = gui.cellparser({
 			}),
 			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 		},
+
 		{
 			name = "Theme",
 			description = "Change display gui theme.",
@@ -176,6 +175,7 @@ local cells = gui.cellparser({
 			}),
 			editorWidth = 200,
 		},
+
 		{
 			name = "Font",
 			description = "Change display font.",
@@ -190,6 +190,7 @@ local cells = gui.cellparser({
 				path = "C:/path/to/some/file.png", -- The currently selected path
 				extensions = { { name = "Images", extensions = { "ttf", "otf" } } }, -- Optional file extension filters
 				onPathSelected = function(newPath)
+					KinemiumFontService.ReplaceDefaultFont(newPath)
 					configService.prop("gui_font", newPath)
 				end,
 			}),
@@ -215,6 +216,92 @@ local cells = gui.cellparser({
 		},
 	},
 
+	theming = {
+		{
+			name = "Window Background Color",
+			description = "fart",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.colorPickerButton({
+				x = 10,
+				y = 10,
+				width = 200,
+				height = 32,
+				color = StudioThemeService.SelectedTheme.aereon.window.BackgroundColor,
+				alpha = StudioThemeService.SelectedTheme.aereon.window.BackgroundTransparency,
+				showAlpha = true,
+				onColorSelected = function(c, a)
+					StudioThemeService.SelectedTheme.aereon.window.BackgroundColor = c
+					StudioThemeService.SelectedTheme.aereon.window.BackgroundTransparency = c
+				end,
+			}),
+			editorWidth = 200,
+		},
+
+		{
+			name = "Window Text Color",
+			description = "fart",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.colorPickerButton({
+				x = 10,
+				y = 10,
+				width = 200,
+				height = 32,
+				color = StudioThemeService.SelectedTheme.aereon.window.TextColor,
+				alpha = 0,
+				showAlpha = true,
+				onColorSelected = function(c, a)
+					StudioThemeService.SelectedTheme.aereon.window.TextColor = c
+					StudioThemeService.SelectedTheme.TextColor = c
+				end,
+			}),
+			editorWidth = 200,
+		},
+
+		{
+			name = "Window Secondary Color",
+			description = "fart",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.colorPickerButton({
+				x = 10,
+				y = 10,
+				width = 200,
+				height = 32,
+				color = StudioThemeService.SelectedTheme.aereon.window.SecondaryBackgroundColor,
+				alpha = 0,
+				showAlpha = true,
+				onColorSelected = function(c, a)
+					StudioThemeService.SelectedTheme.aereon.window.SecondaryBackgroundColor = c
+					StudioThemeService.SelectedTheme.SecondaryBackgroundColor = c
+				end,
+			}),
+			editorWidth = 200,
+		},
+
+		{
+			name = "Accent",
+			description = "fart",
+			font = vend,
+			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+			editor = gui.colorPickerButton({
+				x = 10,
+				y = 10,
+				width = 200,
+				height = 32,
+				color = StudioThemeService.SelectedTheme.Accent,
+				alpha = 0,
+				showAlpha = true,
+				onColorSelected = function(c, a)
+					StudioThemeService.SelectedTheme.Accent = c
+					StudioThemeService.SelectedTheme.AccentTransparency = c
+				end,
+			}),
+			editorWidth = 200,
+		},
+	},
+
 	aboutSection = {
 		{
 			name = "Version " .. ENGINE_VERSION,
@@ -229,7 +316,7 @@ local cells = gui.cellparser({
 			editor = gui.textButton({
 				text = "Open",
 				onClick = function()
-					raylib.lib.OpenURL("https://deepwiki.com/Qquaded/Kinemium-Engine")
+					raylib.lib.OpenURL(ENGINE_ENDPOINT.API)
 				end,
 			}),
 
@@ -400,6 +487,9 @@ repeat
 	task.wait()
 until ishared.Home
 
+ishared.settings_cells = cells
+ishared.settings_scrollArea = scrollArea
+
 ishared.Home.pages["Settings"] = function(dt, alpha, slideOffset)
 	if ishared.Home.activePage ~= "Settings" and ishared.Home.previousPage ~= "Settings" then
 		return
@@ -414,7 +504,8 @@ ishared.Home.pages["Settings"] = function(dt, alpha, slideOffset)
 	group.title.set("obj_rect", arect.new(x + 60, y + 60, 200, 30))
 
 	group.render(dt, { "newProjectPrompt" })
-
+	vend = KinemiumFontService.GetDefaultFontSmall()
+	cells.SetAllCellProp("font", vend)
 	-- Render scroll area
 	scrollArea.set("obj_rect", arect.new(x + 60, y + 100, screenx - 120, screeny - 160))
 	cells.setWidth(screenx - 140)

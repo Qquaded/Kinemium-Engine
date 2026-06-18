@@ -4,7 +4,7 @@ local Color3 = require("@Color3")
 local Aereon = require("@Aereon")
 local gui = Aereon.gui
 local arect = Aereon.rect()
-local GuiObject = require("./GuiObject")
+local GuiObject = require("@GuiObject")
 
 local propTable = {
 	Name = "UIGraph",

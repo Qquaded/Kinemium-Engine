@@ -1,5 +1,5 @@
 -- description: "A modifier class representing a part with geometry subtracted from it."
-local Part = require("./Part")
+local Part = require("@Part")
 local Enum = require("@EnumMap")
 
 local propTable = {

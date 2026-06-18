@@ -42,6 +42,9 @@ end
 comps.button = function(data)
 	return create("./objects/button", data)
 end
+comps.splitbutton = function(data)
+	return create("./objects/splitbutton", data)
+end
 comps.servercard = function(data)
 	return create("./objects/serverCard", data)
 end
@@ -50,6 +53,9 @@ comps.keyboard = function(data)
 end
 comps.card = function(data)
 	return create("./objects/card", data)
+end
+comps.colorPickerButton = function(data)
+	return create("./objects/colorPickerButton", data)
 end
 comps.checkbox = function(data)
 	return create("./objects/checkbox", data)

@@ -1,3 +1,23 @@
+--[[
+╔════════════════════════════════════════════════════════════════════════════════╗
+║  _Server.luau — server-side replication logic                                  ║
+║                                                                                 ║
+║  Responsible for:                                                               ║
+║    • NetworkId assignment and object tracking (lookup table)                    ║
+║    • Property change monitoring (Changed signals → dirtyPatches)                ║
+║    • Initial sync: inventory handshake → delta compute → sendCreate → WorldLoaded║
+║    • Live creation: sendCreate for runtime DescendantAdded events               ║
+║    • Streaming / Area-of-Interest: chunk-based spatial object culling            ║
+║    • Physics ownership: rebalanceOwnership assigns closest player                ║
+║    • State snapshots: per-object state history, delta compression, per-tick send ║
+║    • Owned state: receive client-submitted physics → anti-cheat → apply          ║
+║    • Terrain replication: queued chunk updates and snapshot batches              ║
+║    • RemoteEvent/Function/Data: server-side wiring for FireClient/InvokeClient   ║
+║                                                                                 ║
+║  Runs in a tick-driven loop wired to networkService.Tick.                       ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+--]]
+
 local Server = {}
 
 local GNS = require("@GNS")
@@ -11,35 +31,43 @@ local InputActionService = require("../InputActionService/InputActionService")
 local AreaOfInterest = require("./AreaOfInterest")
 local Enum = require("@EnumMap")
 
-local MAX_TERRAIN_RELIABLE_MESSAGES_PER_TICK = 10
-local OWNERSHIP_REBALANCE_INTERVAL = 0.2
-local REPLICATION_TARGET_BYTES = 384 * 1024 -- keep reliable Create messages small so gameplay remotes are not starved
-local MAX_PATCH_ENTRIES_PER_MESSAGE = 96
-local MAX_SNAPSHOT_STATES_PER_MESSAGE = 16
-local INITIAL_INVENTORY_HANDSHAKE_TIMEOUT = 8
-local SNAPSHOT_MIN_SEND_INTERVAL_TICKS = 6
-local _SNAPSHOT_IDLE_KEEPALIVE_TICKS = 0
-local SNAPSHOT_MAX_UNACKED_TICKS = 2
-local SNAPSHOT_BACKPRESSURE_RETRY_TICKS = 12
-local MAX_CREATE_PAYLOAD_BYTES = REPLICATION_TARGET_BYTES
-local CREATE_PRE_SERIALIZE_TREE_SPLIT_COUNT = 192
-local CREATE_PRE_SERIALIZE_ROOT_SPLIT_COUNT = 96
-local CREATE_PRE_SERIALIZE_MAX_ROOTS_PER_BATCH = 8
-local CREATE_INTER_BATCH_YIELD_SECONDS = 0.03
-local CREATE_BACKPRESSURE_PENDING_LIMIT = 8
-local CREATE_BACKPRESSURE_FRAGMENT_LIMIT = 128
-local CREATE_BACKPRESSURE_LOG_INTERVAL_SECONDS = 10
-local DEBUG_REPLICATION_TRACE = false
-local REPLICATION_DIAGNOSTICS = true
-local SLOW_TICK_DIAGNOSTIC_SECONDS = 0.05
-local INITIAL_ROOT_DETAIL_LIMIT = 40
-local STREAM_CHUNK_SIZE_DEFAULT = 192
-local STREAM_RECONCILE_INTERVAL_TICKS = 3
+-- ═══ CONFIGURATION CONSTANTS ═══
+-- Tune these to balance replication throughput vs game responsiveness
+
+local MAX_TERRAIN_RELIABLE_MESSAGES_PER_TICK = 10          -- Max terrain msgs sent to one client per tick
+local OWNERSHIP_REBALANCE_INTERVAL = 0.2                    -- How often (seconds) to re-evaluate physics ownership
+local REPLICATION_TARGET_BYTES = 384 * 1024                 -- Target max size for a Create payload (384 KB)
+local MAX_PATCH_ENTRIES_PER_MESSAGE = 96                    -- Max property patches per PatchBatch message
+local MAX_SNAPSHOT_STATES_PER_MESSAGE = 16                  -- Max state deltas per Snapshot message per client
+local INITIAL_INVENTORY_HANDSHAKE_TIMEOUT = 8               -- Seconds before initial sync falls back to full send
+local SNAPSHOT_MIN_SEND_INTERVAL_TICKS = 6                  -- Min ticks between snapshot sends to a client
+local _SNAPSHOT_IDLE_KEEPALIVE_TICKS = 0                    -- (unused) keepalive for idle snapshot recipients
+local SNAPSHOT_MAX_UNACKED_TICKS = 2                        -- If client hasn't acked in 2 ticks, backpressure
+local SNAPSHOT_BACKPRESSURE_RETRY_TICKS = 12                -- Min ticks before retrying a backpressured client
+local MAX_CREATE_PAYLOAD_BYTES = REPLICATION_TARGET_BYTES   -- Hard ceiling before splitting a serialized payload
+local CREATE_PRE_SERIALIZE_TREE_SPLIT_COUNT = 192           -- If a batch exceeds this many objects, pre-split
+local CREATE_PRE_SERIALIZE_ROOT_SPLIT_COUNT = 96            -- If a single root tree exceeds this, send shallow + children
+local CREATE_PRE_SERIALIZE_MAX_ROOTS_PER_BATCH = 8          -- Max roots per pre-serialization batch
+local CREATE_INTER_BATCH_YIELD_SECONDS = 0.03               -- Yield between Create batches to avoid starvation
+local CREATE_BACKPRESSURE_PENDING_LIMIT = 8                 -- Max pending reliable msgs before waiting
+local CREATE_BACKPRESSURE_FRAGMENT_LIMIT = 128              -- Max wire fragments before waiting
+local CREATE_BACKPRESSURE_LOG_INTERVAL_SECONDS = 10         -- How often to log backpressure warnings
+local DEBUG_REPLICATION_TRACE = false                       -- Set true for verbose per-object replication trace
+local REPLICATION_DIAGNOSTICS = true                        -- Log timing diagnostics for slow ticks
+local SLOW_TICK_DIAGNOSTIC_SECONDS = 0.05                   -- Warn if per-tick processing exceeds this
+local INITIAL_ROOT_DETAIL_LIMIT = 40                        -- Max roots to log in initial sync diagnostics
+local STREAM_CHUNK_SIZE_DEFAULT = 192                       -- Default streaming chunk size (world units)
+local STREAM_RECONCILE_INTERVAL_TICKS = 3                   -- How often to reconcile stream regions (every N ticks)
+
+-- ═══ HELPERS ═══
 
 local function packArgs(...)
 	return table.pack(...)
 end
 
+-- ═══ Server.init(context) ═══
+-- Called once by ReplicatorService.InitRenderer when running as server.
+-- Sets up all data structures, event handlers, message handlers, and tick logic.
 function Server.init(context)
 	local game = context.game
 	local serializationService = context.SerializationService
@@ -60,10 +88,14 @@ function Server.init(context)
 		print("[Replicator][Server] SerializerAdapters not available, using default serializers")
 	end
 
-	local lookup = {}
-	local monitors = {}
-	local mutedObjects = setmetatable({}, { __mode = "k" })
+	-- ═══ CORE STATE ═══
 
+	local lookup = {}                   -- NetworkId → Instance (authoritative server object map)
+	local monitors = {}                 -- Instance → Changed connection (for cleanup)
+	local mutedObjects = setmetatable({}, { __mode = "k" })  -- Objects whose Changed signals are temporarily suppressed
+
+	-- Helper: increment a mute counter for an object while calling callback.
+	-- Prevents the Changed monitor from re-queueing patches during server-initiated writes.
 	local function withMutedObject(object, callback)
 		mutedObjects[object] = (mutedObjects[object] or 0) + 1
 		local ok, result = pcall(callback)
@@ -76,6 +108,7 @@ function Server.init(context)
 		end
 	end
 
+	-- Send a Remove message to a specific session for a NetworkId
 	local function sendRemoveToSession(session, netId)
 		if not session or netId == nil then
 			return
@@ -84,21 +117,29 @@ function Server.init(context)
 		networkService:SendToClient(session, Protocol.Channels.Replication, Protocol.Kinds.Remove, { object = netId }, true)
 	end
 
+	-- Tracked state objects (those with a registered StateRegistry adapter)
 	local trackedStateObjects = {}
+	-- Dirty property patches accumulating per NetworkId
 	local dirtyPatches = {}
+	-- State history per tracked object for snapshot delta computation
 	local objectStateHistory = {}
+	-- Per-client terrain update queues
 	local terrainQueueByClient = {}
+	-- Set of objects that are potential ownership roots
 	local ownershipRoots = {}
+	-- Per-root ownership metadata (cooldowns, blocked user IDs)
 	local ownershipStateByRoot = setmetatable({}, { __mode = "k" })
+
+	-- ═══ STREAMING / AREA-OF-INTEREST ═══
 	local workspace = game.Workspace or game:GetService("Workspace")
 	local configuredChunkSize = tonumber(workspace and workspace.StreamingChunkSize) or STREAM_CHUNK_SIZE_DEFAULT
 	local streamChunkSize = math.max(32, math.floor(configuredChunkSize))
 	local streamChunkSizeInv = 1 / streamChunkSize
-	local streamChunks = {}
-	local streamRoots = setmetatable({}, { __mode = "k" })
-	local streamRootChunkKey = setmetatable({}, { __mode = "k" })
-	local streamRootsWithoutChunk = setmetatable({}, { __mode = "k" })
-	local sessionStreamingState = {}
+	local streamChunks = {}             -- "x|y|z" → { root1 = true, root2 = true, ... }
+	local streamRoots = setmetatable({}, { __mode = "k" })  -- root → true
+	local streamRootChunkKey = setmetatable({}, { __mode = "k" })  -- root → "x|y|z"
+	local streamRootsWithoutChunk = setmetatable({}, { __mode = "k" })  -- roots with no valid position
+	local sessionStreamingState = {}    -- session.key → { roots = {}, netIds = {} }
 	local terrain = workspace and workspace:FindFirstChild("Terrain")
 	local configuredTargetRadius = tonumber(
 		workspace and (workspace.StreamingTargetRadius or workspace.StreamingMinRadius)
@@ -112,15 +153,19 @@ function Server.init(context)
 	local pendingInitialInventorySync = {}
 	local initialSyncCompleted = {}
 
+	-- Sessions that have sent ClientReady (world is loaded and character can spawn)
 	local readySessions = {}
 	local replicatedWorkspaceBaseplate = nil
 	local RUNTIME_MUTATION_SUPPRESS_KEY = "__replicatorSuppressRuntimeMutation"
+
+	-- ═══ RUNTIME MUTATION SUPPRESSION ═══
+	-- During initial sync and blob loading, mutations are suppressed to
+	-- avoid double-replication of objects that are already being serialized.
 
 	local function isRuntimeCreateSuppressed()
 		if game.GetMetadata == nil then
 			return false
 		end
-
 		return (game:GetMetadata("__replicatorSuppressRuntimeCreate") or 0) > 0
 	end
 
@@ -128,7 +173,6 @@ function Server.init(context)
 		if game.GetMetadata == nil then
 			return false
 		end
-
 		return (game:GetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY) or 0) > 0
 	end
 
@@ -136,7 +180,6 @@ function Server.init(context)
 		if game.GetMetadata == nil or game.SetMetadata == nil then
 			return false
 		end
-
 		local count = game:GetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY) or 0
 		game:SetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY, count + 1)
 		return true
@@ -146,16 +189,15 @@ function Server.init(context)
 		if not applied or game.GetMetadata == nil or game.SetMetadata == nil then
 			return
 		end
-
 		local count = math.max((game:GetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY) or 0) - 1, 0)
 		game:SetMetadata(RUNTIME_MUTATION_SUPPRESS_KEY, count)
 	end
 
+	-- A session is eligible for live Create messages only after initial sync is complete.
 	local function isSessionEligibleForLiveCreate(session)
 		if not session or not session.key then
 			return false
 		end
-
 		return initialSyncCompleted[session.key] == true
 	end
 
@@ -165,19 +207,18 @@ function Server.init(context)
 				return true
 			end
 		end
-
 		return false
 	end
+
+	-- ═══ OBJECT IDENTIFICATION HELPERS ═══
 
 	local function isHumanoidRootObject(object)
 		if type(object) ~= "table" then
 			return false
 		end
-
 		if type(object.GetAttribute) == "function" and object:GetAttribute("__humanoidRigRoot") == true then
 			return true
 		end
-
 		return object.Name == "HumanoidRootPart"
 	end
 
@@ -185,14 +226,12 @@ function Server.init(context)
 		if not isHumanoidRootObject(object) then
 			return false
 		end
-
 		local key = `{stage}:{sessionKey or "global"}:{object.NetworkId or "?"}`
 		local now = os.clock()
 		local minInterval = interval or 0.5
 		if now - (humanoidRootDebugAt[key] or -math.huge) < minInterval then
 			return false
 		end
-
 		humanoidRootDebugAt[key] = now
 		return true
 	end
@@ -201,7 +240,6 @@ function Server.init(context)
 		if type(value) ~= "table" or type(value.X) ~= "number" then
 			return "nil"
 		end
-
 		return `({string.format("%.2f", value.X)}, {string.format("%.2f", value.Y)}, {string.format("%.2f", value.Z)})`
 	end
 
@@ -209,12 +247,10 @@ function Server.init(context)
 		if type(state) ~= "table" or type(state.cframe) ~= "table" then
 			return nil
 		end
-
 		local ok, cframe = pcall(CFrame.FromTable, state.cframe)
 		if not ok or cframe == nil then
 			return nil
 		end
-
 		return cframe.Position
 	end
 
@@ -222,16 +258,15 @@ function Server.init(context)
 		if not shouldLogHumanoidRoot(stage, sessionKey, object) then
 			return
 		end
-
-		--[[
+		--[[ Debug logging is commented out by default; uncomment for humanoid tracking
 		local statePos = decodeStatePosition(state)
 		print(
-			`[HumanoidDebug][Server][{stage}] session={sessionKey or "global"} object={object.Name}#{object.NetworkId or "?"} owner={owner} live={formatVector3(
-				livePos
-			)} state={formatVector3(statePos)} {extra or ""}`
+			`[HumanoidDebug][Server][{stage}] session={sessionKey or "global"} object={object.Name}#{object.NetworkId or "?"} owner={owner} live={formatVector3(livePos)} state={formatVector3(statePos)} {extra or ""}`
 		)
-			--]]
+		--]]
 	end
+
+	-- ═══ OWNERSHIP STATE ═══
 
 	local function getOwnershipState(root)
 		local state = ownershipStateByRoot[root]
@@ -239,9 +274,10 @@ function Server.init(context)
 			state = {}
 			ownershipStateByRoot[root] = state
 		end
-
 		return state
 	end
+
+	-- ═══ ARRAY/COPY HELPERS ═══
 
 	local function copyArray(source)
 		local copy = {}
@@ -259,6 +295,8 @@ function Server.init(context)
 		return copy
 	end
 
+	-- Batch a list of items into multiple payloads, each capped at maxItems entries.
+	-- Used to split PatchBatch and other list-type messages.
 	local function buildListPayloads(fieldName, items, basePayload, maxItems)
 		if #items == 0 then
 			return {}
@@ -271,7 +309,6 @@ function Server.init(context)
 			if #current == 0 then
 				return
 			end
-
 			local payload = shallowCopy(basePayload)
 			payload[fieldName] = copyArray(current)
 			table.insert(payloads, payload)
@@ -296,11 +333,13 @@ function Server.init(context)
 		return payloads
 	end
 
+	-- ═══ OWNERSHIP COOLDOWN ═══
+	-- Prevents rapid ownership re-assignment and blocks specific user IDs.
+
 	local function markOwnershipCooldown(root, duration, blockedUserId)
 		if not root then
 			return
 		end
-
 		local now = os.clock()
 		local state = getOwnershipState(root)
 		local lockDuration = math.max(duration or 0, 0)
@@ -311,6 +350,9 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ ANTI-CHEAT ═══
+	-- Validates client-submitted owned state for speed hacks, teleportation, etc.
+
 	local antiCheat = OwnedStateAntiCheat.new({
 		NetworkService = networkService,
 		NetworkOwnership = networkOwnership,
@@ -319,11 +361,14 @@ function Server.init(context)
 		end,
 	})
 
+	-- ═══ TERRAIN REPLICATION ═══
+	-- Terrain uses a dedicated per-client queue because terrain payloads
+	-- can be large and are sent reliably. They are rate-limited per tick.
+
 	local function getTerrain()
 		if not terrain or terrain.Parent == nil then
 			terrain = game:GetService("Workspace"):FindFirstChild("Terrain")
 		end
-
 		return terrain
 	end
 
@@ -331,7 +376,6 @@ function Server.init(context)
 		if not session or not session.key then
 			return nil
 		end
-
 		local queue = terrainQueueByClient[session.key]
 		if not queue then
 			queue = {
@@ -341,7 +385,6 @@ function Server.init(context)
 			}
 			terrainQueueByClient[session.key] = queue
 		end
-
 		return queue
 	end
 
@@ -383,6 +426,7 @@ function Server.init(context)
 		end
 	end
 
+	-- Flush up to MAX_TERRAIN_RELIABLE_MESSAGES_PER_TICK items per client
 	local function flushTerrainQueues()
 		for _, session in ipairs(networkService:GetSessions()) do
 			local queue = terrainQueueByClient[session.key]
@@ -407,6 +451,10 @@ function Server.init(context)
 			end
 		end
 	end
+
+	-- ═══ NETWORK ID ASSIGNMENT ═══
+	-- Each replicable object gets a unique integer NetworkId.
+	-- IDs 0-6 are reserved for core singletons (DataModel, Workspace, Players, etc.).
 
 	local nextNetId = 100
 
@@ -433,6 +481,7 @@ function Server.init(context)
 			return
 		end
 
+		-- Reserved singleton IDs
 		if object.ClassName == "DataModel" then
 			object.NetworkId = 0
 		elseif object.ClassName == "Workspace" then
@@ -456,12 +505,16 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ TREE TRAVERSAL ═══
+
 	local function visitTree(root, callback)
 		callback(root)
 		for _, descendant in ipairs(root:GetDescendants()) do
 			callback(descendant)
 		end
 	end
+
+	-- ═══ LOGGING HELPERS ═══
 
 	local function formatSeconds(seconds)
 		return string.format("%.3f", seconds or 0)
@@ -471,7 +524,6 @@ function Server.init(context)
 		if not object then
 			return "nil"
 		end
-
 		return `{object.ClassName or "?"}:{object.Name or "?"}#{object.NetworkId or "?"}`
 	end
 
@@ -479,7 +531,6 @@ function Server.init(context)
 		if not root then
 			return 0
 		end
-
 		local descendants = root:GetDescendants()
 		return #descendants + 1
 	end
@@ -490,20 +541,20 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ STREAMING STATE HELPERS ═══
+
 	local function getSessionStreamState(session)
 		if not session or not session.key then
 			return nil
 		end
-
 		local state = sessionStreamingState[session.key]
 		if not state then
 			state = {
-				roots = {},
-				netIds = {},
+				roots = {},     -- NetId → root Instance
+				netIds = {},    -- NetId → true (all replicated objects in stream)
 			}
 			sessionStreamingState[session.key] = state
 		end
-
 		return state
 	end
 
@@ -517,12 +568,13 @@ function Server.init(context)
 		if netId == nil then
 			return
 		end
-
 		for _, state in pairs(sessionStreamingState) do
 			state.roots[netId] = nil
 			state.netIds[netId] = nil
 		end
 	end
+
+	-- ═══ SPATIAL CHUNKING ═══
 
 	local function chunkCoordFromValue(value)
 		return math.floor((value or 0) * streamChunkSizeInv)
@@ -536,7 +588,6 @@ function Server.init(context)
 		if type(position) ~= "table" then
 			return nil
 		end
-
 		return chunkKeyFromCoords(
 			chunkCoordFromValue(position.X),
 			chunkCoordFromValue(position.Y),
@@ -548,31 +599,28 @@ function Server.init(context)
 		if not root or not chunkKey then
 			return
 		end
-
 		local bucket = streamChunks[chunkKey]
 		if not bucket then
 			return
 		end
-
 		bucket[root] = nil
 		if next(bucket) == nil then
 			streamChunks[chunkKey] = nil
 		end
 	end
 
+	-- A root is a "stream root" if it's a direct child of Workspace,
+	-- can replicate, has a NetworkId, and is not a global entity.
 	local function isStreamRoot(root)
 		if not root then
 			return false
 		end
-
 		if root.Parent ~= workspace or root.CanReplicate == false or root.NetworkId == nil then
 			return false
 		end
-
 		if AreaOfInterest.IsGlobalEntity(root) then
 			return false
 		end
-
 		return true
 	end
 
@@ -580,13 +628,13 @@ function Server.init(context)
 		if not root then
 			return
 		end
-
 		streamRoots[root] = nil
 		streamRootsWithoutChunk[root] = nil
 		removeRootFromChunk(root, streamRootChunkKey[root])
 		streamRootChunkKey[root] = nil
 	end
 
+	-- Update a stream root's chunk assignment based on its current world position.
 	local function refreshStreamRootChunk(root)
 		if not isStreamRoot(root) then
 			unregisterStreamRoot(root)
@@ -628,7 +676,6 @@ function Server.init(context)
 		if not root then
 			return
 		end
-
 		refreshStreamRootChunk(root)
 	end
 
@@ -638,6 +685,8 @@ function Server.init(context)
 		end
 	end
 
+	-- Mark all objects in a root's tree as streamed to a session.
+	-- This prevents the object from being re-sent during streaming reconcile.
 	local function markSessionRootStreamed(session, root, shallowOnly)
 		if not session or not root then
 			return
@@ -696,6 +745,9 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ DUPLICATE BASEPLATE SUPPRESSION ═══
+	-- Prevents extra Baseplate objects in Workspace from being replicated.
+
 	local function shouldSuppressDuplicateWorkspaceBaseplate(object)
 		if object == nil or object.CanReplicate == false then
 			return false
@@ -716,6 +768,9 @@ function Server.init(context)
 		replicatedWorkspaceBaseplate = object
 		return false
 	end
+
+	-- ═══ OBJECT TRACKING ═══
+	-- Assign NetworkId, add to lookup, register for streaming, check for state adapter.
 
 	local function trackObject(object)
 		if shouldSuppressDuplicateWorkspaceBaseplate(object) then
@@ -754,6 +809,9 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ OWNERSHIP ROOT REGISTRATION ═══
+	-- A part becomes an ownership root if it's unanchored (physics-enabled).
+
 	local function registerOwnershipRoot(object)
 		local root, controller = networkOwnership.GetControllerRoot(object)
 		if root ~= nil and controller ~= nil then
@@ -780,6 +838,10 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ PROPERTY PATCH QUEUING ═══
+	-- Called by the Changed monitor. Encodes and stores property changes
+	-- for broadcast later in the tick loop.
+
 	local function encodePropertyValue(value)
 		return Shared.EncodePropertyValue(userdata, value)
 	end
@@ -804,9 +866,14 @@ function Server.init(context)
 		dirtyPatches[object.NetworkId][prop] = encoded
 	end
 
+	-- Forward-declared hook injectors (defined later in this file)
 	local injectRemoteEventHooks
 	local injectRemoteFunctionHooks
 	local injectRemoteDataHooks
+
+	-- ═══ PROPERTY CHANGE MONITOR ═══
+	-- Attaches to an object's Changed signal to track mutations.
+	-- Also handles special cases: Anchored (ownership root change), Parent (stream root change).
 
 	local function monitor(object)
 		if monitors[object] then
@@ -837,6 +904,9 @@ function Server.init(context)
 		end)
 	end
 
+	-- ═══ TREE TRACKING ═══
+	-- Process an entire subtree: track, register ownership, monitor, inject hooks.
+
 	local function trackTree(root)
 		visitTree(root, function(object)
 			trackObject(object)
@@ -854,6 +924,11 @@ function Server.init(context)
 			untrackObject(object)
 		end)
 	end
+
+	-- ═══ SERIALIZATION ═══
+	-- Serialize objects using SerializationService.
+	-- Temporarily stamps NetworkId and _parentID into _props before serializing,
+	-- then restores them afterward.
 
 	local function serializeObjects(objects)
 		local startedAt = os.clock()
@@ -908,14 +983,13 @@ function Server.init(context)
 
 		local payloadBytes = buffer.len(result)
 		logReplicationDiagnostic(
-			`serializeObjects done roots={#objects} stamped={stampedCount} bytes={payloadBytes} stampSeconds={formatSeconds(
-				stampSeconds
-			)} serializeSeconds={formatSeconds(serializeSeconds)} totalSeconds={formatSeconds(os.clock() - startedAt)}`
+			`serializeObjects done roots={#objects} stamped={stampedCount} bytes={payloadBytes} stampSeconds={formatSeconds(stampSeconds)} serializeSeconds={formatSeconds(serializeSeconds)} totalSeconds={formatSeconds(os.clock() - startedAt)}`
 		)
 
 		return result
 	end
 
+	-- Collect serializable roots that haven't been seen yet (deduplication).
 	local function collectSerializableRoots(roots)
 		local serializable = {}
 		local seen = {}
@@ -929,6 +1003,11 @@ function Server.init(context)
 
 		return serializable
 	end
+
+	-- ═══ REFERENCE PATCH COLLECTION ═══
+	-- After creating objects, collect any property values that are Instance
+	-- references so we can send them as patches. This handles the case where
+	-- a reference points to an object that was already known to the client.
 
 	local function collectReferencePatchEntries(roots)
 		local entries = {}
@@ -994,12 +1073,74 @@ function Server.init(context)
 		return entries
 	end
 
+	-- ═══ CHARACTER MODEL HELPERS ═══
+
 	local function isCharacterModel(object)
 		return object ~= nil
 			and object.ClassName == "Model"
 			and object.GetAttribute ~= nil
 			and type(object:GetAttribute("__characterUserId")) == "number"
 	end
+
+	local function getSessionForCharacterModel(model)
+		if not isCharacterModel(model) then
+			return nil
+		end
+
+		local userId = model:GetAttribute("__characterUserId")
+		if type(userId) ~= "number" then
+			return nil
+		end
+
+		for _, session in ipairs(networkService:GetSessions()) do
+			if session.player and session.player.UserId == userId then
+				return session
+			end
+		end
+
+		return nil
+	end
+
+	-- Send a character model's Create to its owning client (so they get it immediately
+	-- even if they're outside AoI range of the spawn point).
+	local function sendCharacterCreateToOwner(model, reason)
+		if not model or model.Parent == nil or model.NetworkId == nil then
+			return false
+		end
+
+		local ownerSession = getSessionForCharacterModel(model)
+		if not ownerSession or not isSessionEligibleForLiveCreate(ownerSession) then
+			return false
+		end
+
+		sendCreate(ownerSession, { model }, reason or "character_spawn_owner")
+		return true
+	end
+
+	-- Retry schedule for sending character Create to owner.
+	local function scheduleCharacterCreateToOwner(model)
+		if not isCharacterModel(model) then
+			return
+		end
+
+		task.spawn(function()
+			local delays = { 0, 0.5, 2.0 }
+			for index, delay in ipairs(delays) do
+				if delay > 0 then
+					task.wait(delay)
+				end
+				if model.Parent == nil or model.NetworkId == nil then
+					return
+				end
+
+				local reason = if index == 1 then "character_spawn_owner" else "character_spawn_owner_retry"
+				sendCharacterCreateToOwner(model, reason)
+			end
+		end)
+	end
+
+	-- ═══ AREA-OF-INTEREST FILTER ═══
+	-- Check if a specific NetworkId should replicate to a session.
 
 	local function shouldReplicateNetIdToSession(session, netId)
 		if
@@ -1027,6 +1168,9 @@ function Server.init(context)
 		return state and state.netIds[netId] == true or false
 	end
 
+	-- ═══ SEND PATCH ENTRIES ═══
+	-- Broadcast property patches to all relevant sessions (or a single recipient).
+
 	local function sendPatchEntries(recipient, entries)
 		if #entries == 0 then
 			return
@@ -1045,6 +1189,7 @@ function Server.init(context)
 			return
 		end
 
+		-- Broadcast mode: filter patches per-session based on AoI
 		local sessions = networkService:GetSessions()
 		local entriesBySession = {}
 		for _, entry in ipairs(entries) do
@@ -1073,12 +1218,24 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ DEBUG TRACE ═══
+
 	local function debugTrace(message)
 		if not DEBUG_REPLICATION_TRACE then
 			return
 		end
 		print(`[Replicator][Server][Trace] {message}`)
 	end
+
+	-- ═══ SEND CREATE ═══
+	-- The central function for sending serialized object trees to recipients.
+	-- Handles batching, pre-splitting oversized trees, backpressure,
+	-- per-root retry-on-failure, and reference patch collection.
+	--
+	-- Parameters:
+	--   recipient — nil = broadcast to all eligible sessions, or a session table
+	--   roots     — array of Instance objects to serialize and send
+	--   reason    — diagnostic label for logging
 
 	local function sendCreate(recipient, roots, reason)
 		local sendCreateStartedAt = os.clock()
@@ -1116,6 +1273,10 @@ function Server.init(context)
 			table.insert(pendingBatches, batch)
 		end
 
+		-- A "shallow root" batch serializes only the root object itself,
+		-- temporarily detaching its children. Children are sent separately.
+		-- This avoids re-serializing large child trees when only the parent
+		-- structure changed.
 		local function queueShallowRoot(root)
 			if not root then
 				return
@@ -1148,6 +1309,7 @@ function Server.init(context)
 			return children
 		end
 
+		-- Serialize a root without its children (detach → serialize → reattach)
 		local function serializeShallowRoot(root)
 			if not root then
 				return nil
@@ -1192,6 +1354,7 @@ function Server.init(context)
 			return result
 		end
 
+		-- Split a list of objects into batches balanced by tree count
 		local function queueBalancedBatches(objects)
 			local batch = {}
 			local batchTreeCount = 0
@@ -1214,6 +1377,8 @@ function Server.init(context)
 			queueBatch(batch)
 		end
 
+		-- Pre-split a batch if it contains oversized trees.
+		-- Large trees (e.g., a character model) are sent shallow + children individually.
 		local function preSplitBatch(batch)
 			if batch.__shallowRoot then
 				return false
@@ -1262,6 +1427,8 @@ function Server.init(context)
 			return false
 		end
 
+		-- Wait for reliable message backpressure to clear before sending more.
+		-- Returns false if all clients disconnected during the wait.
 		local function waitForCreateBackpressure(sessions)
 			local startedAt = os.clock()
 			local lastWarningAt = startedAt
@@ -1306,6 +1473,7 @@ function Server.init(context)
 			end
 		end
 
+		-- Send a single batch: pre-split, serialize, check oversize, and send.
 		local function sendBatch(batch)
 			if #batch == 0 then
 				return
@@ -1363,19 +1531,14 @@ function Server.init(context)
 				table.insert(batchNames, `...+{#batch - 12} more`)
 			end
 			logReplicationDiagnostic(
-				`sendBatch begin reason={reasonLabel} recipient={recipientLabel} roots={#batch} pendingBefore={#pendingBatches} names=[{table.concat(
-					batchNames,
-					", "
-				)}]`
+				`sendBatch begin reason={reasonLabel} recipient={recipientLabel} roots={#batch} pendingBefore={#pendingBatches} names=[{table.concat(batchNames, ", ")}]`
 			)
 			debugTrace(`sendBatch reason={reason or "unspecified"} serializing size={#batch}`)
 			local serializeStartedAt = os.clock()
 			local serialized = batch.__shallowRoot and serializeShallowRoot(batch[1]) or serializeObjects(batch)
 			local batchSerializeSeconds = os.clock() - serializeStartedAt
 			logReplicationDiagnostic(
-				`sendBatch serialized reason={reasonLabel} roots={#batch} ok={serialized ~= nil} serializeSeconds={formatSeconds(
-					batchSerializeSeconds
-				)}`
+				`sendBatch serialized reason={reasonLabel} roots={#batch} ok={serialized ~= nil} serializeSeconds={formatSeconds(batchSerializeSeconds)}`
 			)
 			debugTrace(`sendBatch reason={reason or "unspecified"} serialized={serialized and "success" or "failed"}`)
 
@@ -1390,7 +1553,7 @@ function Server.init(context)
 					end
 					return
 				else
-					-- Single root failed  try its children.
+					-- Single root failed: try its children.
 					local root = batch[1]
 					local children = root:GetChildren()
 					if #children > 0 then
@@ -1485,10 +1648,7 @@ function Server.init(context)
 			end
 
 			print(
-				`[Replicator][Server] Create -> {recipientLabel}: reason={reason or "unspecified"}, objects={#batch}, bytes={payloadBytes}, names=[{table.concat(
-					rootNames,
-					", "
-				)}]`
+				`[Replicator][Server] Create -> {recipientLabel}: reason={reason or "unspecified"}, objects={#batch}, bytes={payloadBytes}, names=[{table.concat(rootNames, ", ")}]`
 			)
 
 			local payload = { objects = serialized }
@@ -1522,9 +1682,7 @@ function Server.init(context)
 
 			batchesSent += 1
 			logReplicationDiagnostic(
-				`sendBatch sent reason={reasonLabel} recipient={recipientLabel} roots={#batch} bytes={payloadBytes} totalSeconds={formatSeconds(
-					os.clock() - batchStartedAt
-				)} batchesSent={batchesSent} queued={batchesQueued} pending={#pendingBatches}`
+				`sendBatch sent reason={reasonLabel} recipient={recipientLabel} roots={#batch} bytes={payloadBytes} totalSeconds={formatSeconds(os.clock() - batchStartedAt)} batchesSent={batchesSent} queued={batchesQueued} pending={#pendingBatches}`
 			)
 			-- Pace every Create batch so reliable initial-sync traffic does not starve
 			-- gameplay remotes, ACKs, and control messages.
@@ -1553,21 +1711,23 @@ function Server.init(context)
 			sendBatch(batch)
 		end
 		logReplicationDiagnostic(
-			`sendCreate done reason={reasonLabel} recipient={recipientLabel} roots={#serializable} queued={batchesQueued} sent={batchesSent} split={batchesSplit} totalBytes={totalPayloadBytes} largestBytes={largestPayloadBytes} largestRoots=[{largestPayloadRoots}] backpressureSeconds={formatSeconds(
-				totalBackpressureSeconds
-			)} totalSeconds={formatSeconds(os.clock() - sendCreateStartedAt)}`
+			`sendCreate done reason={reasonLabel} recipient={recipientLabel} roots={#serializable} queued={batchesQueued} sent={batchesSent} split={batchesSplit} totalBytes={totalPayloadBytes} largestBytes={largestPayloadBytes} largestRoots=[{largestPayloadRoots}] backpressureSeconds={formatSeconds(totalBackpressureSeconds)} totalSeconds={formatSeconds(os.clock() - sendCreateStartedAt)}`
 		)
 		debugTrace(`sendCreate reason={reason or "unspecified"} batching done`)
 
+		-- After creating objects, send patches for any Instance-reference properties
+		-- that point to already-replicated objects.
 		local patchStartedAt = os.clock()
 		local referencePatches = collectReferencePatchEntries(serializable)
 		logReplicationDiagnostic(
-			`sendCreate referencePatches reason={reasonLabel} entries={#referencePatches} collectSeconds={formatSeconds(
-				os.clock() - patchStartedAt
-			)}`
+			`sendCreate referencePatches reason={reasonLabel} entries={#referencePatches} collectSeconds={formatSeconds(os.clock() - patchStartedAt)}`
 		)
 		sendPatchEntries(recipient, referencePatches)
 	end
+
+	-- ═══ COLLECT INITIAL ROOTS ═══
+	-- Gather all objects that need to be replicated during initial sync.
+	-- Scans Workspace children + descendants of core singletons.
 
 	local function collectInitialRoots()
 		local startedAt = os.clock()
@@ -1622,7 +1782,7 @@ function Server.init(context)
 			end
 		end
 
-		-- Include every top-level Workspace instance that contains replicated descendants (nested rigs, synced folders).
+		-- Include every top-level Workspace instance that contains replicated descendants.
 		local trackedCount = 0
 		for netId in pairs(lookup) do
 			trackedCount += 1
@@ -1637,9 +1797,7 @@ function Server.init(context)
 			end
 		end
 		logReplicationDiagnostic(
-			`collectInitialRoots workspaceScan descendants={#workspaceDescendants} rootsSoFar={#roots} seconds={formatSeconds(
-				os.clock() - workspaceScanStartedAt
-			)}`
+			`collectInitialRoots workspaceScan descendants={#workspaceDescendants} rootsSoFar={#roots} seconds={formatSeconds(os.clock() - workspaceScanStartedAt)}`
 		)
 
 		local singletonIds = {
@@ -1666,11 +1824,10 @@ function Server.init(context)
 		end
 
 		logReplicationDiagnostic(
-			`collectInitialRoots singletonScan descendants={#gameDescendants} rootsSoFar={#roots} seconds={formatSeconds(
-				os.clock() - singletonScanStartedAt
-			)}`
+			`collectInitialRoots singletonScan descendants={#gameDescendants} rootsSoFar={#roots} seconds={formatSeconds(os.clock() - singletonScanStartedAt)}`
 		)
 
+		-- Sort roots: Baseplate first, then Workspace → Players → other → ReplicatedStorage
 		table.sort(roots, function(a, b)
 			local function parentPriority(object)
 				local parent = object.Parent
@@ -1712,12 +1869,13 @@ function Server.init(context)
 		end
 		logReplicationDiagnostic(`collectInitialRoots details [{table.concat(rootDetails, "; ")}]`)
 		logReplicationDiagnostic(
-			`collectInitialRoots done tracked={trackedCount} roots={#roots} seconds={formatSeconds(
-				os.clock() - startedAt
-			)}`
+			`collectInitialRoots done tracked={trackedCount} roots={#roots} seconds={formatSeconds(os.clock() - startedAt)}`
 		)
 		return roots
 	end
+
+	-- ═══ SEND REMOVE ═══
+	-- Broadcasts or sends a Remove message for a given NetworkId.
 
 	local function sendRemove(netId, object)
 		local payload = { object = netId }
@@ -1764,6 +1922,8 @@ function Server.init(context)
 		)
 	end
 
+	-- ═══ TERRAIN SNAPSHOT ═══
+
 	local function sendTerrainSnapshot(recipient)
 		local terrainObject = getTerrain()
 		if not terrainObject then
@@ -1785,6 +1945,8 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ WORLD LOADED ═══
+
 	local function sendWorldLoaded(session)
 		networkService:SendToClient(
 			session,
@@ -1794,6 +1956,8 @@ function Server.init(context)
 			true
 		)
 	end
+
+	-- ═══ CLIENT INVENTORY HANDLING ═══
 
 	local function buildClientNetIdSet(payload)
 		local set = {}
@@ -1810,6 +1974,7 @@ function Server.init(context)
 		return set
 	end
 
+	-- Check if a root tree has objects that the client does not have.
 	local function rootHasMissingObjects(root, clientNetIds)
 		local missing = false
 		visitTree(root, function(object)
@@ -1824,6 +1989,7 @@ function Server.init(context)
 		return missing
 	end
 
+	-- Check if every replicated object in a root came from a blob with the given fingerprint.
 	local function rootCameFromBlob(root, fingerprint)
 		if type(fingerprint) ~= "string" or fingerprint == "" or root == nil then
 			return false
@@ -1844,6 +2010,10 @@ function Server.init(context)
 
 		return hasReplicatedObject and allFromBlob
 	end
+
+	-- ═══ SEND INITIAL STATE FOR SESSION ═══
+	-- Computes the delta between what the client already has (from inventory)
+	-- and the full world state, then sends only missing objects.
 
 	local function sendInitialStateForSession(session, clientNetIds, clientBlobFingerprint)
 		local initialSyncStartedAt = os.clock()
@@ -1872,6 +2042,7 @@ function Server.init(context)
 			end
 		end
 
+		-- Apply AoI filter for initial sync
 		local aoiFilteredRoots = {}
 		for _, root in ipairs(rootsToReplicate) do
 			if
@@ -1887,15 +2058,11 @@ function Server.init(context)
 		end
 		rootsToReplicate = aoiFilteredRoots
 		logReplicationDiagnostic(
-			`Initial sync {session.key}: filtered roots={#rootsToReplicate}/{#initialRoots} missingOnly={clientNetIds ~= nil} seconds={formatSeconds(
-				os.clock() - filterStartedAt
-			)}`
+			`Initial sync {session.key}: filtered roots={#rootsToReplicate}/{#initialRoots} missingOnly={clientNetIds ~= nil} seconds={formatSeconds(os.clock() - filterStartedAt)}`
 		)
 
 		print(
-			`[Replicator][Server] Initial sync {session.key}: sending {#rootsToReplicate}/{#initialRoots} roots (missing-only={clientNetIds ~= nil}, blobMatch={clientBlobFingerprint == (game.GetMetadata and game:GetMetadata(
-				"__blobFingerprint"
-			) or nil)})`
+			`[Replicator][Server] Initial sync {session.key}: sending {#rootsToReplicate}/{#initialRoots} roots (missing-only={clientNetIds ~= nil}, blobMatch={clientBlobFingerprint == (game.GetMetadata and game:GetMetadata("__blobFingerprint") or nil)})`
 		)
 		initialSyncCompleted[session.key] = true
 		pendingInitialInventorySync[session.key] = nil
@@ -1920,6 +2087,9 @@ function Server.init(context)
 		)
 	end
 
+	-- ═══ COMPLETE INITIAL SYNC WITHOUT CREATE ═══
+	-- Fallback when client inventory handshake times out.
+
 	local function completeInitialSyncWithoutCreate(session)
 		if not session or not session.key or initialSyncCompleted[session.key] then
 			return
@@ -1933,6 +2103,9 @@ function Server.init(context)
 			`[Replicator][Server] Initial inventory unavailable for {session.key}; skipping initial Create fallback and continuing with live replication`
 		)
 	end
+
+	-- ═══ START INITIAL INVENTORY HANDSHAKE ═══
+	-- Request the client's object inventory so the server can compute a delta.
 
 	local function startInitialInventoryHandshake(session)
 		if not session or not session.key or initialSyncCompleted[session.key] then
@@ -1961,6 +2134,10 @@ function Server.init(context)
 			completeInitialSyncWithoutCreate(session)
 		end)
 	end
+
+	-- ═══ REMOTE EVENT HOOKS ═══
+	-- Injects FireClient/FireAllClients/FireClients methods into RemoteEvent instances.
+	-- These methods send network messages through the transport layer.
 
 	injectRemoteEventHooks = function(object)
 		if object.ClassName == "RemoteEvent" then
@@ -2042,6 +2219,10 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ REMOTE FUNCTION HOOKS ═══
+	-- Injects InvokeClient into RemoteFunction instances (server-side).
+	-- Uses a request/response pattern with timeout.
+
 	local function completeRemoteFunctionInvocation(requestId, payload)
 		local pending = pendingRemoteFunctionInvocations[requestId]
 		if not pending then
@@ -2118,6 +2299,9 @@ function Server.init(context)
 		})
 	end
 
+	-- ═══ REMOTE DATA HOOKS ═══
+	-- Watches RemoteData.Data changes and broadcasts updates.
+
 	injectRemoteDataHooks = function(object)
 		if object.ClassName ~= "RemoteData" then
 			return
@@ -2139,6 +2323,9 @@ function Server.init(context)
 			}, true)
 		end)
 	end
+
+	-- ═══ APPLY OWNED PATCH BATCH ═══
+	-- Client-submitted property patches for owned objects.
 
 	local function applyOwnedPatchBatch(session, payload)
 		for _, entry in ipairs(payload.entries or {}) do
@@ -2173,6 +2360,9 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ INITIAL SERVER-SIDE OBJECT TRACKING ═══
+	-- Track all existing objects on startup.
+
 	for _, object in ipairs(game:GetDescendants()) do
 		if object.ClassName == "Camera" then
 			continue
@@ -2184,6 +2374,9 @@ function Server.init(context)
 		injectRemoteFunctionHooks(object)
 		injectRemoteDataHooks(object)
 	end
+
+	-- ═══ DESCENDANT ADDED ═══
+	-- Handles runtime object creation: assigns NetId, tracks, and creates remotely.
 
 	game.DescendantAdded:Connect(function(object)
 		if isRuntimeMutationSuppressed() then
@@ -2225,9 +2418,15 @@ function Server.init(context)
 					`DescendantAdded root={object.ClassName}:{object.Name} netId={tostring(object.NetworkId)} descendants={#object:GetDescendants()}`
 				)
 				sendCreate(nil, { object }, "runtime_descendant_added")
+				if isCharacterModel(object) then
+					scheduleCharacterCreateToOwner(object)
+				end
 			end)
 		end
 	end)
+
+	-- ═══ DESCENDANT REMOVING ═══
+	-- Handles object destruction: sends Remove, cleans up tracking.
 
 	game.DescendantRemoving:Connect(function(object)
 		if isRuntimeMutationSuppressed() then
@@ -2247,6 +2446,9 @@ function Server.init(context)
 		untrackTree(object)
 	end)
 
+	-- ═══ CLIENT CONNECTED ═══
+	-- Start the initial sync handshake when a new client connects.
+
 	networkService.ClientConnected:Connect(function(session)
 		-- Run the initial world send in a separate coroutine so it does NOT
 		-- block the GNS receive loop.  Without this, large maps cause the
@@ -2262,6 +2464,9 @@ function Server.init(context)
 			startInitialInventoryHandshake(session)
 		end)
 	end)
+
+	-- ═══ CLIENT REMOVED ═══
+	-- Clean up all per-session state.
 
 	networkService.ClientRemoved:Connect(function(session)
 		readySessions[session.key] = nil
@@ -2281,8 +2486,9 @@ function Server.init(context)
 		end
 	end)
 
-	-- Mark a session as world-ready when the client confirms it has loaded the
-	-- initial world state.  Snapshots are held until this point.
+	-- ═══ MESSAGE HANDLER: ClientObjectInventoryResponse ═══
+	-- Client responds with its known NetworkIds → server computes delta.
+
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Control,
 		Protocol.Kinds.ClientObjectInventoryResponse,
@@ -2313,6 +2519,9 @@ function Server.init(context)
 		end
 	)
 
+	-- ═══ MESSAGE HANDLER: ClientReady ═══
+	-- Client confirms it has loaded the world and is ready for gameplay.
+
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Control,
 		Protocol.Kinds.ClientReady,
@@ -2324,6 +2533,9 @@ function Server.init(context)
 			print(`[Replicator][Server] Session {session.key} confirmed world-ready`)
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: OwnedStateBatch ═══
+	-- Client-submitted physics state (CFrame, velocities) for owned objects.
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Input,
@@ -2349,6 +2561,9 @@ function Server.init(context)
 		end
 	)
 
+	-- ═══ MESSAGE HANDLER: SnapshotAck ═══
+	-- Client acknowledges receipt of a snapshot tick.
+
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Replication,
 		Protocol.Kinds.SnapshotAck,
@@ -2359,6 +2574,9 @@ function Server.init(context)
 			end
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: OwnedPatchBatch ═══
+	-- Client-submitted reliable property patches for owned objects.
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Input,
@@ -2371,6 +2589,9 @@ function Server.init(context)
 			applyOwnedPatchBatch(session, payload)
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: RemoteEvent ═══
+	-- Client → Server RemoteEvent invocation.
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Message,
@@ -2387,6 +2608,9 @@ function Server.init(context)
 		end
 	)
 
+	-- ═══ MESSAGE HANDLER: UnreliableRemoteEvent ═══
+	-- Client → Server unreliable RemoteEvent invocation.
+
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Message,
 		Protocol.Kinds.UnreliableRemoteEvent,
@@ -2401,6 +2625,9 @@ function Server.init(context)
 			object.OnServerEvent:Fire(player, table.unpack(args, 1, args.n or #args))
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: RemoteFunctionRequest ═══
+	-- Client → Server RemoteFunction invocation.
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Message,
@@ -2440,6 +2667,9 @@ function Server.init(context)
 		end
 	)
 
+	-- ═══ MESSAGE HANDLER: RemoteFunctionResponse ═══
+	-- Completes a pending server-side RemoteFunction invocation.
+
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Message,
 		Protocol.Kinds.RemoteFunctionResponse,
@@ -2447,6 +2677,9 @@ function Server.init(context)
 			completeRemoteFunctionInvocation(payload.requestId, payload)
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: RemoteDataUpdate ═══
+	-- Broadcast RemoteData.Data changes.
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Message,
@@ -2465,6 +2698,9 @@ function Server.init(context)
 			object.Data = decoded
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: ControllerInput ═══
+	-- Client-submitted input actions for server-authoritative simulation.
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Input,
@@ -2487,6 +2723,10 @@ function Server.init(context)
 			end
 		end
 	)
+
+	-- ═══ SERVER-AUTHORITATIVE INPUT ═══
+	-- In server-authoritative mode, the server runs the simulation and
+	-- applies client inputs each tick.
 
 	local SERVER_INPUT_ACTIONS = { "MoveX", "MoveZ", "Jump", "Sprint", "Crouch" }
 
@@ -2515,6 +2755,9 @@ function Server.init(context)
 		end
 	end)
 
+	-- ═══ FLUSH DIRTY PATCHES ═══
+	-- Sends accumulated property patches (from Changed signals) to all clients.
+
 	local function flushDirtyPatches()
 		if next(dirtyPatches) == nil then
 			return
@@ -2538,6 +2781,9 @@ function Server.init(context)
 			sendPatchEntries(nil, entries)
 		end
 	end
+
+	-- ═══ FLUSH TERRAIN CHUNK UPDATES ═══
+	-- Consumes and queues incremental terrain edits.
 
 	local function flushTerrainChunkUpdates()
 		local terrainObject = getTerrain()
@@ -2565,25 +2811,23 @@ function Server.init(context)
 		end
 	end
 
-	local function applyPendingOwnedStateBatches()
-		local function applyOwnedBasePartStateSilently(object, state)
-			local props = rawget(object, "_props")
-			if type(props) ~= "table" then
-				return false
-			end
+	-- ═══ APPLY PENDING OWNED STATE BATCHES ═══
+	-- Processes queued owned-state submissions from clients.
 
+	local function applyPendingOwnedStateBatches()
+		local function applyOwnedBasePartState(object, state)
 			if state.cframe then
 				local ok, cframe = pcall(CFrame.FromTable, state.cframe)
 				if ok and cframe then
-					props.CFrame = cframe
+					object.CFrame = cframe
 					if cframe.Position then
-						props.Position = cframe.Position
+						object.Position = cframe.Position
 					end
 					if cframe.ToOrientation then
 						local rx, ry, rz = cframe:ToOrientation()
 						local orientation = Vector3.new(rx, ry, rz)
-						props.Orientation = orientation
-						props.Rotation = orientation
+						object.Orientation = orientation
+						object.Rotation = orientation
 					end
 				end
 			end
@@ -2591,15 +2835,15 @@ function Server.init(context)
 			if state.linear then
 				local ok, linear = pcall(Vector3.FromTable, state.linear)
 				if ok and linear then
-					props.AssemblyLinearVelocity = linear
-					props.Velocity = linear
+					object.AssemblyLinearVelocity = linear
+					object.Velocity = linear
 				end
 			end
 
 			if state.angular then
 				local ok, angular = pcall(Vector3.FromTable, state.angular)
 				if ok and angular then
-					props.AssemblyAngularVelocity = angular
+					object.AssemblyAngularVelocity = angular
 				end
 			end
 
@@ -2612,52 +2856,63 @@ function Server.init(context)
 				continue
 			end
 
-			for _, state in ipairs(payload.states or {}) do
-				local object = lookup[state.id]
-				if not object or object.Parent == nil then
-					continue
-				end
-				if not stateRegistry.ResolveAdapter(object) then
-					continue
-				end
-				if not networkOwnership.IsOwnedByPlayer(object, session.player) then
-					continue
-				end
-				if not antiCheat:ValidateOwnedState(session, payload, object, state) then
-					continue
-				end
-
-				logHumanoidRootState(
-					"apply-owned-before",
-					session.key,
-					object,
-					state,
-					`sequence={payload.sequence or 0}`
-				)
-				withMutedObject(object, function()
-					if state.type ~= "BasePart" or not applyOwnedBasePartStateSilently(object, state) then
-						stateRegistry.Apply(object, state)
-					end
-				end)
-				logHumanoidRootState(
-					"apply-owned-after",
-					session.key,
-					object,
-					state,
-					`sequence={payload.sequence or 0}`
-				)
-			end
-
-			if payload.sequence == 1 or payload.sequence % 30 == 0 then
-				print(
-					`[Replicator][Server] Applied owned state batch from {session.player.Name}: sequence={payload.sequence}, count={#(payload.states or {})}`
-				)
-			end
-
-			session.lastAppliedOwnedStateSequence = payload.sequence or session.lastAppliedOwnedStateSequence or 0
 			session.pendingOwnedStateBatch = nil
+			local player = session.player
+			local sessionKey = session.key
+
+			task.defer(function()
+				if not player or player.Parent == nil then
+					return
+				end
+
+				for _, state in ipairs(payload.states or {}) do
+					local object = lookup[state.id]
+					if not object or object.Parent == nil then
+						continue
+					end
+					if not stateRegistry.ResolveAdapter(object) then
+						continue
+					end
+					if not networkOwnership.IsOwnedByPlayer(object, player) then
+						continue
+					end
+					if not antiCheat:ValidateOwnedState(session, payload, object, state) then
+						continue
+					end
+
+					logHumanoidRootState(
+						"apply-owned-before",
+						sessionKey,
+						object,
+						state,
+						`sequence={payload.sequence or 0}`
+					)
+					withMutedObject(object, function()
+						if state.type ~= "BasePart" or not applyOwnedBasePartState(object, state) then
+							stateRegistry.Apply(object, state)
+						end
+					end)
+					logHumanoidRootState(
+						"apply-owned-after",
+						sessionKey,
+						object,
+						state,
+						`sequence={payload.sequence or 0}`
+					)
+				end
+
+				if payload.sequence == 1 or payload.sequence % 30 == 0 then
+					print(
+						`[Replicator][Server] Applied owned state batch from {player.Name}: sequence={payload.sequence}, count={#(payload.states or {})}`
+					)
+				end
+
+				session.lastAppliedOwnedStateSequence = payload.sequence or session.lastAppliedOwnedStateSequence or 0
+			end)
 		end
 	end
+
+	-- ═══ OWNERSHIP DISTANCE HELPERS ═══
 
 	local function getPlayerDistanceToRoot(root, player)
 		local rootPosition = networkOwnership.GetWorldPosition(root)
@@ -2669,6 +2924,7 @@ function Server.init(context)
 		return (rootPosition - playerPosition):Magnitude()
 	end
 
+	-- Find the closest eligible player to claim ownership of a root.
 	local function findBestOwnershipCandidate(root, now)
 		local bestPlayer = nil
 		local bestDistance = math.huge
@@ -2705,6 +2961,10 @@ function Server.init(context)
 		state.cooldownUntil = math.max(state.cooldownUntil or 0, now)
 		return changed
 	end
+
+	-- ═══ REBALANCE OWNERSHIP ═══
+	-- Periodically re-evaluates which client owns each physics root.
+	-- Uses distance-based assignment with cooldowns and steal margins.
 
 	local function rebalanceOwnership(now)
 		for root in pairs(ownershipRoots) do
@@ -2789,6 +3049,11 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ FLUSH SNAPSHOTS ═══
+	-- Each tick, capture state of tracked objects and send deltas to each client.
+	-- Uses per-object state history for delta computation against each client's
+	-- last acknowledged tick. Applies AoI and backpressure per session.
+
 	local function flushSnapshots(tick)
 		for netId, object in pairs(trackedStateObjects) do
 			if object.CanReplicate == false or object.Parent == nil or object.NetworkId == nil then
@@ -2855,9 +3120,6 @@ function Server.init(context)
 						if numStates >= maxStatesForSession then
 							break
 						end
-					else
-						-- if latestTickSequence > clientAckTick but delta is nil, it means
-						-- this client already has this state effectively.
 					end
 				end
 			end
@@ -2883,7 +3145,9 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ UPDATE AOI POSITIONS ═══
 	-- Update AoI positions for all sessions each tick from their character's position.
+
 	local function updateAoIPositions()
 		for _, session in ipairs(networkService:GetSessions()) do
 			if session.player then
@@ -2894,6 +3158,9 @@ function Server.init(context)
 			end
 		end
 	end
+
+	-- ═══ GATHER TARGET STREAM ROOTS ═══
+	-- Determines which streaming roots are within range of a session.
 
 	local function gatherTargetStreamRootsForSession(session)
 		local targetsByNetId = {}
@@ -2964,6 +3231,10 @@ function Server.init(context)
 		return targetsByNetId
 	end
 
+	-- ═══ RECONCILE STREAMING REGIONS ═══
+	-- Periodically compares what each session should have vs what they have,
+	-- sending Creates for entering roots and Removes for exiting roots.
+
 	local function reconcileStreamingRegions()
 		refreshAllStreamRoots()
 
@@ -3002,6 +3273,10 @@ function Server.init(context)
 		end
 	end
 
+	-- ═══ TICK LOOP ═══
+	-- The main server tick: rebalance ownership, update AoI, reconcile streaming,
+	-- apply owned states, flush patches, terrain, and snapshots.
+
 	networkService.Tick:Connect(function(tick)
 		local tickOk, tickErr = pcall(function()
 			local tickStartedAt = os.clock()
@@ -3032,15 +3307,7 @@ function Server.init(context)
 			local tickSeconds = os.clock() - tickStartedAt
 			if REPLICATION_DIAGNOSTICS and tickSeconds >= SLOW_TICK_DIAGNOSTIC_SECONDS then
 				warn(
-					`[Replicator][Server][Diag] slow tick={tick} totalSeconds={formatSeconds(tickSeconds)} rebalance={formatSeconds(
-						timings.rebalanceOwnership
-					)} aoi={formatSeconds(timings.updateAoIPositions)} owned={formatSeconds(
-						timings.applyPendingOwnedStateBatches
-					)} patches={formatSeconds(timings.flushDirtyPatches)} terrainChunks={formatSeconds(
-						timings.flushTerrainChunkUpdates
-					)} terrainQueue={formatSeconds(timings.flushTerrainQueues)} snapshots={formatSeconds(
-						timings.flushSnapshots
-					)}`
+					`[Replicator][Server][Diag] slow tick={tick} totalSeconds={formatSeconds(tickSeconds)} rebalance={formatSeconds(timings.rebalanceOwnership)} aoi={formatSeconds(timings.updateAoIPositions)} owned={formatSeconds(timings.applyPendingOwnedStateBatches)} patches={formatSeconds(timings.flushDirtyPatches)} terrainChunks={formatSeconds(timings.flushTerrainChunkUpdates)} terrainQueue={formatSeconds(timings.flushTerrainQueues)} snapshots={formatSeconds(timings.flushSnapshots)}`
 				)
 			end
 		end)
@@ -3049,7 +3316,7 @@ function Server.init(context)
 		end
 	end)
 
-	--  Race-condition catch-up
+	-- ═══ RACE-CONDITION CATCH-UP ═══
 	-- The server socket begins accepting connections inside NetworkService.InitRenderer,
 	-- which runs concurrently with ReplicatorService.InitRenderer.  A client can
 	-- therefore complete the GNS handshake and fire ClientConnected *before* the

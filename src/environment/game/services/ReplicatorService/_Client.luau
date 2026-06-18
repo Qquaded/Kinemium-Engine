@@ -9,14 +9,21 @@ local Enum = require("@EnumMap")
 local InputActionService = require("../InputActionService/InputActionService")
 local GNS = require("@GNS")
 
-local OWNED_STATE_SEND_RATE = 15
-local NO_OWNED_STATE_LOG_INTERVAL_SECONDS = 10
-local DEBUG_CREATE_TRACE = false
+-- ═══ CONFIGURATION ═══
+
+local OWNED_STATE_SEND_RATE = 15 -- Target Hz for owned-state sends from client
+local NO_OWNED_STATE_LOG_INTERVAL_SECONDS = 10 -- Log interval when no owned objects exist
+local DEBUG_CREATE_TRACE = false -- Verbose Create message logging
+
+-- ═══ HELPERS ═══
 
 local function packArgs(...)
 	return table.pack(...)
 end
 
+-- ═══ Client.init(context) ═══
+-- Called once by ReplicatorService.InitRenderer when running as client.
+-- Sets up lookup table, event handlers, message handlers, and tick/render hooks.
 function Client.init(context)
 	print("[Replicator][Client] ===== Client.init START =====")
 	local game = context.game
@@ -38,21 +45,23 @@ function Client.init(context)
 		print("[Replicator][Client] SerializerAdapters not available, using default serializers")
 	end
 
-	local lookup = {}
-	local singletonByClass = {}
-	local ignoredCreateNetIds = {}
-	local processedCreateNetIds = {} -- Track all NetworkIds we've successfully created
-	local deferredReferencePatches = {}
-	local MAX_DEFERRED_PATCHES = 256
-	local DEFERRED_PATCH_TTL = 30 -- seconds; discard entries older than this
-	local remoteTargets = {}
-	local pendingSnapshots = {} -- netId -> latest snapshot state received before the object existed in lookup
+	-- ═══ CORE STATE ═══
+
+	local lookup = {} -- NetworkId → Instance (client-side object map)
+	local singletonByClass = {} -- ClassName → existing local singleton (e.g. Camera)
+	local ignoredCreateNetIds = {} -- NetworkIds to silently ignore on Create
+	local processedCreateNetIds = {} -- Track all NetworkIds we've successfully created (for duplicate detection)
+	local deferredReferencePatches = {} -- Patches waiting for referenced object to arrive
+	local MAX_DEFERRED_PATCHES = 256 -- Cap on deferred patch queue
+	local DEFERRED_PATCH_TTL = 30 -- Seconds; discard entries older than this
+	local remoteTargets = {} -- NetId → latest snapshot state for interpolation
+	local pendingSnapshots = {} -- netId → latest snapshot state received before the object existed in lookup
 	local pendingSnapshotsCount = 0
 	local MAX_PENDING_SNAPSHOTS = 512
-	local monitors = {}
+	local monitors = {} -- Instance → Changed connection
 	local mutedObjects = setmetatable({}, { __mode = "k" })
-	local predictionBuffer = PredictionBuffer.new(128)
-	local clientBaselineCache = {}
+	local predictionBuffer = PredictionBuffer.new(128) -- For owned-state prediction/reconciliation
+	local clientBaselineCache = {} -- tick → { netId → fullState } for delta decompression
 	local MAX_BASELINE_CACHE_SIZE = 64 -- Limit cache size to prevent memory leaks
 	local workspace = game:GetService("Workspace")
 	local protectedWorkspaceSingletonClasses = {
@@ -60,16 +69,18 @@ function Client.init(context)
 		Terrain = true,
 	}
 	local ownedStateSequence = 0
-	local outboundOwnedPatchEntries = {}
+	local outboundOwnedPatchEntries = {} -- Queued owned property patches
 	local lastNoOwnedStateLogTick = -math.huge
 	local lastOwnedStateSendTick = -math.huge
-	local lastOwnedStatesById = {}
+	local lastOwnedStatesById = {} -- For change detection (only send if state changed)
 	local terrain = game:GetService("Workspace"):FindFirstChild("Terrain")
 	local humanoidRootDebugAt = {}
-	local flushPendingSnapshot
+	local flushPendingSnapshot -- Forward-declared; assigned below
 	local remoteFunctionRequestId = 0
 	local pendingRemoteFunctionInvocations = {}
 	local worldLoadedHandled = false
+
+	-- ═══ OBJECT IDENTIFICATION ═══
 
 	local function isHumanoidRootObject(object)
 		if object == nil then
@@ -107,6 +118,9 @@ function Client.init(context)
 		return `({string.format("%.2f", value.X)}, {string.format("%.2f", value.Y)}, {string.format("%.2f", value.Z)})`
 	end
 
+	-- ═══ BASELINE MAP CACHE ═══
+	-- Find the best baseline map for a given tick. Used for delta decompression.
+
 	local function getBestBaselineMap(baseTick)
 		local exact = clientBaselineCache[baseTick]
 		if exact then
@@ -126,6 +140,8 @@ function Client.init(context)
 
 		return {}, nil
 	end
+
+	-- ═══ STATE POSITION DECODING ═══
 
 	local function decodeStatePosition(state)
 		if type(state) ~= "table" or type(state.cframe) ~= "table" then
@@ -147,7 +163,7 @@ function Client.init(context)
 
 		local owner = object.NetworkOwner and object.NetworkOwner.Name or "Server"
 		local livePos = (object.CFrame and object.CFrame.Position) or object.Position
-		--[[
+		--[[ Debug logging; uncomment for humanoid state tracking
 		local statePos = decodeStatePosition(state)
 		if DEBUG_CREATE_TRACE then
 			print(
@@ -155,8 +171,12 @@ function Client.init(context)
 				livePos
 			)} state={formatVector3(statePos)} {extra or ""}`
 		)
-			--]]
+		end
+		--]]
 	end
+
+	-- ═══ TRANSFORM INTERPOLATION ═══
+	-- Interpolates BasePart CFrame for smooth remote object movement.
 
 	local function applyInterpolatedBasePartTransform(object, cframe)
 		if not object or not cframe then
@@ -177,6 +197,8 @@ function Client.init(context)
 		end
 	end
 
+	-- ═══ TERRAIN ACCESS ═══
+
 	local function getTerrain()
 		if not terrain or terrain.Parent == nil then
 			terrain = game:GetService("Workspace"):FindFirstChild("Terrain")
@@ -194,6 +216,9 @@ function Client.init(context)
 		end
 		return nil
 	end
+
+	-- ═══ CORE SINGLETON SETUP ═══
+	-- Populate the singleton table with locally-existing core services.
 
 	local coreServices = {
 		["DataModel"] = game,
@@ -222,6 +247,7 @@ function Client.init(context)
 		singletonByClass["Terrain"] = localTerrain
 	end
 
+	-- Register the reserved singleton IDs in the lookup
 	lookup[0] = game
 	lookup[1] = game:GetService("Workspace")
 	lookup[2] = game:GetService("Players")
@@ -230,11 +256,18 @@ function Client.init(context)
 	lookup[5] = coreServices["CoreGui"]
 	lookup[6] = game:GetService("InternalStorage")
 
+	-- ═══ PENDING PARENT QUEUE ═══
+	-- Objects whose parent hasn't arrived yet are queued here.
+
 	local pendingParentQueue = {}
 
 	local function isReplicationSettled()
 		return pendingSnapshotsCount == 0 and #deferredReferencePatches == 0
 	end
+
+	-- ═══ COLLECT KNOWN NETWORK IDS ═══
+	-- Gather all NetworkIds currently in the client's object tree.
+	-- Sent to server for inventory handshake (delta-based initial sync).
 
 	local function collectKnownNetworkIds()
 		local known = {}
@@ -272,6 +305,9 @@ function Client.init(context)
 		}, true)
 	end
 
+	-- ═══ MUTED OBJECT HELPER ═══
+	-- Prevents the Changed monitor from re-queuing writes during client-initiated mutations.
+
 	local function withMutedObject(object, callback)
 		mutedObjects[object] = (mutedObjects[object] or 0) + 1
 
@@ -288,6 +324,9 @@ function Client.init(context)
 
 		return result
 	end
+
+	-- ═══ REMOTE EVENT HOOKS ═══
+	-- Injects FireServer into RemoteEvent instances on the client.
 
 	local function injectRemoteEventHook(object)
 		if object.ClassName == "RemoteEvent" then
@@ -310,6 +349,9 @@ function Client.init(context)
 			})
 		end
 	end
+
+	-- ═══ OWNED PATCH QUEUING ═══
+	-- Queues property patches for objects owned by the local player.
 
 	local function queueOwnedPatch(object, prop, value)
 		local localPlayer = game.Players.LocalPlayer
@@ -338,6 +380,9 @@ function Client.init(context)
 		outboundOwnedPatchEntries[object.NetworkId][prop] = encoded
 	end
 
+	-- ═══ CLIENT-SIDE MONITOR ═══
+	-- Tracks Changed signals for owned property patch queuing.
+
 	local function monitorObject(object)
 		if monitors[object] then
 			return
@@ -351,6 +396,9 @@ function Client.init(context)
 			queueOwnedPatch(object, prop, value)
 		end)
 	end
+
+	-- ═══ REMOTE DATA HOOK ═══
+	-- Sends RemoteData.Data changes to the server.
 
 	local function injectRemoteDataHook(object)
 		if object.ClassName ~= "RemoteData" then
@@ -377,6 +425,8 @@ function Client.init(context)
 		end)
 	end
 
+	-- ═══ MONITOR CLEANUP ═══
+
 	local function unmonitorObject(object)
 		local connection = monitors[object]
 		if connection then
@@ -384,6 +434,8 @@ function Client.init(context)
 			monitors[object] = nil
 		end
 	end
+
+	-- ═══ REMOTE FUNCTION HELPERS ═══
 
 	local function completeRemoteFunctionInvocation(requestId, payload)
 		local pending = pendingRemoteFunctionInvocations[requestId]
@@ -419,6 +471,9 @@ function Client.init(context)
 			task.wait()
 		end
 	end
+
+	-- ═══ REMOTE FUNCTION HOOK ═══
+	-- Injects InvokeServer into RemoteFunction instances.
 
 	local function injectRemoteFunctionHook(object)
 		if object.ClassName ~= "RemoteFunction" then
@@ -456,6 +511,9 @@ function Client.init(context)
 		})
 	end
 
+	-- ═══ DEFERRED REFERENCE PATCHES ═══
+	-- Patches that reference instances not yet in lookup are queued and retried.
+
 	local function flushDeferredReferencePatches()
 		if #deferredReferencePatches == 0 then
 			return
@@ -482,6 +540,9 @@ function Client.init(context)
 			if not ok then
 				table.insert(retry, entry)
 			else
+				if object.ClassName == "Player" and entry.prop == "Character" then
+					continue
+				end
 				withMutedObject(object, function()
 					object[entry.prop] = decoded
 				end)
@@ -490,6 +551,8 @@ function Client.init(context)
 
 		deferredReferencePatches = retry
 	end
+
+	-- ═══ TREE TRAVERSAL HELPERS ═══
 
 	local function collectTreeEntries(rootObject)
 		local entries = {}
@@ -529,6 +592,7 @@ function Client.init(context)
 		end
 	end
 
+	-- Reserve NetworkIds for a tree of newly-created objects.
 	local function reserveTreeEntries(entries)
 		for _, entry in ipairs(entries) do
 			if entry.object._props then
@@ -544,6 +608,7 @@ function Client.init(context)
 		end
 	end
 
+	-- Destroy an object and all its descendants.
 	local function destroyInstanceTree(rootObject)
 		if not rootObject then
 			return
@@ -560,6 +625,10 @@ function Client.init(context)
 			end
 		end
 	end
+
+	-- ═══ WORKSPACE TREE ADOPTION ═══
+	-- If an object already exists locally in Workspace (e.g. from a blob load),
+	-- adopt it by mapping NetworkIds instead of destroying and recreating.
 
 	local function adoptReplicatedWorkspaceTree(localRoot, replicatedRoot)
 		local function adoptPair(localNode, replicatedNode)
@@ -590,6 +659,7 @@ function Client.init(context)
 		return localRoot
 	end
 
+	-- Try to adopt a Workspace child server-replicated tree into the local tree.
 	local function tryAdoptLocalWorkspaceRoot(object, parentNetId)
 		if parentNetId ~= 1 then
 			return nil
@@ -602,6 +672,9 @@ function Client.init(context)
 
 		return adoptReplicatedWorkspaceTree(localRoot, object)
 	end
+
+	-- ═══ CHARACTER BINDING ═══
+	-- Binds character Models to Player objects.
 
 	local function assignCharacterToPlayer(player, character)
 		if DEBUG_CREATE_TRACE then
@@ -625,6 +698,23 @@ function Client.init(context)
 			player.CharacterAdded:Fire(character)
 			print(`[Replicator][Client]   -> CharacterAdded fired`)
 		end
+	end
+
+	local function isValidCharacterModelForPlayer(model, player)
+		if not model or not player or model.ClassName ~= "Model" or model.Parent == nil then
+			return false
+		end
+
+		if not model.FindFirstChildOfClass or not model:FindFirstChildOfClass("Humanoid") then
+			return false
+		end
+
+		local uid = model.GetAttribute and model:GetAttribute("__characterUserId")
+		if type(uid) == "number" and uid == player.UserId then
+			return true
+		end
+
+		return model.Name == player.Name
 	end
 
 	local function findCharacterModelForPlayer(workspace, player)
@@ -700,6 +790,17 @@ function Client.init(context)
 
 	local isSyncingCharacter = false
 
+	local function ensureCharacterModelMetadata(model, player)
+		if not model or model.ClassName ~= "Model" or not player then
+			return
+		end
+
+		if model.SetAttribute and type(model:GetAttribute("__characterUserId")) ~= "number" then
+			model:SetAttribute("__characterUserId", player.UserId)
+		end
+	end
+
+	-- Sync a character model to its owning Player object.
 	local function syncPlayerCharacterBindingForModel(model)
 		if isSyncingCharacter then
 			return
@@ -745,6 +846,7 @@ function Client.init(context)
 			return
 		end
 
+		ensureCharacterModelMetadata(model, player)
 		assignCharacterToPlayer(player, model)
 		finish()
 	end
@@ -779,9 +881,14 @@ function Client.init(context)
 		end
 	end
 
+	-- Find and sync a character for a Player.
 	local function syncPlayerCharacterBindingForPlayer(player)
 		print(`[Replicator][Client] syncCharBindingForPlayer: ${player and player.Name or "nil"}`)
 		if not player then
+			return
+		end
+
+		if isValidCharacterModelForPlayer(player.Character, player) then
 			return
 		end
 
@@ -789,9 +896,12 @@ function Client.init(context)
 		local character = findCharacterModelForPlayer(workspace, player)
 		print(`[Replicator][Client]   findCharacterModelForPlayer = ${character and character.Name or "nil"}`)
 		if character then
+			ensureCharacterModelMetadata(character, player)
 			assignCharacterToPlayer(player, character)
 		end
 	end
+
+	-- ═══ PENDING PARENT QUEUE FLUSH ═══
 
 	local function flushPendingParentQueue()
 		if #pendingParentQueue == 0 then
@@ -813,6 +923,10 @@ function Client.init(context)
 		end
 		pendingParentQueue = remaining
 	end
+
+	-- ═══ HANDLE CREATE ═══
+	-- Deserializes server-sent object trees and integrates them into the local object tree.
+	-- Handles singletons, Player matching, duplicate detection, adoption, and parenting.
 
 	local function handleCreate(serializedBuffer)
 		flushPendingParentQueue()
@@ -899,6 +1013,7 @@ function Client.init(context)
 				continue
 			end
 
+			-- Protected singletons (Camera, Terrain) are never replaced
 			if protectedWorkspaceSingletonClasses[object.ClassName] then
 				local existingSingleton = singletonByClass[object.ClassName]
 					or (parentNetId == 1 and workspace:FindFirstChild(object.Name))
@@ -919,6 +1034,7 @@ function Client.init(context)
 				end
 			end
 
+			-- Player matching: find existing Player by UserId or name
 			if object.ClassName == "Player" then
 				playerCount += 1
 				print(`[Replicator][Client]   Processing Player: {object.Name} (netId={netId})`)
@@ -931,6 +1047,7 @@ function Client.init(context)
 					localPlayer.Parent = playersService
 					lookup[netId] = localPlayer
 					playersService.LocalPlayer = localPlayer
+					syncPlayerCharacterBindingForPlayer(localPlayer)
 					continue
 				end
 
@@ -956,6 +1073,7 @@ function Client.init(context)
 				end
 			end
 
+			-- Match other singletons by class name
 			local existing = singletonByClass[object.ClassName]
 			if existing and existing.NetworkId == nil then
 				singletonCount += 1
@@ -964,6 +1082,7 @@ function Client.init(context)
 				continue
 			end
 
+			-- Try adopting a locally-existing Workspace root
 			local adoptedRoot = tryAdoptLocalWorkspaceRoot(object, parentNetId)
 			if adoptedRoot then
 				singletonCount += 1
@@ -974,6 +1093,7 @@ function Client.init(context)
 				continue
 			end
 
+			-- New tree: reserve NetworkIds for all objects
 			local treeEntries, conflictingNetId = collectTreeEntries(object)
 			if not treeEntries then
 				warn(
@@ -1005,6 +1125,8 @@ function Client.init(context)
 				`[Replicator][Client] handleCreate: classification done  deferred={#deferred}, skipped={skippedCount}, players={playerCount}, singletons={singletonCount}, trees={treeCount}`
 			)
 		end
+
+		-- ═══ PARENTING ═══
 
 		local function tryParent(entry)
 			local parent = lookup[entry.parentNetId]
@@ -1060,6 +1182,7 @@ function Client.init(context)
 			end
 		end
 
+		-- Fallback parenting for objects whose parent never arrived
 		for _, entry in ipairs(retryQueue) do
 			if entry.parentNetId == 1 or entry.parentNetId == nil then
 				if DEBUG_CREATE_TRACE then
@@ -1118,6 +1241,9 @@ function Client.init(context)
 		end
 	end
 
+	-- ═══ APPLY PATCH ENTRY ═══
+	-- Apply a single property patch, deferring reference patches if needed.
+
 	local function applyPatchEntry(entry)
 		local object = lookup[entry.object]
 		if not object then
@@ -1133,6 +1259,9 @@ function Client.init(context)
 		end
 
 		for prop, encoded in pairs(entry.updates or {}) do
+			if object.ClassName == "Player" and prop == "Character" then
+				continue
+			end
 			local decoded, ok = Shared.DecodePropertyValue(userdata, lookup, encoded)
 			if not ok then
 				table.insert(deferredReferencePatches, {
@@ -1155,6 +1284,10 @@ function Client.init(context)
 			end
 		end
 	end
+
+	-- ═══ RECONCILE LOCAL STATE ═══
+	-- Compares server-authoritative snapshot state with client prediction.
+	-- If the client's prediction is close enough, keep it. Otherwise reconcile.
 
 	local function reconcileLocalState(object, state, ackPredictedState)
 		if object.Parent == nil or object.CFrame == nil or state.cframe == nil then
@@ -1182,6 +1315,9 @@ function Client.init(context)
 		end
 	end
 
+	-- ═══ APPLY OWNERSHIP STATE ═══
+	-- Sets the NetworkOwner on an object based on snapshot data.
+
 	local function applyOwnershipState(object, state)
 		if state.type ~= "BasePart" and state.type ~= "NetworkAuthorityRoot" then
 			return
@@ -1193,6 +1329,9 @@ function Client.init(context)
 			object.NetworkOwnerType = owner and Enum.MachineNetworkOwner.Client or Enum.MachineNetworkOwner.Server
 		end)
 	end
+
+	-- ═══ APPLY BUFFERED SNAPSHOT ═══
+	-- Applies a snapshot to an object that just arrived in lookup.
 
 	-- Assign the forward-declared flushPendingSnapshot now that all its runtime
 	-- dependencies (reconcileLocalState, applyOwnershipState) are in scope.
@@ -1240,6 +1379,10 @@ function Client.init(context)
 		applyBufferedSnapshot(object, buffered.state, buffered.ackPredictedState)
 	end
 
+	-- ═══ HANDLE SNAPSHOT ═══
+	-- Receives delta-compressed state snapshots, decompresses against cached baselines,
+	-- and applies state to objects. Handles ack-based prediction buffer reconciliation.
+
 	local function handleSnapshot(payload)
 		local ackSequence = payload.lastProcessedOwnedStateSequence or 0
 		local ackBatch = predictionBuffer.entries[ackSequence]
@@ -1263,6 +1406,7 @@ function Client.init(context)
 		end
 		local statesToApply = {}
 
+		-- Decompress delta states against baseline map
 		for _, stateOrDelta in ipairs(payload.states or {}) do
 			local netId = stateOrDelta.id
 			if netId == nil then
@@ -1309,6 +1453,7 @@ function Client.init(context)
 			end
 		end
 
+		-- First pass: apply ownership
 		for _, state in ipairs(statesToApply) do
 			local object = lookup[state.id]
 			if object then
@@ -1316,6 +1461,7 @@ function Client.init(context)
 			end
 		end
 
+		-- Second pass: apply physics state with reconciliation
 		local localPlayer = game.Players.LocalPlayer
 		for _, state in ipairs(statesToApply) do
 			local object = lookup[state.id]
@@ -1359,6 +1505,9 @@ function Client.init(context)
 		end
 	end
 
+	-- ═══ COLLECT OWNED STATES ═══
+	-- Gathers current state of all objects owned by the local player for unreliably sent snapshots.
+
 	local function collectOwnedStates(localPlayer)
 		local states = {}
 
@@ -1380,6 +1529,9 @@ function Client.init(context)
 
 		return states
 	end
+
+	-- ═══ SHOULD SEND OWNED STATES ═══
+	-- Rate-limits owned state sends and avoids sending when state hasn't changed.
 
 	local function shouldSendOwnedStates(tick, states)
 		local tickRate = tonumber(networkService.TickRate) or 30
@@ -1419,6 +1571,9 @@ function Client.init(context)
 		return true
 	end
 
+	-- ═══ FLUSH OWNED PATCH ENTRIES ═══
+	-- Sends queued owned property patches to the server.
+
 	local function flushOwnedPatchEntries()
 		if next(outboundOwnedPatchEntries) == nil then
 			return
@@ -1438,6 +1593,9 @@ function Client.init(context)
 		}, true)
 	end
 
+	-- ═══ DESCENDANT TRACKING ═══
+	-- Client-side tracking for locally-created objects that already have NetworkIds.
+
 	game.DescendantAdded:Connect(function(object)
 		visitTree(object, function(descendant)
 			if descendant.NetworkId ~= nil then
@@ -1454,6 +1612,9 @@ function Client.init(context)
 
 	game.DescendantRemoving:Connect(function(object)
 		visitTree(object, function(descendant)
+			if descendant.ClassName == "Model" then
+				detachCharacterModel(descendant)
+			end
 			if descendant.NetworkId ~= nil then
 				lookup[descendant.NetworkId] = nil
 				remoteTargets[descendant.NetworkId] = nil
@@ -1468,6 +1629,7 @@ function Client.init(context)
 		end)
 	end)
 
+	-- Inject hooks into all existing objects
 	for _, object in ipairs(game:GetDescendants()) do
 		injectRemoteEventHook(object)
 		injectRemoteFunctionHook(object)
@@ -1475,11 +1637,42 @@ function Client.init(context)
 		monitorObject(object)
 	end
 
-	networkService:RegisterMessageHandler(Protocol.Channels.Replication, Protocol.Kinds.Create, function(_, payload)
+	-- ═══ CREATE QUEUE ═══
+	-- Pending Create buffers are processed asynchronously to avoid blocking the network loop.
+
+	local pendingCreateBuffers = {}
+	local drainingCreateQueue = false
+
+	local function drainCreateQueue()
+		if drainingCreateQueue then
+			return
+		end
+
+		drainingCreateQueue = true
 		task.spawn(function()
-			handleCreate(payload.objects)
+			while #pendingCreateBuffers > 0 do
+				local serializedBuffer = table.remove(pendingCreateBuffers, 1)
+				local ok, err = pcall(handleCreate, serializedBuffer)
+				if not ok then
+					warn(`[Replicator][Client] handleCreate failed: {err}`)
+				end
+			end
+			drainingCreateQueue = false
 		end)
+	end
+
+	local function enqueueCreate(serializedBuffer)
+		table.insert(pendingCreateBuffers, serializedBuffer)
+		drainCreateQueue()
+	end
+
+	-- ═══ MESSAGE HANDLER: Create ═══
+
+	networkService:RegisterMessageHandler(Protocol.Channels.Replication, Protocol.Kinds.Create, function(_, payload)
+		enqueueCreate(payload.objects)
 	end)
+
+	-- ═══ MESSAGE HANDLER: Remove ═══
 
 	networkService:RegisterMessageHandler(Protocol.Channels.Replication, Protocol.Kinds.Remove, function(_, payload)
 		if ignoredCreateNetIds[payload.object] then
@@ -1515,6 +1708,8 @@ function Client.init(context)
 		end
 	end)
 
+	-- ═══ MESSAGE HANDLER: PatchBatch ═══
+
 	networkService:RegisterMessageHandler(Protocol.Channels.Replication, Protocol.Kinds.PatchBatch, function(_, payload)
 		for _, entry in ipairs(payload.entries or {}) do
 			applyPatchEntry(entry)
@@ -1522,12 +1717,16 @@ function Client.init(context)
 		flushDeferredReferencePatches()
 	end)
 
+	-- ═══ MESSAGE HANDLER: Snapshot ═══
+
 	networkService:RegisterMessageHandler(Protocol.Channels.Replication, Protocol.Kinds.Snapshot, function(_, payload)
 		handleSnapshot(payload)
 		networkService:SendToServer(Protocol.Channels.Replication, Protocol.Kinds.SnapshotAck, {
 			tick = payload.tick,
 		}, false)
 	end)
+
+	-- ═══ MESSAGE HANDLER: TerrainSnapshot ═══
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Replication,
@@ -1540,6 +1739,8 @@ function Client.init(context)
 		end
 	)
 
+	-- ═══ MESSAGE HANDLER: TerrainChunkBatch ═══
+
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Replication,
 		Protocol.Kinds.TerrainChunkBatch,
@@ -1550,6 +1751,8 @@ function Client.init(context)
 			end
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: RemoteEvent (client receiving) ═══
 
 	networkService:RegisterMessageHandler(Protocol.Channels.Message, Protocol.Kinds.RemoteEvent, function(_, payload)
 		local object = lookup[payload.object]
@@ -1562,6 +1765,8 @@ function Client.init(context)
 			object.OnClientEvent:Fire(table.unpack(args, 1, args.n or #args))
 		end
 	end)
+
+	-- ═══ MESSAGE HANDLER: UnreliableRemoteEvent (client receiving) ═══
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Message,
@@ -1578,6 +1783,8 @@ function Client.init(context)
 			end
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: RemoteFunctionRequest (server → client) ═══
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Message,
@@ -1616,6 +1823,8 @@ function Client.init(context)
 		end
 	)
 
+	-- ═══ MESSAGE HANDLER: RemoteFunctionResponse (client receiving) ═══
+
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Message,
 		Protocol.Kinds.RemoteFunctionResponse,
@@ -1623,6 +1832,8 @@ function Client.init(context)
 			completeRemoteFunctionInvocation(payload.requestId, payload)
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: RemoteDataUpdate (client receiving) ═══
 
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Message,
@@ -1643,6 +1854,9 @@ function Client.init(context)
 			end)
 		end
 	)
+
+	-- ═══ MESSAGE HANDLER: WorldLoaded ═══
+	-- Server signals that initial sync is complete.
 
 	networkService:RegisterMessageHandler(Protocol.Channels.Control, Protocol.Kinds.WorldLoaded, function(_, payload)
 		if worldLoadedHandled then
@@ -1677,6 +1891,9 @@ function Client.init(context)
 		end)
 	end)
 
+	-- ═══ MESSAGE HANDLER: ClientObjectInventoryRequest ═══
+	-- Server requests the client's known object list for delta sync.
+
 	networkService:RegisterMessageHandler(
 		Protocol.Channels.Control,
 		Protocol.Kinds.ClientObjectInventoryRequest,
@@ -1685,9 +1902,9 @@ function Client.init(context)
 		end
 	)
 
+	-- Proactively send inventory in case the request arrives before this
+	-- handler is fully active or gets dropped.
 	task.spawn(function()
-		-- Proactively announce inventory in case the request arrives before this
-		-- handler is fully active or gets dropped.
 		task.wait(0.5)
 		if networkService.IsClientConnected and not worldLoadedHandled then
 			sendObjectInventoryToServer()
@@ -1721,6 +1938,9 @@ function Client.init(context)
 		end
 	end)
 
+	-- ═══ INPUT → SERVER ═══
+	-- In server-authoritative mode, sample inputs and send to server each simulation step.
+
 	runService:BindToSimulation(function(dt)
 		if workspace.ServerAuthority and workspace.ServerAuthority.AuthorityMode == Enum.AuthorityMode.Server then
 			local inputs = InputActionService:SampleLocalInputs()
@@ -1730,6 +1950,8 @@ function Client.init(context)
 			}, false)
 		end
 	end)
+
+	-- ═══ TICK HOOK: Send Owned States ═══
 
 	networkService.Tick:Connect(function(tick)
 		if not networkService.IsClientConnected then
@@ -1765,6 +1987,9 @@ function Client.init(context)
 
 		flushOwnedPatchEntries()
 	end)
+
+	-- ═══ RENDER STEP: Remote State Interpolation ═══
+	-- Lerps remote objects toward their latest snapshot target each render frame.
 
 	runService.RenderStepped:Connect(function(dt)
 		local localPlayer = game.Players.LocalPlayer

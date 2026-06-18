@@ -11,8 +11,12 @@ local effects = require("./effects")
 return function(objects, data)
 	local config = {
 
-		obj_rect = rect.new(data.x or data[1] or 0, data.y or data[2] or 0, data.width or data[3] or 40, data.height or data[4] or 40
-),
+		obj_rect = rect.new(
+			data.x or data[1] or 0,
+			data.y or data[2] or 0,
+			data.width or data[3] or 40,
+			data.height or data[4] or 40
+		),
 
 		image = data.image or data.icon,
 
@@ -116,16 +120,27 @@ return function(objects, data)
 
 			local imgY = drawRect.y + (drawRect.height - imgSize) / 2
 
-			raylib.lib.DrawTexturePro(config.image.texture, structs.Rectangle:new({
-				x = 0,
-				y = 0,
-				width = config.image.x,
-				height = config.image.y,
-			}), structs.Rectangle:new({ x = imgX, y = imgY, width = imgSize, height = imgSize }), vector.create(0, 0), 0, config.imageColor:ToRaylib(config.imageTransparency)
-)
+			raylib.lib.DrawTexturePro(
+				config.image.texture,
+				structs.Rectangle:new({
+					x = 0,
+					y = 0,
+					width = config.image.x,
+					height = config.image.y,
+				}),
+				structs.Rectangle:new({ x = imgX, y = imgY, width = imgSize, height = imgSize }),
+				vector.create(0, 0),
+				0,
+				config.imageColor:ToRaylib(config.imageTransparency)
+			)
 		end
 
-		if buttonEffects.isHovered() and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput and config.onClick then
+		if
+			buttonEffects.isHovered()
+			and raylib.lib.IsMouseButtonReleased(0) == 1
+			and not _G.__aereon_blockInput
+			and config.onClick
+		then
 			config.onClick()
 		end
 	end

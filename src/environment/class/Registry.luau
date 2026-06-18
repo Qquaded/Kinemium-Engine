@@ -2,11 +2,12 @@ local _filesystem = require("../../modules/filesystem")
 local Instance = require("../class/Instance")
 local datatypes = require("../datatypes/getDatatypes")
 local zembed = require("@zembed")
+local Enum = require("@Enum")
 
 local registry = {}
 local listOfClasses = {}
 local created = setmetatable({}, { __mode = "v" })
-
+local kilang = require("@Kilang")
 local entries = {}
 
 if zembed.IsEmbedded() then
@@ -19,16 +20,22 @@ local createClassesStart = os.clock()
 for _, entry in pairs(entries) do
 	local createClassStart = os.clock()
 	local requirePath
+	local source
 	if zembed.IsEmbedded() then
 		local name = zune.fs.path.basename(entry)
 		local full = "./list/" .. name
 		requirePath = string.gsub(full, ".luau", "")
 	else
-		requirePath = "./list/" .. string.gsub(entry.name, ".luau", "")
+		requirePath = "./src/environment/class/list/" .. entry.name
 	end
+	source = zune.fs.readFile(requirePath)
 
-	local returned, s, r = require(requirePath)
+	local r, s, returned = kilang:execute(source, {
+		SecurityCapabilities = Enum.SecurityCapabilities.Internals,
+	})
+
 	local initTime = (os.clock() - createClassStart) * 1000
+
 	-- returned = { class = "Part", callback = function(Part) ... end }
 
 	if not returned then
@@ -143,7 +150,7 @@ function registry.new(class, renderer, datamodel, force)
 	return instance
 end
 
-function registry.InitCallbackClass(clone, classname, renderer, datamodel) 
+function registry.InitCallbackClass(clone, classname, renderer, datamodel)
 	return initializeInstance(clone, classname, renderer, datamodel, false)
 end
 

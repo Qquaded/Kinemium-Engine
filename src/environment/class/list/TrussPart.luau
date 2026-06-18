@@ -1,5 +1,5 @@
 -- description: "Creates a lightweight truss structure using repeated mesh instances."
-local Part = require("./Part")
+local Part = require("@Part")
 
 local propTable = {
 	Name = "TrussPart",

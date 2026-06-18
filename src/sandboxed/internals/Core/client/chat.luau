@@ -29,6 +29,10 @@ if not RunService:IsClient() then
 	return
 end
 
+CoreGui:SetCore("ChatActive", false)
+
+local coregui_changed = CoreGui.CoreGuiChangedSignal :: RBXScriptSignal
+
 local signal = ishared.CoreGuiSignal
 local manager = ishared.ReactPointer
 
@@ -151,6 +155,8 @@ end
 
 local function openChat()
 	chatOpen = true
+	CoreGui:SetCore("ChatActive", true)
+
 	springTarget(ChatGui, {
 		GroupTransparency = 0,
 		Size = UDim2.new(0, 400, 0.25, 0),
@@ -165,6 +171,8 @@ end
 
 local function closeChat()
 	chatOpen = false
+	CoreGui:SetCore("ChatActive", false)
+
 	springTarget(Input, {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, -20, 0, 0),
@@ -215,6 +223,46 @@ signal:Fire("NewTopbarButton", {
 	end,
 })
 
+local function create_message(message, Color, Font, TextSize)
+	local textSize = TextService.MeasureText(message, runtime("font", Enum.Font.DefaultEngineFont), 18, 1)
+
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color or Color3.new(1, 1, 1)
+	label.RichText = true
+	label.Text = message
+	label.LayoutOrder = #content:GetChildren() + 1
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextYAlignment = Enum.TextYAlignment.Top
+	label.AutomaticSize = Enum.AutomaticSize.XY
+	label.Size = UDim2.new(0, textSize.X, 0, textSize.Y)
+	label.TextSize = TextSize or 18
+	label.TextWrapped = true
+	label.Parent = content
+	bindRuntime(label, {
+		TextColor3 = "text",
+		Font = "font",
+	})
+
+	if Font then
+		label.Font = Font
+	end
+
+	content.CanvasSize += textSize.Y + 30
+end
+
+coregui_changed:Connect(function(new, data)
+	-- compat
+	if new == "ChatMakeSystemMessage" and type(data) == "table" then
+		local Text = data.Text
+		local Color = data.Color
+		local Font = data.Font
+		local TextSize = data.TextSize
+
+		create_message(Text, Color, Font, TextSize)
+	end
+end)
+
 if chatRemote then
 	local function formatMessage(msg)
 		local localPlayer = Players.LocalPlayer
@@ -238,31 +286,12 @@ if chatRemote then
 		local message = chatData.message
 		local color = chatData.color
 
-		local textSize = TextService.MeasureText(message, runtime("font", Enum.Font.DefaultEngineFont), 18, 1)
 		ChatService.OnMessageRecieveClient:Fire(player, message)
 
 		if ChatService.OnMessageClientReplace then
 			message = ChatService.OnMessageClientReplace(player, message) or message
 		end
 
-		local label = Instance.new("TextLabel")
-		label.BackgroundTransparency = 1
-		label.TextColor3 = Color3.new(1, 1, 1)
-		label.RichText = true
-		label.Text = formatMessage(message)
-		label.LayoutOrder = #content:GetChildren() + 1
-		label.TextXAlignment = Enum.TextXAlignment.Left
-		label.TextYAlignment = Enum.TextYAlignment.Top
-		label.AutomaticSize = Enum.AutomaticSize.XY
-		label.Size = UDim2.new(0, textSize.X, 0, textSize.Y)
-		label.TextSize = 18
-		label.TextWrapped = true
-		label.Parent = content
-		bindRuntime(label, {
-			TextColor3 = "text",
-			Font = "font",
-		})
-
-		content.CanvasSize += textSize.Y + 30
+		create_message(formatMessage(message), color, Font)
 	end)
 end

@@ -8,9 +8,9 @@ local lib = jolt.lib
 local Enum = require("@EnumMap")
 local utils = require("@bufferutils")
 local structs = jolt.structs
-local bodyMaker = require("./_BodyMaker")
-local Protocol = require("../NetworkService/Protocol")
-local NetworkOwnership = require("../ReplicatorService/NetworkOwnership")
+local bodyMaker = require("@_BodyMaker")
+local Protocol = require("@Protocol")
+local NetworkOwnership = require("@NetworkOwnership")
 
 local KinemiumPhysicsService = Instance.new("KinemiumPhysicsService")
 KinemiumPhysicsService.ExplorerHidden = true

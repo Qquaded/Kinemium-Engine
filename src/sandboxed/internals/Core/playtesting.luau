@@ -21,6 +21,41 @@ local processes = {}
 local playerCount = 1
 local offlinePlayerCount = 1
 
+local function readStderr(proc)
+	local logBuffer = ""
+	task.spawn(function()
+		while true do
+			if proc then
+				local err = proc.stderr:read(1024)
+				if err and #err > 0 then
+					logBuffer = logBuffer .. err
+				end
+
+				if err and #err > 0 then
+					while true do
+						local lineEnd = string.find(logBuffer, "\n")
+						if not lineEnd then
+							break
+						end
+						local line = string.sub(logBuffer, 1, lineEnd - 1)
+						logBuffer = string.sub(logBuffer, lineEnd + 1)
+						if #line > 0 then
+							table.insert(localServerLogs, line)
+							if #localServerLogs > 15 then
+								table.remove(localServerLogs, 1)
+							end
+						end
+					end
+				end
+			else
+				localServerInfo = nil
+				localServerLogs = {}
+			end
+			task.wait(0.1)
+		end
+	end)
+end
+
 NewCategoryToolbar:Fire("Playtest", {
 	elements = {
 		{
@@ -96,7 +131,7 @@ NewCategoryToolbar:Fire("Playtest", {
 
 					KineFileService.ExportGameAsFile("./.temp/", "offline_" .. gameName)
 
-					Process.RunProcessZune({
+					local new = Process.RunProcessZune({
 						"run",
 						"game",
 						"--client",
@@ -106,7 +141,48 @@ NewCategoryToolbar:Fire("Playtest", {
 						"./.temp/offline_" .. gameName .. ".kine",
 						"--username",
 						"OfflinePlayer" .. offlinePlayerCount,
-					})
+					}, { stdin = "inherit", stdout = "inherit", stderr = "piped" })
+
+					table.insert(processes, new)
+
+					task.spawn(function()
+						local buffer = ""
+						while new do
+							local ok, err = pcall(function()
+								return new.stderr:read(1024)
+							end)
+							if not ok then
+								break
+							end
+							if err == nil then
+								break
+							end
+							if #err > 0 then
+								buffer = buffer .. err
+							end
+
+							local lines = {}
+							while true do
+								local lineEnd = string.find(buffer, "\n")
+								if not lineEnd then
+									break
+								end
+								local line = string.sub(buffer, 1, lineEnd - 1)
+								buffer = string.sub(buffer, lineEnd + 1)
+								if #line > 0 then
+									table.insert(lines, line)
+								end
+							end
+							if #lines > 0 then
+								game.EngineSignal:Fire("PumpOutputToTab", {
+									tab = string.format("Playtest Output (%d)", new.pid),
+									data = lines,
+								})
+							end
+							task.wait()
+						end
+					end)
+
 					offlinePlayerCount += 1
 				end)
 			end,

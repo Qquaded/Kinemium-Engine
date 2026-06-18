@@ -6,6 +6,7 @@ end
 local raylib = require("@raylib")
 local lib = raylib.lib
 local aereon = import("@Aereon")
+
 local gui = aereon.gui
 
 local KinemiumFontService = game:GetService("KinemiumFontService")
@@ -17,7 +18,15 @@ local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
 local logoPath = "./src/assets/images/icons/vanilla3/kinemium/KinemiumWhite.png"
 local kilLogo = KinemiumIconLoader.ToTexture(logoPath)
 
+KinemiumIconLoader.new("ArrowRight", "./src/assets/images/icons/ArrowRight.png")
+local arrowRightTex = KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("ArrowRight"))
+
 local activePluginPage = nil
+
+-- Shared callback — toolbox can override to open plugin in a new window instead
+ishared.onPluginCardClick = function(pluginId)
+	activePluginPage = pluginId
+end
 
 local StudioThemeService = game:GetService("StudioThemeService")
 
@@ -29,6 +38,7 @@ local marketplaceSearchText = ""
 local marketplaceFilter = "All"
 local marketplaceEntries = {}
 local marketplaceFilterOptions = { "All" }
+local detailText = "Loading plugins..."
 
 local function rebuildMarketplaceFilterOptions()
 	local options = { "All" }
@@ -76,8 +86,13 @@ local function createCard(plugin, textureData, thumbnailData)
 		x = 0,
 		y = 0,
 		width = 320,
-		height = 360,
+		height = 320,
 		rounded = { 0.05, 12 },
+
+		flexGrow = 1,
+		minWidth = 200,
+		maxWidth = 400,
+		aspectRatio = 1,
 
 		title = manifest.name,
 		description = manifest.description or "No description provided.",
@@ -96,7 +111,7 @@ local function createCard(plugin, textureData, thumbnailData)
 		categoryColor = StudioThemeService.SelectedTheme.Accent,
 
 		onClick = function()
-			activePluginPage = plugin.manifest.id
+			ishared.onPluginCardClick(plugin.manifest.id)
 		end,
 	})
 
@@ -192,6 +207,7 @@ local marketplaceFlex = gui.flex({
 	direction = "row",
 	flexWrap = "wrap",
 	gap = 24,
+	alignItems = "stretch",
 	padding = { left = 0, right = 0, top = 0, bottom = 0 },
 	autoHeight = true,
 	backgroundColor = Color3.new(0, 0, 0),
@@ -211,21 +227,17 @@ repeat
 	task.wait()
 until ishared.Home
 
-local arect = require("@arect")
-
-ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
-	local fade = function(col, a)
-		return col:ToRaylib(1 - (a or 1) * alpha)
-	end
-
-	if ishared.Home.activePage ~= "Marketplace" and ishared.Home.previousPage ~= "Marketplace" then
-		return
-	end
-
+local function loadPlugins()
 	if not plugins and not isLoadingPlugins then
 		isLoadingPlugins = true
 		task.spawn(function()
-			plugins = game.PluginLoader.GetPluginsMarketplace()
+			plugins, result = game.PluginLoader.GetPluginsMarketplace()
+
+			if not plugins then
+				isLoadingPlugins = false
+				detailText = result
+				return
+			end
 
 			for _, plugin in pairs(plugins) do
 				local textureData
@@ -244,6 +256,7 @@ ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
 
 				local card = createCard(plugin, textureData, thumbnailData)
 				local page = createPage(plugin, textureData, thumbnailData)
+				card.set("font", vend)
 				marketplaceFlex.add(card)
 				pages[plugin.manifest.id] = page
 				table.insert(marketplaceEntries, { plugin = plugin, card = card })
@@ -281,6 +294,48 @@ ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
 			isLoadingPlugins = false
 		end)
 	end
+end
+
+game.EngineSignal:Connect(function(prop)
+	if prop == "LoadPlugins" then
+		loadPlugins()
+	end
+end)
+
+local arect = require("@arect")
+
+ishared.marketplacePage = scrollArea
+ishared.marketplacePages = pages
+
+-- Back button for plugin detail page
+local backButton = gui.imageButton({
+	x = 0,
+	y = 0,
+	width = 32,
+	height = 32,
+	backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+	hoverColor = StudioThemeService.SelectedTheme.Accent,
+	pressColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
+	imageTransparency = 0,
+	imageScale = 0.55,
+	rounded = { 0.25, 6 },
+	shadowLayers = 3,
+	shadowOffsetY = 2,
+	shadowSpread = 2,
+	onClick = function()
+		activePluginPage = nil
+	end,
+})
+
+ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
+	local fade = function(col, a)
+		return col:ToRaylib(1 - (a or 1) * alpha)
+	end
+
+	if ishared.Home.activePage ~= "Marketplace" and ishared.Home.previousPage ~= "Marketplace" then
+		return
+	end
+	loadPlugins()
 
 	local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
@@ -296,7 +351,7 @@ ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
 			)
 			raylib.lib.DrawTextEx(
 				vend,
-				"Loading plugins...",
+				detailText,
 				vector.create(100, 120 + slideOffset),
 				16,
 				1,
@@ -312,8 +367,43 @@ ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
 		local pageY = 80 + slideOffset
 		local pageW = screenx - 100
 		local pageH = screeny - 100
+
+		-- Back button at top-left
+		local backBtnSize = 32
+		local backBtnX = pageX
+		local backBtnY = pageY
+		backButton.set("obj_rect", arect.new(backBtnX, backBtnY, backBtnSize, backBtnSize))
+		backButton.set("backgroundColor", StudioThemeService.SelectedTheme.SecondaryBackgroundColor)
+		backButton.set("hoverColor", StudioThemeService.SelectedTheme.Accent)
+		backButton.render(dt)
+
+		-- Draw flipped arrow (ArrowRight with negative source width = ArrowLeft)
+		if arrowRightTex then
+			local arrowPad = 10
+			local arrowSize = backBtnSize - arrowPad * 2
+			lib.DrawTexturePro(
+				arrowRightTex.texture,
+				raylib.structs.Rectangle:new({
+					x = arrowRightTex.x,
+					y = 0,
+					width = -arrowRightTex.x,
+					height = arrowRightTex.y,
+				}),
+				raylib.structs.Rectangle:new({
+					x = backBtnX + arrowPad,
+					y = backBtnY + arrowPad,
+					width = arrowSize,
+					height = arrowSize,
+				}),
+				vector.create(0, 0),
+				0,
+				raylib.const.WHITE
+			)
+		end
+
+		-- Shift page content down below the back button
 		if page then
-			page.set("obj_rect", arect.new(pageX, pageY, pageW, pageH))
+			page.set("obj_rect", arect.new(pageX, pageY + backBtnSize + 8, pageW, pageH - backBtnSize - 8))
 			page.render(dt)
 		end
 
@@ -399,13 +489,23 @@ ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
 		"obj_rect",
 		arect.new(startX + searchWidth + gap, controlsY, dropdownWidth, searchHeight)
 	)
+	vend = KinemiumFontService.GetDefaultFontSmall()
 
 	-- Render scroll area
 	local scrollY = controlsY + searchHeight + 16
 	local scrollRect = arect.new(startX, scrollY, screenx - 170, screeny - (scrollY + 50))
 	scrollArea.set("obj_rect", scrollRect)
-	marketplaceFlex.set("width", screenx - 180)
+	marketplaceFlex.set("width", scrollRect.width)
 	scrollArea.render(dt)
+	boldFont = KinemiumFontService.GetBoldFont()
+
+	for _, entry in ipairs(marketplaceEntries) do
+		entry.card.set("font", vend)
+		local page = pages[entry.plugin.manifest.id]
+		if page then
+			page.set("font", vend)
+		end
+	end
 
 	marketplaceFilterDropdown.render(dt)
 end

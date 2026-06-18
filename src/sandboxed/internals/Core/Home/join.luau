@@ -21,6 +21,87 @@ local localServerInfo = nil
 local localServerLogs = {}
 local logBuffer = ""
 
+local ansiColors = {
+	["0"] = function()
+		return raylib.const.WHITE
+	end,
+	["30"] = function()
+		return raylib.const.DARKGRAY
+	end,
+	["31"] = function()
+		return raylib.const.RED
+	end,
+	["32"] = function()
+		return raylib.const.GREEN
+	end,
+	["33"] = function()
+		return raylib.const.YELLOW
+	end,
+	["34"] = function()
+		return raylib.const.BLUE
+	end,
+	["35"] = function()
+		return raylib.const.MAGENTA
+	end,
+	["36"] = function()
+		return raylib.const.SKYBLUE
+	end,
+	["37"] = function()
+		return raylib.const.WHITE
+	end,
+	["90"] = function()
+		return raylib.const.GRAY
+	end,
+	["91"] = function()
+		return Color3.fromRGB(255, 80, 80):ToRaylib(255)
+	end,
+	["92"] = function()
+		return Color3.fromRGB(80, 255, 80):ToRaylib(255)
+	end,
+	["93"] = function()
+		return Color3.fromRGB(255, 255, 80):ToRaylib(255)
+	end,
+	["94"] = function()
+		return Color3.fromRGB(80, 200, 255):ToRaylib(255)
+	end,
+	["95"] = function()
+		return Color3.fromRGB(255, 80, 255):ToRaylib(255)
+	end,
+	["96"] = function()
+		return Color3.fromRGB(80, 255, 255):ToRaylib(255)
+	end,
+	["38;5;208"] = function()
+		return raylib.const.ORANGE
+	end,
+}
+
+local function parseAnsi(text)
+	local segments = {}
+	local currentColor = raylib.const.WHITE
+	local pos = 1
+	while pos <= #text do
+		local s, e = string.find(text, "\x1b%[.-m", pos)
+		if not s then
+			table.insert(segments, { text = string.sub(text, pos), color = currentColor })
+			break
+		end
+		if s > pos then
+			table.insert(segments, { text = string.sub(text, pos, s - 1), color = currentColor })
+		end
+		local code = string.sub(text, s + 2, e - 1)
+		pos = e + 1
+		if code == "0" then
+			currentColor = raylib.const.WHITE
+		elseif code ~= "1" then
+			local fn = ansiColors[code]
+			if fn then
+				currentColor = fn()
+			end
+		end
+	end
+	return segments
+end
+
 local vend = KinemiumFontService.GetDefaultFont()
 local boldFont = KinemiumFontService.GetBoldFont()
 local arect = require("@arect")
@@ -394,9 +475,17 @@ group = aereon.create({
 			local termW = width - 280
 			lib.DrawRectangle(statsX, termY, termW, termH, raylib.const.BLACK)
 
+			lib.BeginScissorMode(statsX, termY, termW, termH)
 			for i, logLine in ipairs(localServerLogs) do
-				lib.DrawText(logLine, statsX + 5, termY + 5 + (i - 1) * 12, 10, raylib.const.WHITE)
+				local segments = parseAnsi(logLine)
+				local drawX = statsX + 5
+				local drawY = termY + 5 + (i - 1) * 12
+				for _, seg in ipairs(segments) do
+					lib.DrawText(seg.text, drawX, drawY, 10, seg.color)
+					drawX = drawX + lib.MeasureText(seg.text, 10)
+				end
 			end
+			lib.EndScissorMode()
 
 			-- Terminal input
 			commandTextbox:drawWithExtras(statsX, termY + termH + 10, termW, 30)
@@ -548,6 +637,7 @@ ishared.Home.pages["Servers"] = function(dt, alpha, slideOffset)
 	scrollArea.set("obj_rect", arect.new(startX, 150 + slideOffset, screenx - 170, screeny - 200))
 	serverStack.set("width", screenx - 180)
 	scrollArea.render(dt)
+	vend = KinemiumFontService.GetDefaultFontSmall()
 
 	group.manageServerPrompt.render(dt)
 	group.newProjectPrompt.render(dt)

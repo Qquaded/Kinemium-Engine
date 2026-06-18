@@ -1,5 +1,5 @@
 -- description: "A point in the world that determines where a player spawns."
-local Part = require("./Part")
+local Part = require("@Part")
 local BrickColor = require("@BrickColor")
 
 local propTable = {}

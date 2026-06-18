@@ -912,6 +912,7 @@ return function(objects, data)
 
 		if not config._searchBox and config.game then
 			local theme = config.game:GetService("StudioThemeService")
+
 			local TextBoxClass = aereon.textbox(theme, config.game)
 			config._searchBox = TextBoxClass.new({
 				padding = 8,

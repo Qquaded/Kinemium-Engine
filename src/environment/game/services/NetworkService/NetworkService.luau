@@ -3,27 +3,24 @@ local signal = require("@Kinemium.signal")
 local Enum = require("@EnumMap")
 
 local GNS
-local defaultNetworkStack
-local gnsOk, gnsResult = pcall(require, "@gns")
-if gnsOk then
-	defaultNetworkStack = gnsResult
-else
-	print("[NetworkService] GNS failed to load, falling back to KiNet: " .. tostring(gnsResult))
-	defaultNetworkStack = require("@KiNet")
-end
+local defaultNetworkStack = require("@gns")
 
-local Protocol = require("./Protocol")
-local ServerPreview = require("./ServerPreview")
-local GuiMirror = require("../../runtime/GuiMirror")
-local RateLimiter = require("./RateLimiter")
-local RpcService = require("./RpcService")
-local NetworkAttributes = require("./NetworkAttributes")
+local Protocol = require("@Protocol")
+local ServerPreview = require("@ServerPreview")
+local GuiMirror = require("@GuiMirror")
+local RateLimiter = require("@RateLimiter")
+local RpcService = require("@RpcService")
+local NetworkAttributes = require("@NetworkAttributes")
 
 local NetworkService = Instance.new("NetworkService")
 NetworkService.ExplorerHidden = true
 NetworkService._Intents = Enum.PluginIntents.Network
 
 local task = zune.task
+
+-- ═══ NO-OP NETWORK STACK ═══
+-- A stub stack used for single-player or when networking is disabled.
+-- All operations silently succeed without sending any data.
 
 local function makeNoNetworkStack()
 	local server = {}
@@ -97,6 +94,10 @@ local function makeNoNetworkStack()
 	}
 end
 
+-- ═══ NETWORK STACK REGISTRY ═══
+-- Multiple stacks can be registered and switched at runtime.
+-- The active stack's functions are mapped onto NetworkService properties.
+
 local networkStacks = {}
 local activeNetworkStackName = nil
 local activeNetworkStack = nil
@@ -117,6 +118,7 @@ local protectedNetworkStackFunctionNames = {
 	DisableMultiplayer = true,
 }
 
+-- Helper: call a method on an object if it exists
 local function callOptional(target, methodName, ...)
 	if target and type(target[methodName]) == "function" then
 		return pcall(target[methodName], target, ...)
@@ -139,6 +141,7 @@ local function setNetworkStackProperties()
 	NetworkService._props.Replicate = activeNetworkStack and activeNetworkStack.Replicate ~= false
 end
 
+-- Unmap previously mapped stack functions, restoring original values.
 local function unmapNetworkStackFunctions()
 	for name in pairs(mappedNetworkStackFunctionNames) do
 		NetworkService._props[name] = overriddenNetworkStackFunctions[name]
@@ -147,6 +150,7 @@ local function unmapNetworkStackFunctions()
 	overriddenNetworkStackFunctions = {}
 end
 
+-- Map all functions from a network stack onto NetworkService properties.
 local function mapNetworkStackFunctions(stack)
 	for name, value in pairs(stack or {}) do
 		if type(value) == "function" and not protectedNetworkStackFunctionNames[name] then
@@ -156,6 +160,9 @@ local function mapNetworkStackFunctions(stack)
 		end
 	end
 end
+
+-- ═══ REGISTER NETWORK STACK ═══
+-- Register a named network stack (e.g. "GNS", "KiNet", "None").
 
 function NetworkService:RegisterNetworkStack(name, stack)
 	if type(name) == "table" and stack == nil then
@@ -179,6 +186,9 @@ end
 
 NetworkService.RegisterNetwork = NetworkService.RegisterNetworkStack
 NetworkService.RegisterStack = NetworkService.RegisterNetworkStack
+
+-- ═══ SET PRIMARY NETWORK STACK ═══
+-- Switches the active network stack, shutting down the old one first.
 
 function NetworkService:SetPrimaryNetworkStack(nameOrStack, optionalName)
 	local name = nameOrStack
@@ -254,11 +264,14 @@ function NetworkService:DisableMultiplayer()
 	return self:SetPrimaryNetworkStack("None")
 end
 
+-- Register default stacks: the auto-detected transport, and the None stub
 NetworkService:RegisterNetworkStack("Default", defaultNetworkStack)
 local noNetworkStack = makeNoNetworkStack()
 NetworkService:RegisterNetworkStack("None", noNetworkStack)
 NetworkService:RegisterNetworkStack("Disabled", noNetworkStack)
 NetworkService:SetPrimaryNetworkStack("Default")
+
+-- ═══ SIGNALS ═══
 
 local tickSignal = signal.new()
 local clientConnectedSignal = signal.new()
@@ -266,10 +279,16 @@ local clientRemovedSignal = signal.new()
 local disconnectedSignal = signal.new()
 local packetSignal = signal.new()
 
-local packetHandlers = {}
-local pendingPackets = {}
-local sessionsByKey = {}
-local sessionsByUserId = {}
+-- ═══ PACKET DISPATCH ═══
+-- Message handlers are registered per (channel, kind) pair.
+-- Packets arriving before their handler is registered are queued.
+
+local packetHandlers = {} -- channel → kind → { callback, ... }
+local pendingPackets = {} -- "channel:kind" → { sender, envelope }
+local sessionsByKey = {} -- "gns:hConn" or "addr:port" → session
+local sessionsByUserId = {} -- userId → session
+
+-- Traffic statistics for monitoring
 local trafficStats = {
 	sent = {
 		total = 0,
@@ -285,11 +304,19 @@ local trafficStats = {
 	},
 }
 
+-- ═══ TICK LOOP ═══
+-- Fixed-step 30Hz tick driving Tick, ClientConnected, and ClientRemoved signals.
+
 local currentTick = 0
 local tickRate = 30
 local tickInterval = 1 / tickRate
 local tickAccumulator = 0
 local tickLoopBound = false
+
+-- ═══ NETWORK SIMULATION ═══
+-- For testing: configurable lag, jitter, packet loss.
+-- Controlled via --net_lag_ms, --net_jitter_ms, --net_loss_percent flags.
+
 local networkSimulation = {
 	enabled = false,
 	lagMs = 0,
@@ -297,6 +324,8 @@ local networkSimulation = {
 	lossPercent = 0,
 	dropReliable = false,
 }
+
+-- ═══ SERVER PREVIEW (BROWSER DISCOVERY) ═══
 
 local previewStartedAt = os.time()
 local previewMetadata = {
@@ -310,6 +339,8 @@ local previewMetadata = {
 local datamodelRef = nil
 local connectedTo = {}
 local localPlayerUserId = nil
+
+-- ═══ UTILITY FUNCTIONS ═══
 
 local function cloneTable(source)
 	local copy = {}
@@ -331,6 +362,7 @@ local function updatePreviewMetadata(data)
 	return cloneTable(previewMetadata)
 end
 
+-- Clone a session for client-side access (hide internal fields).
 local function clonePublicSession(session)
 	if type(session) ~= "table" then
 		return nil
@@ -347,6 +379,8 @@ local function clonePublicSession(session)
 		player = session.player,
 	}
 end
+
+-- ═══ TRAFFIC TRACKING ═══
 
 local function getTrafficBucket(direction, channel, kind)
 	local key = `{channel}:{kind}`
@@ -413,6 +447,9 @@ local function resetTrafficStats()
 	end
 end
 
+-- ═══ NETWORK SIMULATION HELPERS ═══
+-- Read console flags for simulation config.
+
 local function readNumberFlag(names, defaultValue)
 	for _, name in ipairs(names) do
 		local value = tonumber(GetFlagValue(name))
@@ -436,6 +473,7 @@ local function readNetworkSimulationConfig()
 	return config
 end
 
+-- Determine if a simulated packet should be dropped.
 local function shouldDropSimulatedPacket(reliable)
 	if not networkSimulation.enabled or networkSimulation.lossPercent <= 0 then
 		return false
@@ -446,6 +484,7 @@ local function shouldDropSimulatedPacket(reliable)
 	return math.random() * 100 < networkSimulation.lossPercent
 end
 
+-- Get the simulated delay in seconds (lag + jitter).
 local function getSimulatedDelaySeconds()
 	if not networkSimulation.enabled then
 		return 0
@@ -459,6 +498,8 @@ local function getSimulatedDelaySeconds()
 	return math.max(0, delayMs) / 1000
 end
 
+-- ═══ SESSION KEYING ═══
+
 local function clientKey(client)
 	if client and client.hConn ~= nil then
 		return `gns:{client.hConn}`
@@ -466,6 +507,7 @@ local function clientKey(client)
 	return `{client.address}:{client.port}`
 end
 
+-- Normalize a recipient: extract the underlying client object.
 local function normalizeRecipient(recipient)
 	if recipient == nil then
 		return nil
@@ -477,6 +519,10 @@ local function normalizeRecipient(recipient)
 
 	return recipient
 end
+
+-- ═══ PACKET QUEUING AND DISPATCH ═══
+-- Packets are queued if no handler is registered yet.
+-- When a handler is registered, queued packets are flushed.
 
 local function queuePendingPacket(sender, envelope)
 	local key = `{envelope.channel}:{envelope.kind}`
@@ -492,6 +538,7 @@ local function queuePendingPacket(sender, envelope)
 	})
 end
 
+-- Dispatch a packet to all registered handlers for its (channel, kind).
 local function dispatchPacket(sender, envelope)
 	if not Protocol.IsEnvelope(envelope) then
 		return false
@@ -516,6 +563,7 @@ local function dispatchPacket(sender, envelope)
 	return true
 end
 
+-- Flush queued packets for a specific (channel, kind) pair.
 local function flushPendingPackets(channel, kind)
 	local key = `{channel}:{kind}`
 	local bucket = pendingPackets[key]
@@ -528,6 +576,10 @@ local function flushPendingPackets(channel, kind)
 		dispatchPacket(entry.sender, entry.envelope)
 	end
 end
+
+-- ═══ REGISTER MESSAGE HANDLER ═══
+-- Registers a callback for a specific (channel, kind) pair.
+-- Returns a disconnect function.
 
 local function registerMessageHandler(channel, kind, callback)
 	packetHandlers[channel] = packetHandlers[channel] or {}
@@ -554,6 +606,9 @@ local function registerMessageHandler(channel, kind, callback)
 		end
 	end
 end
+
+-- ═══ SEND ENVELOPE ═══
+-- Core send function: wraps payload in an envelope, applies simulation, and sends.
 
 local function sendEnvelope(sendFn, recipient, channel, kind, payload, reliable)
 	local envelope = Protocol.MakeEnvelope(channel, kind, payload, currentTick)
@@ -593,6 +648,8 @@ local function sendEnvelope(sendFn, recipient, channel, kind, payload, reliable)
 	return true
 end
 
+-- ═══ PLAYER SESSION MANAGEMENT ═══
+
 local function withMouseInjection(player, renderer, datamodel)
 	if player.GetMouse then
 		return
@@ -610,6 +667,7 @@ local function withMouseInjection(player, renderer, datamodel)
 	})
 end
 
+-- Attach a Player instance to a session, creating PlayerGui and GuiMirror.
 local function attachPlayerSession(datamodel, session)
 	local players = datamodel.Players
 	local player = players:AddPlayer(session.name, session.userId, datamodel, { noCharacter = true })
@@ -631,6 +689,8 @@ local function attachPlayerSession(datamodel, session)
 	session.player = player
 	return player
 end
+
+-- ═══ CHARACTER MODEL HELPERS ═══
 
 local function isCharacterModelForSession(model, session)
 	if not model or model.ClassName ~= "Model" or not session then
@@ -661,6 +721,7 @@ local function destroyCharacterModelsForSession(datamodel, session)
 	end
 end
 
+-- Clean up a player session: destroy character, GUI mirror, and Player object.
 local function cleanupPlayerSession(datamodel, session)
 	local players = datamodel:GetService("Players")
 	local player = session.player
@@ -684,6 +745,9 @@ local function cleanupPlayerSession(datamodel, session)
 	player:Destroy()
 	session.player = nil
 end
+
+-- ═══ TICK LOOP BINDING ═══
+-- Runs a 30 Hz tick loop independent of render framerate.
 
 local function bindTickLoop(runService)
 	if tickLoopBound then
@@ -710,6 +774,9 @@ local function bindTickLoop(runService)
 	end)
 end
 
+-- ═══ INIT RENDERER ═══
+-- Called by the engine after the renderer is ready. Sets up all networking.
+
 NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	task.spawn(function()
 		repeat
@@ -724,6 +791,8 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				`[NetworkService] Network simulation enabled: lag={networkSimulation.lagMs}ms jitter={networkSimulation.jitterMs}ms loss={networkSimulation.lossPercent}% dropReliable={networkSimulation.dropReliable}`
 			)
 		end
+
+		-- Allow overriding the network stack via --network_stack flag
 		local requestedNetworkStack = GetFlagValue("network_stack") or GetFlagValue("networkStack")
 		if requestedNetworkStack then
 			NetworkService:SetPrimaryNetworkStack(requestedNetworkStack)
@@ -732,6 +801,9 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			NetworkService:SetPrimaryNetworkStack("None")
 		end
 
+		-- ═══ INTERNAL SEND FUNCTIONS ═══
+
+		-- Send a message to a specific client session
 		local function sendToClient(recipient, channel, kind, payload, reliable)
 			sendEnvelope(function(client, envelope, shouldBeReliable)
 				local server = GNS and GNS.Server
@@ -745,6 +817,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end, recipient, channel, kind, payload, reliable)
 		end
 
+		-- Broadcast a message to all connected clients
 		local function broadcast(channel, kind, payload, reliable)
 			sendEnvelope(function(envelope, shouldBeReliable)
 				local server = GNS and GNS.Server
@@ -755,6 +828,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end, nil, channel, kind, payload, reliable)
 		end
 
+		-- Broadcast filtered by a predicate function
 		local function broadcastFiltered(channel, kind, payload, reliable, filterFn)
 			local server = GNS and GNS.Server
 			if not server or type(server.SendFiltered) ~= "function" then
@@ -770,12 +844,14 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			return sent
 		end
 
+		-- Send a message to multiple client sessions
 		local function sendToMultipleClients(sessions, channel, kind, payload, reliable)
 			for _, session in ipairs(sessions) do
 				sendToClient(session, channel, kind, payload, reliable)
 			end
 		end
 
+		-- Send a message from client to server
 		local function sendToServer(channel, kind, payload, reliable)
 			local client = GNS and GNS.Client
 			if not client or type(client.Send) ~= "function" then
@@ -788,6 +864,8 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				return client:Send(envelope, shouldBeReliable)
 			end, nil, channel, kind, payload, reliable)
 		end
+
+		-- ═══ START SERVER ═══
 
 		function NetworkService:StartServer(address, port, allowedTokens)
 			local server = GNS and GNS.Server
@@ -804,6 +882,8 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			return true
 		end
 
+		-- ═══ START CLIENT ═══
+
 		function NetworkService:StartClient(address, port, authToken)
 			local client = GNS and GNS.Client
 			if activeNetworkStack and activeNetworkStack.MultiplayerEnabled == false then
@@ -815,6 +895,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end
 			client:Init(address, port, authToken)
 
+			-- Wire up client receive and shutdown handlers
 			if type(client.OnRecieve) == "function" then
 				client:OnRecieve(function(addr, msg)
 					if msg.type == "AUTH_SUCCESS" then
@@ -844,6 +925,8 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			client:Listen()
 			return true
 		end
+
+		-- ═══ CLIENT-SIDE PLAYER/CHARACTER HELPERS ═══
 
 		local function isCharacterModelForPlayer(model, payload)
 			if not model or model.ClassName ~= "Model" or not payload then
@@ -940,6 +1023,9 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			return nil
 		end
 
+		-- ═══ CLIENT-SIDE CONTROL MESSAGE HANDLERS ═══
+
+		-- PlayerProfile: received on client connect to set up the local player
 		registerMessageHandler(Protocol.Channels.Control, Protocol.Kinds.PlayerProfile, function(_, payload)
 			localPlayerUserId = payload.id
 
@@ -977,10 +1063,12 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end
 		end)
 
+		-- PlayerJoined: another player connected to the server
 		registerMessageHandler(Protocol.Channels.Control, Protocol.Kinds.PlayerJoined, function(_, payload)
 			ensureClientPlayerInstance(payload)
 		end)
 
+		-- PlayerLeft: a player disconnected
 		registerMessageHandler(Protocol.Channels.Control, Protocol.Kinds.PlayerLeft, function(_, payload)
 			if type(payload) ~= "table" then
 				return
@@ -999,6 +1087,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			destroyClientCharacterModels(payload)
 		end)
 
+		-- ClientReady: server-side handler for loading the player's character
 		registerMessageHandler(Protocol.Channels.Control, Protocol.Kinds.ClientReady, function(session, payload)
 			print(`[NetworkService] ClientReady handler fired`)
 			if not session or not session.player then
@@ -1035,12 +1124,17 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end)
 		end)
 
+		-- ═══ REBIND ACTIVE NETWORK STACK ═══
+		-- Sets up the callbacks for the active network stack.
+		-- This is called initially and whenever the stack is changed.
+
 		rebindActiveNetworkStack = function()
 			local server = GNS and GNS.Server
 			if not server then
 				return
 			end
 
+			-- Handle new client connection requests
 			if type(server.OnClientConnectionRequest) == "function" then
 				server:OnClientConnectionRequest(function(client, clientData)
 					local name = clientData and clientData.name
@@ -1073,6 +1167,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 						`[NetworkService] Connection accepted from {clientAddr} ({key}): name={name}, userId={userId}`
 					)
 
+					-- Create the session object
 					local session = {
 						key = key,
 						client = client,
@@ -1091,6 +1186,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 					attachPlayerSession(datamodel, session)
 
+					-- Build list of existing players to inform the new client
 					local existingPlayers = {}
 					for _, otherSession in pairs(sessionsByKey) do
 						if otherSession.userId ~= session.userId then
@@ -1101,12 +1197,14 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 						end
 					end
 
+					-- Send PlayerProfile to the new client (contains their own info + existing players)
 					sendToClient(session, Protocol.Channels.Control, Protocol.Kinds.PlayerProfile, {
 						name = session.name,
 						id = session.userId,
 						existingPlayers = existingPlayers,
 					}, true)
 
+					-- Broadcast PlayerJoined to all other clients
 					for _, otherSession in pairs(sessionsByKey) do
 						if otherSession.userId ~= session.userId then
 							sendToClient(otherSession, Protocol.Channels.Control, Protocol.Kinds.PlayerJoined, {
@@ -1120,6 +1218,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				end)
 			end
 
+			-- Handle incoming messages from clients
 			if type(server.OnRecieve) == "function" then
 				server:OnRecieve(function(addr, msg)
 					local key = clientKey(addr)
@@ -1133,6 +1232,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				end)
 			end
 
+			-- Handle client disconnections
 			if type(server.OnClientRemoved) == "function" then
 				server:OnClientRemoved(function(addr)
 					local key = clientKey(addr)
@@ -1154,6 +1254,7 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				end)
 			end
 
+			-- Handle pre-auth messages (server browser discovery)
 			if type(server.OnPreAuthMessage) == "function" then
 				server:OnPreAuthMessage(function(addr, msg)
 					return ServerPreview.HandleRequest(server.Socket, addr, msg, {
@@ -1173,6 +1274,9 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 		rebindActiveNetworkStack()
 
+		-- ═══ AUTO-START ═══
+		-- Automatically start server or client based on command-line flags.
+
 		local authToken = GetFlagValue("auth_token")
 		local allowedTokens = authToken and { authToken } or {}
 		local data
@@ -1186,6 +1290,8 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		local multiplayerEnabled = not (activeNetworkStack and activeNetworkStack.MultiplayerEnabled == false)
 		local autoStartEnabled = multiplayerEnabled
 			and not (activeNetworkStack and activeNetworkStack.AutoStart == false)
+
+		-- Connect the client to the server (send auth data after Init)
 		local function connectClient(data)
 			local client = GNS and GNS.Client
 			if not client then
@@ -1228,11 +1334,15 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			connectClient(data)
 		end
 
+		-- Shutdown cleanup
 		table.insert(datamodel.ShutdownCallbacks, function()
 			callOptional(GNS and GNS.Client, "Disconnect")
 			callOptional(GNS and GNS.Server, "Shutdown")
 			RpcService.Clear()
 		end)
+
+		-- ═══ HEARTBEAT MONITOR ═══
+		-- Periodically check for clients with high pending reliable message counts.
 
 		local HEARTBEAT_INTERVAL = 10
 		task.spawn(function()
@@ -1254,7 +1364,9 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			end
 		end)
 
-		-- RPC dispatch handler: route incoming RPC packets to registered handlers
+		-- ═══ RPC DISPATCH ═══
+		-- Route incoming RPC packets to registered RPC handlers.
+
 		registerMessageHandler(Protocol.Channels.Message, Protocol.Kinds.Rpc, function(sender, payload)
 			if not RpcService.IsRpcEnvelope(payload) then
 				return
@@ -1272,12 +1384,16 @@ NetworkService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			}, payload.args)
 		end)
 
-		-- Peer rate limiter cleanup on client disconnect
+		-- ═══ RATE LIMITER CLEANUP ═══
+		-- Reset rate limiter state when a client disconnects.
+
 		clientRemovedSignal:Connect(function(session)
 			if session and session.key then
 				RateLimiter.Reset(session.key)
 			end
 		end)
+
+		-- ═══ EXPOSE API VIA PROPERTIES ═══
 
 		NetworkService:SetProperties({
 			Success = true,

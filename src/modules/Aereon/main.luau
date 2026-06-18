@@ -160,6 +160,17 @@ function Aereon.create(structure: types.CreationStructure)
 		return created[name]
 	end
 
+	created.setAll = function(prop, value)
+		for name, conf in pairs(created) do
+			if type(conf) ~= "table" then
+				continue
+			end
+			if conf.set then
+				conf.set(prop, value)
+			end
+		end
+	end
+
 	created.setprop = function(name, prop, value)
 		if created[name].set then
 			created[name].set(prop, value)

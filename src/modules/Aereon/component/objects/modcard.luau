@@ -9,6 +9,7 @@ local color3 = require("@Color3")
 local textButton = require("./textButton")
 
 local effects = require("./effects")
+local mdxFormatter = require("@mdxformat")
 
 --  modern palette
 
@@ -325,6 +326,25 @@ return function(objects, data)
 
 		buttonInstances = {},
 	}
+
+	local descRenderer = mdxFormatter.createRenderer({
+		font = config.font,
+		theme = {
+			textColor = C.muted,
+			headingColor = C.text,
+			accentColor = C.accent,
+			panelColor = C.panelBg,
+			borderColor = C.border,
+		},
+		styles = {
+			paragraphFontSize = config.fontSize,
+			paragraphSpacing = 0.62,
+			paragraphLineHeight = config.fontSize + 6,
+			blockGap = 4,
+			padding = 0,
+		},
+	})
+	local descBlocks = mdxFormatter.parse(config.description)
 
 	C.accent = data.accent or C.accent
 	C.accentDim = mixColor(C.accent, C.shadow, 0.35)
@@ -661,52 +681,6 @@ return function(objects, data)
 
 		local sidebarX = mainX + mainW + gutter
 
-		--  page background
-
-		raylib.lib.DrawRectangle(r.x, r.y, r.width, r.height, C.pageBg:ToRaylib(config.backgroundTransparency))
-
-		rrect(shellX, shellY, shellW, shellH, 0.035, C.shadow:ToRaylib(0.08))
-		rrectL(shellX, shellY, shellW, shellH, 0.035, 1, C.border:ToRaylib(0.08))
-
-		--  BANNER IMAGE at top behind header card
-
-		if config.bannerImage then
-			local bannerRect = rect.new(shellX, shellY, shellW, math.min(shellH, bannerHeight))
-
-			clip(bannerRect.x, bannerRect.y, bannerRect.width, bannerRect.height)
-
-			raylib.lib.DrawTexturePro(
-				config.bannerImage.texture,
-				structs.Rectangle:new({
-					x = 0,
-					y = 0,
-					width = config.bannerImage.x,
-					height = config.bannerImage.y,
-				}),
-				rect:translate(bannerRect),
-				vector.create(0, 0),
-				0,
-				raylib.const.WHITE
-			)
-
-			unclip()
-
-			-- Black gradient overlay from top (transparent) to bottom (full black)
-
-			local gradientHeight = bannerRect.height + 60
-
-			for i = 0, gradientHeight - 1 do
-				local alpha = i / gradientHeight * 1.0
-
-				raylib.lib.DrawLineEx(
-					vector.create(shellX, shellY + i),
-					vector.create(shellX + shellW, shellY + i),
-					1,
-					C.shadow:ToRaylib(0.18 + (1 - alpha) * 0.68)
-				)
-			end
-		end
-
 		-- HEADER CARD
 
 		local hx, hy = contentX, contentY
@@ -715,12 +689,6 @@ return function(objects, data)
 
 		rrect(hx, hy, hw, hh, 0.05, C.headerBg:ToRaylib(0.78))
 		rrectL(hx, hy, hw, hh, 0.05, 1, C.border:ToRaylib(0.14))
-		raylib.lib.DrawRectangleRounded(
-			structs.Rectangle:new({ x = hx, y = hy, width = hw, height = math.floor(hh * 0.42) }),
-			0.05,
-			8,
-			C.white:ToRaylib(0.92)
-		)
 
 		local hpad = 22
 
@@ -757,21 +725,15 @@ return function(objects, data)
 		-- title + desc text
 
 		local txtX = iconX + iconSz + hpad
-
 		local titleFS = fs + 8
-
 		local descFS = fs
-
 		local smallFS = fs - 1
 
 		-- button cluster (right side)
 
 		local btnH = 40
-
 		local btnW = 128
-
 		local bClustW = btnW + 8 + btnH + 8 + btnH + 8 + btnH
-
 		local bClustX = hx + hw - hpad - bClustW
 
 		local bClustY = hy + hh / 2 - btnH / 2
@@ -784,17 +746,9 @@ return function(objects, data)
 
 		dt(bfnt, config.title, txtX, titleY, titleFS, C.text:ToRaylib(0), 0.82)
 
-		local descLines = wrapText(fnt, config.description, txtMaxW, descFS, 0.65)
-
-		for i = 1, math.min(#descLines, 2) do
-			local line = descLines[i]
-
-			if i == 2 and #descLines > 2 then
-				line = line:gsub("%s*%S+$", "") .. "…"
-			end
-
-			dt(fnt, line, txtX, titleY + titleFS + 10 + (i - 1) * (descFS + 6), descFS, C.muted:ToRaylib(0), 0.62)
-		end
+		clip(txtX, titleY + titleFS + 10, txtMaxW, (descFS + 6) * 2 + 4)
+		descRenderer.render(descBlocks, txtX, titleY + titleFS + 10, txtMaxW)
+		unclip()
 
 		-- stats row
 
@@ -812,7 +766,7 @@ return function(objects, data)
 
 		sx = sx + diW + 4 + mt(fnt, config.downloads, smallFS, 0.65) + 16
 
-		local hrtIcon = "♥"
+		local hrtIcon = ""
 
 		local hiW = mt(fnt, hrtIcon, smallFS, 0.5)
 

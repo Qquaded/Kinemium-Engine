@@ -122,14 +122,20 @@ return function(objects, data)
 	end
 
 	local function truncatePath(font, text, maxW, size)
-		if measureText(font, text, size) <= maxW then return text end
+		if measureText(font, text, size) <= maxW then
+			return text
+		end
 		local ew = measureText(font, "...", size)
-		if ew >= maxW then return "" end
-		
+		if ew >= maxW then
+			return ""
+		end
+
 		local out = ""
 		for i = #text, 1, -1 do
 			local c = string.sub(text, i, i)
-			if measureText(font, c .. out, size) + ew > maxW then break end
+			if measureText(font, c .. out, size) + ew > maxW then
+				break
+			end
 			out = c .. out
 		end
 		return "..." .. out
@@ -140,7 +146,7 @@ return function(objects, data)
 
 		local textWidth = r.width - config.buttonWidth - config.gap
 		local displayPath = truncatePath(config.font, config.path, textWidth - (config.paddingX or 32), config.fontSize)
-		
+
 		textBtn.set("text", displayPath)
 		textBtn.set("obj_rect", rect.new(r.x, r.y, textWidth, r.height))
 		textBtn.render(dt)

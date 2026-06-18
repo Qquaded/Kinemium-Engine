@@ -360,7 +360,7 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 			end
 
 			local dest = "./plugins/" .. pluginManifest.id .. ".kineplug"
-			local zip = repoToZip(pluginManifest.repository, "branch", "main")
+			local zip = repoToZip(pluginManifest.repository, "branch", pluginManifest.branch or "main")
 
 			local downloaded = downloader.download(zip, dest)
 
@@ -409,9 +409,15 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 		GetPluginsMarketplace = function()
 			local HttpService = datamodel:GetService("HttpService")
 
-			local decoded = HttpService:GetAsync(ENGINE_ENDPOINT.MARKETPLACE, {
+			local decoded, response = HttpService:GetAsync(ENGINE_ENDPOINT.MARKETPLACE, {
 				["User-Agent"] = "Kinemium-Engine",
 			})
+
+			if type(response) == "string" then
+				if string.find(response, "UnknownHostName") then
+					return nil, "Invalid host name"
+				end
+			end
 
 			local success, result = pcall(function()
 				return HttpService:JSONDecode(decoded)

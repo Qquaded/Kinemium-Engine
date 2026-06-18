@@ -3,6 +3,7 @@ local assetsaver = {}
 local Datamodel = require("@DataModel")
 local zembed = require("@zembed")
 local Instance = require("@Instance")
+local zstd = zune.serde.zstd
 
 local asset_suffixes = {
 	".png",
@@ -108,6 +109,10 @@ function assetsaver:GetGameAssets(game: KinemiumObject)
 		local properties = object:GetProperties()
 		for prop, value in pairs(properties) do
 			if type(value) == "string" then
+				if prop == "FilePath" then
+					object.FilePath = ""
+					continue
+				end
 				if isFilePath(value) then
 					local isAsset = false
 					local basename = fs.path.basename(value)

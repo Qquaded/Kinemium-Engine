@@ -268,7 +268,10 @@ Kinemium_camera.Parent = kilang.env.Workspace
 
 -- SETUP KILANG
 kilang.renderer = renderer
-local CEnv = kilang:init(Kinemium_camera)
+
+local Kinemium_env = require("./environment/get")
+
+local CEnv = kilang:init(Kinemium_camera, Kinemium_env)
 
 local game = kilang.env.game
 kilang.env.FlagExists = FlagExists

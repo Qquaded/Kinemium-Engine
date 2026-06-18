@@ -1,6 +1,6 @@
 -- description: "A seat that can be occupied by a player."
 local Vector3 = require("@Vector3")
-local Part = require("./Part")
+local Part = require("@Part")
 local Enum = require("@EnumMap")
 
 local propTable = {

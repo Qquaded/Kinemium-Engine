@@ -18,8 +18,10 @@ end
 local mouse = player:GetMouse()
 
 local Highlight = Instance.new("Highlight")
-Highlight.FillTransparency = 1
+Highlight.FillTransparency = 0.9
 Highlight.OutlineTransparency = 0
+Highlight.FillColor = Color3.new(0, 0.682, 1)
+Highlight.OutlineColor = Color3.new(0, 0.306, 1)
 Highlight.Parent = game.InternalStorage
 
 local dragging = false

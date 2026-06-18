@@ -720,34 +720,7 @@ enums.CaptureType = {
 	Screenshot = 1,
 	Video = 2,
 }
-enums.CatalogCategoryFilter = {
-	None = 1,
-	Featured = 2,
-	Collectibles = 3,
-	CommunityCreations = 4,
-	Premium = 5,
-	Recommended = 6,
-}
-enums.CatalogSortAggregation = {
-	Past12Hours = 1,
-	PastDay = 2,
-	Past3Days = 3,
-	PastWeek = 4,
-	PastMonth = 5,
-	AllTime = 6,
-}
-enums.CatalogSortType = {
-	Relevance = 1,
-	PriceHighToLow = 2,
-	PriceLowToHigh = 3,
-	MostFavorited = 5,
-	RecentlyCreated = 6,
-	Bestselling = 7,
-}
-enums.CatalogTimedOptionFilter = {
-	All = 1,
-	TimedOptionOnly = 2,
-}
+
 enums.CellBlock = {
 	Solid = 0,
 	VerticalWedge = 1,

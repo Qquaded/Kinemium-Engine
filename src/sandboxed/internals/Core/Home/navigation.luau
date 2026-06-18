@@ -109,6 +109,12 @@ renderer.Pool.new("2d", function()
 	end
 	local dt = raylib.lib.GetFrameTime()
 
+	backgroundColor = StudioThemeService.SelectedTheme.BackgroundColor
+	SecondaryBackgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor
+	SecondaryBackgroundColorRaylib = StudioThemeService.SelectedTheme.SecondaryBackgroundColor:ToRaylib(
+		StudioThemeService.SelectedTheme.SecondaryBackgroundColorTransparency
+	)
+
 	renderer:SetDimension("2D")
 
 	game.Context = Enum.GameContext.Home
@@ -134,6 +140,7 @@ renderer.Pool.new("2d", function()
 	topframe.set("raylib_color", SecondaryBackgroundColorRaylib)
 	topframe.set("obj_rect", arect.new(0, 0, screenx, 60))
 	topframe.render(dt)
+	vend = KinemiumFontService.GetDefaultFontSmall()
 
 	homeButton.render(dt)
 

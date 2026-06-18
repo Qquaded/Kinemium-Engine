@@ -1,6 +1,6 @@
 -- description: "Maintains a flexible rope-like connection between two attachments."
 local Color3 = require("@Color3")
-local NetworkOwnership = require("../../game/services/ReplicatorService/NetworkOwnership")
+local NetworkOwnership = require("@NetworkOwnership")
 
 local raylib = require("@raylib")
 local rl = raylib.lib

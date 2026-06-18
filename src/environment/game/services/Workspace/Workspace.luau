@@ -15,7 +15,7 @@ local r3d = require("@r3d")
 local const = r3d.constants
 local rlib = r3d.lib
 
-local material_shader_manager = require("./materialShaders/_main")
+local material_shader_manager = require("@WorkspaceMtrlManager")
 
 local CHUNK_SIZE = 32
 local TERRAIN_CHUNK_SIZE = 16

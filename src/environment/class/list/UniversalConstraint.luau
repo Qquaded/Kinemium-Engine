@@ -2,7 +2,7 @@
 local Color3 = require("@Color3")
 local raylib = require("@raylib")
 local rl = raylib.lib
-local NetworkOwnership = require("../../game/services/ReplicatorService/NetworkOwnership")
+local NetworkOwnership = require("@NetworkOwnership")
 
 local propTable = {
 	Attachment0 = nil,

@@ -19,6 +19,7 @@ return function(objects, data)
 		textColor = data.textColor or color3.new(0.85, 0.85, 0.87),
 		dividerColor = data.dividerColor or color3.new(0.20, 0.20, 0.22),
 		categoryColor = data.categoryColor or color3.new(0.55, 0.55, 0.57),
+		backgroundTransparency = data.backgroundTransparency or 0,
 
 		-- Navigation items
 		items = data.items,

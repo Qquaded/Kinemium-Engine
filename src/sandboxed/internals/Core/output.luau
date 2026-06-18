@@ -21,6 +21,8 @@ local scrollTarget = 0
 local repr = require("@repr")
 
 local TextColor = Theme.TextColor:ToRaylib(Theme.TextTransparency)
+local pumpTabData = {}
+local pumpTabScrollables = {}
 local lastLogCount = 0
 local lastMaxScroll = 0
 local LOG_FONT_SIZE = 17
@@ -136,14 +138,6 @@ if game.Context ~= Enum.GameContext.Editor then
 	return
 end
 
-if FlagExists("client") then
-	return
-end
-
-if FlagExists("cli") then
-	return
-end
-
 if FlagExists("headless") then
 	return
 end
@@ -173,6 +167,88 @@ end
 
 window.unfocused = function(window)
 	_G.IsHoveringOnWindow = false
+end
+
+local function createPumpTabRenderFn(tabName)
+	return function(windowData)
+		local dt = rl.GetFrameTime()
+		local titleBarH = windowData._titleBarH or 28
+		local tabBarH = windowData._tabBarH or 28
+		local contentOffsetY = titleBarH + tabBarH
+		local winX = windowData.x
+		local winY = windowData.y + contentOffsetY
+		local winWidth, winHeight = windowData.width, windowData.height
+		local padding = 2
+		local lineHeight = getLineHeight()
+		local lines = pumpTabData[tabName] or {}
+		local textWidth = math.max(64, winWidth - 26)
+
+		local listHeight = math.max(0, winHeight - contentOffsetY - padding * 2)
+		local totalHeight = 0
+		local wrappedLines = {}
+		for _, line in ipairs(lines) do
+			local wrapped = wrapTextToWidth(line, textWidth)
+			table.insert(wrappedLines, wrapped)
+			totalHeight = totalHeight + math.max(MIN_CELL_HEIGHT, #wrapped * lineHeight + 8) + padding
+		end
+
+		local listRect = {
+			x = winX,
+			y = winY,
+			width = winWidth,
+			height = listHeight,
+		}
+
+		local consoleContent
+		consoleContent = {
+			get_rect = function()
+				return arectlib.new(0, 0, textWidth + 16, totalHeight)
+			end,
+			set = function(prop, value)
+				if prop == "obj_rect" then
+					consoleContent.rect = value
+				end
+			end,
+			render = function(dt)
+				local r = consoleContent.rect
+				local currentY = r.y
+				for i, wrapped in ipairs(wrappedLines) do
+					local cellHeight = math.max(MIN_CELL_HEIGHT, #wrapped * lineHeight + 8)
+					local cellRect = arectlib.new(winX + 5, currentY, winWidth - 10, cellHeight)
+					if currentY + cellHeight >= listRect.y and currentY <= listRect.y + listRect.height then
+						for lineIndex, lineText in ipairs(wrapped) do
+							local textY = cellRect.y + 4 + (lineIndex - 1) * lineHeight
+							rl.DrawTextEx(
+								vend,
+								lineText,
+								vector.create(cellRect.x + 8, textY),
+								LOG_FONT_SIZE,
+								LOG_FONT_SPACING,
+								TextColor
+							)
+						end
+					end
+					currentY = currentY + cellHeight + padding
+				end
+			end,
+		}
+
+		if not pumpTabScrollables[tabName] then
+			pumpTabScrollables[tabName] = aereon.gui.scrollable({
+				child = consoleContent,
+				scrollbarWidth = 6,
+				scrollbarColor = Theme.SecondaryBackgroundColor,
+				scrollbarHoverColor = Theme.Accent,
+				scrollbarBackgroundTransparency = 1,
+			})
+		end
+		local scrollable = pumpTabScrollables[tabName]
+		local maxScroll = math.max(0, totalHeight - listRect.height)
+		scrollable.set("scrollTarget", maxScroll)
+		scrollable.set("obj_rect", arectlib.new(listRect.x, listRect.y, listRect.width, listRect.height))
+		scrollable.set("contentHeight", totalHeight)
+		scrollable.render(dt)
+	end
 end
 
 local function create_window(title, frame)
@@ -376,9 +452,47 @@ local propback, frame =
 local renderer = KinemiumRaylib.GetRenderer()
 
 local StudioThemeService = game:GetService("StudioThemeService")
+
+game.EngineSignal:Connect(function(prop, data)
+	if prop == "NewOutputTab" then
+		table.insert(propback.tabs, data)
+	elseif prop == "PumpOutputToTab" then
+		local tabName = data.tab
+		local rawData = data.data
+		if type(tabName) ~= "string" or type(rawData) ~= "table" then
+			return
+		end
+
+		if not pumpTabData[tabName] then
+			pumpTabData[tabName] = {}
+			local tabExists = false
+			for _, t in ipairs(propback.tabs) do
+				if t.name == tabName then
+					tabExists = true
+					break
+				end
+			end
+			if not tabExists then
+				table.insert(propback.tabs, {
+					name = tabName,
+					render = createPumpTabRenderFn(tabName),
+				})
+			end
+		end
+
+		for _, line in ipairs(rawData) do
+			table.insert(pumpTabData[tabName], tostring(line))
+		end
+	end
+end)
+
 renderer.Pool.new("2d", function(data)
 	local dt = rl.GetFrameTime()
 	local mainTheme = StudioThemeService.SelectedTheme
+
+	Theme = game:GetService("StudioThemeService").SelectedTheme
+
+	vend = KinemiumFontService.GetDefaultFont()
 
 	if game.Context == Enum.GameContext.Editor then
 		window.update(dt)

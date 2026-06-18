@@ -7,9 +7,9 @@ Process._Intents = Enum.PluginIntents.Graphics
 
 Process.InitRenderer = function(renderer, renderer_signal)
 	Process:SetProperties({
-		RunProcessZune = function(flags)
+		RunProcessZune = function(flags, ioOpts)
 			local process = zune.process.create(zune.fs.getExePath(), flags, {
-				opts = { stdin = "inherit", stdout = "inherit", stderr = "inherit" },
+				opts = ioOpts or { stdin = "inherit", stdout = "inherit", stderr = "inherit" },
 			})
 			return process
 		end,

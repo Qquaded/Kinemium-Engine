@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local renderer = KinemiumRaylib.GetRenderer()
 local rl = KinemiumRaylib.GetLib()
+local const = KinemiumRaylib.GetConst()
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
 
@@ -92,18 +93,6 @@ repeat
 	task.wait()
 until frame.AbsolutePosition and frame.AbsoluteSize
 
-local initialPos = frame.AbsolutePosition or vector.create(0, 0)
-local initialSize = frame.AbsoluteSize or vector.create(800, 600)
-
-local ideWindow = window.create({
-	title = "Script Editor",
-	x = initialPos.X,
-	y = initialPos.Y,
-	width = initialSize.X,
-	height = initialSize.Y,
-	enabled = false,
-})
-
 --[[
 local viewportWindow = window.create({
 	title = "Viewport",
@@ -116,36 +105,32 @@ local viewportWindow = window.create({
 })
 --]]
 
-ideWindow.stepped = function(data)
-	ideWindow.x = 0
-	ideWindow.y = 30
-	ideWindow.width = rl.GetRenderWidth()
-	ideWindow.height = rl.GetRenderHeight() - 30
-	ide.draw(0, 60, vector.create(rl.GetRenderWidth(), rl.GetRenderHeight() - 60), 50)
-
-	if currentObject then
-		if currentObject.IsOverridden then
-			ide.text:clear()
-			ide.text:insertString(currentObject.Source)
-			ide.text:setCursor(1, 1)
-			ide._highlightCache = {}
-			return
-		end
-		currentObject.Source = ide:getCode()
-	end
-end
-
 renderer.Pool.new("2d", function(data)
 	if game.Context ~= Enum.GameContext.Editor then
 		return
 	end
 
 	local dt = rl.GetFrameTime()
-	local mainTheme = StudioThemeService.SelectedTheme
+	vend = KinemiumFontService.GetDefaultFont()
 
-	profileBegin("Aereon render")
-	ideWindow.enabled = enableIDE
+	if enableIDE then
+		local width = rl.GetRenderWidth()
+		local height = rl.GetRenderHeight() - 30
+		rl.DrawRectangle(0, 0, width, height, StudioThemeService.SelectedTheme.aereon.ide.BackgroundColor:ToRaylib(0))
+		ide.draw(0, 30, vector.create(width, height), 50, StudioThemeService.SelectedTheme.aereon.ide)
+
+		if currentObject then
+			if currentObject.IsOverridden then
+				ide.text:clear()
+				ide.text:insertString(currentObject.Source)
+				ide.text:setCursor(1, 1)
+				ide._highlightCache = {}
+				return
+			end
+			currentObject.Source = ide:getCode()
+		end
+	end
+
 	window.update(dt)
-	window.draw(dt, mainTheme)
-	profileEnd()
-end)
+	window.draw(dt, StudioThemeService.SelectedTheme)
+end, -999999)

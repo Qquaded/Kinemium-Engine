@@ -11,7 +11,7 @@ local function easeOut3(t)
 	return 1 - (1 - t) ^ 3
 end
 
-return function(objects, data)
+	return function(objects, data)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
 		rounded = data.rounded or { 0.08, 8 },
@@ -39,6 +39,17 @@ return function(objects, data)
 		visible = data.visible ~= false,
 		lastSize = { width = data.width or data[3] or 0, height = data.height or data[4] or 0 },
 		onClick = data.onClick,
+
+		-- flex layout properties
+		flexGrow = data.flexGrow or 0,
+		flexShrink = data.flexShrink or 1,
+		alignSelf = data.alignSelf or nil,
+		layoutOrder = data.layoutOrder or 0,
+		minWidth = data.minWidth or 0,
+		minHeight = data.minHeight or 0,
+		maxWidth = data.maxWidth or math.huge,
+		maxHeight = data.maxHeight or math.huge,
+		aspectRatio = data.aspectRatio or nil,
 
 		hoverT = 0,
 		entryT = 0,

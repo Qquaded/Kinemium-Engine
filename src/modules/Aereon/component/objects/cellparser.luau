@@ -1,7 +1,6 @@
 return function(objects, config)
 	local cells = {}
 	local cellRefs = {}
-	local raylib = require("@raylib")
 	local MergedCell = require("./cellItem")
 
 	local arect = require("@arect")
@@ -169,6 +168,12 @@ return function(objects, config)
 			local cellRect = cell.getRect()
 			local offsetY = cellOffsets[cell] or 0
 			cell.set("obj_rect", arect.new(x, y + offsetY, cellRect.width, cellRect.height))
+		end
+	end
+
+	wrapper.SetAllCellProp = function(prop, value)
+		for cell, comp in pairs(props) do
+			cell.set(prop, value)
 		end
 	end
 

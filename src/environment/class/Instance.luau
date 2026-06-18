@@ -3,6 +3,7 @@ local Signal = require("@Kinemium.signal")
 local task = _G.zune.task
 local nextUniqueId = 1
 local cloneInitializer = nil
+local Enum = require("@Enum")
 
 local function generateUniqueId()
 	local id = nextUniqueId
@@ -28,9 +29,7 @@ function instance_mt.__index(self, key)
 	local props = rawget(self, "_props")
 	if props and props[key] ~= nil then
 		local val = props[key]
-		if val == "Microsoft" then
-			val = "Microslop"
-		end
+
 		return val
 	end
 
@@ -78,8 +77,32 @@ function instance_mt.__tostring(self)
 end
 
 function instance_mt.__newindex(self, key, value)
+	local callerEnv = getfenv(2)
 	local props = rawget(self, "_props")
 	if not props then
+		return
+	end
+
+	local barriers = rawget(self, "_barriers")
+	if barriers and barriers[key] then
+		local result = barriers[key](value)
+		if result == false then
+			return
+		end -- blocked
+		if result ~= nil and result ~= true then
+			value = result
+		end
+	end
+
+	if key ~= "Parent" then
+		if not props[key] and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
+			print(key .. " property does not exist in instance " .. self.Name)
+			return
+		end
+	end
+
+	if type(props[key]) == "function" and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
+		error("Cannot override instance function " .. key)
 		return
 	end
 
@@ -641,6 +664,38 @@ function Instance:GetAttributeChangedSignal(name)
 	end
 
 	return self._attributeSignals[name]
+end
+
+function Instance:SetBarrier(property, callback)
+	local callerEnv = getfenv(2)
+	--print(callerEnv)
+	if callerEnv.SecurityCapabilities and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
+		error("Security capabilities not equal to level internals")
+		return
+	end
+
+	local barriers = rawget(self, "_barriers")
+	if not barriers then
+		barriers = {}
+		rawset(self, "_barriers", barriers)
+	end
+	barriers[property] = callback
+	return
+end
+
+function Instance:RemoveBarrier(property)
+	local callerEnv = getfenv(2)
+	--print(callerEnv)
+	if callerEnv.SecurityCapabilities and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
+		error("Security capabilities not equal to level internals")
+		return
+	end
+
+	local barriers = rawget(self, "_barriers")
+	if barriers then
+		barriers[property] = nil
+	end
+	return
 end
 
 function Instance:WaitForChild(name, timeout)
@@ -1259,5 +1314,13 @@ function Instance:Destroy()
 		rawset(self, "_attributeSignals", nil)
 	end
 end
+
+Instance:SetBarrier("Name", function(new)
+	if type(new) ~= "string" then
+		print("New value is not a string")
+		return false
+	end
+	return true
+end)
 
 return Instance

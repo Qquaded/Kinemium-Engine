@@ -1,3 +1,4 @@
+local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local HUDService = game:GetService("HUDService")
@@ -12,6 +13,7 @@ end
 
 local menuActive = false
 local main_signal = Signal.new()
+local changed_signal = CoreGui.CoreGuiChangedSignal
 
 local manager = ReactPointer.new()
 
@@ -663,6 +665,12 @@ RunService.RenderStepped:Connect(function(dt)
 	backgroundFrame.BackgroundTransparency = backgroundTransparencySpring:step(dt)
 	Menu.BackgroundTransparency = transparencyMenuSpring:step(dt)
 	OpenMenuButton.BackgroundTransparency = transparencySpring:step(dt)
+end)
+
+changed_signal:Connect(function(message, status)
+	if message == "TopbarEnabled" then
+		Gui.Enabled = status
+	end
 end)
 
 main_signal:Connect(function(message, param, cb)

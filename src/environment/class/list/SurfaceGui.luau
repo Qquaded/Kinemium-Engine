@@ -5,7 +5,7 @@ local UDim2 = require("@UDim2")
 local Enum = require("@EnumMap")
 local raylib = require("@raylib")
 local zembed = require("@zembed")
-local raycast = require("../../../modules/raycast")
+local raycast = require("@raycast")
 
 local lib = raylib.lib
 local const = raylib.const

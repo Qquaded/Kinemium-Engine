@@ -3,7 +3,6 @@
 
 local kilang = {}
 
-local Kinemium_env = require("./environment/get")
 local preprocessor = require("./kilang/Transpiler")
 local luau = zune.luau
 
@@ -41,7 +40,8 @@ end
 --- Returns the C-side environment handle.
 ---@param cam any
 ---@return any CEnv
-function kilang:init(cam)
+function kilang:init(cam, Kinemium_env)
+	print(Kinemium_env)
 	local luaEnv, CEnv = Kinemium_env(self.renderer, cam)
 	self.env = luaEnv
 	return CEnv
@@ -63,7 +63,7 @@ function kilang:execute(code, opts, env_other)
 
 	local superset = opts.superset or "kilang"
 	local SecurityCapabilities = opts.SecurityCapabilities
-	local id = opts.StackId or ("stack" .. math.random(0, 9999))
+	local id = opts.StackId or ("stack" .. math.random(0, 9999999))
 
 	-- Don't allow duplicate stacks for the same ID
 	if self.threads[id] then

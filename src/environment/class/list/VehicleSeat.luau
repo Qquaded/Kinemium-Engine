@@ -1,5 +1,5 @@
 -- description: "A seat that can be occupied by a player to control a vehicle."
-local Part = require("./Part")
+local Part = require("@Part")
 
 local Color3 = require("@Color3")
 local Vector3 = require("@Vector3")

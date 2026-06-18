@@ -112,7 +112,7 @@ local raylib = require("@raylib")
 local MouseCursor = require("@Kinemium.MouseCursor")
 local r3d = require("@r3d")
 local rlib = r3d.lib
-local raycastMod = require("../../../modules/raycast")
+local raycastMod = require("@raycast")
 
 local Button1Down = signal.new()
 local Button1Up = signal.new()

@@ -17,6 +17,8 @@ StarterGui.InitRenderer = function(renderer, signal, datamodel)
 			task.wait()
 		until datamodel.Loaded == true
 
+		local CoreGui = datamodel:GetService("CoreGui")
+
 		local cache = {}
 
 		local function renderGui(child)
@@ -46,6 +48,22 @@ StarterGui.InitRenderer = function(renderer, signal, datamodel)
 
 		for _, child in pairs(StarterGui:GetChildren()) do
 			renderGui(child)
+		end
+
+		function StarterGui:SetCoreGuiEnabled(coreGuiType, enabled: boolean)
+			CoreGui:SetCoreGuiEnabled(coreGuiType, enabled)
+		end
+
+		function StarterGui:GetCore(coreName)
+			return CoreGui:GetCore(coreName)
+		end
+
+		function StarterGui:SetCore(parameterName: string, value)
+			CoreGui:SetCore(parameterName, value)
+		end
+
+		function StarterGui:GetCoreGuiEnabled(coreGuiType)
+			return CoreGui:GetCoreGuiEnabled(coreGuiType)
 		end
 	end)
 	return StarterGui

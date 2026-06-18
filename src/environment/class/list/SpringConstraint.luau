@@ -4,7 +4,7 @@ local _signal = require("@Kinemium.signal")
 local _state = require("@State")
 local Color3 = require("@Color3")
 local Vector3 = require("@Vector3")
-local NetworkOwnership = require("../../game/services/ReplicatorService/NetworkOwnership")
+local NetworkOwnership = require("@NetworkOwnership")
 
 local raylib = require("@raylib")
 local rl = raylib.lib

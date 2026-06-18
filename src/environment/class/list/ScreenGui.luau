@@ -51,9 +51,6 @@ return {
 				return
 			end
 
-			if not instance.Enabled then
-				return
-			end
 			local renderWidth, renderHeight
 
 			if IsHeadless then
@@ -87,6 +84,9 @@ return {
 			end
 
 			profileBegin("Gui render")
+			if not instance.Enabled then
+				return
+			end
 			for _, child in pairs(instance:GetChildren()) do
 				if child["render"] then
 					child.render(lib, child, dt, structs, renderer, datamodel)

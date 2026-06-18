@@ -68,7 +68,7 @@ renderer.Hook.new("After2D", function(data)
 	if game.Context ~= Enum.GameContext.Editor then
 		return
 	end
-
+	vend = KinemiumFontService.GetDefaultFont()
 	local dt = rl.GetFrameTime()
 	aboutPrompt.render(dt)
 end)

@@ -9,7 +9,7 @@ local NumberSequenceKeypoint = require("@NumberSequenceKeypoint")
 local ColorSequence = require("@ColorSequence")
 local ColorSequenceKeypoint = require("@ColorSequenceKeypoint")
 local Instance = require("@Instance")
-local ParticleEmitter = require("./ParticleEmitter")
+local ParticleEmitter = require("@ParticleEmitter")
 
 -- description: "Builds color sequence."
 -- args: "primary: number, secondary: number"

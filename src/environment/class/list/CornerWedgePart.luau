@@ -1,5 +1,5 @@
 -- description: "A Corner Wedge shape type for Part."
-local Part = require("./Part")
+local Part = require("@Part")
 local Enum = require("@EnumMap")
 
 local propTable = {}

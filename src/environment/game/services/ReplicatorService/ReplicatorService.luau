@@ -1,19 +1,39 @@
+--[[
+╔═══════════════════════════════════════════════════════════════╗
+║  ReplicatorService — entry point                             ║
+║                                                              ║
+║  Wires together the server & client replication subsystems.   ║
+║  Waits for NetworkService and SerializationService to be      ║
+║  ready, then kicks off either Server.init or Client.init.     ║
+╚═══════════════════════════════════════════════════════════════╝
+--]]
+
+-- Instance class system — every service/object inherits from Instance
 local Instance = require("@Instance")
 local Enum = require("@EnumMap")
 
+-- Create the singleton service object
 local ReplicatorService = Instance.new("ReplicatorService")
-ReplicatorService.ExplorerHidden = true
-ReplicatorService._Intents = Enum.PluginIntents.Network
+ReplicatorService.ExplorerHidden = true -- Hide from Studio explorer
+ReplicatorService._Intents = Enum.PluginIntents.Network -- Declare capability
 
-local Server = require("./_Server")
-local Client = require("./_Client")
-local StateRegistry = require("./StateRegistry")
-local NetworkOwnership = require("./NetworkOwnership")
-local NetworkReplicateSync = require("./NetworkReplicateSync")
-local NetworkPropSync = require("./NetworkPropSync")
+-- Sub-modules for server & client replication logic
+local Server = require("@Server")
+local Client = require("@Client")
+-- StateRegistry: serialises/deserialises object state for owned-state sync
+local StateRegistry = require("@StateRegistry")
+-- NetworkOwnership: manages which client "owns" each physics object
+local NetworkOwnership = require("@NetworkOwnership")
+-- NetworkReplicateSync: chunked object replication sync (used on client)
+local NetworkReplicateSync = require("@NetworkReplicateSync")
+-- NetworkPropSync: batched SyncVar property broadcasts
+local NetworkPropSync = require("@NetworkPropSync")
 
+-- Called by the engine after renderer is ready. Runs in a separate coroutine
+-- so it can wait for dependencies without blocking startup.
 ReplicatorService.InitRenderer = function(renderer, renderer_signal, game)
 	task.spawn(function()
+		-- Wait until NetworkService is available and exposes the expected API surface
 		local networkService
 		repeat
 			task.wait()
@@ -25,6 +45,7 @@ ReplicatorService.InitRenderer = function(renderer, renderer_signal, game)
 			and type(networkService.SendToClient) == "function"
 			and type(networkService.Broadcast) == "function"
 
+		-- Context table passed to Server.init / Client.init
 		local ctx = {
 			game = game,
 			ReplicatorService = ReplicatorService,
@@ -39,6 +60,7 @@ ReplicatorService.InitRenderer = function(renderer, renderer_signal, game)
 		local replicateSync = NetworkReplicateSync.new(ctx)
 		local propSync = NetworkPropSync.new(ctx)
 
+		-- Expose subsystems as properties so sandboxed scripts can access them
 		ReplicatorService:SetProperties({
 			RegisterStateAdapter = function(self, name, adapter)
 				StateRegistry.RegisterAdapter(name, adapter)

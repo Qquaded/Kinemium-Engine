@@ -4,6 +4,8 @@ local UDim2 = require("@UDim2")
 local Vector2 = require("@Vector2")
 local Enum = require("@EnumMap")
 
+local const = require("@raylib").const
+
 local StudioThemeService = Instance.new("StudioThemeService")
 StudioThemeService.ExplorerHidden = true
 StudioThemeService._Intents = Enum.PluginIntents.UI
@@ -16,6 +18,16 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 					position = UDim2.new(1, -20, 0, 40),
 					anchorPoint = Vector2.new(1, 0),
 					size = UDim2.new(0, 400, 0.38, 0),
+				},
+				GameSettings = {
+					position = UDim2.new(0.5, 0, 0.5, 0),
+					anchorPoint = Vector2.new(0.5, 0.5),
+					size = UDim2.new(0.5, 0, 0.7, 0),
+				},
+				Toolbox = {
+					position = UDim2.new(0.5, 0, 0.5, 0),
+					anchorPoint = Vector2.new(0.5, 0.5),
+					size = UDim2.new(0.6, 0, 0.7, 0),
 				},
 				Inspector = {
 					position = UDim2.new(1, -20, 0.44, 0),
@@ -98,6 +110,20 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 						Width = 200,
 						Height = 20,
 						ListPadding = 5,
+					},
+
+					codecolors = {
+						keyword = const.SKYBLUE,
+						builtin = const.MAGENTA,
+						stdlib = const.VIOLET,
+						string = const.GREEN,
+						number = const.ORANGE,
+						operator = const.BLUE,
+						comment = const.GRAY,
+						field = const.YELLOW,
+						method = const.YELLOW,
+						functionName = const.GOLD,
+						default = const.WHITE,
 					},
 				},
 			},

@@ -1,6 +1,6 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
-local UserInputService = require("../UserInputService/UserInputService")
+local UserInputService = require("@UserInputService")
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")

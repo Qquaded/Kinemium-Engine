@@ -1,5 +1,5 @@
 -- description: "A constraint that welds two parts together."
-local a = require("../../game/services/ReplicatorService/NetworkOwnership")
+local a = require("@NetworkOwnership")
 
 local b = {
 	Part0 = nil,

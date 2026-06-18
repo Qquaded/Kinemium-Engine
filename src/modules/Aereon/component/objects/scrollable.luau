@@ -92,7 +92,12 @@ return function(objects, data)
 				config.obj_rect.width,
 				config.obj_rect.height
 			)
-			table.insert(_G.__aereon_scissorStack, { x = config.obj_rect.x, y = config.obj_rect.y, width = config.obj_rect.width, height = config.obj_rect.height })
+			table.insert(_G.__aereon_scissorStack, {
+				x = config.obj_rect.x,
+				y = config.obj_rect.y,
+				width = config.obj_rect.width,
+				height = config.obj_rect.height,
+			})
 		end
 
 		-- Update child position

@@ -91,7 +91,9 @@ ishared.Home.pages["API"] = function(dt, alpha, slideOffset)
 
 	browser.set("backgroundColor", backgroundColor)
 	browser.set("headerColor", SecondaryBackgroundColor)
+	vend = KinemiumFontService.GetDefaultFontSmall()
 
+	browser.set("font", vend)
 	browser.set("obj_rect", arect.new(startX, 160 + slideOffset, screenx - 130, screeny - 190))
 	browser.render(dt)
 end

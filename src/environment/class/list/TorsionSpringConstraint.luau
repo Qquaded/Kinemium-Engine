@@ -1,6 +1,6 @@
 -- description: "Applies a torsional spring constraint between two attachments."
 local Color3 = require("@Color3")
-local NetworkOwnership = require("../../game/services/ReplicatorService/NetworkOwnership")
+local NetworkOwnership = require("@NetworkOwnership")
 
 local raylib = require("@raylib")
 local rl = raylib.lib

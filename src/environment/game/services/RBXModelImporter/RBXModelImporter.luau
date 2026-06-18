@@ -3,7 +3,7 @@ local rbxImport = require("@RbxImport")
 local registry = require("@InstanceRegistry")
 local Enum = require("@EnumMap")
 
-local Axes = require("../../../datatypes/Axes")
+local Axes = require("@Axes")
 local BrickColor = require("@BrickColor")
 local CFrame = require("@CFrame")
 local Color3 = require("@Color3")

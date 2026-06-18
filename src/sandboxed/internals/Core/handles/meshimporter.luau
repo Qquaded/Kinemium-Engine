@@ -51,7 +51,6 @@ local importSettings = {
 --  Left Panel Background
 
 gui:AddRenderCallback(function(dt, win, baseX, baseY)
-	-- left panel bg
 	lib.DrawRectangle(baseX, baseY, PANEL_W, WINDOW_H, structs.Color:new({ r = 28, g = 28, b = 32, a = 0 }))
 
 	-- viewport bg + border

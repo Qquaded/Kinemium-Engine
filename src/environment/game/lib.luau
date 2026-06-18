@@ -24,6 +24,7 @@ local HEADLESS_SKIP_INIT = {
 	UserInputService = true,
 	VideoService = true,
 }
+local kilang = require("@kilang")
 
 function DataModel.new(RENDERER, ...)
 	local self = setmetatable({}, DataModel)
@@ -61,7 +62,6 @@ function DataModel.new(RENDERER, ...)
 		local path
 		if zembed.IsEmbedded() then
 			name = fs.path.basename(service):gsub(".luau", "")
-			name = string.gsub(name, ".luau", "")
 			path = `./services/{name}/{name}`
 
 			if string.find(path, "_") then
@@ -69,11 +69,14 @@ function DataModel.new(RENDERER, ...)
 				continue
 			end
 		else
-			name = service.name:gsub(".luau", "")
-			path = `./services/{name}/{name}`
+			name = service.name
+			path = `./src/environment/game/services/{name}/{name}.luau`
 		end
 
-		local success, returnedData = pcall(require, path)
+		local read = zune.fs.readFile(path)
+		local stack, success, returnedData = kilang:execute(read, {
+			SecurityCapabilities = Enum.SecurityCapabilities.Internals,
+		})
 		local initTime = (os.clock() - addServiceStart) * 1000
 
 		if success then

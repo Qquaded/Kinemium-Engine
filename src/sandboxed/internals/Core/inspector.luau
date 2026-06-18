@@ -288,7 +288,7 @@ datatypes["string"] = {
 							{ name = "All Files", extensions = { "*" } },
 						}
 					or {
-						{ name = "Images", extensions = { "png", "jpg", "jpeg", "bmp" } },
+						{ name = "Images", extensions = { "png", "jpg", "jpeg", "bmp", "gif" } },
 						{ name = "All Files", extensions = { "*" } },
 					}
 				local path = FileDialogService.RequestFile(exts)
@@ -1509,6 +1509,8 @@ window.stepped = function(windowData)
 		return
 	end
 
+	Theme = game:GetService("StudioThemeService").SelectedTheme
+
 	windowObject = windowData
 
 	local winX = windowData.x
@@ -1669,6 +1671,8 @@ window.stepped = function(windowData)
 		end
 	end
 	raylib.lib.EndScissorMode()
+
+	vend = KinemiumFontService.GetDefaultFont()
 
 	if colorPickerTarget then
 		local cpW, cpH = 240, winH

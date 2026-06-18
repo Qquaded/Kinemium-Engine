@@ -1,5 +1,5 @@
 -- description: "A modifier class that combines multiple parts into a single union."
-local Part = require("./Part")
+local Part = require("@Part")
 local Enum = require("@EnumMap")
 
 local propTable = {

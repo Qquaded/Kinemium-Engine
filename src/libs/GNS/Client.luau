@@ -8,10 +8,6 @@ local task = zune.task
 local Client = {}
 Client.__index = Client
 
-local function log(...)
-	--print(...)
-end
-
 local SILENT_PACKET_TYPES = {
 	patch_batch = true,
 	snapshot = true,
@@ -20,11 +16,21 @@ local SILENT_PACKET_TYPES = {
 	ping = true,
 }
 
-local function toPointer(addr: number)
-	local buf = buffer.create(8)
-	buffer.writeu32(buf, 0, addr % 4294967296)
-	buffer.writeu32(buf, 4, math.floor(addr / 4294967296))
-	return ffi.ptrFromAddress(buf)
+local function log(...)
+	--print(...)
+end
+
+local function handle_toPointer(handle: number)
+	local buf = ffi.alloc(8)
+	buf:writeu32(0, handle % 4294967296)
+	buf:writeu32(4, math.floor(handle / 4294967296))
+	return buf
+end
+
+local function size_toPointer(size: number)
+	local buf = ffi.alloc(4)
+	buf:writeu32(0, size)
+	return buf
 end
 
 local function pointerToBuffer(ptr, size)
@@ -34,6 +40,14 @@ local function pointerToBuffer(ptr, size)
 	end
 	return buf
 end
+
+-- SteamNetworkingMessage_t layout (64-bit):
+--   offset  0: m_pData  (pointer, 8 bytes)
+--   offset  8: m_cbSize (i32,     4 bytes)
+--   offset 12: m_nFlags (i32,     4 bytes)
+--   offset 16: m_conn   (u32,     4 bytes)
+local MSG_OFFSET_PDATA = 0
+local MSG_OFFSET_CBSIZE = 8
 
 function Client.new()
 	local self = setmetatable({
@@ -48,6 +62,7 @@ function Client.new()
 		_OnShutdown = nil,
 		ConnectArguments = nil,
 		_connectAttemptId = 0,
+		GnsConnected = false,
 	}, Client)
 	return self
 end
@@ -69,10 +84,10 @@ local function openConnection(self)
 		state.activeClient = self
 		state.activeClients[hConnNum] = self
 	else
-		warn(`[GNS][Client] ConnectByIPAddress returned an invalid connection handle for {self.ServerAddress}:{self.ServerPort}`)
+		warn(`[GNS][Client] ConnectByIPAddress failed for {self.ServerAddress}:{self.ServerPort}`)
 	end
-	state.InitEventLoop()
 
+	state.InitEventLoop()
 	return hConnNum ~= 0
 end
 
@@ -82,12 +97,11 @@ function Client:Init(serverAddress, serverPort, authToken)
 	self.AuthToken = authToken or "default_gns_token"
 	self.IsAuthenticated = false
 	self.GnsConnected = false
-
 	openConnection(self)
 end
 
 function Client:Listen()
-	-- GNS event loop handles everything, so this is just a compatibility stub!
+	-- GNS event loop handles everything; stub for API compatibility
 end
 
 function Client:Connect(arguments)
@@ -154,34 +168,33 @@ function Client:Poll()
 	local ppOutMessages = ffi.alloc(128 * 8)
 	local numMsgs = gns.lib.SteamAPI_ISteamNetworkingSockets_ReceiveMessagesOnConnection(
 		state.sockets,
-		toPointer(self.hConn),
+		handle_toPointer(self.hConn),
 		ppOutMessages,
 		128
 	)
 
 	local numMsgsNum = tonumber(tostring(numMsgs):match("0x[%da-fA-F]+") or "0", 16)
-	if numMsgsNum > 0 then
-		for i = 1, numMsgsNum do
-			local pMsg = ppOutMessages:readptr((i - 1) * 8)
-			if pMsg and pMsg ~= ffi.null then
-				local m_pData = pMsg:readptr(0)
-				local m_cbSize = pMsg:readi32(8)
+	if numMsgsNum <= 0 then
+		return
+	end
 
-				local rawPayload = pointerToBuffer(m_pData, m_cbSize)
+	for i = 1, numMsgsNum do
+		local pMsg = ppOutMessages:readptr((i - 1) * 8)
+		if pMsg and pMsg ~= ffi.null then
+			local m_pData = pMsg:readptr(MSG_OFFSET_PDATA)
+			local m_cbSize = pMsg:readi32(MSG_OFFSET_CBSIZE)
 
-				gns.lib.SteamAPI_SteamNetworkingMessage_t_Release(pMsg)
+			local rawPayload = pointerToBuffer(m_pData, m_cbSize)
+			gns.lib.SteamAPI_SteamNetworkingMessage_t_Release(pMsg)
 
-				local ok, decoded = pcall(Serializer.Deserialize, rawPayload)
-				if ok and decoded then
-					if not SILENT_PACKET_TYPES[decoded.type or decoded.kind] then
-						log(
-							`[GNS][Client] Received message: type={decoded.type or decoded.kind or "?"}, size={m_cbSize} bytes from server`
-						)
-					end
-					self:HandlePacket(decoded)
-				else
-					warn("[GNS][Client] Failed to deserialize message from server")
+			local ok, decoded = pcall(Serializer.Deserialize, rawPayload)
+			if ok and decoded then
+				if not SILENT_PACKET_TYPES[decoded.type or decoded.kind] then
+					log(`[GNS][Client] Recv: type={decoded.type or decoded.kind or "?"} size={m_cbSize}`)
 				end
+				self:HandlePacket(decoded)
+			else
+				warn("[GNS][Client] Failed to deserialize message from server")
 			end
 		end
 	end
@@ -207,32 +220,35 @@ function Client:Send(data, reliable)
 	if not self.hConn then
 		return false
 	end
-	local flags = reliable and 8 or 1
+
+	-- k_nSteamNetworkingSend_Reliable = 8, Unreliable = 0
+	local flags = reliable and 8 or 0
 
 	local ok, serialized = pcall(Serializer.Serialize, data)
 	if not ok then
-		warn("[GNS][Client] Failed to serialize message:", serialized)
+		warn("[GNS][Client] Failed to serialize:", serialized)
 		return false
 	end
 
 	if not SILENT_PACKET_TYPES[data.type or data.kind] then
 		log(
-			`[GNS][Client] Sending message: type={data.type or data.kind or "?"}, size={buffer.len(serialized)} bytes, reliable={reliable} to server`
+			`[GNS][Client] Send: type={data.type or data.kind or "?"} size={buffer.len(serialized)} reliable={reliable}`
 		)
 	end
 
-	local pData = ffi.alloc(buffer.len(serialized))
-	pData:write(0, serialized, 0, buffer.len(serialized))
+	local len = buffer.len(serialized)
+	local pData = ffi.alloc(len)
+	pData:write(0, serialized, 0, len)
 
-	local res = gns.lib.SteamAPI_ISteamNetworkingSockets_SendMessageToConnection(
+	gns.lib.SteamAPI_ISteamNetworkingSockets_SendMessageToConnection(
 		state.sockets,
-		toPointer(self.hConn),
+		handle_toPointer(self.hConn),
 		pData,
-		toPointer(buffer.len(serialized)),
+		size_toPointer(len), -- fixed: 4-byte buffer containing the size, not toPointer(len)
 		flags,
 		nil
 	)
-	return tonumber(tostring(res):match("0x[%da-fA-F]+") or "0", 16) == 1
+	return true
 end
 
 function Client:OnRecieve(callback)
@@ -244,7 +260,7 @@ function Client:OnShutdown(callback)
 end
 
 function Client:StartHeartbeat()
-	-- Compatibility stub: GNS handles keep-alives natively
+	-- GNS handles keepalives natively; stub for API compatibility
 end
 
 function Client:_CloseConnection(reason, suppressShutdown)
@@ -266,7 +282,7 @@ function Client:_CloseConnection(reason, suppressShutdown)
 
 	gns.lib.SteamAPI_ISteamNetworkingSockets_CloseConnection(
 		state.sockets,
-		toPointer(hConn),
+		handle_toPointer(hConn),
 		0,
 		BufferUtils.stringToPtr(reason or "disconnect"),
 		false

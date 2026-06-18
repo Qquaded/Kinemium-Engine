@@ -2,7 +2,6 @@ local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
 
 local ConfigService = Instance.new("ConfigService")
-ConfigService.ExplorerHidden = true
 
 ConfigService.InitRenderer = function(renderer, renderer_signal)
 	if IsHeadless == true then
@@ -20,6 +19,9 @@ ConfigService.InitRenderer = function(renderer, renderer_signal)
 
 		prop = function(prop, val)
 			currentConfig[prop] = val
+
+			-- save as property so it can be saved in a .kine file later
+			ConfigService[prop] = val
 		end,
 
 		get = function(prop)

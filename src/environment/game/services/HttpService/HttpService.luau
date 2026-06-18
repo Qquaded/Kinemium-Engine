@@ -34,7 +34,7 @@ HttpService.InitRenderer = function(renderer, renderer_signal, game)
 
 		if not success then
 			HttpService.RequestFailed:Fire({ Method = method, URL = url, Error = response })
-			print("HttpService Request Error: " .. tostring(response))
+			return response
 		end
 
 		local res = {

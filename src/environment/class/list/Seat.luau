@@ -1,5 +1,5 @@
 -- description: "A seat that can be occupied by a player."
-local Part = require("./Part")
+local Part = require("@Part")
 
 local propTable = {
 	Name = "Seat",
@@ -20,10 +20,18 @@ return {
 			end
 		end
 
-        instance.Touched:Connect(function(hit)
-			if instance.Disabled or instance.Occupant then return end
+		instance.Touched:Connect(function(hit)
+			if instance.Disabled or instance.Occupant then
+				return
+			end
 			local humanoid = hit and hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid")
-			if humanoid and humanoid.Health > 0 and humanoid.SeatPart == nil and humanoid:GetState() ~= Enum.HumanoidStateType.Seated and humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+			if
+				humanoid
+				and humanoid.Health > 0
+				and humanoid.SeatPart == nil
+				and humanoid:GetState() ~= Enum.HumanoidStateType.Seated
+				and humanoid:GetState() ~= Enum.HumanoidStateType.Dead
+			then
 				instance.Occupant = humanoid
 				humanoid.SeatPart = instance
 			end

@@ -11,8 +11,8 @@ local DEFAULT_FONT = raylib.lib.GetFontDefault()
 local SHADOW_LAYERS = 3
 local SHADOW_ALPHA_BASE = 0.06
 local SHADOW_ALPHA_STEP = 0.015
-local ANIM_SPEED = 0.18
-local HOVER_SPEED = 0.22
+local ANIM_SPEED = 12
+local HOVER_SPEED = 15
 
 --
 -- Default config
@@ -33,7 +33,7 @@ local function buildConfig(data)
 
 		-- Colors
 		backgroundColor = data.backgroundColor or color3.new(0.97, 0.97, 0.96),
-		hoverColor = data.hoverColor or color3.new(0.91, 0.91, 0.90),
+		hoverColor = data.hoverColor or color3.new(0.15, 0.15, 0.15),
 		textColor = data.textColor or color3.new(0.10, 0.10, 0.10),
 		disabledColor = data.disabledColor or color3.new(0.65, 0.65, 0.63),
 		shortcutColor = data.shortcutColor or color3.new(0.50, 0.50, 0.48),
@@ -121,20 +121,13 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 
 	local prev = config.hoverAlpha[itemId] or 0
 	local target = isHovered and 1 or 0
-	config.hoverAlpha[itemId] = lerpf(prev, target, HOVER_SPEED)
+	config.hoverAlpha[itemId] = lerpf(prev, target, 1 - math.exp(-HOVER_SPEED * dt))
 	local ht = config.hoverAlpha[itemId]
 
-	-- Hover background
 	if ht > 0.01 then
 		local baseColor = isDanger and config.dangerHoverColor or config.hoverColor
-		raylib.lib.DrawRectangleRounded(
-			rect:translate(itemRect),
-			config.itemRounded[1],
-			config.itemRounded[2],
-			baseColor:ToRaylib(-(1 - ht))
-		)
+		raylib.lib.DrawRectangleRounded(rect:translate(itemRect), 0.35, 4, baseColor:ToRaylib(1 - ht))
 	end
-
 	-- Colors
 	local textColor = isDisabled and config.disabledColor or (isDanger and config.dangerColor) or config.textColor
 
@@ -220,7 +213,7 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 	end
 
 	-- Click
-	local clicked = isHovered and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput and not isDisabled and not item.submenu
+	local clicked = isHovered and raylib.lib.IsMouseButtonReleased(0) == 1 and not isDisabled and not item.submenu
 
 	return item.submenu and openSubmenuPath[depth] == itemId, clicked
 end
@@ -229,7 +222,7 @@ end
 -- Recursive item renderer
 --
 
-local function drawItems(config, items, x, y, menuW, depth, wrapper)
+local function drawItems(config, items, x, y, menuW, depth, wrapper, dt)
 	local itemY = y + config.padding
 	local itemId = 0
 
@@ -240,7 +233,7 @@ local function drawItems(config, items, x, y, menuW, depth, wrapper)
 				itemY + 3,
 				menuW - config.leftPadding - config.rightPadding,
 				1,
-				config.separatorColor:ToRaylib(0)
+				config.separatorColor:ToRaylib(0.6)
 			)
 			itemY = itemY + 7
 		elseif item.type == "category" then
@@ -261,14 +254,14 @@ local function drawItems(config, items, x, y, menuW, depth, wrapper)
 			local hoverKey = tostring(depth) .. "_" .. itemId
 
 			local openSub, clicked =
-				drawRegularItem(config, item, hoverKey, x, itemY, menuW, depth, 0, config.openSubmenuPath)
+				drawRegularItem(config, item, hoverKey, x, itemY, menuW, depth, dt, config.openSubmenuPath)
 
 			if openSub then
 				local subH = calculateMenuHeight(item.submenu, config)
 				local subRect = rect.new(x + menuW - 2, itemY, menuW, subH)
 				table.insert(config.submenuRects, subRect)
 				drawPanel(config, subRect.x, subRect.y, subRect.width, subRect.height)
-				drawItems(config, item.submenu, subRect.x, subRect.y, subRect.width, depth + 1, wrapper)
+				drawItems(config, item.submenu, subRect.x, subRect.y, subRect.width, depth + 1, wrapper, dt)
 			end
 
 			if clicked then
@@ -389,7 +382,7 @@ return function(objects, data)
 		table.insert(config.submenuRects, r)
 
 		drawPanel(config, r.x, r.y, r.width, r.height)
-		drawItems(config, config.items, r.x, r.y, r.width, 1, wrapper)
+		drawItems(config, config.items, r.x, r.y, r.width, 1, wrapper, dt)
 	end
 
 	table.insert(objects, wrapper)

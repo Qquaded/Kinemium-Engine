@@ -1,9 +1,12 @@
 -- description: "Defines the position, orientation, and rendering settings used to view the world."
+
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")
 local raylib = require("@raylib")
 local Vector2 = require("@Vector2")
+
+_G.SecurityCapabilities = Enum.SecurityCapabilities.Internals
 
 local lib = raylib.lib
 local structs = raylib.structs
@@ -71,34 +74,151 @@ return {
 			local dpiScale = lib.GetWindowScaleDPI()
 			instance.ViewportSize = Vector2.new(lib.GetRenderWidth() / dpiScale.x, lib.GetRenderHeight() / dpiScale.y)
 
+			-- sync props to actual Camera object
+			-- position
+			zune.mem.writeVector3(camera, 0, vector.create(camCF.Position.X, camCF.Position.Y, camCF.Position.Z))
+
+			-- target
+			local look = camCF:GetLookVector()
+			zune.mem.writeVector3(
+				camera,
+				12,
+				vector.create(camCF.Position.X + look.X, camCF.Position.Y + look.Y, camCF.Position.Z + look.Z)
+			)
+
+			-- up
+			local baseUp = Vector3.new(0, 1, 0) -- hardcoded reference up
+
+			-- apply roll around forward
+			local cosR, sinR = math.cos(rollRad), math.sin(rollRad)
+			local right = look:Cross(baseUp):Unit()
+			local up = Vector3.new(
+				baseUp.X * cosR + right.X * sinR,
+				baseUp.Y * cosR + right.Y * sinR,
+				baseUp.Z * cosR + right.Z * sinR
+			)
+
+			zune.mem.writeVector3(camera, 24, vector.create(up.X, up.Y, up.Z))
+
+			-- fov
+			buffer.writef32(camera, 36, instance.FieldOfView)
+
 			if instance.CameraType == Enum.CameraType.Scriptable then
-				-- position
-				zune.mem.writeVector3(camera, 0, vector.create(camCF.Position.X, camCF.Position.Y, camCF.Position.Z))
+				-- we aren't gonna do anything here, the user script will control it
+			elseif instance.CameraType == Enum.CameraType.Orbital then
+				if not instance._orbital then
+					local startPos = (instance.CFrame and instance.CFrame.Position) or Vector3.new(3, 3, 3)
+					local subject = instance.CameraSubject
+					local pivot = (subject and subject:IsA("BasePart") and subject.Position) or Vector3.new(0, 0, 0)
+					local offset = startPos - pivot
+					local r = offset:Magnitude()
+					if r < 0.1 then
+						r = 8
+					end
 
-				-- target
-				local look = camCF:GetLookVector()
-				zune.mem.writeVector3(
-					camera,
-					12,
-					vector.create(camCF.Position.X + look.X, camCF.Position.Y + look.Y, camCF.Position.Z + look.Z)
+					instance._orbital = {
+						yaw = math.atan2(-offset.X, -offset.Z),
+						pitch = math.asin(math.clamp(offset.Y / r, -1, 1)),
+						radius = r,
+					}
+				end
+
+				local orb = instance._orbital
+				local subject = instance.CameraSubject
+				local pivot = (subject and subject.Position) or Vector3.new(0, 0, 0)
+
+				local delta = lib.GetMouseDelta()
+				local rmb = lib.IsMouseButtonDown(const.MouseButton.MOUSE_BUTTON_RIGHT)
+				local wheel = lib.GetMouseWheelMove()
+
+				if rmb then
+					orb.yaw = orb.yaw - math.rad(delta.x * 0.35)
+					orb.pitch = math.clamp(orb.pitch - math.rad(delta.y * 0.35), math.rad(-80), math.rad(80))
+				end
+
+				if wheel ~= 0 then
+					local CAM_ZOOM_MUL = 1.15
+					if wheel > 0 then
+						orb.radius = math.max(1, orb.radius / CAM_ZOOM_MUL)
+					else
+						orb.radius = math.min(200, orb.radius * CAM_ZOOM_MUL)
+					end
+				end
+
+				local cosP = math.cos(orb.pitch)
+				local camOffset = Vector3.new(
+					orb.radius * cosP * -math.sin(orb.yaw),
+					orb.radius * math.sin(orb.pitch),
+					orb.radius * cosP * -math.cos(orb.yaw)
 				)
 
-				-- up
-				local baseUp = Vector3.new(0, 1, 0) -- hardcoded reference up
+				instance.Focus = CFrame.new(pivot)
+				instance.CFrame = CFrame.new(pivot + camOffset, pivot)
+			elseif instance.CameraType == Enum.CameraType.Follow then
+				if not instance._follow then
+					local startPos = (instance.CFrame and instance.CFrame.Position) or Vector3.new(3, 3, 3)
+					local subject = instance.CameraSubject
+					local pivot = (subject and subject.Position) or Vector3.new(0, 0, 0)
+					local offset = startPos - pivot
+					local r = offset:Magnitude()
+					if r < 0.1 then
+						r = 8
+					end
 
-				-- apply roll around forward
-				local cosR, sinR = math.cos(rollRad), math.sin(rollRad)
-				local right = look:Cross(baseUp):Unit()
-				local up = Vector3.new(
-					baseUp.X * cosR + right.X * sinR,
-					baseUp.Y * cosR + right.Y * sinR,
-					baseUp.Z * cosR + right.Z * sinR
+					instance._follow = {
+						yaw = math.atan2(-offset.X, -offset.Z),
+						pitch = math.asin(math.clamp(offset.Y / r, -1, 1)),
+						radius = r,
+						lastPivot = pivot,
+					}
+				end
+
+				local flw = instance._follow
+				local subject = instance.CameraSubject
+				local pivot = (subject and subject.Position) or Vector3.new(0, 0, 0)
+
+				local delta = lib.GetMouseDelta()
+				local rmb = lib.IsMouseButtonDown(const.MouseButton.MOUSE_BUTTON_RIGHT)
+				local wheel = lib.GetMouseWheelMove()
+
+				if rmb then
+					flw.yaw = flw.yaw - math.rad(delta.x * 0.35)
+					flw.pitch = math.clamp(flw.pitch - math.rad(delta.y * 0.35), math.rad(-80), math.rad(80))
+					flw.lastPivot = pivot
+				else
+					local subjectCF = subject and subject.CFrame
+					if subjectCF then
+						look = subjectCF:GetLookVector()
+						local subjectYaw = math.atan2(-look.X, -look.Z)
+
+						local moved = (pivot - flw.lastPivot):Magnitude()
+						if moved > 0.01 then
+							local diff = subjectYaw - flw.yaw
+							diff = ((diff + math.pi) % (2 * math.pi)) - math.pi
+							flw.yaw = flw.yaw + diff * math.min(dt * 3, 1)
+						end
+					end
+					flw.lastPivot = pivot
+				end
+
+				if wheel ~= 0 then
+					local CAM_ZOOM_MUL = 1.15
+					if wheel > 0 then
+						flw.radius = math.max(1, flw.radius / CAM_ZOOM_MUL)
+					else
+						flw.radius = math.min(200, flw.radius * CAM_ZOOM_MUL)
+					end
+				end
+
+				local cosP = math.cos(flw.pitch)
+				local camOffset = Vector3.new(
+					flw.radius * cosP * -math.sin(flw.yaw),
+					flw.radius * math.sin(flw.pitch),
+					flw.radius * cosP * -math.cos(flw.yaw)
 				)
 
-				zune.mem.writeVector3(camera, 24, vector.create(up.X, up.Y, up.Z))
-
-				-- fov
-				buffer.writef32(camera, 36, instance.FieldOfView)
+				instance.Focus = CFrame.new(pivot)
+				instance.CFrame = CFrame.new(pivot + camOffset, pivot)
 			end
 		end
 

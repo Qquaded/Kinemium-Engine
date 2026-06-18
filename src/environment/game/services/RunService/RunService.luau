@@ -1,7 +1,7 @@
 local Instance = require("@Instance")
 local signal = require("@Kinemium.signal")
 local Enum = require("@EnumMap")
-local RollbackEngine = require("./RollbackEngine")
+local RollbackEngine = require("@RollbackEngine")
 
 local RunService = Instance.new("RunService")
 RunService._Intents = Enum.PluginIntents.Threading

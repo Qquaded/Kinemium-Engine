@@ -1,6 +1,6 @@
 -- description: "Constrains an attachment to move within a two-dimensional plane."
 local Color3 = require("@Color3")
-local NetworkOwnership = require("../../game/services/ReplicatorService/NetworkOwnership")
+local NetworkOwnership = require("@NetworkOwnership")
 
 local raylib = require("@raylib")
 local rl = raylib.lib

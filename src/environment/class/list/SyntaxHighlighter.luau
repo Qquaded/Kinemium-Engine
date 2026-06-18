@@ -1,6 +1,6 @@
 -- description: "A syntax highlighter for code editing."
 local Enum = require("@EnumMap")
-local syntax = require("../../../modules/Aereon/ide/syntax")
+local syntax = require("@syntax")
 
 local propTable = {
 	Name = "SyntaxHighlighter",
