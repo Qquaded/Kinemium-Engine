@@ -83,7 +83,7 @@ return {
 			zune.mem.writeVector3(
 				camera,
 				12,
-				vector.create(camCF.Position.X + look.X, camCF.Position.Y + look.Y, camCF.Position.Z + look.Z)
+				camCF + look
 			)
 
 			-- up
