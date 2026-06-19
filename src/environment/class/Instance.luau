@@ -1316,7 +1316,7 @@ end
 
 Instance:SetBarrier("Name", function(new)
 	if type(new) ~= "string" then
-		print("New value is not a string")
+		print("New value is not a string") -- FIXME: Replace with `error()` after it gets fixed.
 		return false
 	end
 	return true
