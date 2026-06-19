@@ -668,7 +668,6 @@ end
 
 function Instance:SetBarrier(property, callback)
 	local callerEnv = getfenv(2)
-	--print(callerEnv)
 	if callerEnv.SecurityCapabilities and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
 		error("Security capabilities not equal to level internals")
 		return
