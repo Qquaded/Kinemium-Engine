@@ -1,11 +1,9 @@
 --[[
-╔═══════════════════════════════════════════════════════════════╗
-║  ReplicatorService — entry point                             ║
-║                                                              ║
-║  Wires together the server & client replication subsystems.   ║
-║  Waits for NetworkService and SerializationService to be      ║
-║  ready, then kicks off either Server.init or Client.init.     ║
-╚═══════════════════════════════════════════════════════════════╝
+ReplicatorService — entry point                             
+                                                            
+Wires together the server & client replication subsystems.   
+Waits for NetworkService and SerializationService to be      
+ready, then kicks off either Server.init or Client.init.     
 --]]
 
 -- Instance class system — every service/object inherits from Instance

@@ -3,6 +3,10 @@ local Protocol = require("../NetworkService/Protocol")
 local NetworkReplicateSync = {}
 NetworkReplicateSync.__index = NetworkReplicateSync
 
+-- NetworkReplicateSync: Chunked initial world sync and pending replication queue
+-- Based on Polytoria's NetworkReplicateSync.cs (47-345)
+-- Handles initial player join sync, runtime replication, and deletion replication
+
 local CHUNK_SIZE = 300
 local PENDING_CHECK_INTERVAL = 0.1
 local MAX_PENDING_AGE = 30
@@ -91,7 +95,11 @@ function NetworkReplicateSync:SerializeObject(object)
 		local allProps = object:GetProperties()
 		if type(allProps) == "table" then
 			for propName, propValue in pairs(allProps) do
-				if propName ~= "Parent" and propName ~= "ClassName" and not (object.ClassName == "Player" and propName == "Character") then
+				if
+					propName ~= "Parent"
+					and propName ~= "ClassName"
+					and not (object.ClassName == "Player" and propName == "Character")
+				then
 					props[propName] = propValue
 				end
 			end

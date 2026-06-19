@@ -90,6 +90,7 @@ return function(objects, data)
 	end
 
 	wrapper.render = function(dt)
+		-- TODO: use math.lerp in the future
 		config.dh = config.dh + (config.h - config.dh) * math.min(config.lerpSpeed * dt, 1)
 		config.ds = config.ds + (config.s - config.ds) * math.min(config.lerpSpeed * dt, 1)
 		config.dv = config.dv + (config.v - config.dv) * math.min(config.lerpSpeed * dt, 1)

@@ -41,7 +41,6 @@ end
 ---@param cam any
 ---@return any CEnv
 function kilang:init(cam, Kinemium_env)
-	print(Kinemium_env)
 	local luaEnv, CEnv = Kinemium_env(self.renderer, cam)
 	self.env = luaEnv
 	return CEnv

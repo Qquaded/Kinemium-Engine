@@ -63,35 +63,11 @@ game.EngineSignal:Connect(function(prop, data)
 	end
 end)
 
-NewToolbarElement:Fire("Tools", "MeshImporter", {
-	type = "ImageButton",
-	text = "toolbox",
-	callback = function(element, rect)
-		enabled = not enabled
-
-		if enabled then
-			main_window:Open()
-			main_window.Closed = false
-			main_window.Resizable = false
-			main_window.Draggable = false
-			enabled = true
-		else
-		end
-	end,
-	hoverTransparency = 0.5,
-	hoverColor = Color3.new(0, 0, 0),
-	roundness = 0.2,
-	texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/EditableMesh.png"),
-})
-
 local PAD = 12
-local TITLE_H = main_window._titleBarH or 28
 
--- Map of plugin ID -> detail window
 local pluginWindows = {}
 
 local function openPluginWindow(pluginId)
-	-- If window already exists, focus it
 	if pluginWindows[pluginId] then
 		local win = pluginWindows[pluginId]
 		if win.Closed then
@@ -100,17 +76,15 @@ local function openPluginWindow(pluginId)
 		return
 	end
 
-	-- Wait for pages to be loaded
 	local pages = ishared.marketplacePages
 	if not pages or not pages[pluginId] then
 		return
 	end
 
 	local page = pages[pluginId]
-	local pluginName = page.get and page.get("title") or "Plugin"
 
 	local detailWindow = window.create({
-		title = pluginName,
+		title = pluginId,
 		x = main_window.x + 80,
 		y = main_window.y + 40,
 		width = 900,
@@ -121,15 +95,15 @@ local function openPluginWindow(pluginId)
 		tabs = {},
 	})
 
-	local WIN_PAD = 12
+	local WIN_PAD = 3
 
 	detailWindow.stepped = function(wd)
 		local dt = rl.GetFrameTime()
 		local titleBarH = wd._titleBarH or 28
 		local contentX = wd.x + WIN_PAD
 		local contentY = wd.y + titleBarH + WIN_PAD
-		local contentW = wd.width - WIN_PAD * 2
-		local contentH = wd.height - titleBarH - WIN_PAD * 2
+		local contentW = wd.width
+		local contentH = wd.height - titleBarH - WIN_PAD
 
 		if contentW > 0 and contentH > 0 then
 			page.set("obj_rect", arect.new(contentX, contentY, contentW, contentH))
@@ -137,8 +111,7 @@ local function openPluginWindow(pluginId)
 		end
 	end
 
-	-- Cleanup when window is closed
-	window.windowClosed = function(w)
+	detailWindow.windowClosed = function(w)
 		pluginWindows[pluginId] = nil
 	end
 
@@ -146,10 +119,26 @@ local function openPluginWindow(pluginId)
 	pluginWindows[pluginId] = detailWindow
 end
 
--- Override the card click callback to open a new window instead of inline view
-ishared.onPluginCardClick = function(pluginId)
-	openPluginWindow(pluginId)
-end
+NewToolbarElement:Fire("Tools", "MeshImporter", {
+	type = "ImageButton",
+	text = "toolbox",
+	callback = function(element, rect)
+		enabled = not enabled
+		if enabled then
+			ishared.onPluginCardClick = function(pluginId)
+				openPluginWindow(pluginId)
+			end
+		else
+			ishared.onPluginCardClick = function(pluginId)
+				ishared.activePluginPage = pluginId
+			end
+		end
+	end,
+	hoverTransparency = 0.5,
+	hoverColor = Color3.new(0, 0, 0),
+	roundness = 0.2,
+	texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/EditableMesh.png"),
+})
 
 main_window.stepped = function(wd)
 	if game.Context ~= Enum.GameContext.Editor then

@@ -74,6 +74,7 @@ function NetworkPropSync:CheckPropHasAuthority(objectNetId, propName, localPeerI
 end
 
 -- Detect if a property value has changed (duplicate detection)
+-- Based on Polytoria's _lastSyncedValues cache
 function NetworkPropSync:HasValueChanged(objectNetId, propName, newValue)
 	local key = `{objectNetId}:{propName}`
 	local lastValue = self._lastSyncedValues[key]

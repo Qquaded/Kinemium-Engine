@@ -12,6 +12,8 @@ end
 
 local CACHE = setmetatable({}, { __mode = "v" })
 
+-- TODO: use "vector" type instead of "any" when indexing .X, .Y, .Z doesn't cause an error
+
 local function getNan(vec: any): vector?
 	local res = vector.create(if vec.X ~= vec.X then 1 else 0, if vec.Y ~= vec.Y then 1 else 0, 0)
 	if vector.magnitude(res) > 0 then

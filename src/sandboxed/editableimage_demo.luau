@@ -51,6 +51,7 @@ local function project(v)
 	return Vector2.new(256 + v.X * scale, 256 + v.Y * scale)
 end
 
+-- top ten mistakes, NEVER write RenderSteppaed or the evil REVIEWER (I SEE YOU) will KILL YOU
 RunService.RenderSteppaed:Connect(function(dt)
 	angle += dt
 

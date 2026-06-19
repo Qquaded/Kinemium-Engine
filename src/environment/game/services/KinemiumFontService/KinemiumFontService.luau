@@ -116,14 +116,11 @@ KinemiumFontService.InitRenderer = function(renderer, renderer_signal)
 			return nil
 		end
 
-		print("helo")
-
 		loadingFonts[name] = true
 		local loaded = renderer.Font.new(name, resolveFontPath(path), size or 64)
 		loadingFonts[name] = nil
 		loadedFonts[name] = loaded
 		FontAdded:Fire(name, path)
-		print(loaded)
 
 		return loaded
 	end

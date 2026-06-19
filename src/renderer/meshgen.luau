@@ -631,7 +631,6 @@ function meshgen.uvSpherical(vertices)
 	end
 end
 
--- Roblox-style box projection: pick face plane from the dominant normal axis.
 function meshgen.uvBoxProject(vertices)
 	if #vertices == 0 then
 		return
@@ -641,24 +640,12 @@ function meshgen.uvBoxProject(vertices)
 	local maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge
 	for _, v in ipairs(vertices) do
 		local px, py, pz = vec3(v.position or v.pos or v)
-		if px < minX then
-			minX = px
-		end
-		if py < minY then
-			minY = py
-		end
-		if pz < minZ then
-			minZ = pz
-		end
-		if px > maxX then
-			maxX = px
-		end
-		if py > maxY then
-			maxY = py
-		end
-		if pz > maxZ then
-			maxZ = pz
-		end
+		minX = math.min(px, minX)
+		minY = math.min(py, minY)
+		minZ = math.min(pz, minZ)
+		maxX = math.max(px, maxX)
+		maxY = math.max(py, maxY)
+		maxZ = math.max(pz, maxZ)
 	end
 
 	local rangeX = math.max(maxX - minX, EPSILON)
@@ -864,12 +851,12 @@ function meshgen.extractModelMesh(model, meshIndex)
 		positionsY[i + 1] = py
 		positionsZ[i + 1] = pz
 
-		if px < minX then minX = px end
-		if py < minY then minY = py end
-		if pz < minZ then minZ = pz end
-		if px > maxX then maxX = px end
-		if py > maxY then maxY = py end
-		if pz > maxZ then maxZ = pz end
+		minX = math.min(px, minX)
+		minY = math.min(py, minY)
+		minZ = math.min(pz, minZ)
+		maxX = math.max(px, maxX)
+		maxY = math.max(py, maxY)
+		maxZ = math.max(pz, maxZ)
 	end
 
 	-- Compute AABB dimensions and center
@@ -881,9 +868,15 @@ function meshgen.extractModelMesh(model, meshIndex)
 	local centerZ = (minZ + maxZ) * 0.5
 
 	-- Protect against degenerate (zero-size) axes
-	if sizeX < EPSILON then sizeX = 1 end
-	if sizeY < EPSILON then sizeY = 1 end
-	if sizeZ < EPSILON then sizeZ = 1 end
+	if sizeX < EPSILON then
+		sizeX = 1
+	end
+	if sizeY < EPSILON then
+		sizeY = 1
+	end
+	if sizeZ < EPSILON then
+		sizeZ = 1
+	end
 
 	-- Build normalized vertices: center at origin, scale to unit cube
 	-- Each axis is independently scaled so that the AABB maps to [-0.5, 0.5]

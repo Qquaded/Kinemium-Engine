@@ -126,7 +126,12 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 
 	if ht > 0.01 then
 		local baseColor = isDanger and config.dangerHoverColor or config.hoverColor
-		raylib.lib.DrawRectangleRounded(rect:translate(itemRect), 0.35, 4, baseColor:ToRaylib(1 - ht))
+		raylib.lib.DrawRectangleRounded(
+			rect:translate(itemRect),
+			config.itemRounded[1],
+			config.itemRounded[2],
+			baseColor:ToRaylib(1 - ht)
+		)
 	end
 	-- Colors
 	local textColor = isDisabled and config.disabledColor or (isDanger and config.dangerColor) or config.textColor

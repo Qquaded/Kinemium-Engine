@@ -142,8 +142,7 @@
         "NetworkPropSync": "./src/environment/game/services/ReplicatorService/NetworkPropSync",
         "RollbackEngine": "./src/environment/game/services/RunService/RollbackEngine",
         "WorkspaceMtrlManager": "./src/environment/game/services/Workspace/materialShaders/_main",
-                "SerialWorker": "./src/environment/game/services/SerializationService/_encoder",
-                "SerialEncoder": "./src/environment/game/services/SerializationService/_encoder",
-
+        "SerialWorker": "./src/environment/game/services/SerializationService/_worker",
+        "SerialEncoder": "./src/environment/game/services/SerializationService/_encoder",
     }
 }

@@ -1,21 +1,20 @@
 --[[
-╔════════════════════════════════════════════════════════════════════════════════╗
-║  _Server.luau — server-side replication logic                                  ║
-║                                                                                 ║
-║  Responsible for:                                                               ║
-║    • NetworkId assignment and object tracking (lookup table)                    ║
-║    • Property change monitoring (Changed signals → dirtyPatches)                ║
-║    • Initial sync: inventory handshake → delta compute → sendCreate → WorldLoaded║
-║    • Live creation: sendCreate for runtime DescendantAdded events               ║
-║    • Streaming / Area-of-Interest: chunk-based spatial object culling            ║
-║    • Physics ownership: rebalanceOwnership assigns closest player                ║
-║    • State snapshots: per-object state history, delta compression, per-tick send ║
-║    • Owned state: receive client-submitted physics → anti-cheat → apply          ║
-║    • Terrain replication: queued chunk updates and snapshot batches              ║
-║    • RemoteEvent/Function/Data: server-side wiring for FireClient/InvokeClient   ║
-║                                                                                 ║
-║  Runs in a tick-driven loop wired to networkService.Tick.                       ║
-╚════════════════════════════════════════════════════════════════════════════════╝
+_Server.luau — server-side replication logic                                  
+                                                                                 
+  Responsible for:                                                               
+    • NetworkId assignment and object tracking (lookup table)                    
+    • Property change monitoring (Changed signals → dirtyPatches)                
+    • Initial sync: inventory handshake → delta compute → sendCreate → WorldLoaded
+    • Live creation: sendCreate for runtime DescendantAdded events              
+    • Streaming / Area-of-Interest: chunk-based spatial object culling           
+    • Physics ownership: rebalanceOwnership assigns closest player               
+    • State snapshots: per-object state history, delta compression, per-tick send 
+    • Owned state: receive client-submitted physics → anti-cheat → apply          
+    • Terrain replication: queued chunk updates and snapshot batches              
+    • RemoteEvent/Function/Data: server-side wiring for FireClient/InvokeClient   
+                                                                                 
+  Runs in a tick-driven loop wired to networkService.Tick.                       
+
 --]]
 
 local Server = {}
@@ -34,30 +33,30 @@ local Enum = require("@EnumMap")
 -- ═══ CONFIGURATION CONSTANTS ═══
 -- Tune these to balance replication throughput vs game responsiveness
 
-local MAX_TERRAIN_RELIABLE_MESSAGES_PER_TICK = 10          -- Max terrain msgs sent to one client per tick
-local OWNERSHIP_REBALANCE_INTERVAL = 0.2                    -- How often (seconds) to re-evaluate physics ownership
-local REPLICATION_TARGET_BYTES = 384 * 1024                 -- Target max size for a Create payload (384 KB)
-local MAX_PATCH_ENTRIES_PER_MESSAGE = 96                    -- Max property patches per PatchBatch message
-local MAX_SNAPSHOT_STATES_PER_MESSAGE = 16                  -- Max state deltas per Snapshot message per client
-local INITIAL_INVENTORY_HANDSHAKE_TIMEOUT = 8               -- Seconds before initial sync falls back to full send
-local SNAPSHOT_MIN_SEND_INTERVAL_TICKS = 6                  -- Min ticks between snapshot sends to a client
-local _SNAPSHOT_IDLE_KEEPALIVE_TICKS = 0                    -- (unused) keepalive for idle snapshot recipients
-local SNAPSHOT_MAX_UNACKED_TICKS = 2                        -- If client hasn't acked in 2 ticks, backpressure
-local SNAPSHOT_BACKPRESSURE_RETRY_TICKS = 12                -- Min ticks before retrying a backpressured client
-local MAX_CREATE_PAYLOAD_BYTES = REPLICATION_TARGET_BYTES   -- Hard ceiling before splitting a serialized payload
-local CREATE_PRE_SERIALIZE_TREE_SPLIT_COUNT = 192           -- If a batch exceeds this many objects, pre-split
-local CREATE_PRE_SERIALIZE_ROOT_SPLIT_COUNT = 96            -- If a single root tree exceeds this, send shallow + children
-local CREATE_PRE_SERIALIZE_MAX_ROOTS_PER_BATCH = 8          -- Max roots per pre-serialization batch
-local CREATE_INTER_BATCH_YIELD_SECONDS = 0.03               -- Yield between Create batches to avoid starvation
-local CREATE_BACKPRESSURE_PENDING_LIMIT = 8                 -- Max pending reliable msgs before waiting
-local CREATE_BACKPRESSURE_FRAGMENT_LIMIT = 128              -- Max wire fragments before waiting
-local CREATE_BACKPRESSURE_LOG_INTERVAL_SECONDS = 10         -- How often to log backpressure warnings
-local DEBUG_REPLICATION_TRACE = false                       -- Set true for verbose per-object replication trace
-local REPLICATION_DIAGNOSTICS = true                        -- Log timing diagnostics for slow ticks
-local SLOW_TICK_DIAGNOSTIC_SECONDS = 0.05                   -- Warn if per-tick processing exceeds this
-local INITIAL_ROOT_DETAIL_LIMIT = 40                        -- Max roots to log in initial sync diagnostics
-local STREAM_CHUNK_SIZE_DEFAULT = 192                       -- Default streaming chunk size (world units)
-local STREAM_RECONCILE_INTERVAL_TICKS = 3                   -- How often to reconcile stream regions (every N ticks)
+local MAX_TERRAIN_RELIABLE_MESSAGES_PER_TICK = 10 -- Max terrain msgs sent to one client per tick
+local OWNERSHIP_REBALANCE_INTERVAL = 0.2 -- How often (seconds) to re-evaluate physics ownership
+local REPLICATION_TARGET_BYTES = 384 * 1024 -- Target max size for a Create payload (384 KB)
+local MAX_PATCH_ENTRIES_PER_MESSAGE = 96 -- Max property patches per PatchBatch message
+local MAX_SNAPSHOT_STATES_PER_MESSAGE = 16 -- Max state deltas per Snapshot message per client
+local INITIAL_INVENTORY_HANDSHAKE_TIMEOUT = 8 -- Seconds before initial sync falls back to full send
+local SNAPSHOT_MIN_SEND_INTERVAL_TICKS = 6 -- Min ticks between snapshot sends to a client
+local _SNAPSHOT_IDLE_KEEPALIVE_TICKS = 0 -- (unused) keepalive for idle snapshot recipients
+local SNAPSHOT_MAX_UNACKED_TICKS = 2 -- If client hasn't acked in 2 ticks, backpressure
+local SNAPSHOT_BACKPRESSURE_RETRY_TICKS = 12 -- Min ticks before retrying a backpressured client
+local MAX_CREATE_PAYLOAD_BYTES = REPLICATION_TARGET_BYTES -- Hard ceiling before splitting a serialized payload
+local CREATE_PRE_SERIALIZE_TREE_SPLIT_COUNT = 192 -- If a batch exceeds this many objects, pre-split
+local CREATE_PRE_SERIALIZE_ROOT_SPLIT_COUNT = 96 -- If a single root tree exceeds this, send shallow + children
+local CREATE_PRE_SERIALIZE_MAX_ROOTS_PER_BATCH = 8 -- Max roots per pre-serialization batch
+local CREATE_INTER_BATCH_YIELD_SECONDS = 0.03 -- Yield between Create batches to avoid starvation
+local CREATE_BACKPRESSURE_PENDING_LIMIT = 8 -- Max pending reliable msgs before waiting
+local CREATE_BACKPRESSURE_FRAGMENT_LIMIT = 128 -- Max wire fragments before waiting
+local CREATE_BACKPRESSURE_LOG_INTERVAL_SECONDS = 10 -- How often to log backpressure warnings
+local DEBUG_REPLICATION_TRACE = false -- Set true for verbose per-object replication trace
+local REPLICATION_DIAGNOSTICS = true -- Log timing diagnostics for slow ticks
+local SLOW_TICK_DIAGNOSTIC_SECONDS = 0.05 -- Warn if per-tick processing exceeds this
+local INITIAL_ROOT_DETAIL_LIMIT = 40 -- Max roots to log in initial sync diagnostics
+local STREAM_CHUNK_SIZE_DEFAULT = 192 -- Default streaming chunk size (world units)
+local STREAM_RECONCILE_INTERVAL_TICKS = 3 -- How often to reconcile stream regions (every N ticks)
 
 -- ═══ HELPERS ═══
 
@@ -90,9 +89,9 @@ function Server.init(context)
 
 	-- ═══ CORE STATE ═══
 
-	local lookup = {}                   -- NetworkId → Instance (authoritative server object map)
-	local monitors = {}                 -- Instance → Changed connection (for cleanup)
-	local mutedObjects = setmetatable({}, { __mode = "k" })  -- Objects whose Changed signals are temporarily suppressed
+	local lookup = {} -- NetworkId → Instance (authoritative server object map)
+	local monitors = {} -- Instance → Changed connection (for cleanup)
+	local mutedObjects = setmetatable({}, { __mode = "k" }) -- Objects whose Changed signals are temporarily suppressed
 
 	-- Helper: increment a mute counter for an object while calling callback.
 	-- Prevents the Changed monitor from re-queueing patches during server-initiated writes.
@@ -114,7 +113,13 @@ function Server.init(context)
 			return
 		end
 
-		networkService:SendToClient(session, Protocol.Channels.Replication, Protocol.Kinds.Remove, { object = netId }, true)
+		networkService:SendToClient(
+			session,
+			Protocol.Channels.Replication,
+			Protocol.Kinds.Remove,
+			{ object = netId },
+			true
+		)
 	end
 
 	-- Tracked state objects (those with a registered StateRegistry adapter)
@@ -135,15 +140,14 @@ function Server.init(context)
 	local configuredChunkSize = tonumber(workspace and workspace.StreamingChunkSize) or STREAM_CHUNK_SIZE_DEFAULT
 	local streamChunkSize = math.max(32, math.floor(configuredChunkSize))
 	local streamChunkSizeInv = 1 / streamChunkSize
-	local streamChunks = {}             -- "x|y|z" → { root1 = true, root2 = true, ... }
-	local streamRoots = setmetatable({}, { __mode = "k" })  -- root → true
-	local streamRootChunkKey = setmetatable({}, { __mode = "k" })  -- root → "x|y|z"
-	local streamRootsWithoutChunk = setmetatable({}, { __mode = "k" })  -- roots with no valid position
-	local sessionStreamingState = {}    -- session.key → { roots = {}, netIds = {} }
+	local streamChunks = {} -- "x|y|z" → { root1 = true, root2 = true, ... }
+	local streamRoots = setmetatable({}, { __mode = "k" }) -- root → true
+	local streamRootChunkKey = setmetatable({}, { __mode = "k" }) -- root → "x|y|z"
+	local streamRootsWithoutChunk = setmetatable({}, { __mode = "k" }) -- roots with no valid position
+	local sessionStreamingState = {} -- session.key → { roots = {}, netIds = {} }
 	local terrain = workspace and workspace:FindFirstChild("Terrain")
-	local configuredTargetRadius = tonumber(
-		workspace and (workspace.StreamingTargetRadius or workspace.StreamingMinRadius)
-	)
+	local configuredTargetRadius =
+		tonumber(workspace and (workspace.StreamingTargetRadius or workspace.StreamingMinRadius))
 	if configuredTargetRadius and configuredTargetRadius > 0 then
 		AreaOfInterest.SetDefaultRadius(configuredTargetRadius)
 	end
@@ -550,8 +554,8 @@ function Server.init(context)
 		local state = sessionStreamingState[session.key]
 		if not state then
 			state = {
-				roots = {},     -- NetId → root Instance
-				netIds = {},    -- NetId → true (all replicated objects in stream)
+				roots = {}, -- NetId → root Instance
+				netIds = {}, -- NetId → true (all replicated objects in stream)
 			}
 			sessionStreamingState[session.key] = state
 		end
@@ -983,7 +987,9 @@ function Server.init(context)
 
 		local payloadBytes = buffer.len(result)
 		logReplicationDiagnostic(
-			`serializeObjects done roots={#objects} stamped={stampedCount} bytes={payloadBytes} stampSeconds={formatSeconds(stampSeconds)} serializeSeconds={formatSeconds(serializeSeconds)} totalSeconds={formatSeconds(os.clock() - startedAt)}`
+			`serializeObjects done roots={#objects} stamped={stampedCount} bytes={payloadBytes} stampSeconds={formatSeconds(
+				stampSeconds
+			)} serializeSeconds={formatSeconds(serializeSeconds)} totalSeconds={formatSeconds(os.clock() - startedAt)}`
 		)
 
 		return result
@@ -1531,14 +1537,19 @@ function Server.init(context)
 				table.insert(batchNames, `...+{#batch - 12} more`)
 			end
 			logReplicationDiagnostic(
-				`sendBatch begin reason={reasonLabel} recipient={recipientLabel} roots={#batch} pendingBefore={#pendingBatches} names=[{table.concat(batchNames, ", ")}]`
+				`sendBatch begin reason={reasonLabel} recipient={recipientLabel} roots={#batch} pendingBefore={#pendingBatches} names=[{table.concat(
+					batchNames,
+					", "
+				)}]`
 			)
 			debugTrace(`sendBatch reason={reason or "unspecified"} serializing size={#batch}`)
 			local serializeStartedAt = os.clock()
 			local serialized = batch.__shallowRoot and serializeShallowRoot(batch[1]) or serializeObjects(batch)
 			local batchSerializeSeconds = os.clock() - serializeStartedAt
 			logReplicationDiagnostic(
-				`sendBatch serialized reason={reasonLabel} roots={#batch} ok={serialized ~= nil} serializeSeconds={formatSeconds(batchSerializeSeconds)}`
+				`sendBatch serialized reason={reasonLabel} roots={#batch} ok={serialized ~= nil} serializeSeconds={formatSeconds(
+					batchSerializeSeconds
+				)}`
 			)
 			debugTrace(`sendBatch reason={reason or "unspecified"} serialized={serialized and "success" or "failed"}`)
 
@@ -1648,7 +1659,10 @@ function Server.init(context)
 			end
 
 			print(
-				`[Replicator][Server] Create -> {recipientLabel}: reason={reason or "unspecified"}, objects={#batch}, bytes={payloadBytes}, names=[{table.concat(rootNames, ", ")}]`
+				`[Replicator][Server] Create -> {recipientLabel}: reason={reason or "unspecified"}, objects={#batch}, bytes={payloadBytes}, names=[{table.concat(
+					rootNames,
+					", "
+				)}]`
 			)
 
 			local payload = { objects = serialized }
@@ -1682,7 +1696,9 @@ function Server.init(context)
 
 			batchesSent += 1
 			logReplicationDiagnostic(
-				`sendBatch sent reason={reasonLabel} recipient={recipientLabel} roots={#batch} bytes={payloadBytes} totalSeconds={formatSeconds(os.clock() - batchStartedAt)} batchesSent={batchesSent} queued={batchesQueued} pending={#pendingBatches}`
+				`sendBatch sent reason={reasonLabel} recipient={recipientLabel} roots={#batch} bytes={payloadBytes} totalSeconds={formatSeconds(
+					os.clock() - batchStartedAt
+				)} batchesSent={batchesSent} queued={batchesQueued} pending={#pendingBatches}`
 			)
 			-- Pace every Create batch so reliable initial-sync traffic does not starve
 			-- gameplay remotes, ACKs, and control messages.
@@ -1711,7 +1727,9 @@ function Server.init(context)
 			sendBatch(batch)
 		end
 		logReplicationDiagnostic(
-			`sendCreate done reason={reasonLabel} recipient={recipientLabel} roots={#serializable} queued={batchesQueued} sent={batchesSent} split={batchesSplit} totalBytes={totalPayloadBytes} largestBytes={largestPayloadBytes} largestRoots=[{largestPayloadRoots}] backpressureSeconds={formatSeconds(totalBackpressureSeconds)} totalSeconds={formatSeconds(os.clock() - sendCreateStartedAt)}`
+			`sendCreate done reason={reasonLabel} recipient={recipientLabel} roots={#serializable} queued={batchesQueued} sent={batchesSent} split={batchesSplit} totalBytes={totalPayloadBytes} largestBytes={largestPayloadBytes} largestRoots=[{largestPayloadRoots}] backpressureSeconds={formatSeconds(
+				totalBackpressureSeconds
+			)} totalSeconds={formatSeconds(os.clock() - sendCreateStartedAt)}`
 		)
 		debugTrace(`sendCreate reason={reason or "unspecified"} batching done`)
 
@@ -1720,7 +1738,9 @@ function Server.init(context)
 		local patchStartedAt = os.clock()
 		local referencePatches = collectReferencePatchEntries(serializable)
 		logReplicationDiagnostic(
-			`sendCreate referencePatches reason={reasonLabel} entries={#referencePatches} collectSeconds={formatSeconds(os.clock() - patchStartedAt)}`
+			`sendCreate referencePatches reason={reasonLabel} entries={#referencePatches} collectSeconds={formatSeconds(
+				os.clock() - patchStartedAt
+			)}`
 		)
 		sendPatchEntries(recipient, referencePatches)
 	end
@@ -1797,7 +1817,9 @@ function Server.init(context)
 			end
 		end
 		logReplicationDiagnostic(
-			`collectInitialRoots workspaceScan descendants={#workspaceDescendants} rootsSoFar={#roots} seconds={formatSeconds(os.clock() - workspaceScanStartedAt)}`
+			`collectInitialRoots workspaceScan descendants={#workspaceDescendants} rootsSoFar={#roots} seconds={formatSeconds(
+				os.clock() - workspaceScanStartedAt
+			)}`
 		)
 
 		local singletonIds = {
@@ -1824,7 +1846,9 @@ function Server.init(context)
 		end
 
 		logReplicationDiagnostic(
-			`collectInitialRoots singletonScan descendants={#gameDescendants} rootsSoFar={#roots} seconds={formatSeconds(os.clock() - singletonScanStartedAt)}`
+			`collectInitialRoots singletonScan descendants={#gameDescendants} rootsSoFar={#roots} seconds={formatSeconds(
+				os.clock() - singletonScanStartedAt
+			)}`
 		)
 
 		-- Sort roots: Baseplate first, then Workspace → Players → other → ReplicatedStorage
@@ -1869,7 +1893,9 @@ function Server.init(context)
 		end
 		logReplicationDiagnostic(`collectInitialRoots details [{table.concat(rootDetails, "; ")}]`)
 		logReplicationDiagnostic(
-			`collectInitialRoots done tracked={trackedCount} roots={#roots} seconds={formatSeconds(os.clock() - startedAt)}`
+			`collectInitialRoots done tracked={trackedCount} roots={#roots} seconds={formatSeconds(
+				os.clock() - startedAt
+			)}`
 		)
 		return roots
 	end
@@ -2058,11 +2084,15 @@ function Server.init(context)
 		end
 		rootsToReplicate = aoiFilteredRoots
 		logReplicationDiagnostic(
-			`Initial sync {session.key}: filtered roots={#rootsToReplicate}/{#initialRoots} missingOnly={clientNetIds ~= nil} seconds={formatSeconds(os.clock() - filterStartedAt)}`
+			`Initial sync {session.key}: filtered roots={#rootsToReplicate}/{#initialRoots} missingOnly={clientNetIds ~= nil} seconds={formatSeconds(
+				os.clock() - filterStartedAt
+			)}`
 		)
 
 		print(
-			`[Replicator][Server] Initial sync {session.key}: sending {#rootsToReplicate}/{#initialRoots} roots (missing-only={clientNetIds ~= nil}, blobMatch={clientBlobFingerprint == (game.GetMetadata and game:GetMetadata("__blobFingerprint") or nil)})`
+			`[Replicator][Server] Initial sync {session.key}: sending {#rootsToReplicate}/{#initialRoots} roots (missing-only={clientNetIds ~= nil}, blobMatch={clientBlobFingerprint == (game.GetMetadata and game:GetMetadata(
+				"__blobFingerprint"
+			) or nil)})`
 		)
 		initialSyncCompleted[session.key] = true
 		pendingInitialInventorySync[session.key] = nil
@@ -2381,7 +2411,9 @@ function Server.init(context)
 	game.DescendantAdded:Connect(function(object)
 		if isRuntimeMutationSuppressed() then
 			debugTrace(
-				`DescendantAdded mutation-suppressed root={object.ClassName}:{object.Name} netId={tostring(object.NetworkId)}`
+				`DescendantAdded mutation-suppressed root={object.ClassName}:{object.Name} netId={tostring(
+					object.NetworkId
+				)}`
 			)
 			return
 		end
@@ -2431,7 +2463,9 @@ function Server.init(context)
 	game.DescendantRemoving:Connect(function(object)
 		if isRuntimeMutationSuppressed() then
 			debugTrace(
-				`DescendantRemoving mutation-suppressed root={object.ClassName}:{object.Name} netId={tostring(object.NetworkId)}`
+				`DescendantRemoving mutation-suppressed root={object.ClassName}:{object.Name} netId={tostring(
+					object.NetworkId
+				)}`
 			)
 			return
 		end
@@ -3104,9 +3138,7 @@ function Server.init(context)
 
 				if latestTickSequence > clientAckTick then
 					-- AoI filter: skip snapshots for objects outside this session's range
-					if
-						not shouldReplicateNetIdToSession(session, netId)
-					then
+					if not shouldReplicateNetIdToSession(session, netId) then
 						continue
 					end
 
@@ -3239,7 +3271,12 @@ function Server.init(context)
 		refreshAllStreamRoots()
 
 		for _, session in ipairs(networkService:GetSessions()) do
-			if not session or not session.key or not readySessions[session.key] or initialSyncCompleted[session.key] ~= true then
+			if
+				not session
+				or not session.key
+				or not readySessions[session.key]
+				or initialSyncCompleted[session.key] ~= true
+			then
 				continue
 			end
 
@@ -3307,7 +3344,15 @@ function Server.init(context)
 			local tickSeconds = os.clock() - tickStartedAt
 			if REPLICATION_DIAGNOSTICS and tickSeconds >= SLOW_TICK_DIAGNOSTIC_SECONDS then
 				warn(
-					`[Replicator][Server][Diag] slow tick={tick} totalSeconds={formatSeconds(tickSeconds)} rebalance={formatSeconds(timings.rebalanceOwnership)} aoi={formatSeconds(timings.updateAoIPositions)} owned={formatSeconds(timings.applyPendingOwnedStateBatches)} patches={formatSeconds(timings.flushDirtyPatches)} terrainChunks={formatSeconds(timings.flushTerrainChunkUpdates)} terrainQueue={formatSeconds(timings.flushTerrainQueues)} snapshots={formatSeconds(timings.flushSnapshots)}`
+					`[Replicator][Server][Diag] slow tick={tick} totalSeconds={formatSeconds(tickSeconds)} rebalance={formatSeconds(
+						timings.rebalanceOwnership
+					)} aoi={formatSeconds(timings.updateAoIPositions)} owned={formatSeconds(
+						timings.applyPendingOwnedStateBatches
+					)} patches={formatSeconds(timings.flushDirtyPatches)} terrainChunks={formatSeconds(
+						timings.flushTerrainChunkUpdates
+					)} terrainQueue={formatSeconds(timings.flushTerrainQueues)} snapshots={formatSeconds(
+						timings.flushSnapshots
+					)}`
 				)
 			end
 		end)

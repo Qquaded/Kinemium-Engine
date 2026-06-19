@@ -261,6 +261,7 @@ return function(objects, data)
 		-- Render the popup picker on top of everything else
 		if config._picker then
 			-- Lerp animation (runs during open AND during close-fade)
+			-- TODO: use math.lerp (math.larp haha)
 			local speed = config._lerpSpeed * dt
 			config._lerpX = config._lerpX + (config._targetX - config._lerpX) * math.min(speed, 1)
 			config._lerpY = config._lerpY + (config._targetY - config._lerpY) * math.min(speed, 1)

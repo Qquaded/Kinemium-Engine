@@ -178,6 +178,10 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			local assets, old_props = assetsaver:GetGameAssets(datamodel)
 
 			local res = buildEngine()
+			if not res.ok then
+				error(`Got error code {res.code} while building Engine`)
+				return
+			end
 
 			local platform = buildNames[zune.platform.os]
 			local buildFolder = `./build/{platform}`

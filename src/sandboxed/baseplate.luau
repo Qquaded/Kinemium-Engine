@@ -1,3 +1,4 @@
+-- engine isnt server nor client? its in editor mode then!
 if IsServer then
 	return
 end

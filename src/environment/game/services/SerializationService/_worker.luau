@@ -2,7 +2,7 @@ local thread = zune.thread
 local serde = zune.serde
 local zstd = serde.zstd
 
-local encoder = require("./_encoder")
+local encoder = require("@SerialEncoder")
 
 local function decompress(str)
 	local decompressed = zstd.decompress(str)

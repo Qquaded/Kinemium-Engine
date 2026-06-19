@@ -12,7 +12,10 @@ function Arc:init(renderer, datamodel)
 	local function applyProperties(properties, object)
 		for prop, value in pairs(properties) do
 			if type(value) == "table" then
-				value.Parent = object
+				-- check if the table is an Instance, or atleast has a valid ClassName
+				if value.ClassName then
+					value.Parent = object
+				end
 			end
 			local success, result = pcall(function(...)
 				object[prop] = value

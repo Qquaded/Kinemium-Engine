@@ -9,7 +9,6 @@ local lib = raylib.lib
 local GuiObject = require("@GuiObject")
 local RichText = require("@Kinemium.richtext")
 
-
 local propTable = {
 	Position = UDim2.new(0, 0, 0, 0),
 	Size = UDim2.new(0, 200, 0, 50),

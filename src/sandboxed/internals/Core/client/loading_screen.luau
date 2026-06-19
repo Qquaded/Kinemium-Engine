@@ -124,7 +124,6 @@ local screenGui = Arc.ScreenGui({
 	}),
 })
 
-print(screenGui)
 screenGui.Parent = player.PlayerGui
 
 local background = screenGui.Background

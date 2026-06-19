@@ -26,6 +26,9 @@ return {
 		end)
 
 		function instance:GetBinaryContents(returnBuffer)
+			if type(returnBuffer) ~= "boolean" then
+				return
+			end
 			if returnBuffer then
 				return instance._file
 			else

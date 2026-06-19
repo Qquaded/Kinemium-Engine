@@ -27,10 +27,9 @@ CoreGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 	function CoreGui:SetCoreGuiEnabled(coreGuiType, enabled: boolean)
 		CoreGui.CoreGuiChangedSignal:Fire(coreGuiType, enabled)
-		local name = coreGuiType.Name
 
-		if name then
-			coreGuiTypes[name] = enabled
+		if coreGuiType.Name then
+			coreGuiTypes[coreGuiType.Name] = enabled
 		end
 	end
 
@@ -39,6 +38,10 @@ CoreGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 	end
 
 	function CoreGui:SetCore(parameterName: string, value: Variant)
+		if type(parameterName) ~= "string" then
+			return
+		end
+		-- value is a variant, basically Any
 		CoreGui.CoreGuiChangedSignal:Fire(parameterName, value)
 
 		cores_registry[parameterName] = value
@@ -47,7 +50,7 @@ CoreGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 	function CoreGui:GetCoreGuiEnabled(coreGuiType)
 		local name = coreGuiType.Name
 
-		if name then
+		if coreGuiType.Name then
 			return coreGuiTypes[name]
 		end
 		return false

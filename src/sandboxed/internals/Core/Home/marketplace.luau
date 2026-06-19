@@ -21,11 +21,10 @@ local kilLogo = KinemiumIconLoader.ToTexture(logoPath)
 KinemiumIconLoader.new("ArrowRight", "./src/assets/images/icons/ArrowRight.png")
 local arrowRightTex = KinemiumIconLoader.ToTexture(KinemiumIconLoader.Get("ArrowRight"))
 
-local activePluginPage = nil
+ishared.activePluginPage = nil
 
--- Shared callback — toolbox can override to open plugin in a new window instead
 ishared.onPluginCardClick = function(pluginId)
-	activePluginPage = pluginId
+	ishared.activePluginPage = pluginId
 end
 
 local StudioThemeService = game:GetService("StudioThemeService")
@@ -323,7 +322,7 @@ local backButton = gui.imageButton({
 	shadowOffsetY = 2,
 	shadowSpread = 2,
 	onClick = function()
-		activePluginPage = nil
+		ishared.activePluginPage = nil
 	end,
 })
 
@@ -361,8 +360,8 @@ ishared.Home.pages["Marketplace"] = function(dt, alpha, slideOffset)
 		return
 	end
 
-	if activePluginPage then
-		local page = pages[activePluginPage]
+	if ishared.activePluginPage then
+		local page = pages[ishared.activePluginPage]
 		local pageX = 96
 		local pageY = 80 + slideOffset
 		local pageW = screenx - 100

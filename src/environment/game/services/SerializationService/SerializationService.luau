@@ -144,7 +144,7 @@ local function initWorkers()
 	end
 
 	for i = 1, MAX_WORKERS do
-		local w = zune.thread.fromModule("./_worker")
+		local w = zune.thread.fromModule("@SerialWorker")
 		w:start()
 		table.insert(workers, w)
 

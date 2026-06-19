@@ -13,7 +13,7 @@ local FONT_SIZE = 13
 local ITEM_H = 52
 local POPUP_PAD = 6
 
-local T = {
+local ColorLookupTable = {
 	primary = color3.new(0.13, 0.77, 0.37),
 	primaryHov = color3.new(0.10, 0.65, 0.30),
 	primaryPrs = color3.new(0.08, 0.55, 0.25),
@@ -75,15 +75,14 @@ return function(objects, data)
 		width = data.width or data[3] or 260,
 		font = data.font,
 		fontSize = data.fontSize or FONT_SIZE,
-		options = data.options
-			or {
-				{
-					label = "Merge pull request",
-					description = "All commits added to the base branch via a merge commit.",
-				},
-				{ label = "Squash and merge", description = "Commits combined into one commit in the base branch." },
-				{ label = "Rebase and merge", description = "Commits rebased and added to the base branch." },
+		options = data.options or {
+			{
+				label = "Merge pull request",
+				description = "All commits added to the base branch via a merge commit.",
 			},
+			{ label = "Squash and merge", description = "Commits combined into one commit in the base branch." },
+			{ label = "Rebase and merge", description = "Commits rebased and added to the base branch." },
+		},
 		selectedIndex = data.selectedIndex or 1,
 		onAction = data.onAction,
 		open = false,
@@ -92,9 +91,9 @@ return function(objects, data)
 
 	-- effects instance for the main (left) button
 	local mainEffects = effects({
-		baseColor = T.primary,
-		hoverColor = T.primaryHov,
-		pressColor = T.primaryPrs,
+		baseColor = ColorLookupTable.primary,
+		hoverColor = ColorLookupTable.primaryHov,
+		pressColor = ColorLookupTable.primaryPrs,
 		baseTransparency = 0,
 		hoverTransparency = 0,
 		pressTransparency = 0,
@@ -109,9 +108,9 @@ return function(objects, data)
 
 	-- effects instance for the chevron (right) button
 	local chevEffects = effects({
-		baseColor = T.primary,
-		hoverColor = T.primaryHov,
-		pressColor = T.primaryPrs,
+		baseColor = ColorLookupTable.primary,
+		hoverColor = ColorLookupTable.primaryHov,
+		pressColor = ColorLookupTable.primaryPrs,
 		baseTransparency = 0,
 		hoverTransparency = 0,
 		pressTransparency = 0,
@@ -186,7 +185,7 @@ return function(objects, data)
 			mainDraw.y,
 			RADIUS,
 			mainDraw.height,
-			T.primary:ToRaylib(0)
+			ColorLookupTable.primary:ToRaylib(0)
 		)
 
 		-- Render chevron button background via effects, shifted left to share the squared edge
@@ -194,7 +193,13 @@ return function(objects, data)
 
 		-- Divider line between the two halves
 		local pressShift = math.floor(mainEffects.getPressProgress() * 1)
-		raylib.lib.DrawRectangle(ox + mainW, oy + 6 + pressShift, 1, BUTTON_H - 12, T.divider:ToRaylib(0.24))
+		raylib.lib.DrawRectangle(
+			ox + mainW,
+			oy + 6 + pressShift,
+			1,
+			BUTTON_H - 12,
+			ColorLookupTable.divider:ToRaylib(0.24)
+		)
 
 		-- Main button label
 		local option = config.options[config.selectedIndex] or config.options[1]
@@ -212,7 +217,14 @@ return function(objects, data)
 				1,
 				color3.new(0, 0, 0):ToRaylib(0.35)
 			)
-			raylib.lib.DrawTextEx(fnt, option.label, vector.create(labelX, labelY), fs, 1, T.textOnPri:ToRaylib(0))
+			raylib.lib.DrawTextEx(
+				fnt,
+				option.label,
+				vector.create(labelX, labelY),
+				fs,
+				1,
+				ColorLookupTable.textOnPri:ToRaylib(0)
+			)
 		else
 			raylib.lib.DrawText(
 				option.label,
@@ -221,7 +233,7 @@ return function(objects, data)
 				fs,
 				color3.new(0, 0, 0):ToRaylib(0.35)
 			)
-			raylib.lib.DrawText(option.label, labelX, labelY, fs, T.textOnPri:ToRaylib(0))
+			raylib.lib.DrawText(option.label, labelX, labelY, fs, ColorLookupTable.textOnPri:ToRaylib(0))
 		end
 
 		-- Chevron icon
@@ -233,13 +245,13 @@ return function(objects, data)
 			vector.create(cx - hw, cy + (open and hh or -hh)),
 			vector.create(cx, cy + (open and -hh or hh)),
 			1.5,
-			T.textOnPri:ToRaylib(0)
+			ColorLookupTable.textOnPri:ToRaylib(0)
 		)
 		raylib.lib.DrawLineEx(
 			vector.create(cx, cy + (open and -hh or hh)),
 			vector.create(cx + hw, cy + (open and hh or -hh)),
 			1.5,
-			T.textOnPri:ToRaylib(0)
+			ColorLookupTable.textOnPri:ToRaylib(0)
 		)
 
 		-- Main button click
@@ -263,12 +275,12 @@ return function(objects, data)
 			local popupY = oy + BUTTON_H + 4
 
 			fillRounded(popupX - 2, popupY - 2, popupW + 4, popupH + 4, RADIUS + 1, color3.new(0, 0, 0):ToRaylib(0.24))
-			fillRounded(popupX, popupY, popupW, popupH, RADIUS, T.popupBg:ToRaylib(0))
+			fillRounded(popupX, popupY, popupW, popupH, RADIUS, ColorLookupTable.popupBg:ToRaylib(0))
 			raylib.lib.DrawRectangleRoundedLines(
 				structs.Rectangle:new({ x = popupX, y = popupY, width = popupW, height = popupH }),
 				RADIUS / math.min(popupW, popupH) * 2,
 				SEGMENTS,
-				T.border:ToRaylib(0)
+				ColorLookupTable.border:ToRaylib(0)
 			)
 
 			local itemY = popupY + POPUP_PAD
@@ -279,26 +291,46 @@ return function(objects, data)
 				local isSelected = (i == config.selectedIndex)
 
 				if isSelected then
-					fillRounded(itemRect.x, itemRect.y, itemRect.width, itemRect.height, 6, T.selectedBg:ToRaylib(0))
+					fillRounded(
+						itemRect.x,
+						itemRect.y,
+						itemRect.width,
+						itemRect.height,
+						6,
+						ColorLookupTable.selectedBg:ToRaylib(0)
+					)
 				elseif itemHov then
-					fillRounded(itemRect.x, itemRect.y, itemRect.width, itemRect.height, 6, T.surfaceHov:ToRaylib(0))
+					fillRounded(
+						itemRect.x,
+						itemRect.y,
+						itemRect.width,
+						itemRect.height,
+						6,
+						ColorLookupTable.surfaceHov:ToRaylib(0)
+					)
 				end
 
 				local dotX = itemRect.x + 16
 				local dotY = itemRect.y + math.floor(ITEM_H / 2)
-				raylib.lib.DrawCircleLines(dotX, dotY, 6, T.border:ToRaylib(0))
+				raylib.lib.DrawCircleLines(dotX, dotY, 6, ColorLookupTable.border:ToRaylib(0))
 				if isSelected then
-					raylib.lib.DrawCircle(dotX, dotY, 3, T.selectedDot:ToRaylib(0))
+					raylib.lib.DrawCircle(dotX, dotY, 3, ColorLookupTable.selectedDot:ToRaylib(0))
 				end
 
 				local textX = itemRect.x + 32
 				local lY = itemRect.y + 14
 				local dY = lY + fs + 4
-				drawText(fnt, opt.label, textX, lY, fs, T.textPri:ToRaylib(0))
-				drawText(fnt, opt.description, textX, dY, fs - 1, T.textSec:ToRaylib(0))
+				drawText(fnt, opt.label, textX, lY, fs, ColorLookupTable.textPri:ToRaylib(0))
+				drawText(fnt, opt.description, textX, dY, fs - 1, ColorLookupTable.textSec:ToRaylib(0))
 
 				if i < #config.options then
-					raylib.lib.DrawRectangle(popupX + 12, itemY + ITEM_H - 1, popupW - 24, 1, T.border:ToRaylib(0.31))
+					raylib.lib.DrawRectangle(
+						popupX + 12,
+						itemY + ITEM_H - 1,
+						popupW - 24,
+						1,
+						ColorLookupTable.border:ToRaylib(0.31)
+					)
 				end
 
 				if itemHov and mousePressed and not _G.__aereon_blockInput then

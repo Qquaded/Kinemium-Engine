@@ -15,10 +15,7 @@ local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
 local backgroundColor = StudioThemeService.SelectedTheme.BackgroundColor
 local TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
 StudioThemeService.SelectedTheme.GuiHandlesColor:ToRaylib(StudioThemeService.SelectedTheme.GuiHandlesTransparency)
-local doResize = true
-local KinemiumRaylib = game:GetService("KinemiumRaylib")
 local vsyncEnabled = false
-local renderer = KinemiumRaylib.GetRenderer()
 
 local screenx, screeny = lib.GetRenderWidth(), lib.GetScreenHeight()
 
@@ -219,7 +216,7 @@ local cells = gui.cellparser({
 	theming = {
 		{
 			name = "Window Background Color",
-			description = "fart",
+			description = "Determines the Background Color for the engine's Windows.",
 			font = vend,
 			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 			editor = gui.colorPickerButton({
@@ -240,7 +237,7 @@ local cells = gui.cellparser({
 
 		{
 			name = "Window Text Color",
-			description = "fart",
+			description = "Determines the overall Text color for the engine's GUI",
 			font = vend,
 			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 			editor = gui.colorPickerButton({
@@ -261,7 +258,7 @@ local cells = gui.cellparser({
 
 		{
 			name = "Window Secondary Color",
-			description = "fart",
+			description = "Determines the secondary color the engine uses.",
 			font = vend,
 			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 			editor = gui.colorPickerButton({
@@ -282,7 +279,7 @@ local cells = gui.cellparser({
 
 		{
 			name = "Accent",
-			description = "fart",
+			description = "The general accent color for the engine's GUI",
 			font = vend,
 			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 			editor = gui.colorPickerButton({
