@@ -48,10 +48,8 @@ CoreGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 	end
 
 	function CoreGui:GetCoreGuiEnabled(coreGuiType)
-		local name = coreGuiType.Name
-
 		if coreGuiType.Name then
-			return coreGuiTypes[name]
+			return coreGuiTypes[coreGuiType.Name]
 		end
 		return false
 	end

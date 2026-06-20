@@ -2,6 +2,7 @@ local Color3 = require("@Color3")
 local Enum = require("@EnumMap")
 local raylib = require("@raylib")
 local lib = raylib.lib
+local arect = require("@arect")
 
 local RichText = {}
 
@@ -16,6 +17,48 @@ local function clamp01(value)
 		return 1
 	end
 	return value
+end
+
+local textureCache = {}
+
+local function getTexture(path)
+	if textureCache[path] then
+		return textureCache[path]
+	end
+	local tex = lib.LoadTexture(path)
+	textureCache[path] = tex
+
+	return tex
+end
+
+-- Inline symbol tag syntax: <image:path/to/img.png,size:50,50>
+local function parseInlineSymbols(text)
+	-- Returns a list of "chunks": { type="text", content=str } or { type="image", path=str, w=N, h=N }
+	local chunks = {}
+	local pos = 1
+	while pos <= #text do
+		local s, e, inner = text:find("<([^<>]+)>", pos)
+		if not s then
+			local tail = text:sub(pos)
+			if tail ~= "" then
+				chunks[#chunks + 1] = { type = "text", content = tail }
+			end
+			break
+		end
+		if s > pos then
+			chunks[#chunks + 1] = { type = "text", content = text:sub(pos, s - 1) }
+		end
+		-- Try to match known symbol types
+		local path, w, h = inner:match("^image:(.+),size:(%d+),(%d+)$")
+		if path then
+			chunks[#chunks + 1] = { type = "image", path = path, w = tonumber(w), h = tonumber(h) }
+		else
+			-- Unknown tag — treat as literal text
+			chunks[#chunks + 1] = { type = "text", content = "<" .. inner .. ">" }
+		end
+		pos = e + 1
+	end
+	return chunks
 end
 
 local function combineTransparency(baseTransparency, extraTransparency)
@@ -61,11 +104,16 @@ local function resolveColor3(c, transparency)
 				r = math.clamp(math.floor(c.R * 255 + 0.5), 0, 255),
 				g = math.clamp(math.floor(c.G * 255 + 0.5), 0, 255),
 				b = math.clamp(math.floor(c.B * 255 + 0.5), 0, 255),
-				a = math.clamp(math.floor((1 - (transparency or 0)) * 255 + 0.5), 0, 255)
+				a = math.clamp(math.floor((1 - (transparency or 0)) * 255 + 0.5), 0, 255),
 			})
 		end
 	end
-	return raylib.structs.Color:new({r=255, g=255, b=255, a=math.clamp(math.floor((1 - (transparency or 0)) * 255 + 0.5), 0, 255)})
+	return raylib.structs.Color:new({
+		r = 255,
+		g = 255,
+		b = 255,
+		a = math.clamp(math.floor((1 - (transparency or 0)) * 255 + 0.5), 0, 255),
+	})
 end
 
 local function parseColorString(value, fallback)
@@ -520,26 +568,47 @@ local function buildLayout(object, runs, frameSize, spacing, renderer, fallbackF
 		end
 	end
 
-	for _, run in ipairs(runs) do
-		local runText = run.text
-		local startIndex = 1
+	local function appendSymbolChunk(symChunk)
+		local seg = {
+			type = "image",
+			path = symChunk.path,
+			width = symChunk.w,
+			size = symChunk.h, -- height stored in .size so line.maxSize math still works
+		}
+		local line = lines[#lines]
+		if wrapEnabled and line.width > 0 and (line.width + seg.width) > frameSize.X then
+			pushLine()
+			line = lines[#lines]
+		end
+		appendSegmentToLine(line, seg)
+	end
 
-		while true do
-			local newlineIndex = runText:find("\n", startIndex, true)
-			if newlineIndex then
-				appendTextChunk(runText:sub(startIndex, newlineIndex - 1), run.style)
-				pushLine()
-				startIndex = newlineIndex + 1
-				if startIndex > #runText then
-					break
-				end
+	for _, run in ipairs(runs) do
+		local subChunks = parseInlineSymbols(run.text)
+
+		for _, chunk in ipairs(subChunks) do
+			if chunk.type == "image" then
+				appendSymbolChunk(chunk)
 			else
-				appendTextChunk(runText:sub(startIndex), run.style)
-				break
+				local runText = chunk.content
+				local startIndex = 1
+				while true do
+					local newlineIndex = runText:find("\n", startIndex, true)
+					if newlineIndex then
+						appendTextChunk(runText:sub(startIndex, newlineIndex - 1), run.style)
+						pushLine()
+						startIndex = newlineIndex + 1
+						if startIndex > #runText then
+							break
+						end
+					else
+						appendTextChunk(runText:sub(startIndex), run.style)
+						break
+					end
+				end
 			end
 		end
 	end
-
 	local maxWidth = 0
 	local totalHeight = 0
 	local fallbackSize = math.max(1, object.TextSize * scale)
@@ -677,6 +746,32 @@ function RichText.DrawLayout(drawLib, object, framePos, frameSize, layout, spaci
 
 		local drawX = framePos.X + lineOffsetX
 		for _, segment in ipairs(line.segments) do
+			if segment.type == "image" then
+				local tex = getTexture(segment.path)
+				local declaredW = segment.width
+				local declaredH = segment.size
+
+				local imgY = drawY + (line.height - declaredH) * 0.5
+
+				-- Read texture dimensions from buffer struct
+				local texW = buffer.readi32(tex, 4)
+				local texH = buffer.readi32(tex, 8)
+
+				local srcRect = arect.new(0, 0, texW, texH)
+				local dstRect = arect.new(drawX, imgY, declaredW, declaredH)
+
+				drawLib.DrawTexturePro(
+					tex,
+					srcRect.rect,
+					dstRect.rect,
+					vector.create(0, 0),
+					0,
+					Color3.new(1, 1, 1):ToRaylib(object.TextTransparency)
+				)
+				drawX += declaredW
+				continue
+			end
+
 			local segmentTransparency = combineTransparency(object.TextTransparency, segment.transparency)
 			if segmentTransparency < 1 then
 				if not segment then

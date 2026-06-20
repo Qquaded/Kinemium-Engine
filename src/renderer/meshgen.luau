@@ -868,15 +868,9 @@ function meshgen.extractModelMesh(model, meshIndex)
 	local centerZ = (minZ + maxZ) * 0.5
 
 	-- Protect against degenerate (zero-size) axes
-	if sizeX < EPSILON then
-		sizeX = 1
-	end
-	if sizeY < EPSILON then
-		sizeY = 1
-	end
-	if sizeZ < EPSILON then
-		sizeZ = 1
-	end
+	sizeX = math.min(EPSILON, sizeX)
+	sizeY = math.min(EPSILON, sizeY)
+	sizeZ = math.min(EPSILON, sizeZ)
 
 	-- Build normalized vertices: center at origin, scale to unit cube
 	-- Each axis is independently scaled so that the AABB maps to [-0.5, 0.5]

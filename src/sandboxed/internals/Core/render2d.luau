@@ -69,24 +69,41 @@ frame.Parent = screenGui
 
 local enableIDE = false
 local currentObject
+local activeTabs = {}
 
 EngineSignal:Connect(function(route, value, Script)
 	if route == "idestate" then
 		if value == true then
-			ide:openTab(Script.Name, Script.Source)
+			if activeTabs[Script.UniqueId] then
+				for i, tab in ipairs(ide.buffers) do
+					if tab.name == Script.Name then
+						ide:activateBuffer(i)
+						break
+					end
+				end
+				enableIDE = true
+				currentObject = Script
+				ide.text:clear()
+				ide.text:insertString(currentObject.Source)
+				ide.text:setCursor(1, 1)
+				ide._highlightCache = {}
 
+				game.Stop3DInput = true
+				return
+			end
+			ide:openTab(Script.Name, Script.Source)
+			activeTabs[Script.UniqueId] = true
+			-- activateBuffer is already called inside openTab via #self.buffers
 			enableIDE = true
 			currentObject = Script
 			game.Stop3DInput = true
 		else
 			enableIDE = false
 			currentObject = nil
-
 			game.Stop3DInput = false
 		end
 	end
 end)
-
 local window = aereon.window(game)
 
 repeat
@@ -114,6 +131,8 @@ renderer.Pool.new("2d", function(data)
 	vend = KinemiumFontService.GetDefaultFont()
 
 	if enableIDE then
+		ishared.path_enabled = false
+
 		local width = rl.GetRenderWidth()
 		local height = rl.GetRenderHeight() - 30
 		rl.DrawRectangle(0, 0, width, height, StudioThemeService.SelectedTheme.aereon.ide.BackgroundColor:ToRaylib(0))
@@ -129,8 +148,11 @@ renderer.Pool.new("2d", function(data)
 			end
 			currentObject.Source = ide:getCode()
 		end
+	else
+		ishared.path_enabled = true
 	end
 
 	window.update(dt)
 	window.draw(dt, StudioThemeService.SelectedTheme)
 end, -999999)
+-- we need this to draw as the very first item before all the other windows

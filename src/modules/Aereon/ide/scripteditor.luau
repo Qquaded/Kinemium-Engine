@@ -697,15 +697,6 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			end
 		end
 
-		local plusX = x + #editor.buffers * tabWidth
-		local plusRect = { x = plusX, y = y, width = 30, height = tabHeight }
-		raylib.DrawRectangle(plusX, y, 30, tabHeight, theme_background)
-		raylib.DrawTextEx(vend, "+", vector.create(plusX + 10, y + 5), 18, 1, const.WHITE)
-		if raylib.IsMouseButtonPressed(0) == 1 and isMouseInRect(plusRect, raylib.GetMousePosition()) then
-			editor:openTab(editor:getNextUntitledName(), "")
-			return
-		end
-
 		local minimapWidth = 100
 		y = y + tabHeight
 		size = vector.create(size.x - minimapWidth, size.y - tabHeight)

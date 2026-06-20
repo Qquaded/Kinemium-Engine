@@ -5,6 +5,8 @@ local InternalStorage = game:GetService("InternalStorage")
 local ChatService = game:GetService("ChatService")
 local RunService = game:GetService("RunService")
 
+CoreGui:SetCore("ChatActive", false)
+
 repeat
 	task.wait()
 until CoreGui:FindFirstChild("KinemiumCoreGui")
@@ -28,8 +30,6 @@ until InternalStorage:FindFirstChild("ChatRemote")
 if not RunService:IsClient() then
 	return
 end
-
-CoreGui:SetCore("ChatActive", false)
 
 local coregui_changed = CoreGui.CoreGuiChangedSignal :: RBXScriptSignal
 

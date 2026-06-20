@@ -697,6 +697,8 @@ renderer.Pool.new("2d", function(data)
 		return
 	end
 
+	ishared.ToolbarMinimized = propback.Minimized
+
 	local dt = rl.GetFrameTime()
 	local mainTheme = StudioThemeService.SelectedTheme
 

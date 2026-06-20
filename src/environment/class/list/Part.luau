@@ -56,6 +56,53 @@ local propTable = {
 	NetworkOwnerType = Enum.MachineNetworkOwner.Server,
 }
 
+local function UpdateManifoldPointer(instance)
+	if instance.Shape == Enum.PartType.Block then
+		manifold.gen.free(instance._manifoldptr)
+		instance._manifoldptr = manifold.gen.box(instance.Size.X, instance.Size.Y, instance.Size.Z)
+	elseif instance.Shape == Enum.PartType.Ball then
+		local radius = instance.Size.X * 0.5
+		manifold.gen.free(instance._manifoldptr)
+		instance._manifoldptr = manifold.gen.sphere(radius, 32)
+	elseif instance.Shape == Enum.PartType.Cylinder then
+		local radius = instance.Size.X * 0.5
+		local height = instance.Size.Y
+		local segments = 24
+
+		manifold.gen.free(instance._manifoldptr)
+		instance._manifoldptr = manifold.gen.cylinder(radius, height, segments, true, radius)
+	end
+end
+
+local function syncFromCFrame(instance, cf)
+	if not cf or not cf.Position then
+		return
+	end
+
+	local rx, ry, rz = cf:ToOrientation()
+	local props = rawget(instance, "_props")
+	if not props then
+		return
+	end
+
+	props.Position = cf.Position
+	props.Orientation = Vector3.new(rx, ry, rz)
+	props.Rotation = props.Orientation
+end
+
+local function syncFromPosition(instance, position)
+	if not position then
+		return
+	end
+
+	local props = rawget(instance, "_props")
+	if not props or not props.CFrame then
+		return
+	end
+
+	props.CFrame = props.CFrame:WithPosition(position)
+end
+
 return {
 	class = "Part",
 
@@ -65,38 +112,9 @@ return {
 		local KinemiumPhysicsService = game:GetService("UnifiedPhysicsService")
 		local syncingTransform = false
 
-		local function syncFromCFrame(cf)
-			if not cf or not cf.Position then
-				return
-			end
-
-			local rx, ry, rz = cf:ToOrientation()
-			local props = rawget(instance, "_props")
-			if not props then
-				return
-			end
-
-			props.Position = cf.Position
-			props.Orientation = Vector3.new(rx, ry, rz)
-			props.Rotation = props.Orientation
-		end
-
-		local function syncFromPosition(position)
-			if not position then
-				return
-			end
-
-			local props = rawget(instance, "_props")
-			if not props or not props.CFrame then
-				return
-			end
-
-			props.CFrame = props.CFrame:WithPosition(position)
-		end
-
 		renderer.EventBus:Fire("UpdatePart", instance)
 		instance:SetProperties(propTable)
-		syncFromCFrame(instance.CFrame)
+		syncFromCFrame(instance, instance.CFrame)
 
 		-- api
 
@@ -123,25 +141,7 @@ return {
 			-- add support
 		end
 
-		local function UpdateManifoldPointer()
-			if instance.Shape == Enum.PartType.Block then
-				manifold.gen.free(instance._manifoldptr)
-				instance._manifoldptr = manifold.gen.box(instance.Size.X, instance.Size.Y, instance.Size.Z)
-			elseif instance.Shape == Enum.PartType.Ball then
-				local radius = instance.Size.X * 0.5
-				manifold.gen.free(instance._manifoldptr)
-				instance._manifoldptr = manifold.gen.sphere(radius, 32)
-			elseif instance.Shape == Enum.PartType.Cylinder then
-				local radius = instance.Size.X * 0.5
-				local height = instance.Size.Y
-				local segments = 24
-
-				manifold.gen.free(instance._manifoldptr)
-				instance._manifoldptr = manifold.gen.cylinder(radius, height, segments, true, radius)
-			end
-		end
-
-		UpdateManifoldPointer()
+		UpdateManifoldPointer(instance)
 
 		instance.Destroying:Connect(function()
 			instance.Touched = nil
@@ -158,16 +158,16 @@ return {
 
 			if property == "CFrame" then
 				syncingTransform = true
-				syncFromCFrame(value)
+				syncFromCFrame(instance, value)
 				syncingTransform = false
 			elseif property == "Position" then
 				syncingTransform = true
-				syncFromPosition(value)
+				syncFromPosition(instance, value)
 				syncingTransform = false
 			elseif property == "Parent" then
 				renderer.EventBus:Fire("UpdatePart", instance)
 			elseif property == "Size" then
-				UpdateManifoldPointer()
+				UpdateManifoldPointer(instance)
 			end
 		end)
 

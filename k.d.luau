@@ -5381,6 +5381,7 @@ declare float: (value: any) -> any
 declare readFloat: (buf: any) -> any
 declare writeFloat: (buf: any, v: any) -> any
 declare printi: (tbl: any) -> any
+declare ishared: {any}
 declare ENGINE_ENDPOINT: _ENGINE_ENDPOINT_type
 declare color: _color_type
 declare ENGINE_PROFILER: any

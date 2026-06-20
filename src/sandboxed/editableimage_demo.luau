@@ -52,7 +52,7 @@ local function project(v)
 end
 
 -- top ten mistakes, NEVER write RenderSteppaed or the evil REVIEWER (I SEE YOU) will KILL YOU
-RunService.RenderSteppaed:Connect(function(dt)
+RunService.RenderStepped:Connect(function(dt)
 	angle += dt
 
 	editableImage:Sharpen()

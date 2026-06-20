@@ -64,13 +64,12 @@ gen.alloc = allocManifold
 gen.free = freeManifold
 
 function gen.box(sx: number?, sy: number?, sz: number?, center: boolean?): any
+	center = center or true
 	local m = allocManifold()
 	sx = sx or 1
 	sy = sy or sx
 	sz = sz or sx
-	if center == nil then
-		center = true
-	end
+
 	lib.manifold_cube(m, sx, sy, sz, center and 1 or 0)
 	return m
 end

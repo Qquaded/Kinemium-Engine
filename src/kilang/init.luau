@@ -62,6 +62,8 @@ function kilang:execute(code, opts, env_other)
 
 	local superset = opts.superset or "kilang"
 	local SecurityCapabilities = opts.SecurityCapabilities
+
+	-- bandaid fix, is a large number so different stacks don't clash
 	local id = opts.StackId or ("stack" .. math.random(0, 9999999))
 
 	-- Don't allow duplicate stacks for the same ID
