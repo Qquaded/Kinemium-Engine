@@ -1032,12 +1032,13 @@ local function getAnimator(h, createIfMissing, createInstance)
 	return nil
 end
 
+local registry = require("@Kinemium.registry")
+local InputActionService = require("@InputActionService")
+local RollbackEngine = require("@RollbackEngine")
+
 return {
 	class = "Humanoid",
 	callback = function(h, renderer, game)
-		local InputActionService = require("../../game/services/InputActionService/InputActionService")
-		local RollbackEngine = require("../../game/services/RunService/RollbackEngine")
-
 		local function getAssociatedPlayer(humanoid)
 			local char = humanoid.Parent
 			if char and char.ClassName == "Model" then
@@ -1056,12 +1057,7 @@ return {
 
 		h:SetProperties(props())
 
-		local function getRegistry()
-			return require("@Kinemium.registry")
-		end
-
 		local function createObject(className)
-			local registry = getRegistry()
 			if registry and registry.new then
 				local ok, created = pcall(registry.new, className, renderer, game)
 				if ok and created then

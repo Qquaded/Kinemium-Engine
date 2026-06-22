@@ -30,6 +30,7 @@ local Part = Instance.new("Part")
 Part.CFrame = CFrame.new(0, 0, 0)
 Part.Size = Vector3.new(5, 0.5, 5)
 Part.Anchored = true
+Part.Name = "Spawn"
 Part.Color = Color3.new(1, 1, 1)
 Part.Material = Enum.Material.SmoothPlastic
 Part.Parent = workspace

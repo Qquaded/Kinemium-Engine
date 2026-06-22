@@ -1279,7 +1279,11 @@ renderer.Pool.new("2d", function(data)
 		explorerWindow.width = frame.AbsoluteSize.X
 		explorerWindow.height = frame.AbsoluteSize.Y
 	end
-end)
+
+	if activeAddMenu then
+		drawAdditionMenu(activeAddMenu.instance, rl.GetMousePosition(), activeAddMenu.btnY, activeAddMenu.toggleX)
+	end
+end, 9999)
 
 explorerWindow.stepped = function(windowData)
 	if windowData.title ~= "Explorer" then
@@ -1521,9 +1525,6 @@ explorerWindow.stepped = function(windowData)
 
 	windowData._contentHeight = yOffset + 100
 
-	if activeAddMenu then
-		drawAdditionMenu(activeAddMenu.instance, rl.GetMousePosition(), activeAddMenu.btnY, activeAddMenu.toggleX)
-	end
 	SelectionMenu.render(dt)
 
 	-- Close addition menu when clicking outside

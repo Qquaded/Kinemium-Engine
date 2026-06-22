@@ -6,26 +6,6 @@ local zembed = require("@zembed")
 local util = require("@kineshader")
 local r3d = require("@r3d")
 
-local function cleanScreenShaderCode(glsl)
-	glsl = glsl:gsub("#version%s+[%d%w]+", "")
-	glsl = glsl:gsub("in%s+[%w%[%]%s]+%s+[%w_]+%s*;", "")
-	glsl = glsl:gsub("out%s+[%w%[%]%s]+%s+[%w_]+%s*;", "")
-	glsl = glsl:gsub("uniform%s+sampler[%d%w]+%s+[%w_]+%s*;", "")
-	glsl = glsl:gsub("void%s+main%s*%(", "void fragment(")
-	glsl = glsl:gsub("uniform%s+[%w%[%]%s]+%s+[%w_]+%s*;", function(match)
-		if not match:match("sampler") then
-			return match
-		end
-		return ""
-	end)
-
-	glsl = glsl:gsub("%s+%f[%w]", " ")
-	glsl = glsl:gsub("%s+%f[%p]", "")
-	glsl = glsl:gsub("\n%s*\n", "\n")
-
-	return glsl
-end
-
 function Shader.fromMemoryRaylib(vs, fs)
 	local shader = raylib.lib.LoadShaderFromMemory(vs, fs)
 	return Shader.new({ _shader = shader, _type = "raylib" })

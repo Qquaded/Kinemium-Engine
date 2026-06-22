@@ -119,6 +119,9 @@ local function openPluginWindow(pluginId)
 	pluginWindows[pluginId] = detailWindow
 end
 
+if not NewToolbarElement then
+	return
+end
 NewToolbarElement:Fire("Tools", "MeshImporter", {
 	type = "ImageButton",
 	text = "toolbox",

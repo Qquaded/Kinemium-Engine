@@ -144,5 +144,6 @@
         "WorkspaceMtrlManager": "./src/environment/game/services/Workspace/materialShaders/_main",
         "SerialWorker": "./src/environment/game/services/SerializationService/_worker",
         "SerialEncoder": "./src/environment/game/services/SerializationService/_encoder",
+        "InputActionService": "./src/environment/game/services/InputActionService/InputActionService",
     }
 }

@@ -13,7 +13,7 @@ return {
 		local bindedToMessage = {}
 		local bindedToMessageParallel = {}
 
-		local zune_task = zune and zune.task or _G.task
+		local zune_task = zune.task
 
 		-- description: "Sends a message to the actor's thread."
 		-- args: "topic: string, ...: any"

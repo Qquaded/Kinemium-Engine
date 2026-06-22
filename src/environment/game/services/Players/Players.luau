@@ -95,24 +95,7 @@ Players.InitRenderer = function(renderer, signal, game)
 			return
 		end
 
-		local CharacterModel = newObject("Model", datamodel)
-		CharacterModel.Name = player.Name
-		CharacterModel:SetAttribute("__characterUserId", player.UserId)
-
-		attachCharacterNetworkController(CharacterModel, player)
-
-		local SHIRT_COLOR = Color3.fromRGB(math.random(0, 255), math.random(0, 255), math.random(0, 255))
-		local PANTS_COLOR = Color3.fromRGB(math.random(0, 255), math.random(0, 255), math.random(0, 255))
-		local HEAD_COLOR = Color3.fromRGB(255, 204, 153)
-
-		local humanoid = ensureHumanoid(newObject("Humanoid", datamodel), datamodel)
-		humanoid.DisplayName = player.Name
-		humanoid.WalkSpeed = player.WalkSpeed
-		humanoid.JumpPower = player.JumpPower
-		humanoid.Parent = CharacterModel
-
 		local SpawnCFrame = CFrame.new(0, 50, 0)
-
 		for _, part in pairs(datamodel.Workspace:GetChildren()) do
 			if part.Name == "Spawn" then
 				local partCF = part.CFrame
@@ -120,26 +103,59 @@ Players.InitRenderer = function(renderer, signal, game)
 			end
 		end
 
-		humanoid:CreateDefaultRig({
-			Character = CharacterModel,
-			SpawnCFrame = SpawnCFrame,
-			ShirtColor = SHIRT_COLOR,
-			PantsColor = PANTS_COLOR,
-			HeadColor = HEAD_COLOR,
-			RootColor = Color3.new(0, 0, 0),
-		})
-		CharacterModel.PrimaryPart = humanoid.RootPart
-		CharacterModel.Parent = datamodel.Workspace
-		print(
-			`[Players] Character model created for {player.Name}: {CharacterModel.Name}, PrimaryPart={tostring(
-				CharacterModel.PrimaryPart
-			)}`
-		)
-		print(`[Players]   Humanoid={tostring(humanoid)}, RootPart={tostring(humanoid.RootPart)}`)
-		print(`[Players]   Character parent: {tostring(CharacterModel.Parent and CharacterModel.Parent.Name)}`)
+		local starterCharacter = datamodel.StarterPlayer.StarterCharacter
+		local CharacterModel
 
+		if starterCharacter then
+			CharacterModel = starterCharacter:Clone()
+			CharacterModel.Name = player.Name
+			CharacterModel:SetAttribute("__characterUserId", player.UserId)
+			attachCharacterNetworkController(CharacterModel, player)
+
+			local humanoid = CharacterModel:FindFirstChildOfClass("Humanoid")
+			if not humanoid then
+				humanoid = ensureHumanoid(newObject("Humanoid", datamodel), datamodel)
+				humanoid.Parent = CharacterModel
+			end
+			humanoid.DisplayName = player.Name
+			humanoid.WalkSpeed = player.WalkSpeed
+			humanoid.JumpPower = player.JumpPower
+
+			humanoid.Character = CharacterModel
+			local root = CharacterModel:FindFirstChild("HumanoidRootPart") or CharacterModel.PrimaryPart
+			if root then
+				humanoid.RootPart = root
+				root.CFrame = SpawnCFrame
+			end
+
+			humanoid:RestoreRig()
+
+			CharacterModel.PrimaryPart = humanoid.RootPart or root
+		else
+			CharacterModel = newObject("Model", datamodel)
+			CharacterModel.Name = player.Name
+			CharacterModel:SetAttribute("__characterUserId", player.UserId)
+			attachCharacterNetworkController(CharacterModel, player)
+
+			local humanoid = ensureHumanoid(newObject("Humanoid", datamodel), datamodel)
+			humanoid.DisplayName = player.Name
+			humanoid.WalkSpeed = player.WalkSpeed
+			humanoid.JumpPower = player.JumpPower
+			humanoid.Parent = CharacterModel
+
+			humanoid:CreateDefaultRig({
+				Character = CharacterModel,
+				SpawnCFrame = SpawnCFrame,
+				ShirtColor = Color3.fromRGB(math.random(0, 255), math.random(0, 255), math.random(0, 255)),
+				PantsColor = Color3.fromRGB(math.random(0, 255), math.random(0, 255), math.random(0, 255)),
+				HeadColor = Color3.fromRGB(255, 204, 153),
+				RootColor = Color3.new(0, 0, 0),
+			})
+			CharacterModel.PrimaryPart = humanoid.RootPart
+		end
+
+		CharacterModel.Parent = datamodel.Workspace
 		assignCharacter(player, CharacterModel)
-		print(`[Players]   player.Character after assign: {tostring(player.Character and player.Character.Name)}`)
 		return CharacterModel
 	end
 
