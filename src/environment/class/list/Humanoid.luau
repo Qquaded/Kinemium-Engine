@@ -1604,7 +1604,9 @@ return {
 				end
 
 				c.animClock += dt
-				local moveAlpha = math.clamp(root.AssemblyLinearVelocity:Magnitude() / h.WalkSpeed, 0, 1)
+				local rootVelocity = isVec3(root.AssemblyLinearVelocity) and root.AssemblyLinearVelocity or ZERO
+				local walkSpeed = if type(h.WalkSpeed) == "number" and h.WalkSpeed > 0 then h.WalkSpeed else 1
+				local moveAlpha = math.clamp(rootVelocity:Magnitude() / walkSpeed, 0, 1)
 				local stance = h.Stance or "default"
 				local sprintAlpha = stance == "sprint" and 1 or 0
 				local dashAlpha = stance == "dash" and 1 or 0
@@ -1612,7 +1614,6 @@ return {
 				c.animStride = (c.animStride or 0) + dt * cadence
 
 				if authoritative ~= true then
-					local rootVelocity = isVec3(root.AssemblyLinearVelocity) and root.AssemblyLinearVelocity or ZERO
 					c.currentPos = root.CFrame.Position
 					local look, ok = flat(root.CFrame:GetLookVector())
 					c.lookXZ = ok and look or LOOK

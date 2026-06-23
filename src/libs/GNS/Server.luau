@@ -16,8 +16,37 @@ local SILENT_PACKET_TYPES = {
 	ping = true,
 }
 
+local MAX_RECV_MESSAGES = 128
+local POINTER_SIZE = ffi.types.pointer:size()
+
 local function log(...)
 	--print(...)
+end
+
+local function receiveCountToNumber(value): number
+	if type(value) == "number" then
+		return value
+	end
+
+	local hex = tostring(value):match("0x[%da-fA-F]+")
+	if not hex then
+		return 0
+	end
+
+	local unsigned = tonumber(hex, 16) or 0
+	local low32 = unsigned % 4294967296
+	if low32 >= 2147483648 then
+		return low32 - 4294967296
+	end
+	return low32
+end
+
+local function handleToNumber(value): number
+	if type(value) == "number" then
+		return value
+	end
+
+	return tonumber(tostring(value):match("0x[%da-fA-F]+") or "0", 16)
 end
 
 local function clientKey(client)
@@ -25,37 +54,6 @@ local function clientKey(client)
 		return tostring(client.hConn)
 	end
 	return `{client.address}:{client.port}`
-end
-
--- Pack a uint32 handle into a 4-byte alloc for FFI pointer args
-local function hConn_toPointer(handle: number)
-	local buf = ffi.alloc(4)
-	buf:writeu32(0, handle)
-	return buf
-end
-
--- Pack a uint32 handle into an 8-byte alloc (for APIs that take HSteamNetConnection
--- as a pointer-sized value on 64-bit, e.g. AcceptConnection, SetConnectionPollGroup)
-local function handle_toPointer(handle: number)
-	local buf = ffi.alloc(8)
-	buf:writeu32(0, handle % 4294967296)
-	buf:writeu32(4, math.floor(handle / 4294967296))
-	return buf
-end
-
--- Pack a plain integer into a pointer-sized value (for config enums etc.)
-local function int_toPointer(value: number)
-	local buf = ffi.alloc(8)
-	buf:writeu32(0, value % 4294967296)
-	buf:writeu32(4, math.floor(value / 4294967296))
-	return buf
-end
-
--- Pack a byte count (cbData) into a 4-byte alloc
-local function size_toPointer(size: number)
-	local buf = ffi.alloc(4)
-	buf:writeu32(0, size)
-	return buf
 end
 
 local function pointerToBuffer(ptr, size)
@@ -69,11 +67,10 @@ end
 -- SteamNetworkingMessage_t layout (64-bit):
 --   offset  0: m_pData       (pointer, 8 bytes)
 --   offset  8: m_cbSize      (i32,     4 bytes)
---   offset 12: m_nFlags      (i32,     4 bytes)
---   offset 16: m_conn        (u32,     4 bytes)
+--   offset 12: m_conn        (u32,     4 bytes)
 local MSG_OFFSET_PDATA = 0
 local MSG_OFFSET_CBSIZE = 8
-local MSG_OFFSET_CONN = 16
+local MSG_OFFSET_CONN = 12
 
 function Server.new()
 	local self = setmetatable({
@@ -94,6 +91,7 @@ end
 function Server:Init(address, port, allowedTokens)
 	self.Address = address or "0.0.0.0"
 	self.Port = port or 1234
+	state.InitEventLoop()
 
 	local ipAddr = ffi.alloc(18)
 	gns.lib.SteamAPI_SteamNetworkingIPAddr_ParseString(
@@ -102,16 +100,15 @@ function Server:Init(address, port, allowedTokens)
 	)
 
 	local hListenSocket = gns.lib.SteamAPI_ISteamNetworkingSockets_CreateListenSocketIP(state.sockets, ipAddr, 0, nil)
-	local hListenSocketNum = tonumber(tostring(hListenSocket):match("0x[%da-fA-F]+") or "0", 16)
+	local hListenSocketNum = handleToNumber(hListenSocket)
 
 	self.Socket = hListenSocketNum
 
 	local hPollGroup = gns.lib.SteamAPI_ISteamNetworkingSockets_CreatePollGroup(state.sockets)
-	local hPollGroupNum = tonumber(tostring(hPollGroup):match("0x[%da-fA-F]+") or "0", 16)
+	local hPollGroupNum = handleToNumber(hPollGroup)
 	self.PollGroup = hPollGroupNum
 
 	state.listenSockets[hListenSocketNum] = self
-	state.InitEventLoop()
 end
 
 function Server:Listen()
@@ -120,11 +117,11 @@ end
 
 function Server:HandleConnectionStatusChanged(hConn, eState, remoteAddress)
 	if eState == 1 then -- Connecting: accept and add to pending (not yet authenticated)
-		gns.lib.SteamAPI_ISteamNetworkingSockets_AcceptConnection(state.sockets, handle_toPointer(hConn))
+		gns.lib.SteamAPI_ISteamNetworkingSockets_AcceptConnection(state.sockets, hConn)
 		gns.lib.SteamAPI_ISteamNetworkingSockets_SetConnectionPollGroup(
 			state.sockets,
-			handle_toPointer(hConn),
-			handle_toPointer(self.PollGroup)
+			hConn,
+			self.PollGroup
 		)
 
 		local address, portStr = string.match(remoteAddress or "", "([^:]+):(%d+)")
@@ -162,7 +159,7 @@ function Server:RemoveClient(hConn, reason)
 
 	gns.lib.SteamAPI_ISteamNetworkingSockets_CloseConnection(
 		state.sockets,
-		handle_toPointer(hConn),
+		hConn,
 		0,
 		BufferUtils.stringToPtr(reason or "shutdown"),
 		false
@@ -178,25 +175,26 @@ function Server:Poll()
 		return
 	end
 
-	local ppOutMessages = ffi.alloc(128 * 8)
+	local ppOutMessages = ffi.alloc(MAX_RECV_MESSAGES * POINTER_SIZE)
 	local numMsgs = gns.lib.SteamAPI_ISteamNetworkingSockets_ReceiveMessagesOnPollGroup(
 		state.sockets,
-		handle_toPointer(self.PollGroup),
+		self.PollGroup,
 		ppOutMessages,
-		128
+		MAX_RECV_MESSAGES
 	)
 
-	local numMsgsNum = tonumber(tostring(numMsgs):match("0x[%da-fA-F]+") or "0", 16)
+	local numMsgsNum = receiveCountToNumber(numMsgs)
 	if numMsgsNum <= 0 then
 		return
 	end
 
+	numMsgsNum = math.min(numMsgsNum, MAX_RECV_MESSAGES)
 	for i = 1, numMsgsNum do
-		local pMsg = ppOutMessages:readptr((i - 1) * 8)
+		local pMsg = ppOutMessages:readptr((i - 1) * POINTER_SIZE)
 		if pMsg and pMsg ~= ffi.null then
 			local m_pData = pMsg:readptr(MSG_OFFSET_PDATA)
 			local m_cbSize = pMsg:readi32(MSG_OFFSET_CBSIZE)
-			local m_conn = pMsg:readu32(MSG_OFFSET_CONN) -- fixed: was offset 12, correct is 16
+			local m_conn = pMsg:readu32(MSG_OFFSET_CONN)
 
 			local rawPayload = pointerToBuffer(m_pData, m_cbSize)
 			gns.lib.SteamAPI_SteamNetworkingMessage_t_Release(pMsg)
@@ -275,15 +273,11 @@ function Server:Send(client, data, reliable)
 	local pData = ffi.alloc(len)
 	pData:write(0, serialized, 0, len)
 
-	-- cbData must be a pointer-to-u32 containing the byte count, not a pointer
-	-- whose address IS the byte count
-	local cbData = size_toPointer(len)
-
 	gns.lib.SteamAPI_ISteamNetworkingSockets_SendMessageToConnection(
 		state.sockets,
-		handle_toPointer(client.hConn),
+		client.hConn,
 		pData,
-		cbData,
+		len,
 		flags,
 		nil
 	)
@@ -350,13 +344,13 @@ function Server:GetClientStats(client)
 
 	local result = gns.lib.SteamAPI_ISteamNetworkingSockets_GetConnectionRealTimeStatus(
 		state.sockets,
-		handle_toPointer(client.hConn),
+		client.hConn,
 		pStats,
 		0, -- nLanes = 0, no per-lane stats needed
 		nil
 	)
 
-	local resultNum = tonumber(tostring(result):match("0x[%da-fA-F]+") or "0", 16)
+	local resultNum = handleToNumber(result)
 	if resultNum ~= 1 then -- k_EResultOK = 1
 		return { pendingReliable = 0, pendingReliableFragments = 0 }
 	end
@@ -389,13 +383,13 @@ function Server:Shutdown()
 	end
 
 	if self.Socket then
-		gns.lib.SteamAPI_ISteamNetworkingSockets_CloseListenSocket(state.sockets, handle_toPointer(self.Socket))
+		gns.lib.SteamAPI_ISteamNetworkingSockets_CloseListenSocket(state.sockets, self.Socket)
 		state.listenSockets[self.Socket] = nil
 		self.Socket = nil
 	end
 
 	if self.PollGroup then
-		gns.lib.SteamAPI_ISteamNetworkingSockets_DestroyPollGroup(state.sockets, handle_toPointer(self.PollGroup))
+		gns.lib.SteamAPI_ISteamNetworkingSockets_DestroyPollGroup(state.sockets, self.PollGroup)
 		self.PollGroup = nil
 	end
 end

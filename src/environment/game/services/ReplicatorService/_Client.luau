@@ -49,6 +49,8 @@ function Client.init(context)
 
 	local lookup = {} -- NetworkId → Instance (client-side object map)
 	local singletonByClass = {} -- ClassName → existing local singleton (e.g. Camera)
+	local characterModelsByUserId = {}
+	local characterModelsByName = {}
 	local ignoredCreateNetIds = {} -- NetworkIds to silently ignore on Create
 	local processedCreateNetIds = {} -- Track all NetworkIds we've successfully created (for duplicate detection)
 	local deferredReferencePatches = {} -- Patches waiting for referenced object to arrive
@@ -670,6 +672,12 @@ function Client.init(context)
 			return nil
 		end
 
+		if object.ClassName == "Model" and object.FindFirstChildOfClass and object:FindFirstChildOfClass("Humanoid") then
+			if not localRoot.FindFirstChildOfClass or not localRoot:FindFirstChildOfClass("Humanoid") then
+				return nil
+			end
+		end
+
 		return adoptReplicatedWorkspaceTree(localRoot, object)
 	end
 
@@ -742,10 +750,44 @@ function Client.init(context)
 			end
 		end
 
+		local cached = characterModelsByUserId[player.UserId] or characterModelsByName[player.Name]
+		if cached and cached.Parent ~= nil and cached.FindFirstChildOfClass and cached:FindFirstChildOfClass("Humanoid") then
+			return cached
+		end
+
 		return nil
 	end
 
-	local function detachCharacterModel(model)
+	local function rememberCharacterModel(model)
+		if not model or model.ClassName ~= "Model" or not model.FindFirstChildOfClass then
+			return
+		end
+		if not model:FindFirstChildOfClass("Humanoid") then
+			return
+		end
+
+		local uid = model.GetAttribute and model:GetAttribute("__characterUserId")
+		if type(uid) == "number" then
+			characterModelsByUserId[uid] = model
+		end
+		characterModelsByName[model.Name] = model
+	end
+
+	local function forgetCharacterModel(model)
+		if not model or model.ClassName ~= "Model" then
+			return
+		end
+
+		local uid = model.GetAttribute and model:GetAttribute("__characterUserId")
+		if type(uid) == "number" and characterModelsByUserId[uid] == model then
+			characterModelsByUserId[uid] = nil
+		end
+		if characterModelsByName[model.Name] == model then
+			characterModelsByName[model.Name] = nil
+		end
+	end
+
+	local function detachCharacterModel(model, reason)
 		if not model or model.ClassName ~= "Model" then
 			return
 		end
@@ -761,11 +803,28 @@ function Client.init(context)
 		end
 
 		if player and player.Character == model then
+			if reason ~= "server_remove" and model.NetworkId ~= nil and model.Destroyed ~= true then
+				print(
+					`[Replicator][Client] Preserving replicated character during local removal reason={reason or "unknown"} model={model.Name}#{model.NetworkId}`
+				)
+				task.defer(function()
+					if player.Character == model and model.Parent == nil and model.Destroyed ~= true then
+						model.Parent = game:GetService("Workspace")
+						rememberCharacterModel(model)
+					end
+				end)
+				return
+			end
+
+			print(
+				`[Replicator][Client] Clearing player.Character reason={reason or "unknown"} model={model.Name}#{model.NetworkId or "?"}`
+			)
 			if player.CharacterRemoving then
 				player.CharacterRemoving:Fire(model)
 			end
 			player.Character = nil
 		end
+		forgetCharacterModel(model)
 	end
 
 	local function destroyCharacterModelsForPlayer(player)
@@ -780,7 +839,7 @@ function Client.init(context)
 				if humanoid then
 					local uid = child.GetAttribute and child:GetAttribute("__characterUserId")
 					if (type(uid) == "number" and uid == player.UserId) or child.Name == player.Name then
-						detachCharacterModel(child)
+						detachCharacterModel(child, "server_remove")
 						child:Destroy()
 					end
 				end
@@ -847,6 +906,7 @@ function Client.init(context)
 		end
 
 		ensureCharacterModelMetadata(model, player)
+		rememberCharacterModel(model)
 		assignCharacterToPlayer(player, model)
 		finish()
 	end
@@ -897,6 +957,7 @@ function Client.init(context)
 		print(`[Replicator][Client]   findCharacterModelForPlayer = ${character and character.Name or "nil"}`)
 		if character then
 			ensureCharacterModelMetadata(character, player)
+			rememberCharacterModel(character)
 			assignCharacterToPlayer(player, character)
 		end
 	end
@@ -1191,6 +1252,10 @@ function Client.init(context)
 					)
 				end
 				entry.object.Parent = game.Workspace
+				if entry.object.ClassName == "Model" then
+					syncPlayerCharacterBindingForModel(entry.object)
+					restoreHumanoidRigForModel(entry.object)
+				end
 			else
 				table.insert(pendingParentQueue, entry)
 				if DEBUG_CREATE_TRACE then
@@ -1613,7 +1678,7 @@ function Client.init(context)
 	game.DescendantRemoving:Connect(function(object)
 		visitTree(object, function(descendant)
 			if descendant.ClassName == "Model" then
-				detachCharacterModel(descendant)
+				detachCharacterModel(descendant, "local_descendant_removing")
 			end
 			if descendant.NetworkId ~= nil then
 				lookup[descendant.NetworkId] = nil
@@ -1698,7 +1763,7 @@ function Client.init(context)
 				end
 				destroyCharacterModelsForPlayer(object)
 			elseif object.ClassName == "Model" then
-				detachCharacterModel(object)
+				detachCharacterModel(object, "server_remove")
 			end
 			lookup[payload.object] = nil
 			remoteTargets[payload.object] = nil

@@ -1,5 +1,9 @@
 local indicator = Instance.new("ScreenGui")
 
+if IsClient or IsServer then
+	return
+end
+
 local RunService = game:GetService("RunService")
 local Selection = game:GetService("Selection")
 local TextService = game:GetService("TextService")

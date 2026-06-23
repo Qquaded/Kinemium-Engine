@@ -5,17 +5,19 @@ local flagValue = GetFlagValue("blob")
 
 local path = "./exported/obj.kine"
 
-task.spawn(function()
-	print("Checking if path exists")
-	local ok, read = pcall(Filesystem.readFile, path, true)
-	if not ok or not read then
-		return
-	end
-	local loadOk, loadErr = pcall(BlobLoader.LoadFileAsGame, read)
-	if not loadOk then
-		warn("Failed to load blob: " .. tostring(loadErr))
-	end
-end)
+if not IsClient and not IsServer then
+	task.spawn(function()
+		print("Checking if path exists")
+		local ok, read = pcall(Filesystem.readFile, path, true)
+		if not ok or not read then
+			return
+		end
+		local loadOk, loadErr = pcall(BlobLoader.LoadFileAsGame, read)
+		if not loadOk then
+			warn("Failed to load blob: " .. tostring(loadErr))
+		end
+	end)
+end
 
 if flagValue then
 	if BlobLoader.MarkBlobLoadingPending then

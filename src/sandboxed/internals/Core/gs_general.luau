@@ -8,6 +8,10 @@ local vend = KinemiumFontService.GetDefaultFontSmall()
 local rect = require("@arect")
 local ConfigService = game:GetService("ConfigService")
 
+if not ishared.gsettings_window then
+	return
+end
+
 local data = {
 	x = 0,
 	y = 0,

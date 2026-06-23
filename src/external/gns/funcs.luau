@@ -10,15 +10,15 @@ type FFIPointer = typeof(ffi.types.pointer)
 export type Fns = {
 	GameNetworkingSockets_Init: (pIdentity: FFIPointer, errMsg: FFIPointer) -> FFIPointer,
 	GameNetworkingSockets_Kill: () -> FFIPointer,
-	SteamAPI_ISteamNetworkingSockets_AcceptConnection: (self: FFIPointer, hConn: FFIPointer) -> FFIPointer,
+	SteamAPI_ISteamNetworkingSockets_AcceptConnection: (self: FFIPointer, hConn: int) -> int,
 	SteamAPI_ISteamNetworkingSockets_CloseConnection: (
 		self: FFIPointer,
-		hPeer: FFIPointer,
+		hPeer: int,
 		nReason: int,
 		pszDebug: cstring,
 		bEnableLinger: bool
-	) -> FFIPointer,
-	SteamAPI_ISteamNetworkingSockets_CloseListenSocket: (self: FFIPointer, hSocket: FFIPointer) -> FFIPointer,
+	) -> bool,
+	SteamAPI_ISteamNetworkingSockets_CloseListenSocket: (self: FFIPointer, hSocket: int) -> bool,
 	SteamAPI_ISteamNetworkingSockets_ConfigureConnectionLanes: (
 		self: FFIPointer,
 		hConn: FFIPointer,
@@ -31,7 +31,7 @@ export type Fns = {
 		address: FFIPointer,
 		nOptions: int,
 		pOptions: FFIPointer
-	) -> FFIPointer,
+	) -> int,
 	SteamAPI_ISteamNetworkingSockets_ConnectP2P: (
 		self: FFIPointer,
 		identityRemote: FFIPointer,
@@ -59,14 +59,14 @@ export type Fns = {
 		localAddress: FFIPointer,
 		nOptions: int,
 		pOptions: FFIPointer
-	) -> FFIPointer,
+	) -> int,
 	SteamAPI_ISteamNetworkingSockets_CreateListenSocketP2P: (
 		self: FFIPointer,
 		nLocalVirtualPort: int,
 		nOptions: int,
 		pOptions: FFIPointer
 	) -> FFIPointer,
-	SteamAPI_ISteamNetworkingSockets_CreatePollGroup: (self: FFIPointer) -> FFIPointer,
+	SteamAPI_ISteamNetworkingSockets_CreatePollGroup: (self: FFIPointer) -> int,
 	SteamAPI_ISteamNetworkingSockets_CreateSocketPair: (
 		self: FFIPointer,
 		pOutConnection1: FFIPointer,
@@ -75,8 +75,8 @@ export type Fns = {
 		pIdentity1: FFIPointer,
 		pIdentity2: FFIPointer
 	) -> FFIPointer,
-	SteamAPI_ISteamNetworkingSockets_DestroyPollGroup: (self: FFIPointer, hPollGroup: FFIPointer) -> FFIPointer,
-	SteamAPI_ISteamNetworkingSockets_FlushMessagesOnConnection: (self: FFIPointer, hConn: FFIPointer) -> FFIPointer,
+	SteamAPI_ISteamNetworkingSockets_DestroyPollGroup: (self: FFIPointer, hPollGroup: int) -> bool,
+	SteamAPI_ISteamNetworkingSockets_FlushMessagesOnConnection: (self: FFIPointer, hConn: int) -> int,
 	SteamAPI_ISteamNetworkingSockets_GetAuthenticationStatus: (self: FFIPointer, pDetails: FFIPointer) -> FFIPointer,
 	SteamAPI_ISteamNetworkingSockets_GetCertificateRequest: (
 		self: FFIPointer,
@@ -86,9 +86,9 @@ export type Fns = {
 	) -> FFIPointer,
 	SteamAPI_ISteamNetworkingSockets_GetConnectionInfo: (
 		self: FFIPointer,
-		hConn: FFIPointer,
+		hConn: int,
 		pInfo: FFIPointer
-	) -> FFIPointer,
+	) -> bool,
 	SteamAPI_ISteamNetworkingSockets_GetConnectionName: (
 		self: FFIPointer,
 		hPeer: FFIPointer,
@@ -97,11 +97,11 @@ export type Fns = {
 	) -> FFIPointer,
 	SteamAPI_ISteamNetworkingSockets_GetConnectionRealTimeStatus: (
 		self: FFIPointer,
-		hConn: FFIPointer,
+		hConn: int,
 		pStats: FFIPointer,
 		nLanes: int,
 		pLanes: FFIPointer
-	) -> FFIPointer,
+	) -> int,
 	SteamAPI_ISteamNetworkingSockets_GetConnectionUserData: (self: FFIPointer, hPeer: FFIPointer) -> FFIPointer,
 	SteamAPI_ISteamNetworkingSockets_GetDetailedConnectionStatus: (
 		self: FFIPointer,
@@ -119,16 +119,16 @@ export type Fns = {
 	SteamAPI_ISteamNetworkingSockets_InitAuthentication: (self: FFIPointer) -> FFIPointer,
 	SteamAPI_ISteamNetworkingSockets_ReceiveMessagesOnConnection: (
 		self: FFIPointer,
-		hConn: FFIPointer,
+		hConn: int,
 		ppOutMessages: FFIPointer,
 		nMaxMessages: int
-	) -> FFIPointer,
+	) -> int,
 	SteamAPI_ISteamNetworkingSockets_ReceiveMessagesOnPollGroup: (
 		self: FFIPointer,
-		hPollGroup: FFIPointer,
+		hPollGroup: int,
 		ppOutMessages: FFIPointer,
 		nMaxMessages: int
-	) -> FFIPointer,
+	) -> int,
 	SteamAPI_ISteamNetworkingSockets_ReceivedP2PCustomSignal: (
 		self: FFIPointer,
 		pMsg: FFIPointer,
@@ -147,12 +147,12 @@ export type Fns = {
 	SteamAPI_ISteamNetworkingSockets_RunCallbacks: (self: FFIPointer) -> FFIPointer,
 	SteamAPI_ISteamNetworkingSockets_SendMessageToConnection: (
 		self: FFIPointer,
-		hConn: FFIPointer,
+		hConn: int,
 		pData: FFIPointer,
-		cbData: FFIPointer,
+		cbData: int,
 		nSendFlags: int,
 		pOutMessageNumber: FFIPointer
-	) -> FFIPointer,
+	) -> int,
 	SteamAPI_ISteamNetworkingSockets_SendMessages: (
 		self: FFIPointer,
 		nMessages: int,
@@ -172,9 +172,9 @@ export type Fns = {
 	) -> FFIPointer,
 	SteamAPI_ISteamNetworkingSockets_SetConnectionPollGroup: (
 		self: FFIPointer,
-		hConn: FFIPointer,
-		hPollGroup: FFIPointer
-	) -> FFIPointer,
+		hConn: int,
+		hPollGroup: int
+	) -> bool,
 	SteamAPI_ISteamNetworkingSockets_SetConnectionUserData: (
 		self: FFIPointer,
 		hPeer: FFIPointer,
@@ -324,11 +324,11 @@ export type Fns = {
 local funcs = {
 	SteamAPI_SteamNetworkingSockets_v009 = { returns = ffi.types.pointer, args = {} },
 	SteamAPI_ISteamNetworkingSockets_CreateListenSocketIP = {
-		returns = ffi.types.pointer,
+		returns = ffi.types.u32,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
 	},
 	SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress = {
-		returns = ffi.types.pointer,
+		returns = ffi.types.u32,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
 	},
 	SteamAPI_ISteamNetworkingSockets_CreateListenSocketP2P = {
@@ -340,16 +340,16 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.i32, ffi.types.i32, ffi.types.pointer },
 	},
 	SteamAPI_ISteamNetworkingSockets_AcceptConnection = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer },
+		returns = ffi.types.i32,
+		args = { ffi.types.pointer, ffi.types.u32 },
 	},
 	SteamAPI_ISteamNetworkingSockets_CloseConnection = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.i32, ffi.types.pointer, ffi.types.u8 },
+		returns = ffi.types.u8,
+		args = { ffi.types.pointer, ffi.types.u32, ffi.types.i32, ffi.types.pointer, ffi.types.u8 },
 	},
 	SteamAPI_ISteamNetworkingSockets_CloseListenSocket = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer },
+		returns = ffi.types.u8,
+		args = { ffi.types.pointer, ffi.types.u32 },
 	},
 	SteamAPI_ISteamNetworkingSockets_SetConnectionUserData = {
 		returns = ffi.types.pointer,
@@ -368,12 +368,12 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.i32 },
 	},
 	SteamAPI_ISteamNetworkingSockets_SendMessageToConnection = {
-		returns = ffi.types.pointer,
+		returns = ffi.types.i32,
 		args = {
 			ffi.types.pointer,
+			ffi.types.u32,
 			ffi.types.pointer,
-			ffi.types.pointer,
-			ffi.types.pointer,
+			ffi.types.u32,
 			ffi.types.i32,
 			ffi.types.pointer,
 		},
@@ -383,20 +383,20 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.i32, ffi.types.pointer, ffi.types.pointer },
 	},
 	SteamAPI_ISteamNetworkingSockets_FlushMessagesOnConnection = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer },
+		returns = ffi.types.i32,
+		args = { ffi.types.pointer, ffi.types.u32 },
 	},
 	SteamAPI_ISteamNetworkingSockets_ReceiveMessagesOnConnection = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.i32 },
+		returns = ffi.types.i32,
+		args = { ffi.types.pointer, ffi.types.u32, ffi.types.pointer, ffi.types.i32 },
 	},
 	SteamAPI_ISteamNetworkingSockets_GetConnectionInfo = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		returns = ffi.types.u8,
+		args = { ffi.types.pointer, ffi.types.u32, ffi.types.pointer },
 	},
 	SteamAPI_ISteamNetworkingSockets_GetConnectionRealTimeStatus = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
+		returns = ffi.types.i32,
+		args = { ffi.types.pointer, ffi.types.u32, ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
 	},
 	SteamAPI_ISteamNetworkingSockets_GetDetailedConnectionStatus = {
 		returns = ffi.types.pointer,
@@ -430,18 +430,18 @@ local funcs = {
 		returns = ffi.types.pointer,
 		args = { ffi.types.pointer, ffi.types.pointer },
 	},
-	SteamAPI_ISteamNetworkingSockets_CreatePollGroup = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	SteamAPI_ISteamNetworkingSockets_CreatePollGroup = { returns = ffi.types.u32, args = { ffi.types.pointer } },
 	SteamAPI_ISteamNetworkingSockets_DestroyPollGroup = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer },
+		returns = ffi.types.u8,
+		args = { ffi.types.pointer, ffi.types.u32 },
 	},
 	SteamAPI_ISteamNetworkingSockets_SetConnectionPollGroup = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
+		returns = ffi.types.u8,
+		args = { ffi.types.pointer, ffi.types.u32, ffi.types.u32 },
 	},
 	SteamAPI_ISteamNetworkingSockets_ReceiveMessagesOnPollGroup = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.i32 },
+		returns = ffi.types.i32,
+		args = { ffi.types.pointer, ffi.types.u32, ffi.types.pointer, ffi.types.i32 },
 	},
 
 	SteamAPI_ISteamNetworkingSockets_ConnectP2PCustomSignaling = {

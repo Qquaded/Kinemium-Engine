@@ -112,9 +112,11 @@ return {
 		local KinemiumPhysicsService = game:GetService("UnifiedPhysicsService")
 		local syncingTransform = false
 
-		renderer.EventBus:Fire("UpdatePart", instance)
 		instance:SetProperties(propTable)
 		syncFromCFrame(instance, instance.CFrame)
+		if renderer and renderer.EventBus then
+			renderer.EventBus:Fire("UpdatePart", instance)
+		end
 
 		-- api
 
@@ -165,7 +167,9 @@ return {
 				syncFromPosition(instance, value)
 				syncingTransform = false
 			elseif property == "Parent" then
-				renderer.EventBus:Fire("UpdatePart", instance)
+				if renderer and renderer.EventBus then
+					renderer.EventBus:Fire("UpdatePart", instance)
+				end
 			elseif property == "Size" then
 				UpdateManifoldPointer(instance)
 			end

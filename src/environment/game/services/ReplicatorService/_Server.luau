@@ -1080,6 +1080,7 @@ function Server.init(context)
 	end
 
 	-- ═══ CHARACTER MODEL HELPERS ═══
+	local sendCreate
 
 	local function isCharacterModel(object)
 		return object ~= nil
@@ -1140,7 +1141,9 @@ function Server.init(context)
 				end
 
 				local reason = if index == 1 then "character_spawn_owner" else "character_spawn_owner_retry"
-				sendCharacterCreateToOwner(model, reason)
+				if sendCharacterCreateToOwner(model, reason) then
+					return
+				end
 			end
 		end)
 	end
@@ -1243,7 +1246,7 @@ function Server.init(context)
 	--   roots     — array of Instance objects to serialize and send
 	--   reason    — diagnostic label for logging
 
-	local function sendCreate(recipient, roots, reason)
+	sendCreate = function(recipient, roots, reason)
 		local sendCreateStartedAt = os.clock()
 		local reasonLabel = reason or "unspecified"
 		logReplicationDiagnostic(

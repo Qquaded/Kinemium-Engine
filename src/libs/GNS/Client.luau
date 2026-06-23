@@ -16,21 +16,37 @@ local SILENT_PACKET_TYPES = {
 	ping = true,
 }
 
+local MAX_RECV_MESSAGES = 128
+local POINTER_SIZE = ffi.types.pointer:size()
+
 local function log(...)
 	--print(...)
 end
 
-local function handle_toPointer(handle: number)
-	local buf = ffi.alloc(8)
-	buf:writeu32(0, handle % 4294967296)
-	buf:writeu32(4, math.floor(handle / 4294967296))
-	return buf
+local function receiveCountToNumber(value): number
+	if type(value) == "number" then
+		return value
+	end
+
+	local hex = tostring(value):match("0x[%da-fA-F]+")
+	if not hex then
+		return 0
+	end
+
+	local unsigned = tonumber(hex, 16) or 0
+	local low32 = unsigned % 4294967296
+	if low32 >= 2147483648 then
+		return low32 - 4294967296
+	end
+	return low32
 end
 
-local function size_toPointer(size: number)
-	local buf = ffi.alloc(4)
-	buf:writeu32(0, size)
-	return buf
+local function handleToNumber(value): number
+	if type(value) == "number" then
+		return value
+	end
+
+	return tonumber(tostring(value):match("0x[%da-fA-F]+") or "0", 16)
 end
 
 local function pointerToBuffer(ptr, size)
@@ -68,6 +84,8 @@ function Client.new()
 end
 
 local function openConnection(self)
+	state.InitEventLoop()
+
 	local ipAddr = ffi.alloc(18)
 	gns.lib.SteamAPI_SteamNetworkingIPAddr_ParseString(
 		ipAddr,
@@ -75,7 +93,7 @@ local function openConnection(self)
 	)
 
 	local hConn = gns.lib.SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress(state.sockets, ipAddr, 0, nil)
-	local hConnNum = tonumber(tostring(hConn):match("0x[%da-fA-F]+") or "0", 16)
+	local hConnNum = handleToNumber(hConn)
 
 	self.hConn = hConnNum
 	self.Socket = hConnNum
@@ -87,7 +105,6 @@ local function openConnection(self)
 		warn(`[GNS][Client] ConnectByIPAddress failed for {self.ServerAddress}:{self.ServerPort}`)
 	end
 
-	state.InitEventLoop()
 	return hConnNum ~= 0
 end
 
@@ -165,21 +182,22 @@ function Client:Poll()
 		return
 	end
 
-	local ppOutMessages = ffi.alloc(128 * 8)
+	local ppOutMessages = ffi.alloc(MAX_RECV_MESSAGES * POINTER_SIZE)
 	local numMsgs = gns.lib.SteamAPI_ISteamNetworkingSockets_ReceiveMessagesOnConnection(
 		state.sockets,
-		handle_toPointer(self.hConn),
+		self.hConn,
 		ppOutMessages,
-		128
+		MAX_RECV_MESSAGES
 	)
 
-	local numMsgsNum = tonumber(tostring(numMsgs):match("0x[%da-fA-F]+") or "0", 16)
+	local numMsgsNum = receiveCountToNumber(numMsgs)
 	if numMsgsNum <= 0 then
 		return
 	end
 
+	numMsgsNum = math.min(numMsgsNum, MAX_RECV_MESSAGES)
 	for i = 1, numMsgsNum do
-		local pMsg = ppOutMessages:readptr((i - 1) * 8)
+		local pMsg = ppOutMessages:readptr((i - 1) * POINTER_SIZE)
 		if pMsg and pMsg ~= ffi.null then
 			local m_pData = pMsg:readptr(MSG_OFFSET_PDATA)
 			local m_cbSize = pMsg:readi32(MSG_OFFSET_CBSIZE)
@@ -242,9 +260,9 @@ function Client:Send(data, reliable)
 
 	gns.lib.SteamAPI_ISteamNetworkingSockets_SendMessageToConnection(
 		state.sockets,
-		handle_toPointer(self.hConn),
+		self.hConn,
 		pData,
-		size_toPointer(len), -- fixed: 4-byte buffer containing the size, not toPointer(len)
+		len,
 		flags,
 		nil
 	)
@@ -282,7 +300,7 @@ function Client:_CloseConnection(reason, suppressShutdown)
 
 	gns.lib.SteamAPI_ISteamNetworkingSockets_CloseConnection(
 		state.sockets,
-		handle_toPointer(hConn),
+		hConn,
 		0,
 		BufferUtils.stringToPtr(reason or "disconnect"),
 		false
