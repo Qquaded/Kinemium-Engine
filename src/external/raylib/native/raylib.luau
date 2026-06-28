@@ -760,6 +760,7 @@ local export = {
 		GESTURE_PINCH_IN = 256, -- Pinch in gesture
 		GESTURE_PINCH_OUT = 512, -- Pinch out gesture
 	},
+
 	CameraMode = {
 		CAMERA_CUSTOM = 0, -- Camera custom, controlled by user (UpdateCamera() does nothing)
 		CAMERA_FREE = 1, -- Camera free mode

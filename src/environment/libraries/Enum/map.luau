@@ -244,6 +244,10 @@ enumTable.KeyCode = {
 	Apps = 348,
 
 	ButtonX = 349,
+
+	-- Android
+	VolumeUp = 350,
+	VolumeDown = 351,
 }
 
 enumTable.GraphicsLevel = {
@@ -272,6 +276,15 @@ enumTable.NotificationState = {
 	Entering = 0,
 	Visible = 1,
 	Exiting = 2,
+}
+
+enumTable.GamepadAxis = {
+	LeftX = 0,
+	LeftY = 1,
+	RightX = 2,
+	RightY = 3,
+	LeftTrigger = 4,
+	RightTrigger = 5,
 }
 
 enumTable.UserInputType = {

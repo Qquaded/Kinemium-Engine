@@ -1030,6 +1030,10 @@ function KiRend.new(config: KiRendConf)
 		renderer_mousedata.Button2Released = lib.IsMouseButtonReleased(1) == 1
 		renderer_eventbus:Fire("MouseData", renderer_mousedata)
 
+		profileBegin("Controller Poll")
+		renderer_eventbus:Fire("GamepadPoll", nil)
+		profileEnd()
+
 		local delta = lib.GetFrameTime()
 
 		profileBegin("GC")

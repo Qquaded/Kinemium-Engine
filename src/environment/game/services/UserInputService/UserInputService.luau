@@ -6,6 +6,32 @@ local UserInputService = Instance.new("UserInputService")
 local Vector2 = require("@Vector2")
 UserInputService._Intents = Enum.PluginIntents.Input
 
+local MAX_GAMEPADS = 4
+local GAMEPAD_AXIS_DEADZONE = 0.1
+local GAMEPAD_BUTTONS = {
+	-- D-pad
+	{ Name = "DPadUp", Value = 1 },
+	{ Name = "DPadRight", Value = 2 },
+	{ Name = "DPadDown", Value = 3 },
+	{ Name = "DPadLeft", Value = 4 },
+	-- Face buttons (Xbox layout)
+	{ Name = "ButtonY", Value = 5 },
+	{ Name = "ButtonB", Value = 6 },
+	{ Name = "ButtonA", Value = 7 },
+	{ Name = "ButtonX", Value = 8 },
+	-- Bumpers/Triggers
+	{ Name = "ButtonLB", Value = 9 },
+	{ Name = "ButtonLT", Value = 10 },
+	{ Name = "ButtonRB", Value = 11 },
+	{ Name = "ButtonRT", Value = 12 },
+	-- Menu buttons
+	{ Name = "ButtonSelect", Value = 13 },
+	{ Name = "ButtonStart", Value = 15 },
+	-- Thumbsticks
+	{ Name = "ButtonL3", Value = 16 },
+	{ Name = "ButtonR3", Value = 17 },
+}
+
 local InputBegan = signal.new()
 local InputEnded = signal.new()
 local MouseMoved = signal.new()
@@ -21,7 +47,7 @@ UserInputService.InitRenderer = function(renderer, renderer_signal)
 		return
 	end
 
-	local prevMousePos = raylib.lib.GetMousePosition()
+	local active_gamepad_buttons = {}
 
 	local Enum = require("@EnumMap")
 	local lib = renderer.Raylib.lib
@@ -56,6 +82,71 @@ UserInputService.InitRenderer = function(renderer, renderer_signal)
 				end
 			end,
 		}
+	end
+
+	function UserInputService:GetConnectedGamepads(): { Enum.UserInputType }
+		local result = {}
+		for i = 0, MAX_GAMEPADS - 1 do
+			if lib.IsGamepadAvailable(i) == 1 then
+				local en = Enum.UserInputType[`Gamepad{i + 1}`]
+				if en then
+					table.insert(result, en)
+				end
+			end
+		end
+		return result
+	end
+
+	function UserInputService:IsGamepadConnected(gamepadType: Enum.UserInputType): boolean
+		local index = tonumber(gamepadType.Name:match("Gamepad(%d+)"))
+		if not index then
+			return false
+		end
+		return lib.IsGamepadAvailable(index - 1) == 1
+	end
+
+	function UserInputService:IsGamepadButtonDown(gamepadType: Enum.UserInputType, button: Enum.KeyCode): boolean
+		local index = tonumber(gamepadType.Name:match("Gamepad(%d+)"))
+		if not index then
+			return false
+		end
+		return lib.IsGamepadButtonDown(index - 1, button.Value) == 1
+	end
+
+	function UserInputService:IsGamepadButtonPressed(gamepadType: Enum.UserInputType, button: Enum.KeyCode): boolean
+		local index = tonumber(gamepadType.Name:match("Gamepad(%d+)"))
+		if not index then
+			return false
+		end
+		return lib.IsGamepadButtonPressed(index - 1, button.Value) == 1
+	end
+
+	function UserInputService:IsGamepadButtonReleased(gamepadType: Enum.UserInputType, button: Enum.KeyCode): boolean
+		local index = tonumber(gamepadType.Name:match("Gamepad(%d+)"))
+		if not index then
+			return false
+		end
+		return lib.IsGamepadButtonReleased(index - 1, button.Value) == 1
+	end
+
+	function UserInputService:GetGamepadAxisMovement(gamepadType: Enum.UserInputType, axis: Enum.GamepadAxis): number
+		local index = tonumber(gamepadType.Name:match("Gamepad(%d+)"))
+		if not index then
+			return 0
+		end
+		local raw = lib.GetGamepadAxisMovement(index - 1, axis.Value)
+		return math.abs(raw) > GAMEPAD_AXIS_DEADZONE and raw or 0
+	end
+
+	function UserInputService:GetGamepadName(gamepadType: Enum.UserInputType): string?
+		local index = tonumber(gamepadType.Name:match("Gamepad(%d+)"))
+		if not index then
+			return nil
+		end
+		if lib.IsGamepadAvailable(index - 1) == 0 then
+			return nil
+		end
+		return lib.GetGamepadName(index - 1) -- should return string
 	end
 
 	function UserInputService:BindCombo(keys: {}, callback: () -> ())
@@ -189,6 +280,39 @@ UserInputService.InitRenderer = function(renderer, renderer_signal)
 				UserInputType = Enum.UserInputType.MouseWheel,
 				Delta = data,
 			})
+		elseif route == "GamepadPoll" then
+			for i = 0, MAX_GAMEPADS - 1 do
+				if lib.IsGamepadAvailable(i) == 1 then
+					local gamepadType = Enum.UserInputType[`Gamepad{i + 1}`]
+					if not gamepadType then
+						continue
+					end
+
+					for _, button in pairs(GAMEPAD_BUTTONS) do
+						local key = `{i}_{button.Value}`
+
+						if lib.IsGamepadButtonDown(i, button.Value) == 1 then
+							if not active_gamepad_buttons[key] then
+								active_gamepad_buttons[key] = true
+								InputBegan:Fire({
+									KeyCode = button,
+									UserInputType = gamepadType,
+									UserInputState = Enum.UserInputState.Begin,
+								})
+							end
+						else
+							if active_gamepad_buttons[key] then
+								active_gamepad_buttons[key] = nil
+								InputEnded:Fire({
+									KeyCode = button,
+									UserInputType = gamepadType,
+									UserInputState = Enum.UserInputState.End,
+								})
+							end
+						end
+					end
+				end
+			end
 		end
 	end)
 end
