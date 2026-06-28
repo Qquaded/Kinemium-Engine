@@ -576,11 +576,19 @@ RBXModelImporter.InitRenderer = function(renderer, renderer_signal, datamodel)
 					converted[service.Name] = {}
 
 					for _, child in pairs(service:GetChildren()) do
+						if child.Name == "Camera" then
+							continue
+						end
+
 						local inst = decodeObject(child)
 						if inst then
 							table.insert(converted[service.Name], inst)
 						end
+
+						task.wait()
 					end
+
+					task.wait()
 				end
 				return converted
 			end

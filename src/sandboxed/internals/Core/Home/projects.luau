@@ -126,11 +126,13 @@ local function generateProjectCards()
 			width = screenx - 135,
 			title = projectData.name,
 			subtext = "Edited on " .. os.date("%Y-%m-%d %H:%M:%S", projectData.last_opened),
-			tags = { "son", "im crine" },
+			tags = {},
 			backgroundColor = SecondaryBackgroundColor,
 			icon = icon,
 			font = vend,
 			zindex = 3,
+			rounded = { 0, StudioThemeService.SelectedTheme.CornerRadius },
+
 			onClick = function()
 				if project_prompt_active then
 					return
@@ -139,7 +141,7 @@ local function generateProjectCards()
 				ishared.FolderPath = projectData.path
 				ishared.GameIcon = projectData.icon
 				ishared.EnableHomescreen = false
-				ProjectSyncService:StartSyncing(ishared.FolderPath)
+				ProjectLoaderService.LoadProject(ishared.FolderPath, projectData)
 				renderer:SetDimension("3D")
 				_G.IsHoveringOnWindow = true
 			end,
@@ -192,6 +194,8 @@ group = aereon.create({
 		x = screenx - 50,
 		width = 30,
 		height = 30,
+		rounded = { 0, StudioThemeService.SelectedTheme.CornerRadius },
+
 		zindex = 3,
 
 		onClick = function()
@@ -207,6 +211,8 @@ group = aereon.create({
 		height = 250,
 		bodyHeight = 400,
 		font = vend,
+		rounded = { 0, StudioThemeService.SelectedTheme.CornerRadius },
+
 		backgroundColor = SecondaryBackgroundColor,
 		title = "Create New Project",
 		onClose = function()
@@ -481,11 +487,12 @@ ishared.Home.pages["Projects"] = function(dt, alpha, slideOffset)
 			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 			textColor = StudioThemeService.SelectedTheme.TextColor,
 			placeholderColor = StudioThemeService.SelectedTheme.SecondaryTextColor,
-			cornerRadius = 0.2,
+			cornerRadius = StudioThemeService.SelectedTheme.CornerRadius,
 			BackgroundTransparency = 0,
 			BorderTransparency = 1,
 			placeholder = "Search projects...",
 			fontSize = 14,
+
 			escapeBlurs = false,
 			blurOnSubmit = false,
 			onChange = function(text)
@@ -511,6 +518,8 @@ ishared.Home.pages["Projects"] = function(dt, alpha, slideOffset)
 			height = searchHeight,
 			options = { "All", "Recent", "Older" },
 			font = vend,
+			rounded = { 0, StudioThemeService.SelectedTheme.CornerRadius },
+
 			selectedIndex = 1,
 			backgroundColor = StudioThemeService.SelectedTheme.SecondaryBackgroundColor,
 			hoverColor = StudioThemeService.SelectedTheme.ThirdBackgroundColor,

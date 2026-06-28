@@ -102,6 +102,7 @@ return function(objects, data)
 				icon = texture,
 				font = config.font,
 				fontSize = 14,
+				shadowLayers = 3,
 				iconPosition = "left",
 				gap = 8,
 				iconPadding = 12,
@@ -109,7 +110,7 @@ return function(objects, data)
 				hoverColor = config.hoverColor,
 				pressColor = config.selectedColor,
 				textColor = config.textColor,
-				rounded = { 0.15, 8 },
+				rounded = config.rounded,
 				onClick = function()
 					wrapper.setSelected(index)
 					if config.onItemClick then

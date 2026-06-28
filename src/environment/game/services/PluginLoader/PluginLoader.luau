@@ -308,6 +308,12 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 					return false
 				end
 
+				loadedPlugins[plugin_id] = {
+					manifest = json,
+					module = result,
+					files = files, -- keep zip in memory
+				}
+
 				if type(result) ~= "table" then
 					print(`Plugin {plugin_id} does not return table`)
 					return false
@@ -328,12 +334,6 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 					Signal = signal,
 				})
 
-				loadedPlugins[plugin_id] = {
-					manifest = json,
-					module = result,
-					files = files, -- keep zip in memory
-				}
-
 				return true
 			end)
 
@@ -341,6 +341,16 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 		end,
 
 		DownloadPlugin = function(pluginManifest, autoLoad)
+			if type(pluginManifest) == "string" then
+				local marketplace = PluginLoader.GetPluginsMarketplace()
+				local found = marketplace and marketplace[string.lower(pluginManifest)]
+
+				if not found then
+					return false, "Plugin not found"
+				end
+
+				pluginManifest = found.manifest
+			end
 			local downloader = require("@Downloader")
 
 			local function repoToZip(url, refType, ref)

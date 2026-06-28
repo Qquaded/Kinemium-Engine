@@ -19,6 +19,7 @@ return function(objects, data)
 		textColor = data.textColor or color3.new(1, 1, 1),
 		dimTextColor = data.dimTextColor or color3.new(0.6, 0.6, 0.6),
 		accentColor = data.accentColor or color3.new(0.2, 0.6, 1),
+		rounded = data.rounded or { 0.3, 12 },
 
 		visible = data.visible ~= false,
 		lastSize = { width = data.width or 800, height = data.height or 80 },
@@ -81,8 +82,8 @@ return function(objects, data)
 		-- shadow
 		raylib.lib.DrawRectangleRounded(
 			rect:translate(rect.new(r.x, r.y + 2, r.width, r.height)),
-			0.3,
-			8,
+			config.rounded[1],
+			config.rounded[2],
 			config.backgroundColor:ToRaylib(0.65)
 		)
 
@@ -91,8 +92,8 @@ return function(objects, data)
 
 		raylib.lib.DrawRectangleRounded(
 			rect:translate(rect.new(r.x, r.y + lift, r.width, r.height)),
-			0.3,
-			8,
+			config.rounded[1],
+			config.rounded[2],
 			bgColor:ToRaylib(0)
 		)
 
@@ -142,7 +143,12 @@ return function(objects, data)
 
 		local itIcon = get_item("icon")
 		local iconRect = rect.new(r.x + itIcon._x, r.y + itIcon._y, itIcon._actualWidth, itIcon._actualHeight)
-		raylib.lib.DrawRectangleRounded(rect:translate(iconRect), 0.25, 8, config.backgroundColor:ToRaylib(0.18))
+		raylib.lib.DrawRectangleRounded(
+			rect:translate(iconRect),
+			config.rounded[1],
+			config.rounded[2],
+			config.backgroundColor:ToRaylib(0.18)
+		)
 		if config.icon then
 			raylib.lib.DrawTexturePro(
 				config.icon.texture,

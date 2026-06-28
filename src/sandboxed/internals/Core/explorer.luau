@@ -213,8 +213,8 @@ local searchBox = textbox.new({
 	fontSize = 16,
 	font = vend,
 	maxLength = 56,
+	cornerRadius = StudioThemeService.SelectedTheme.CornerRadius,
 
-	cornerRadius = 0.5,
 	BorderTransparency = 1,
 	TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency),
 	padding = 5,
@@ -360,6 +360,7 @@ local SelectionMenu = gui.menu({
 	Font = vend,
 	backgroundColor = Theme.SecondaryBackgroundColor,
 	textColor = Theme.TextColor,
+	rounded = { 0, StudioThemeService.SelectedTheme.CornerRadius },
 	hoverColor = Theme.BackgroundColor,
 	items = {
 		{
@@ -788,8 +789,8 @@ local function drawAdditionMenu(instance, mousePos, btnY, toggleX)
 	-- Draw menu background
 	rl.DrawRectangleRounded(
 		structs.Rectangle:new({ x = menuX, y = menuY, width = ADD_MENU_WIDTH, height = menuHeight }),
-		0.2,
-		26,
+		StudioThemeService.SelectedTheme.CornerRadius,
+		StudioThemeService.SelectedTheme.CornerRadius,
 		Theme.SecondaryBackgroundColor:ToRaylib(0)
 	)
 
@@ -799,7 +800,7 @@ local function drawAdditionMenu(instance, mousePos, btnY, toggleX)
 		"Add Object",
 		vector.create(menuX + MENU_PADDING, menuY + MENU_PADDING),
 		18,
-		1,
+		StudioThemeService.SelectedTheme.CornerRadius,
 		StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
 	)
 
@@ -1007,8 +1008,8 @@ local function drawAdditionMenu(instance, mousePos, btnY, toggleX)
 				width = scrollbarWidth,
 				height = scrollbarTrackHeight,
 			}),
-			0.5,
-			4,
+			StudioThemeService.SelectedTheme.CornerRadius,
+			StudioThemeService.SelectedTheme.CornerRadius,
 			Color3.new(0.08, 0.08, 0.08):ToRaylib(0)
 		)
 
@@ -1020,8 +1021,8 @@ local function drawAdditionMenu(instance, mousePos, btnY, toggleX)
 				width = scrollbarWidth,
 				height = thumbHeight,
 			}),
-			0.5,
-			4,
+			StudioThemeService.SelectedTheme.CornerRadius,
+			StudioThemeService.SelectedTheme.CornerRadius,
 			Color3.new(0.3, 0.3, 0.3):ToRaylib(0)
 		)
 	end
@@ -1089,7 +1090,12 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 			or Color3.new()
 
 		-- Draw node background
-		rl.DrawRectangleRounded(structs.Rectangle:new(rectData), 0.5, 20, color:ToRaylib(transparency))
+		rl.DrawRectangleRounded(
+			structs.Rectangle:new(rectData),
+			StudioThemeService.SelectedTheme.CornerRadius,
+			StudioThemeService.SelectedTheme.CornerRadius,
+			color:ToRaylib(transparency)
+		)
 
 		-- Record drop animation target position
 		if dropAnimInstance == instance and dropAnimStart > 0 then
@@ -1385,6 +1391,7 @@ explorerWindow.stepped = function(windowData)
 			imageScale = 0.7,
 			backgroundColor = Theme.SecondaryBackgroundColor,
 			hoverColor = Theme.BackgroundColor,
+			rounded = { 0, StudioThemeService.SelectedTheme.CornerRadius },
 			pressColor = Theme.BackgroundColor,
 			onClick = function()
 				searchFilterMenuVisible = not searchFilterMenuVisible
@@ -1458,8 +1465,8 @@ explorerWindow.stepped = function(windowData)
 
 		rl.DrawRectangleRounded(
 			structs.Rectangle:new({ x = dragX, y = dragY, width = dragW, height = dragH }),
-			0.5,
-			20,
+			StudioThemeService.SelectedTheme.CornerRadius,
+			StudioThemeService.SelectedTheme.CornerRadius,
 			Color3.new(0, 0.533333, 1):ToRaylib(0.25)
 		)
 
@@ -1497,8 +1504,8 @@ explorerWindow.stepped = function(windowData)
 
 		rl.DrawRectangleRounded(
 			structs.Rectangle:new({ x = animX, y = animY, width = animW, height = animH }),
-			0.5,
-			20,
+			StudioThemeService.SelectedTheme.CornerRadius,
+			StudioThemeService.SelectedTheme.CornerRadius,
 			Color3.new(0, 0.533333, 1):ToRaylib(bgAlpha)
 		)
 

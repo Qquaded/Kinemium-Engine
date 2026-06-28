@@ -221,7 +221,7 @@ local function action_update(branch, dry_run)
 
 	-- Fetch and compare
 	log_step("Fetching from origin…")
-	local fetch = git_run({ "fetch", "origin", "--quiet" })
+	local fetch = git_run({ "fetch", "origin", branch, "--quiet" })
 	if fetch.code ~= 0 then
 		die("Fetch failed:\n" .. fetch.stderr)
 	end

@@ -59,6 +59,7 @@ nav = gui.navigation({
 	selectedIconColor = SecondaryBackgroundColor,
 	itemBackgroundColor = SecondaryBackgroundColor,
 	font = vend,
+	rounded = { 0, StudioThemeService.SelectedTheme.CornerRadius },
 
 	onItemClick = function(item, index)
 		if ishared.Home.activePage == item.label then

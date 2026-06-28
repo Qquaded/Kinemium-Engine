@@ -10,6 +10,8 @@ local StudioThemeService = Instance.new("StudioThemeService")
 StudioThemeService.ExplorerHidden = true
 StudioThemeService._Intents = Enum.PluginIntents.UI
 
+local json5 = zune.serde.json5
+
 StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	local themes = {
 		dark = {
@@ -113,17 +115,17 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 					},
 
 					codecolors = {
-						keyword = const.SKYBLUE,
-						builtin = const.MAGENTA,
-						stdlib = const.VIOLET,
-						string = const.GREEN,
-						number = const.ORANGE,
-						operator = const.BLUE,
-						comment = const.GRAY,
-						field = const.YELLOW,
-						method = const.YELLOW,
-						functionName = const.GOLD,
-						default = const.WHITE,
+						keyword = Color3.fromRGB(0, 191, 255), -- SKYBLUE
+						builtin = Color3.fromRGB(255, 0, 255), -- MAGENTA
+						stdlib = Color3.fromRGB(148, 0, 211), -- VIOLET
+						string = Color3.fromRGB(0, 255, 0), -- GREEN
+						number = Color3.fromRGB(255, 165, 0), -- ORANGE
+						operator = Color3.fromRGB(0, 0, 255), -- BLUE
+						comment = Color3.fromRGB(128, 128, 128), -- GRAY
+						field = Color3.fromRGB(255, 255, 0), -- YELLOW
+						method = Color3.fromRGB(255, 255, 0), -- YELLOW
+						functionName = Color3.fromRGB(255, 215, 0), -- GOLD
+						default = Color3.fromRGB(255, 255, 255), -- WHITE
 					},
 				},
 			},
@@ -149,6 +151,41 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		themes = themes,
 		SelectedTheme = themes.dark,
 	})
+
+	function StudioThemeService:ExportThemeAsJson()
+		local function serialize(tbl)
+			local result = {}
+
+			for key, value in pairs(tbl) do
+				if type(value) ~= "table" then
+					result[key] = value
+				elseif value.type then
+					-- Userdata object (Color3, UDim2, etc.)
+
+					if value.type == "Color3" then
+						result[key] = Color3.fromHex(value)
+					else
+						print(value.type)
+						result[key] = value:ToTable()
+					end
+				else
+					-- Nested table
+					result[key] = serialize(value)
+				end
+			end
+
+			return result
+		end
+
+		local jsonCompat = serialize(themes.dark)
+		local encoded = zune.serde.json.encode(jsonCompat)
+
+		zune.fs.writeFile("./src/theme.json", encoded)
+
+		return encoded
+	end
+
+	function StudioThemeService:LoadThemeJson(theme) end
 end
 
 return StudioThemeService

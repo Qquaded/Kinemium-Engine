@@ -7,7 +7,6 @@ local propTable = {
 
 return {
 	class = "CFrameValue",
-	non_creatable = true,
 	callback = function(instance)
 		instance:SetProperties(propTable)
 		return instance

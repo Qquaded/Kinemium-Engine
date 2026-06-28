@@ -133,9 +133,9 @@ local function makeTextbox(opts)
 		padding = 4,
 		backgroundColor = Theme.SecondaryBackgroundColor,
 		textColor = Theme.TextColor,
-		cornerRadius = 0.2,
 		BackgroundTransparency = 0.1,
 		BorderTransparency = 1,
+		cornerRadius = StudioThemeService.SelectedTheme.CornerRadius,
 	}
 	if opts then
 		for k, v in pairs(opts) do

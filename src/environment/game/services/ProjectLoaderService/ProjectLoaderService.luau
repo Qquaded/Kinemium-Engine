@@ -22,7 +22,52 @@ local settings = {
 	},
 }
 
-local function buildProjectConfig(name, iconPath, description)
+export type ProjectConfig = {
+	info: {
+		name: string,
+		icon: string,
+		desc: string,
+	},
+
+	pointers: {
+		assets: string,
+		server: string,
+		client: string,
+		gui: string,
+		objects: string,
+	},
+
+	plugins: {
+		[string]: any,
+	},
+
+	sync: {
+		live: boolean,
+		debounce: number,
+		ignore: {
+			git: string,
+			vscode: string,
+		},
+	},
+
+	backups: {
+		interval: number,
+	},
+
+	scripting: {
+		polyglot: boolean,
+		ncg: boolean,
+	},
+}
+
+local function buildProjectConfig(name, iconPath, description, PluginLoader)
+	local plugins_built = {}
+
+	for i, data in pairs(PluginLoader.GetLoadedPlugins()) do
+		plugins_built[data.manifest.name] =
+			{ id = i, version = data.manifest.version, author = data.manifest.author, autoload = true }
+	end
+
 	return {
 		info = {
 			name = name,
@@ -36,6 +81,8 @@ local function buildProjectConfig(name, iconPath, description)
 			gui = "game.StarterGui",
 			objects = "game.Workspace",
 		},
+		plugins = plugins_built,
+
 		sync = {
 			live = false,
 			debounce = 0.35,
@@ -51,7 +98,7 @@ local function buildProjectConfig(name, iconPath, description)
 	}
 end
 
-ProjectLoaderService.InitRenderer = function(renderer, renderer_signal)
+ProjectLoaderService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	ProjectLoaderService:SetProperties({
 		GetProjects = function()
 			local success, read = pcall(fs.readFile, projectsFile)
@@ -66,7 +113,20 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal)
 
 			if data then
 				if data.projects then
-					return data.projects
+					local result = {}
+
+					for _, project in pairs(data.projects) do
+						if zune.fs.stat(project.path).kind ~= "directory" then
+							continue
+						end
+						if zune.fs.stat(project.path .. "/kproj.toml").kind ~= "file" then
+							continue
+						end
+						project.manifest = zune.serde.toml.decode(fs.readFile(project.path .. "/kproj.toml"))
+						table.insert(result, project)
+					end
+
+					return result
 				else
 					return {}
 				end
@@ -118,17 +178,68 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal)
 					})
 				)
 
-				local config = buildProjectConfig(name, iconPath, description)
+				repeat
+					task.wait()
+				until datamodel:GetService("PluginLoader")
+
+				local config = buildProjectConfig(name, iconPath, description, datamodel:GetService("PluginLoader"))
 				local encodedProject = serde.toml.encode(config)
 				fs.writeFile(kprojFile, encodedProject)
 			end)
 
 			if not success then
-				print("Got error while making new project: " .. result)
-				return {}
+				print(result)
 			end
 
 			return encoded
+		end,
+
+		LoadProject = function(projectPath, conf: { manifest: ProjectConfig })
+			local ProjectSyncService = datamodel:GetService("ProjectSyncService")
+			local PluginLoader = datamodel:GetService("PluginLoader")
+			local loadedPlugins = PluginLoader.GetLoadedPlugins()
+
+			datamodel:SetMetadata("ProjectManif", conf.manifest)
+
+			-- not sure how to separate backups from the syncing function, maybe later
+			if conf.manifest.sync.live == true then
+				ProjectSyncService:StartSyncing(projectPath)
+			end
+
+			-- spawn in separate thread
+			zune.task.spawn(function()
+				-- check if conf.manifest.plugins exists (for backwards compat)
+				if conf.manifest.plugins then
+					for id, data in pairs(conf.manifest.plugins) do
+						-- if plugin's autoload is not true then skip
+						if data.autoload == false then
+							continue
+						end
+
+						id = data.id
+
+						if loadedPlugins[id] then
+							local manifest = loadedPlugins[id].manifest
+							-- if project plugin version is not the same as the installed plugin
+							if data.version ~= manifest.version then
+								-- remove plugin
+								PluginLoader.UnloadPlugin(id)
+								PluginLoader.DownloadPlugin(id, true)
+							end
+
+							continue
+						end
+
+						-- if the user does not have the plugin the project requires, install it
+						local success, result = PluginLoader.DownloadPlugin(id, true)
+
+						if not success then
+							print(`Error while downloading project dependency {id}: {result}`)
+							continue
+						end
+					end
+				end
+			end)
 		end,
 
 		GetGamesAsSubmenu = function(func)
