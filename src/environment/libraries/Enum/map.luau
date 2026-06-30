@@ -240,9 +240,7 @@ enumTable.KeyCode = {
 	RightControl = 345,
 	RightAlt = 346,
 	RightSuper = 347,
-
 	Apps = 348,
-
 	ButtonX = 349,
 
 	-- Android

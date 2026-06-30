@@ -1,6 +1,3 @@
--- GNS | GameNetworkingSockets FFI Wrapper for Kinemium Engine
--- Drop-in replacement for KiNet
-
 local Server = require("@GNS/Server")
 local Client = require("@GNS/Client")
 local Serializer = require("@GNS/Serializer")

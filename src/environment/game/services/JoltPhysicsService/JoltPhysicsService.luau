@@ -9,8 +9,6 @@ local Enum = require("@EnumMap")
 local utils = require("@bufferutils")
 local structs = jolt.structs
 local bodyMaker = require("@_BodyMaker")
-local Protocol = require("@Protocol")
-local NetworkOwnership = require("@NetworkOwnership")
 
 local KinemiumPhysicsService = Instance.new("KinemiumPhysicsService")
 KinemiumPhysicsService.ExplorerHidden = true
@@ -822,7 +820,6 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 
 		log("[Physics] Job system created")
 
-		local networkService = game:GetService("NetworkService")
 		local playersService = game:GetService("Players")
 
 		local function applyOwnershipImpactToPart(targetPart, impulse)
@@ -839,10 +836,6 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 		end
 
 		local function relayOwnershipImpacts()
-			if IsClient ~= true or not networkService or not networkService.IsClientConnected then
-				return
-			end
-
 			local localPlayer = playersService and playersService.LocalPlayer or nil
 			if not localPlayer then
 				return
@@ -915,92 +908,7 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 					end
 
 					ownershipImpactTimestamps[pairKey] = now
-					networkService:SendToServer(Protocol.Channels.Input, Protocol.Kinds.OwnershipImpact, {
-						source = sourcePart.NetworkId,
-						target = targetPart.NetworkId,
-						impulse = impulse:ToTable(),
-					}, false)
 				end
-			end
-		end
-
-		if networkService and networkService.RegisterMessageHandler then
-			if IsServer == true then
-				networkService:RegisterMessageHandler(
-					Protocol.Channels.Input,
-					Protocol.Kinds.OwnershipImpact,
-					function(session, payload)
-						if not session or not session.player or type(payload) ~= "table" then
-							return
-						end
-
-						local sourcePart = partsByNetworkId[payload.source]
-						local targetPart = partsByNetworkId[payload.target]
-						if
-							not sourcePart
-							or not targetPart
-							or sourcePart == targetPart
-							or sourcePart.Parent == nil
-							or targetPart.Parent == nil
-							or sourcePart.BaseClass ~= "BasePart"
-							or targetPart.BaseClass ~= "BasePart"
-							or targetPart.Anchored
-							or not NetworkOwnership.IsOwnedByPlayer(sourcePart, session.player)
-							or NetworkOwnership.IsOwnedByPlayer(targetPart, session.player)
-						then
-							return
-						end
-
-						local impulse = payload.impulse and Vector3.FromTable(payload.impulse) or nil
-						if not impulse then
-							return
-						end
-
-						local owner = NetworkOwnership.GetOwningPlayer(targetPart)
-						local targetSession = owner and networkService:GetSessionByUserId(owner.UserId) or nil
-						if targetSession and owner ~= session.player then
-							networkService:SendToClient(
-								targetSession,
-								Protocol.Channels.Replication,
-								Protocol.Kinds.OwnershipImpact,
-								{
-									target = targetPart.NetworkId,
-									impulse = clampImpulse(impulse):ToTable(),
-								},
-								false
-							)
-							return
-						end
-
-						applyOwnershipImpactToPart(targetPart, impulse)
-					end
-				)
-			elseif IsClient == true then
-				networkService:RegisterMessageHandler(
-					Protocol.Channels.Replication,
-					Protocol.Kinds.OwnershipImpact,
-					function(_, payload)
-						if type(payload) ~= "table" then
-							return
-						end
-
-						local localPlayer = playersService and playersService.LocalPlayer or nil
-						local targetPart = partsByNetworkId[payload.target]
-						if
-							not localPlayer
-							or not targetPart
-							or targetPart.Parent == nil
-							or not NetworkOwnership.IsOwnedByPlayer(targetPart, localPlayer)
-						then
-							return
-						end
-
-						local impulse = payload.impulse and Vector3.FromTable(payload.impulse) or nil
-						if impulse then
-							applyOwnershipImpactToPart(targetPart, impulse)
-						end
-					end
-				)
 			end
 		end
 
@@ -1089,7 +997,7 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 						local newLayer = getLayerForPart(part)
 						lib.JPH_BodyInterface_SetObjectLayer(bodyInterface, bodyID, newLayer)
 					elseif property == "Position" or property == "CFrame" then
-						if part.Anchored or not NetworkOwnership.ShouldSimulatePhysicsForMachine(part, game) then
+						if part.Anchored then
 							bodyTransformDirty[part] = true
 						end
 					end
@@ -2288,9 +2196,6 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 						continue
 					end
 
-					if not NetworkOwnership.ShouldSimulatePhysicsForMachine(part, game) then
-						syncBodyTransformFromPart(part, bodyInterface, bodyID)
-					end
 					bodyTransformDirty[part] = nil
 				end
 

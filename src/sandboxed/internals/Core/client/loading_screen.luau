@@ -3,7 +3,7 @@ local RunService = game:GetService("RunService")
 local NetworkService = game:GetService("NetworkService")
 local KinemiumRaylib = game:GetService("KinemiumRaylib")
 
-if RunService:IsServer() or not RunService:IsClient() then
+if RunService:IsServer() or RunService:IsClient() then
 	return
 end
 

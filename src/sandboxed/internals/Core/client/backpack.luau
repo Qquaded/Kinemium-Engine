@@ -4,8 +4,6 @@ local RunService = game:GetService("RunService")
 local Player = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 
-print(Route)
-
 local keyMap = {
 	["1"] = Enum.KeyCode.One,
 	["2"] = Enum.KeyCode.Two,

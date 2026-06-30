@@ -34,6 +34,10 @@ for _, entry in pairs(entries) do
 		SecurityCapabilities = Enum.SecurityCapabilities.Internals,
 	})
 
+	if not s then
+		continue
+	end
+
 	local initTime = (os.clock() - createClassStart) * 1000
 
 	-- returned = { class = "Part", callback = function(Part) ... end }
@@ -41,6 +45,10 @@ for _, entry in pairs(entries) do
 	if not returned then
 		_G.warn(`CLASS: Failed to load {entry.name}: {s} {r}`)
 	else
+		if not returned then
+			print("Skipped: ", returned)
+			continue
+		end
 		listOfClasses[returned.class] = returned
 
 		_G.log(

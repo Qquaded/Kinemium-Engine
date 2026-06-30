@@ -82,6 +82,9 @@ function DataModel.new(RENDERER, ...)
 		if success then
 			local success2, returnedData2 = pcall(function()
 				self.Services[name] = returnedData
+				if not returnedData then
+					return
+				end
 				if returnedData.InitRenderer then
 					if not (IsHeadless == true and HEADLESS_SKIP_INIT[name] == true) then
 						returnedData.InitRenderer(RENDERER, RENDERER.EventBus, self)
