@@ -1,0 +1,152 @@
+{
+  "repo_notes": [
+    {
+      "content": "The documentation should teach users how to make games before teaching engine implementation details. Every chapter should build upon the previous one."
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "Introduction to Kinemium, what it is, why it exists, how it differs from Roblox, Unity, and Godot, and what you will build throughout this tutorial."
+    },
+    {
+      "title": "Getting Started",
+      "purpose": "Installing Kinemium, creating a project, understanding the workspace, and running your first game."
+    },
+    {
+      "title": "Installation",
+      "parent": "Getting Started",
+      "purpose": "Installing Zune, Kinemium, native dependencies, and required tooling."
+    },
+    {
+      "title": "Creating a Project",
+      "parent": "Getting Started",
+      "purpose": "Creating a project, understanding kproj.toml, and opening the editor."
+    },
+    {
+      "title": "Project Layout",
+      "parent": "Getting Started",
+      "purpose": "Understanding folders, assets, scripts, packages, and configuration files."
+    },
+    {
+      "title": "Running Your Game",
+      "parent": "Getting Started",
+      "purpose": "Running client, server, editor, and headless modes."
+    },
+    {
+      "title": "Learning Kilang",
+      "purpose": "A beginner-friendly introduction to scripting in Kinemium using Kilang."
+    },
+    {
+      "title": "Variables and Types",
+      "parent": "Learning Kilang",
+      "purpose": "Numbers, strings, booleans, tables, and type annotations."
+    },
+    {
+      "title": "Functions",
+      "parent": "Learning Kilang",
+      "purpose": "Creating reusable code and understanding scope."
+    },
+    {
+      "title": "Control Flow",
+      "parent": "Learning Kilang",
+      "purpose": "if statements, loops, pattern matching, and iteration."
+    },
+    {
+      "title": "Modules",
+      "parent": "Learning Kilang",
+      "purpose": "Creating reusable modules and importing them."
+    },
+    {
+      "title": "Your First Game",
+      "purpose": "Build a simple game while learning the engine."
+    },
+    {
+      "title": "Creating Parts",
+      "parent": "Your First Game",
+      "purpose": "Creating objects, setting properties, parenting, and destroying instances."
+    },
+    {
+      "title": "Moving Objects",
+      "parent": "Your First Game",
+      "purpose": "Using CFrame, Vector3, and movement."
+    },
+    {
+      "title": "Events",
+      "parent": "Your First Game",
+      "purpose": "Signals, input, and connecting callbacks."
+    },
+    {
+      "title": "Services",
+      "parent": "Your First Game",
+      "purpose": "Workspace, Players, Lighting, RunService, and accessing engine services."
+    },
+    {
+      "title": "Building Gameplay",
+      "parent": "Your First Game",
+      "purpose": "Combining everything into a playable experience."
+    },
+    {
+      "title": "Engine API",
+      "purpose": "Reference documentation for all scripting APIs."
+    },
+    {
+      "title": "Instances",
+      "parent": "Engine API",
+      "purpose": "All engine classes and inheritance."
+    },
+    {
+      "title": "Datatypes",
+      "parent": "Engine API",
+      "purpose": "Vector3, CFrame, Color3, UDim2, Rect, and other engine datatypes."
+    },
+    {
+      "title": "Enums",
+      "parent": "Engine API",
+      "purpose": "Complete enumeration reference."
+    },
+    {
+      "title": "Modules and Packages",
+      "parent": "Engine API",
+      "purpose": "Aliases, package imports, and module resolution."
+    },
+    {
+      "title": "Advanced Scripting",
+      "purpose": "Writing larger and more efficient games."
+    },
+    {
+      "title": "Networking",
+      "parent": "Advanced Scripting",
+      "purpose": "Client/server architecture, replication, and remote communication."
+    },
+    {
+      "title": "Physics",
+      "parent": "Advanced Scripting",
+      "purpose": "Rigid bodies, constraints, forces, and collision."
+    },
+    {
+      "title": "Rendering",
+      "parent": "Advanced Scripting",
+      "purpose": "Lighting, models, materials, animations, and rendering APIs."
+    },
+    {
+      "title": "GUI",
+      "parent": "Advanced Scripting",
+      "purpose": "Creating user interfaces using Aereon."
+    },
+    {
+      "title": "Engine Internals",
+      "purpose": "For advanced users interested in contributing to or extending Kinemium itself."
+    },
+    {
+      "title": "Instance System",
+      "parent": "Engine Internals",
+      "purpose": "How objects are created, stored, and managed internally."
+    },
+    {
+      "title": "Physics Architecture",
+      "parent": "Engine Internals",
+      "purpose": "Jolt integration, Impulse3D, synchronization, and backend abstraction."
+    }
+  ]
+}
