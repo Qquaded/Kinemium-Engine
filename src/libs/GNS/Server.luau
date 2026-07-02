@@ -118,11 +118,7 @@ end
 function Server:HandleConnectionStatusChanged(hConn, eState, remoteAddress)
 	if eState == 1 then -- Connecting: accept and add to pending (not yet authenticated)
 		gns.lib.SteamAPI_ISteamNetworkingSockets_AcceptConnection(state.sockets, hConn)
-		gns.lib.SteamAPI_ISteamNetworkingSockets_SetConnectionPollGroup(
-			state.sockets,
-			hConn,
-			self.PollGroup
-		)
+		gns.lib.SteamAPI_ISteamNetworkingSockets_SetConnectionPollGroup(state.sockets, hConn, self.PollGroup)
 
 		local address, portStr = string.match(remoteAddress or "", "([^:]+):(%d+)")
 		local port = tonumber(portStr) or 0
@@ -392,6 +388,14 @@ function Server:Shutdown()
 		gns.lib.SteamAPI_ISteamNetworkingSockets_DestroyPollGroup(state.sockets, self.PollGroup)
 		self.PollGroup = nil
 	end
+end
+
+function Server:DisconnectClient(client, reason)
+	if not client or not client.hConn then
+		return false
+	end
+	self:RemoveClient(client.hConn, reason)
+	return true
 end
 
 return Server

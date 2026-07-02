@@ -19,6 +19,10 @@ export type ManifestDecoder = "JSON" | "JSON5" | "TOML" | "YAML"
 KinemiumModService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	KinemiumModService:SetProperties({})
 
+	function KinemiumModService:GetEnabledMods()
+		return enabled_mods
+	end
+
 	function KinemiumModService:CreateModManager()
 		-- detect if editor
 		if not IsClient and not IsServer then

@@ -214,6 +214,25 @@ local function deserializeCFrame(str)
 	}
 end
 
+local function serializeColor3(value)
+	local b = buffer.create(3)
+	buffer.writeu8(b, 0, math.round(value.R * 255))
+	buffer.writeu8(b, 1, math.round(value.G * 255))
+	buffer.writeu8(b, 2, math.round(value.B * 255))
+	return buffer.tostring(b)
+end
+
+local function deserializeColor3(str)
+	local b = buffer.fromstring(str)
+	return {
+		__type = "Color3",
+		type = "Color3",
+		R = buffer.readu8(b, 0) / 255,
+		G = buffer.readu8(b, 1) / 255,
+		B = buffer.readu8(b, 2) / 255,
+	}
+end
+
 function SerializerAdapters.EnsureRegistered()
 	if registered then
 		return
@@ -222,6 +241,7 @@ function SerializerAdapters.EnsureRegistered()
 
 	Serializer.RegisterType("Vector3", serializeVector3, deserializeVector3)
 	Serializer.RegisterType("CFrame", serializeCFrame, deserializeCFrame)
+	Serializer.RegisterType("Color3", serializeColor3, deserializeColor3)
 end
 
 function SerializerAdapters.IsRegistered()

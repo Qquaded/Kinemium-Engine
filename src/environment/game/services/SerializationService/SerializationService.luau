@@ -486,6 +486,7 @@ SerializationService.InitRenderer = function(renderer, renderer_signal, datamode
 
 				if objTbl.uid then
 					id_map[objTbl.uid] = obj
+					obj._props.UniqueId = objTbl.uid
 				end
 
 				local objProps = obj._props

@@ -32,9 +32,6 @@ end
 if FlagExists("headless") then
 	return
 end
-if FlagExists("client") then
-	return
-end
 
 local aereon = require("@Aereon")
 local gui = aereon.gui
@@ -120,7 +117,7 @@ local dividerDrag = {
 	startWidth = 0,
 }
 
-local blacklisted = { "Children", "UniqueId" }
+local blacklisted = { "Children" }
 
 -- helpers
 

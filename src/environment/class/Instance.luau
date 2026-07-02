@@ -106,7 +106,7 @@ function instance_mt.__newindex(self, key, value)
 		return
 	end
 
-	if key == "UniqueId" then
+	if key == "UniqueId" and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
 		error("UniqueId is read-only", 2)
 	end
 
