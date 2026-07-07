@@ -76,6 +76,7 @@ function DataModel.new(RENDERER, ...)
 		local read = zune.fs.readFile(path)
 		local stack, success, returnedData = kilang:execute(read, {
 			SecurityCapabilities = Enum.SecurityCapabilities.Internals,
+			StackId = path,
 		})
 		local initTime = (os.clock() - addServiceStart) * 1000
 

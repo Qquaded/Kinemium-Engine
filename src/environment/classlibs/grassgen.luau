@@ -5,7 +5,6 @@ local r3dlib = r3dapi.lib
 local r3dstructs = r3dapi.structs
 local r3dconst = r3dapi.constants
 local ffi = zune.ffi
-local mem = zune.mem
 local sharedGrassMaterialPtr: any = nil
 
 local grassgen = {}

@@ -1,0 +1,18 @@
+[submodule "external/box2d"]
+	path = external/box2d
+	url = https://github.com/erincatto/box2d
+[submodule "external/gamenetworkingsockets"]
+	path = external/gamenetworkingsockets
+	url = https://github.com/valvesoftware/gamenetworkingsockets
+[submodule "external/joltc"]
+	path = external/joltc
+	url = https://github.com/amerkoleci/joltc
+[submodule "external/manifold"]
+	path = external/manifold
+	url = https://github.com/elalish/manifold
+[submodule "external/nativefiledialog"]
+	path = external/nativefiledialog
+	url = https://github.com/btzy/nativefiledialog-extended
+[submodule "external/r3d"]
+	path = external/r3d
+	url = https://github.com/Bigfoot71/r3d.git

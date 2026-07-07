@@ -859,10 +859,6 @@ local funcs = {
 	},
 	b2Body_GetMass = { returns = ffi.types.float, args = { ffi.types.pointer } },
 	b2Body_GetRotationalInertia = { returns = ffi.types.float, args = { ffi.types.pointer } },
-	b2Body_GetLocalCenterOfMass = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
-	b2Body_GetWorldCenterOfMass = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
-	b2Body_SetMassData = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.pointer } },
-	b2Body_GetMassData = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	b2Body_ApplyMassFromShapes = { returns = ffi.types.void, args = { ffi.types.pointer } },
 	b2Body_SetLinearDamping = { returns = ffi.types.void, args = { ffi.types.pointer, ffi.types.float } },
 	b2Body_GetLinearDamping = { returns = ffi.types.float, args = { ffi.types.pointer } },
@@ -1278,10 +1274,6 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.pointer },
 	},
 	b2DynamicTree_RayCast = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.u64, ffi.types.pointer, ffi.types.pointer },
-	},
-	b2DynamicTree_ShapeCast = {
 		returns = ffi.types.pointer,
 		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.u64, ffi.types.pointer, ffi.types.pointer },
 	},

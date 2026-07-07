@@ -11,14 +11,40 @@ else
 	_G.IsExecutable = false
 end
 
+local Walk = require("@FileWalker")
+local fs = zune.fs
+local filesystem = require("@filesystem")
+local httpServerViewer = require("@httpServerViewer")
+
+if not filesystem.exists("./external/build") then
+	print("Please build the engine's libraries:")
+	local command = ``
+	if zune.platform.os == "windows" then
+		command = `cd external ; mkdir build ; cd build ; cmake .. ; cmake --build . --parallel --config Release`
+	else
+		command = `cd external && mkdir build && cd build && cmake .. && cmake --build . --parallel`
+	end
+	print(" Run the following command: " .. command)
+	return
+end
+
+filesystem.createFolder(".", "vendor")
+
+Walk.Walk("./external/build", function(path, entry)
+	if entry.kind == "file" and entry.extension == `.{zune.ffi.suffix}` then
+		if filesystem.exists("vendor/" .. entry.name) then
+			return
+		end
+		fs.copy(path, "vendor/" .. entry.name)
+		print("Copied " .. path)
+	end
+end)
+
 if zune.platform.os == "windows" then
 	require("@vcredistInstaller")
 end
 
 local auto_flags = {}
-
-local httpServerViewer = require("@httpServerViewer")
-local filesystem = require("@filesystem")
 
 if filesystem.exists("./exported") then
 	local read = filesystem.read("./exported/flags.toml")
@@ -377,6 +403,7 @@ local function loadInternals()
 	end)
 
 	log(string.format("[Internals] Queued %d internal scripts", loadedCount))
+	print("fart")
 end
 
 -- LOAD USER SCRIPTS
@@ -419,7 +446,7 @@ function Kinemium:run()
 				StackId = path,
 			})
 			if not success then
-				evalError(`{id}: {tostring(result)}`)
+				print(`{id}: {tostring(result)}`)
 			end
 		end)
 	end)

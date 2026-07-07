@@ -1,5 +1,5 @@
 local ColorSequenceKeypoint = require("../environment/datatypes/ColorSequenceKeypoint")
-local Color3 = require("../environment/datatypes/Color3")
+local Color3 = require("@Color3")
 
 local testing = zune.testing
 local expect = testing.expect

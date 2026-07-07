@@ -1,5 +1,6 @@
 local fw = {}
 local fs = zune.fs
+local task = zune.task
 
 function fw.Walk(start, callback)
 	local entries = fs.entries(start)
@@ -11,7 +12,10 @@ function fw.Walk(start, callback)
 
 		if entry.kind == "directory" then
 			callback(path, entry)
-			fw.Walk(path, callback)
+			task.spawn(function()
+				fw.Walk(path, callback)
+			end)
+			continue
 		else
 			callback(path, entry)
 		end

@@ -2,7 +2,7 @@
 --!optimize 2
 -- Made by FFIGen (Kinemium)
 
-local dll = "./src/external/manifold/bin/"
+local dll = "./vendor/"
 local ffi = zune.ffi
 local zembed = require("@zembed")
 if zembed.IsEmbedded() then

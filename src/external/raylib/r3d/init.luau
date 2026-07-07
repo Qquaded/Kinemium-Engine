@@ -37,7 +37,7 @@ if _G.IsHeadless == true then
 	}
 end
 
-local dll = "./src/external/raylib/native/bin/"
+local dll = "./vendor/"
 local zembed = require("@zembed")
 if zembed.IsEmbedded() then
 	dll = zembed.ExecutableDir()

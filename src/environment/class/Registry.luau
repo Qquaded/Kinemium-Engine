@@ -24,7 +24,7 @@ for _, entry in pairs(entries) do
 	if zembed.IsEmbedded() then
 		local name = zune.fs.path.basename(entry)
 		local full = "./list/" .. name
-		requirePath = string.gsub(full, ".luau", "")
+		requirePath = string.gsub(entry, ".luau", "")
 	else
 		requirePath = "./src/environment/class/list/" .. entry.name
 	end

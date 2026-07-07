@@ -15,7 +15,7 @@ local fileFormat = ffi.suffix
 
 local dir = getPath("src/external/box2d")
 
-local result = dir .. "/bin/box2d." .. fileFormat
+local result = "./vendor/box2d." .. fileFormat
 local zembed = require("@zembed")
 if zembed.IsEmbedded() then
 	result = zembed.RuntimePath("box2d." .. fileFormat)

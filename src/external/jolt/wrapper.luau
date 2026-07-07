@@ -1,4 +1,4 @@
-local dll = "./src/external/jolt/bin/"
+local dll = "./vendor/"
 local ffi = zune.ffi
 local platform = zune.platform
 
@@ -10,9 +10,12 @@ end
 local structs = require("./structs")
 local funcs = require("./funcs")
 
-local libname = "joltc."..ffi.suffix
+ffi.dlopen(dll .. `Jolt.{ffi.suffix}`, {})
+
+local libname = "joltc_double." .. ffi.suffix
 
 local joltPath = zembed.IsEmbedded() and zune.fs.path.join(dll, libname) or (dll .. libname)
+print(joltPath)
 local jolt: typeof(funcs) = ffi.dlopen(joltPath, funcs)
 
 return {

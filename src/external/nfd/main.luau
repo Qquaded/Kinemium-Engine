@@ -17,7 +17,7 @@ local funcs = require("./funcs")
 local structs = require("./structs")
 local const = require("./constants")
 
-local libLocation = "./src/external/nfd/bin/nfd." .. ffi.suffix
+local libLocation = "./vendor/nfd." .. ffi.suffix
 local zembed = require("@zembed")
 if zembed.IsEmbedded() then
 	libLocation = zembed.RuntimePath("nfd." .. ffi.suffix)
