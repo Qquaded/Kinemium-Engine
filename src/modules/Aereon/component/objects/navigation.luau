@@ -1,9 +1,9 @@
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local rect = require("@arect")
 local color3 = require("@Color3")
 local imageTextButton = require("./imageTextButton")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
 		rounded = data.rounded or { 0.08, 8 },
@@ -37,7 +37,7 @@ return function(objects, data)
 		scrollStep = 20,
 		dividerHeight = 1,
 		expandSpeed = 12,
-		font = data.font or raylib.lib.GetFontDefault(),
+		font = data.font or adapter.lib.GetFontDefault(),
 
 		-- Indicator bar
 		indicatorY = 0,
@@ -117,7 +117,7 @@ return function(objects, data)
 						config.onItemClick(config.items[index], index)
 					end
 				end,
-			})
+			}, raylib)
 		end
 
 		return wrapper
@@ -125,7 +125,7 @@ return function(objects, data)
 
 	wrapper.render = function(dt)
 		local r = config.obj_rect
-		local scrollWheel = raylib.lib.GetMouseWheelMove()
+		local scrollWheel = adapter.lib.GetMouseWheelMove()
 
 		-- Check if mouse is hovering over the navigation
 		local navRect = rect.new(r.x, r.y, config.currentWidth, r.height)
@@ -152,7 +152,7 @@ return function(objects, data)
 		end
 
 		-- Background
-		raylib.lib.DrawRectangle(r.x, r.y, config.currentWidth, r.height, config.backgroundColor:ToRaylib(0))
+		adapter.lib.DrawRectangle(r.x, r.y, config.currentWidth, r.height, config.backgroundColor:ToRaylib(0))
 
 		-- Handle scrolling
 		if isHovering then
@@ -164,13 +164,13 @@ return function(objects, data)
 		config.hoveredIndex = -1
 		local currentY = r.y + config.padding - config.scrollOffset
 
-		raylib.lib.BeginScissorMode(r.x, r.y, config.currentWidth, r.height)
+		adapter.lib.BeginScissorMode(r.x, r.y, config.currentWidth, r.height)
 
 		local collapseOffset = config.isExpanded and 0 or (config.currentWidth - config.collapsedWidth) / 2
 		for i, item in ipairs(config.items) do
 			if item.type == "divider" then
 				-- Draw divider
-				raylib.lib.DrawRectangle(
+				adapter.lib.DrawRectangle(
 					r.x + config.padding * 2,
 					currentY + config.spacing,
 					config.currentWidth - config.padding * 4,
@@ -194,7 +194,7 @@ return function(objects, data)
 				-- Draw category title (only visible when expanded)
 				if config.textAlpha > 0.1 then
 					local categoryText = item.label or "CATEGORY"
-					raylib.lib.DrawTextEx(
+					adapter.lib.DrawTextEx(
 						config.font,
 						categoryText,
 						vector.create(r.x + config.padding * 2, currentY + 4),
@@ -224,7 +224,7 @@ return function(objects, data)
 			end
 		end
 
-		raylib.lib.EndScissorMode()
+		adapter.lib.EndScissorMode()
 
 		local contentHeight = currentY - r.y + config.padding
 		if contentHeight > r.height then
@@ -235,7 +235,7 @@ return function(objects, data)
 			local scrollbarHeight = (r.height / contentHeight) * r.height
 			local scrollbarY = r.y + (config.scrollOffset / maxScroll) * (r.height - scrollbarHeight)
 
-			raylib.lib.DrawRectangle(
+			adapter.lib.DrawRectangle(
 				r.x + config.currentWidth - scrollbarWidth - 2,
 				scrollbarY,
 				scrollbarWidth,

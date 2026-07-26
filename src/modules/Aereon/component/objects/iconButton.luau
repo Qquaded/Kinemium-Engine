@@ -1,18 +1,20 @@
-local raylib = require("@raylib")
+return function(objects, data, raylib)
+	local structs = raylib.structs
 
-local structs = raylib.structs
+	local rect = require("@arect")
 
-local rect = require("@arect")
+	local color3 = require("@Color3")
 
-local color3 = require("@Color3")
+	local effects = require("./effects")
 
-local effects = require("./effects")
-
-return function(objects, data)
 	local config = {
 
-		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.size or data[3] or 40, data.size or data[4] or 40
-),
+		obj_rect = rect.new(
+			data.x or data[1],
+			data.y or data[2],
+			data.size or data[3] or 40,
+			data.size or data[4] or 40
+		),
 
 		icon = data.icon,
 
@@ -88,13 +90,19 @@ return function(objects, data)
 
 			local iconY = r.y + (r.height - iconSize) / 2
 
-			raylib.lib.DrawTexturePro(config.icon.texture, structs.Rectangle:new({ x = 0, y = 0, width = config.icon.x, height = config.icon.y }), structs.Rectangle:new({
-				x = iconX,
-				y = iconY,
-				width = iconSize,
-				height = iconSize,
-			}), vector.create(0, 0), 0, raylib.const.WHITE
-)
+			raylib.lib.DrawTexturePro(
+				config.icon.texture,
+				structs.Rectangle:new({ x = 0, y = 0, width = config.icon.x, height = config.icon.y }),
+				structs.Rectangle:new({
+					x = iconX,
+					y = iconY,
+					width = iconSize,
+					height = iconSize,
+				}),
+				vector.create(0, 0),
+				0,
+				raylib.const.WHITE
+			)
 		end
 
 		if buttonEffects.isHovered() and raylib.lib.IsMouseButtonReleased(0) == 1 and config.onClick then

@@ -1,12 +1,12 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1],
@@ -48,14 +48,14 @@ return function(objects, data)
 		local centerY = r.y + r.height / 2
 		local radius = r.width / 2
 
-		raylib.lib.DrawCircleV(vector.create(centerX, centerY), radius, config.ringColor:ToRaylib(0))
+		adapter.lib.DrawCircleV(vector.create(centerX, centerY), radius, config.ringColor:ToRaylib(0))
 
 		if config.animProgress > 0.1 then
 			local fillRadius = radius * 0.5 * config.animProgress
-			raylib.lib.DrawCircleV(vector.create(centerX, centerY), fillRadius, config.fillColor:ToRaylib(0))
+			adapter.lib.DrawCircleV(vector.create(centerX, centerY), fillRadius, config.fillColor:ToRaylib(0))
 		end
 
-		if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
+		if rect.MouseIsInRect(r) and adapter.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 			config.value = true
 			if config.onChanged then
 				config.onChanged(config.value)

@@ -1,20 +1,18 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+return function(objects, data, raylib)
+	local structs = raylib.structs
+	local rect = require("@arect")
+	local color3 = require("@Color3")
 
-local function c3tr(c, transparency)
-	local r, g, b = c:ToRGB()
-	return structs.Color:new({
-		r = r,
-		g = g,
-		b = b,
-		a = math.floor(255 * (1 - transparency)),
-	})
-end
+	local function c3tr(c, transparency)
+		local r, g, b = c:ToRGB()
+		return structs.Color:new({
+			r = r,
+			g = g,
+			b = b,
+			a = math.floor(255 * (1 - transparency)),
+		})
+	end
 
-local rect = require("@arect")(raylib.lib)
-local color3 = require("@Color3")
-
-return function(objects, data)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1] or 0,

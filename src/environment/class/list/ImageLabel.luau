@@ -4,9 +4,9 @@ local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
 local _Enum = require("@EnumMap")
 local GuiObject = require("@GuiObject")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
-local lib = raylib.lib
+local lib = adapter.lib
 
 local roundedShader
 
@@ -80,7 +80,7 @@ propTable.render = function(lib, object, dt, structs, renderer)
 				})
 
 				if object.Shader and object.Shader._shader then
-					raylib.lib.BeginShaderMode(object.Shader._shader)
+					adapter.lib.BeginShaderMode(object.Shader._shader)
 				end
 				lib.DrawTexturePro(
 					object._cached,
@@ -91,7 +91,7 @@ propTable.render = function(lib, object, dt, structs, renderer)
 					rcol
 				)
 				if object.Shader and object.Shader._shader then
-					raylib.lib.EndShaderMode()
+					adapter.lib.EndShaderMode()
 				end
 			end
 		end
@@ -122,7 +122,7 @@ propTable.render = function(lib, object, dt, structs, renderer)
 			})
 
 			if object.Shader and object.Shader._shader then
-				raylib.lib.BeginShaderMode(object.Shader._shader)
+				adapter.lib.BeginShaderMode(object.Shader._shader)
 			end
 			lib.DrawTexturePro(
 				object._cached,
@@ -133,7 +133,7 @@ propTable.render = function(lib, object, dt, structs, renderer)
 				rcol
 			)
 			if object.Shader and object.Shader._shader then
-				raylib.lib.EndShaderMode()
+				adapter.lib.EndShaderMode()
 			end
 		end
 	end
@@ -153,8 +153,8 @@ return {
 	callback = function(instance, renderer)
 		if type(instance.Image) == "string" and not _G.IsHeadless then
 			instance._cached = lib.LoadTexture(zembed.AssetPath(instance.Image))
-			lib.SetTextureFilter(instance._cached, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
-			lib.SetTextureWrap(instance._cached, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
+			lib.SetTextureFilter(instance._cached, adapter.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
+			lib.SetTextureWrap(instance._cached, adapter.const.TextureWrap.TEXTURE_WRAP_CLAMP)
 			lib.GenTextureMipmaps(instance._cached)
 		end
 
@@ -165,8 +165,8 @@ return {
 						lib.UnloadTexture(instance._cached)
 					end
 					instance._cached = lib.LoadTexture(zembed.AssetPath(instance.Image))
-					lib.SetTextureFilter(instance._cached, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
-					lib.SetTextureWrap(instance._cached, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
+					lib.SetTextureFilter(instance._cached, adapter.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
+					lib.SetTextureWrap(instance._cached, adapter.const.TextureWrap.TEXTURE_WRAP_CLAMP)
 					lib.GenTextureMipmaps(instance._cached)
 				else
 					-- Drop cached string representation backing if swapping to an editable map type

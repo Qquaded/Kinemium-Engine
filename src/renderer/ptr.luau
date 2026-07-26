@@ -1,5 +1,5 @@
 local ffi = zune.ffi
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
 local function float_ptr(value: number): FFIPointer
 	local ptr = ffi.create(ffi.types.float)
@@ -24,7 +24,7 @@ local function vec4_ptr(x, y, z, w)
 	return arr
 end
 
-local function Vector3RotateByAxisAngle(v: raylib.Vector3, axis: raylib.Vector3, angle: number): raylib.Vector3
+local function Vector3RotateByAxisAngle(v: adapter.Vector3, axis: adapter.Vector3, angle: number): adapter.Vector3
 	local length = vector.magnitude(axis)
 	if length == 0.0 then
 		length = 1.0

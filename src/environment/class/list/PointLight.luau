@@ -2,15 +2,15 @@
 local Vector3 = require("@Vector3")
 local Color3 = require("@Color3")
 
-local r3d = require("@r3d")
+local r3d = require("@raylibadapter")
 local rlib = r3d.lib
 
 local propTable = {
 	Color = Color3.new(1, 1, 1),
-	Brightness = 15, -- intensity of the light
-	Range = 12, -- how far the light reaches
-	CastShadow = false, -- casts shadows or not
-	Enabled = true, -- whether the light is active
+	Brightness = 15,
+	Range = 12,
+	CastShadow = false,
+	Enabled = true,
 	Transparency = 0,
 	Position = Vector3.new(0, 0, 0),
 	DebugShape = false,

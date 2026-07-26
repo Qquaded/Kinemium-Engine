@@ -6,8 +6,8 @@ local Color3 = require("@Color3")
 local Vector3 = require("@Vector3")
 local NetworkOwnership = require("@NetworkOwnership")
 
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 
 local propTable = {
 	Attachment0 = nil,
@@ -162,7 +162,7 @@ return {
 
 			local color = instance.Color
 			local rlColor =
-				raylib.structs.Color:new({ r = color.R * 255, g = color.G * 255, b = color.B * 255, a = 255 })
+				adapter.structs.Color:new({ r = color.R * 255, g = color.G * 255, b = color.B * 255, a = 255 })
 
 			local diff = wPos1 - wPos0
 			local length = diff:Magnitude()
@@ -211,7 +211,7 @@ return {
 
 				local currentPos = baseCenter + offset
 
-				rl.DrawLineEx(
+				adapter.DrawLineEx(
 					vector.create(prevPos.X, prevPos.Y, prevPos.Z),
 					vector.create(currentPos.X, currentPos.Y, currentPos.Z),
 					instance.Thickness,

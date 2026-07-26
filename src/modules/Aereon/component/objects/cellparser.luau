@@ -1,4 +1,4 @@
-return function(objects, config)
+return function(objects, config, raylib)
 	local cells = {}
 	local cellRefs = {}
 	local MergedCell = require("./cellItem")
@@ -44,7 +44,7 @@ return function(objects, config)
 
 			onValueChange = cellConfig.onValueChange,
 			onClick = cellConfig.onClick,
-		})
+		}, raylib)
 
 		return cell
 	end

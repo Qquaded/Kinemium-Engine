@@ -1,4 +1,3 @@
-local raylib = require("@raylib")
 local color3 = require("@Color3")
 local rect = require("@arect")
 local textButton = require("./textButton")
@@ -6,22 +5,7 @@ local imageButton = require("./imageButton")
 local colorPicker = require("./colorPicker")
 local zembed = require("@zembed")
 
-local colorIcon = nil
-local function getColorIcon()
-	if not colorIcon then
-		local tex = raylib.lib.LoadTexture(zembed.AssetPath("kineasset://images/icons/ColorPicker.png"))
-		if tex then
-			colorIcon = {
-				texture = tex,
-				x = buffer.readi32(tex, 4),
-				y = buffer.readi32(tex, 8),
-			}
-		end
-	end
-	return colorIcon
-end
-
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1] or 0,
@@ -56,6 +40,21 @@ return function(objects, data)
 		_targetY = 0,
 		_lerpSpeed = 14, -- higher = snappier
 	}
+
+	local colorIcon = nil
+	local function getColorIcon()
+		if not colorIcon then
+			local tex = raylib.lib.LoadTexture(zembed.AssetPath("kineasset://images/icons/ColorPicker.png"))
+			if tex then
+				colorIcon = {
+					texture = tex,
+					x = buffer.readi32(tex, 4),
+					y = buffer.readi32(tex, 8),
+				}
+			end
+		end
+		return colorIcon
+	end
 
 	local function colorToHex(c, a)
 		local r, g, b = c:ToRGB()
@@ -123,7 +122,7 @@ return function(objects, data)
 					config.onColorSelected(c, a)
 				end
 			end,
-		})
+		}, raylib)
 		config._picker.setColor(config.color)
 	end
 
@@ -152,7 +151,7 @@ return function(objects, data)
 		font = config.font,
 		rounded = config.rounded,
 		onClick = togglePicker,
-	})
+	}, raylib)
 
 	-- Icon button (right part): color dropper/picker icon
 	local imgBtn = imageButton({}, {
@@ -163,7 +162,7 @@ return function(objects, data)
 		pressColor = config.pressColor,
 		rounded = config.rounded,
 		onClick = togglePicker,
-	})
+	}, raylib)
 
 	local wrapper = {}
 

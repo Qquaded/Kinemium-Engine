@@ -1,6 +1,6 @@
 local Instance = require("@Instance")
 local aereon = require("@Aereon")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local Color3 = require("@Color3")
 local signal = require("@Kinemium.signal")
 local Enum = require("@EnumMap")
@@ -8,8 +8,8 @@ local Enum = require("@EnumMap")
 local Plugin = Instance.new("Plugin")
 Plugin._Intents = Enum.PluginIntents.UI
 
-local lib = raylib.lib
-local structs = raylib.structs
+local lib = adapter.lib
+local structs = adapter.structs
 local arect = require("@arect")
 
 local NON_WIDGET_KEYS = {
@@ -1790,7 +1790,7 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 			if StudioThemeService then
 				local dt = lib.GetFrameTime()
 				window.update(dt, StudioThemeService.SelectedTheme.aereon)
-				window.draw(dt, StudioThemeService.SelectedTheme.aereon)
+				window.draw(dt, StudioThemeService.SelectedTheme, renderer.Lib2d)
 			end
 		end)
 	end)

@@ -1,6 +1,6 @@
-local raylib = require("@raylib")
-local lib = raylib.lib
-local const = raylib.const
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
+local const = adapter.const
 
 local CFrame = require("@CFrame")
 local Vector3 = require("@Vector3")

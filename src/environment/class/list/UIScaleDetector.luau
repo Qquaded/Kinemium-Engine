@@ -2,7 +2,7 @@
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
 local UDim2 = require("@UDim2")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local MouseCursor = require("@Kinemium.MouseCursor")
 
 local aereon = require("@Aereon")
@@ -23,14 +23,14 @@ local HANDLES = {
 }
 
 local CURSORS = {
-	TL = raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_NWSE,
-	BR = raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_NWSE,
-	TR = raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_NESW,
-	BL = raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_NESW,
-	T = raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_NS,
-	B = raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_NS,
-	L = raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_EW,
-	R = raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_EW,
+	TL = adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_NWSE,
+	BR = adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_NWSE,
+	TR = adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_NESW,
+	BL = adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_NESW,
+	T = adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_NS,
+	B = adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_NS,
+	L = adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_EW,
+	R = adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_EW,
 }
 
 local function getParentMetrics(parent)
@@ -49,8 +49,10 @@ local function getParentMetrics(parent)
 	if parent.AbsoluteSize then
 		parentSize = parent.AbsoluteSize
 	elseif parent.Size and parent.Size.ToPixels then
-		local dpiScale = raylib.lib.GetWindowScaleDPI()
-		parentSize = parent.Size:ToPixels(Vector2.new(raylib.lib.GetRenderWidth() / dpiScale.x, raylib.lib.GetRenderHeight() / dpiScale.y))
+		local dpiScale = adapter.lib.GetWindowScaleDPI()
+		parentSize = parent.Size:ToPixels(
+			Vector2.new(adapter.lib.GetRenderWidth() / dpiScale.x, adapter.lib.GetRenderHeight() / dpiScale.y)
+		)
 	end
 
 	return parentAbsPos, parentSize
@@ -123,7 +125,7 @@ return {
 
 			local parentAbsPos, parentSize = getParentMetrics(adornee.Parent)
 			local anchor = adornee.AnchorPoint or ZERO_V2
-			local mousePos = raylib.lib.GetMousePosition()
+			local mousePos = adapter.lib.GetMousePosition()
 			local mx, my = mousePos.x, mousePos.y
 
 			--  Active resize
@@ -169,9 +171,9 @@ return {
 
 				-- Clamp to screen
 				if instance.RespectScreenBounds then
-					local dpiScale = raylib.lib.GetWindowScaleDPI()
-					local screenW = raylib.lib.GetScreenWidth() / dpiScale.x
-					local screenH = raylib.lib.GetScreenHeight() / dpiScale.y
+					local dpiScale = adapter.lib.GetWindowScaleDPI()
+					local screenW = adapter.lib.GetScreenWidth() / dpiScale.x
+					local screenH = adapter.lib.GetScreenHeight() / dpiScale.y
 					left = math.clamp(left, 0, screenW)
 					top = math.clamp(top, 0, screenH)
 					right = math.clamp(right, 0, screenW)
@@ -206,10 +208,10 @@ return {
 
 				MouseCursor.request(CURSORS[instance.activeHandle])
 
-				if raylib.lib.IsMouseButtonReleased(0) == 1 then
+				if adapter.lib.IsMouseButtonReleased(0) == 1 then
 					instance.isResizing = false
 					instance.activeHandle = nil
-					MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
+					MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
 				end
 
 				return
@@ -223,7 +225,7 @@ return {
 					hoveredHandle = key
 					MouseCursor.request(CURSORS[key])
 
-					if raylib.lib.IsMouseButtonDown(0) == 1 and not instance.isResizing then
+					if adapter.lib.IsMouseButtonDown(0) == 1 and not instance.isResizing then
 						instance.isResizing = true
 						instance.activeHandle = key
 						instance._startMouse = Vector3.new(mx, my, 0)
@@ -236,7 +238,7 @@ return {
 			end
 
 			if not hoveredHandle then
-				MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
+				MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
 			end
 		end
 

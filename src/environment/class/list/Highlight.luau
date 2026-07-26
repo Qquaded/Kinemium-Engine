@@ -1,6 +1,6 @@
 -- description: "Highlights a 3d object with customizable color and transparency."
 local Color3 = require("@Color3")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter").lib
 
 local propTable = {
 	Adornee = nil,
@@ -23,14 +23,14 @@ local function drawRotatedCube(rl, cf, size, color, fill, outlineThickness)
 	else
 		ax, ay, az = qx / s, qy / s, qz / s
 	end
-	rl.rlPushMatrix()
-	rl.rlTranslatef(p.X, p.Y, p.Z)
-	rl.rlRotatef(angle, ax, ay, az)
-	rl.DrawCubeV(vector.create(0, 0, 0), vector.create(size.X, size.Y, size.Z), fill)
-	rl.rlSetLineWidth(outlineThickness or 1.0)
-	rl.DrawCubeWiresV(vector.create(0, 0, 0), vector.create(size.X, size.Y, size.Z), color)
-	rl.rlSetLineWidth(1.0) -- reset after
-	rl.rlPopMatrix()
+	adapter.rlPushMatrix()
+	adapter.rlTranslatef(p.X, p.Y, p.Z)
+	adapter.rlRotatef(angle, ax, ay, az)
+	adapter.DrawCubeV(vector.create(0, 0, 0), vector.create(size.X, size.Y, size.Z), fill)
+	adapter.rlSetLineWidth(outlineThickness or 1.0)
+	adapter.DrawCubeWiresV(vector.create(0, 0, 0), vector.create(size.X, size.Y, size.Z), color)
+	adapter.rlSetLineWidth(1.0) -- reset after
+	adapter.rlPopMatrix()
 end
 
 return {
@@ -48,7 +48,7 @@ return {
 				local Size = adornee.Size
 
 				drawRotatedCube(
-					raylib.lib,
+					adapter.lib,
 					CFrame,
 					Size,
 					instance.OutlineColor:ToRaylib(instance.OutlineTransparency),

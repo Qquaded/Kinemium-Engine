@@ -1,6 +1,6 @@
 -- devcell
-local rl = require("@raylib")
-local raylib = rl.lib
+local raylib = require("@raylib")
+local adapter = raylib.lib
 
 local function lerp(a, b, t)
 	return a + (b - a) * t
@@ -11,7 +11,7 @@ local doubleClickThreshold = 0.1 -- 300ms
 
 local rect = {}
 
-local structs, _ = rl.structs, rl.const
+local structs, _ = raylib.structs, raylib.const
 
 function rect.new(x, y, width, height)
 	return {
@@ -128,7 +128,7 @@ function rect.centerInside(a, b)
 end
 
 function rect.MouseIsInRect(rect)
-	local mousePos = raylib.GetMousePosition()
+	local mousePos = adapter.GetMousePosition()
 	local function isMouseInRect(rect)
 		return mousePos.x >= rect.x
 			and mousePos.x <= rect.x + rect.width
@@ -139,7 +139,7 @@ function rect.MouseIsInRect(rect)
 end
 
 function rect.MouseIsOutsideRect(rect)
-	local mousePos = raylib.GetMousePosition()
+	local mousePos = adapter.GetMousePosition()
 	return not (
 		mousePos.x >= rect.x
 		and mousePos.x <= rect.x + rect.width
@@ -149,7 +149,7 @@ function rect.MouseIsOutsideRect(rect)
 end
 
 function rect.MouseOutsideSide(rect)
-	local mousePos = raylib.GetMousePosition()
+	local mousePos = adapter.GetMousePosition()
 
 	if
 		mousePos.x >= rect.x
@@ -172,7 +172,7 @@ function rect.MouseOutsideSide(rect)
 end
 
 function rect.MouseOutsideSideDistance(rect)
-	local mousePos = raylib.GetMousePosition()
+	local mousePos = adapter.GetMousePosition()
 
 	local left = rect.x
 	local right = rect.x + rect.width
@@ -206,7 +206,7 @@ function rect.render(object, color)
 	sharedColor.b = math.floor(color.b)
 	sharedColor.a = math.floor(color.a)
 
-	raylib.DrawRectangleRec(object.rect, sharedColor)
+	adapter.DrawRectangleRec(object.rect, sharedColor)
 end
 
 function rect.renderRounded(object, radius, segments, color)
@@ -217,11 +217,11 @@ function rect.renderRounded(object, radius, segments, color)
 	sharedColor.b = math.floor(color.b)
 	sharedColor.a = math.floor(color.a)
 
-	raylib.DrawRectangleRounded(object.rect, radius or 0.1, segments or 8, sharedColor)
+	adapter.DrawRectangleRounded(object.rect, radius or 0.1, segments or 8, sharedColor)
 end
 
 function rect.NearestSide(rect)
-	local mousePos = raylib.GetMousePosition()
+	local mousePos = adapter.GetMousePosition()
 
 	local left = rect.x
 	local right = rect.x + rect.width
@@ -247,7 +247,7 @@ function rect.NearestSide(rect)
 end
 
 function rect.DistanceToSides(rect)
-	local mousePos = raylib.GetMousePosition()
+	local mousePos = adapter.GetMousePosition()
 
 	local left = rect.x
 	local right = rect.x + rect.width
@@ -263,7 +263,7 @@ function rect.DistanceToSides(rect)
 end
 
 function rect.MouseCorner(rect, cornerSize)
-	local mousePos = raylib.GetMousePosition()
+	local mousePos = adapter.GetMousePosition()
 	cornerSize = cornerSize or 10
 
 	local left = rect.x
@@ -305,28 +305,25 @@ function rect.HoverLeave(object, left)
 end
 
 function rect.Button(object, clicked)
-	if raylib.IsMouseButtonReleased(0) == 1 and rect.MouseIsInRect(object) and not _G.__aereon_blockInput then
+	if adapter.IsMouseButtonReleased(0) == 1 and rect.MouseIsInRect(object) and not _G.__aereon_blockInput then
 		clicked(object)
 	end
 end
 
 function rect.RightClick(object, clicked)
-	if raylib.IsMouseButtonReleased(1) == 1 and rect.MouseIsInRect(object) then
+	if adapter.IsMouseButtonReleased(1) == 1 and rect.MouseIsInRect(object) then
 		clicked(object)
 	end
 end
 
 function rect.DoubleClick(object, callback)
-	if raylib.IsMouseButtonPressed(0) == 1 and rect.MouseIsInRect(object) then
-		print("blud in rect")
+	if adapter.IsMouseButtonPressed(0) == 1 and rect.MouseIsInRect(object) then
 		local currentTime = os.clock()
 
 		if doubleClickData[object] and (currentTime - doubleClickData[object]) < doubleClickThreshold then
-			print("DOUBLE CLICK DETECTED!")
 			callback(object)
 			doubleClickData[object] = nil
 		else
-			print("First click at:", currentTime)
 			doubleClickData[object] = currentTime
 		end
 	end

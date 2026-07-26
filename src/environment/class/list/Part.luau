@@ -38,6 +38,7 @@ local propTable = {
 	ElapsedTime = 0,
 	Name = "Part",
 	BaseClass = "BasePart",
+	IsKinematic = false,
 
 	_mesh = nil,
 	_manifoldptr = nil,

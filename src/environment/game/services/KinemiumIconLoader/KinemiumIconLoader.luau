@@ -6,8 +6,8 @@ local KinemiumIconLoader = Instance.new("KinemiumIconLoader")
 KinemiumIconLoader.ExplorerHidden = true
 KinemiumIconLoader._Intents = Enum.PluginIntents.UI
 
-local raylib = require("@raylib")
-local lib = raylib.lib
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
 
 local zembed = require("@zembed")
 local general = zembed.AssetPath("kineasset://images/icons")
@@ -19,7 +19,7 @@ KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 	local registry = {}
 	local textures = {}
 
-	local raylib = require("@raylib")
+	local adapter = require("@RaylibAdapter")
 
 	local function reload()
 		for _, data in pairs(textures) do
@@ -55,15 +55,15 @@ KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 				return nil
 			end
 
-			local ext = filename and raylib.lib.GetFileExtension(filename) or ".png"
-			local image_ptr = raylib.lib.LoadImageFromMemory(ext, buffer_data, buffer.len(buffer_data))
+			local ext = filename and adapter.lib.GetFileExtension(filename) or ".png"
+			local image_ptr = adapter.lib.LoadImageFromMemory(ext, buffer_data, buffer.len(buffer_data))
 
 			if typeof(image_ptr) == "buffer" then
-				local image_struct = raylib.structs.Image:new({})
+				local image_struct = adapter.structs.Image:new({})
 				zune.mem.copy(image_struct, 0, image_ptr, 0, 24)
 
-				local succ, texture = pcall(raylib.lib.LoadTextureFromImage, image_struct)
-				raylib.lib.UnloadImage(image_struct)
+				local succ, texture = pcall(adapter.lib.LoadTextureFromImage, image_struct)
+				adapter.lib.UnloadImage(image_struct)
 				if succ and typeof(texture) == "buffer" then
 					local size = vector.create(buffer.readi32(texture, 4), buffer.readi32(texture, 8))
 
@@ -73,9 +73,9 @@ KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 						y = size.y,
 					}
 
-					raylib.lib.SetTextureFilter(texture, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
-					raylib.lib.SetTextureWrap(texture, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
-					raylib.lib.GenTextureMipmaps(texture)
+					adapter.lib.SetTextureFilter(texture, adapter.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
+					adapter.lib.SetTextureWrap(texture, adapter.const.TextureWrap.TEXTURE_WRAP_CLAMP)
+					adapter.lib.GenTextureMipmaps(texture)
 
 					return data
 				end
@@ -105,8 +105,8 @@ KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 				y = size.y,
 			}
 
-			lib.SetTextureFilter(texture, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
-			lib.SetTextureWrap(texture, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
+			lib.SetTextureFilter(texture, adapter.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
+			lib.SetTextureWrap(texture, adapter.const.TextureWrap.TEXTURE_WRAP_CLAMP)
 			lib.GenTextureMipmaps(texture)
 
 			textures[path] = data
@@ -148,8 +148,8 @@ KinemiumIconLoader.InitRenderer = function(renderer, renderer_signal)
 				y = 0,
 			}
 
-			lib.SetTextureFilter(texture, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
-			lib.SetTextureWrap(texture, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
+			lib.SetTextureFilter(texture, adapter.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
+			lib.SetTextureWrap(texture, adapter.const.TextureWrap.TEXTURE_WRAP_CLAMP)
 			lib.GenTextureMipmaps(texture)
 
 			return texture

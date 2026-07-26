@@ -2,7 +2,7 @@
 local Signal = require("@Kinemium.signal")
 local Enum = require("@EnumMap")
 local Vector3 = require("@Vector3")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
 local task = zune.task
 
@@ -38,7 +38,7 @@ return {
 	callback = function(instance, renderer)
 		instance:SetProperties(propTable)
 
-		raylib.lib.InitAudioDevice()
+		adapter.lib.InitAudioDevice()
 
 		local function updateVolume()
 			if not instance.IsLoaded then
@@ -47,9 +47,9 @@ return {
 			local groupVol = instance.SoundGroup and instance.SoundGroup.Volume or 1.0
 			instance._effectiveVolume = instance.Volume * groupVol * instance._fadeVolume
 			if instance.IsStream then
-				raylib.lib.SetMusicVolume(instance._raylibSound, instance._effectiveVolume)
+				adapter.lib.SetMusicVolume(instance._raylibSound, instance._effectiveVolume)
 			else
-				raylib.lib.SetSoundVolume(instance._raylibSound, instance._effectiveVolume)
+				adapter.lib.SetSoundVolume(instance._raylibSound, instance._effectiveVolume)
 			end
 		end
 
@@ -58,18 +58,18 @@ return {
 				return
 			end
 			if instance.IsStream then
-				raylib.lib.SetMusicPitch(instance._raylibSound, instance.Pitch)
+				adapter.lib.SetMusicPitch(instance._raylibSound, instance.Pitch)
 			else
-				raylib.lib.SetSoundPitch(instance._raylibSound, instance.Pitch)
+				adapter.lib.SetSoundPitch(instance._raylibSound, instance.Pitch)
 			end
 		end
 
 		local function loadAudio()
 			if instance._raylibSound then
 				if instance.IsStream then
-					raylib.lib.UnloadMusicStream(instance._raylibSound)
+					adapter.lib.UnloadMusicStream(instance._raylibSound)
 				else
-					raylib.lib.UnloadSound(instance._raylibSound)
+					adapter.lib.UnloadSound(instance._raylibSound)
 				end
 				instance._raylibSound = nil
 			end
@@ -81,11 +81,11 @@ return {
 
 			local soundPath = instance.SoundId
 			if instance.IsStream then
-				instance._raylibSound = raylib.lib.LoadMusicStream(soundPath)
+				instance._raylibSound = adapter.lib.LoadMusicStream(soundPath)
 				-- MusicStreams are pointer/objects, but in FFI they return valid if loaded
 				instance.IsLoaded = instance._raylibSound ~= nil
 			else
-				instance._raylibSound = raylib.lib.LoadSound(soundPath)
+				instance._raylibSound = adapter.lib.LoadSound(soundPath)
 				instance.IsLoaded = instance._raylibSound ~= nil
 			end
 
@@ -128,9 +128,9 @@ return {
 			if self.IsLoaded and not self.Playing then
 				fadeTo(1.0, fadeDuration)
 				if self.IsStream then
-					raylib.lib.PlayMusicStream(self._raylibSound)
+					adapter.lib.PlayMusicStream(self._raylibSound)
 				else
-					raylib.lib.PlaySound(self._raylibSound)
+					adapter.lib.PlaySound(self._raylibSound)
 				end
 				self.Playing = true
 				if self.Played then
@@ -148,9 +148,9 @@ return {
 					task.delay(fadeDuration, function()
 						if self.Playing then
 							if self.IsStream then
-								raylib.lib.StopMusicStream(self._raylibSound)
+								adapter.lib.StopMusicStream(self._raylibSound)
 							else
-								raylib.lib.StopSound(self._raylibSound)
+								adapter.lib.StopSound(self._raylibSound)
 							end
 							self.Playing = false
 							self.TimePosition = 0
@@ -158,9 +158,9 @@ return {
 					end)
 				else
 					if self.IsStream then
-						raylib.lib.StopMusicStream(self._raylibSound)
+						adapter.lib.StopMusicStream(self._raylibSound)
 					else
-						raylib.lib.StopSound(self._raylibSound)
+						adapter.lib.StopSound(self._raylibSound)
 					end
 					self.Playing = false
 					self.TimePosition = 0
@@ -176,17 +176,17 @@ return {
 					fadeTo(0.0, fadeDuration)
 					task.delay(fadeDuration, function()
 						if self.IsStream then
-							raylib.lib.PauseMusicStream(self._raylibSound)
+							adapter.lib.PauseMusicStream(self._raylibSound)
 						else
-							raylib.lib.PauseSound(self._raylibSound)
+							adapter.lib.PauseSound(self._raylibSound)
 						end
 						self.Playing = false
 					end)
 				else
 					if self.IsStream then
-						raylib.lib.PauseMusicStream(self._raylibSound)
+						adapter.lib.PauseMusicStream(self._raylibSound)
 					else
-						raylib.lib.PauseSound(self._raylibSound)
+						adapter.lib.PauseSound(self._raylibSound)
 					end
 					self.Playing = false
 				end
@@ -198,9 +198,9 @@ return {
 		instance.Resume = function(self, fadeDuration)
 			if self.IsLoaded then
 				if self.IsStream then
-					raylib.lib.ResumeMusicStream(self._raylibSound)
+					adapter.lib.ResumeMusicStream(self._raylibSound)
 				else
-					raylib.lib.ResumeSound(self._raylibSound)
+					adapter.lib.ResumeSound(self._raylibSound)
 				end
 				self.Playing = true
 				fadeTo(1.0, fadeDuration)

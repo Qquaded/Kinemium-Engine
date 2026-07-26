@@ -1,6 +1,6 @@
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
-local structs = raylib.structs
+local structs = adapter.structs
 
 local function c3tr(c, transparency)
 	local r, g, b = c:ToRGB()
@@ -21,9 +21,9 @@ local rect = require("@arect")
 
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4] or 20),
@@ -64,16 +64,24 @@ return function(objects, data)
 
 		config.currentProgress = config.currentProgress + (config.progress - config.currentProgress) * 0.1
 
-		raylib.lib.DrawRectangleRounded(rect:translate(r), config.rounded[1], config.rounded[2], c3tr(config.backgroundColor, 0)
-)
+		adapter.lib.DrawRectangleRounded(
+			rect:translate(r),
+			config.rounded[1],
+			config.rounded[2],
+			c3tr(config.backgroundColor, 0)
+		)
 
 		local fillWidth = r.width * config.currentProgress
 
 		if fillWidth > 0 then
 			local fillRect = rect.new(r.x, r.y, fillWidth, r.height)
 
-			raylib.lib.DrawRectangleRounded(rect:translate(fillRect), config.rounded[1], config.rounded[2], c3tr(config.fillColor, 0)
-)
+			adapter.lib.DrawRectangleRounded(
+				rect:translate(fillRect),
+				config.rounded[1],
+				config.rounded[2],
+				c3tr(config.fillColor, 0)
+			)
 		end
 	end
 

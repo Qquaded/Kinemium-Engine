@@ -32,9 +32,11 @@ for _, entry in pairs(entries) do
 
 	local r, s, returned = kilang:execute(source, {
 		SecurityCapabilities = Enum.SecurityCapabilities.Internals,
+		StackId = requirePath,
 	})
 
 	if not s then
+		print(r, s)
 		continue
 	end
 

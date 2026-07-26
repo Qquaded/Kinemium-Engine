@@ -496,8 +496,12 @@ renderer.Pool.new("2d", function(data)
 
 	if game.Context == Enum.GameContext.Editor then
 		window.update(dt)
-		window.draw(dt, mainTheme.aereon)
+		window.draw(dt, mainTheme, renderer.Lib2d)
 	end
+
+	frame.Position = Theme.WindowConfig.Output.position
+	frame.AnchorPoint = Theme.WindowConfig.Output.anchorPoint
+	frame.Size = Theme.WindowConfig.Output.size
 
 	if rl.IsWindowResized() == 1 then
 		propback.x = frame.AbsolutePosition.X

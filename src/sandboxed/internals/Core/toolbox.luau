@@ -3,7 +3,7 @@
 local KinemiumRaylib = game:GetService("KinemiumRaylib")
 local StudioThemeService = game:GetService("StudioThemeService")
 local aereon = require("@Aereon")
-local raylib = require("@raylib")
+local raylib = require("@RaylibAdapter")
 local rl = raylib.lib
 local renderer = KinemiumRaylib.GetRenderer()
 local NewToolbarElement = ishared.NewToolbarElement
@@ -177,5 +177,5 @@ renderer.Hook.new("After2D", function(data)
 		return
 	end
 	window.update(dt)
-	window.draw(dt, mainTheme.aereon)
+	window.draw(dt, mainTheme, renderer.Lib2d)
 end)

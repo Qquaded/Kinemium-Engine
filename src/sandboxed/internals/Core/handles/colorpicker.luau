@@ -12,9 +12,9 @@ local aRect = require("@aRect")
 
 local renderer = game:GetService("KinemiumRaylib").GetRenderer()
 local StudioThemeService = game:GetService("StudioThemeService")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local Selection = game:GetService("Selection")
-local rl = raylib.lib
+local rl = adapter.lib
 
 local aereon = require("@Aereon")
 local gui = aereon.gui

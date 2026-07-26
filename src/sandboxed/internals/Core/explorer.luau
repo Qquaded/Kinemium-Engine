@@ -54,8 +54,9 @@ local spring = import("@kispring")
 local aereon = import("@Aereon")
 local gui = aereon.gui
 local LocalPlayer = Players.LocalPlayer
-local rl = KinemiumRaylib.GetLib()
-local structs = KinemiumRaylib.GetStructs()
+local interface = require("@RaylibAdapter")
+local rl = interface.lib
+local structs = interface.structs
 local addMenuOpenBool = false
 local EngineSignal = game.EngineSignal
 local hoverspring = spring.new(2, 5)
@@ -1272,11 +1273,10 @@ local renderer = KinemiumRaylib.GetRenderer()
 
 renderer.Pool.new("2d", function(data)
 	local dt = rl.GetFrameTime()
-	local mainTheme = StudioThemeService.SelectedTheme
 
 	if game.Context == Enum.GameContext.Editor then
 		window.update(dt)
-		window.draw(dt, mainTheme.aereon)
+		window.draw(dt, StudioThemeService.SelectedTheme, renderer.Lib2d)
 	end
 
 	if rl.IsWindowResized() == 1 then
@@ -1295,6 +1295,10 @@ explorerWindow.stepped = function(windowData)
 	if windowData.title ~= "Explorer" then
 		return
 	end
+
+	frame.Position = Theme.WindowConfig.Explorer.position
+	frame.AnchorPoint = Theme.WindowConfig.Explorer.anchorPoint
+	frame.Size = Theme.WindowConfig.Explorer.size
 
 	searchQuery = searchBox:getText() or ""
 	isSearching = #searchQuery > 0

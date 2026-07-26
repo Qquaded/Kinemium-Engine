@@ -1,11 +1,11 @@
 --!optimize 2
 --!native
 
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
-local lib = raylib.lib
-local const = raylib.const
-local structs = raylib.structs
+local lib = adapter.lib
+local const = adapter.const
+local structs = adapter.structs
 local bufferUtils = require("@bufferUtils")
 
 local Shadows = {}

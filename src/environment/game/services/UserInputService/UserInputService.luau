@@ -37,7 +37,7 @@ local InputEnded = signal.new()
 local MouseMoved = signal.new()
 local MouseWheel = signal.new()
 
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
 local active_keys = {} -- [keyValue: number] = true | nil
 
@@ -50,7 +50,7 @@ UserInputService.InitRenderer = function(renderer, renderer_signal)
 	local active_gamepad_buttons = {}
 
 	local Enum = require("@EnumMap")
-	local lib = renderer.Raylib.lib
+	local lib = adapter.lib
 
 	local valueToKeyCode = {}
 	for name, value in pairs(Enum.KeyCode) do
@@ -193,7 +193,7 @@ UserInputService.InitRenderer = function(renderer, renderer_signal)
 	end
 
 	function UserInputService:GetMouseDelta()
-		local delta = raylib.lib.GetMouseDelta()
+		local delta = adapter.lib.GetMouseDelta()
 		return Vector2.new(delta.X, delta.Y)
 	end
 
@@ -238,7 +238,7 @@ UserInputService.InitRenderer = function(renderer, renderer_signal)
 	end
 
 	function UserInputService:GetMousePosition()
-		local mousePos = raylib.lib.GetMousePosition()
+		local mousePos = adapter.lib.GetMousePosition()
 		return Vector2.new(mousePos.X, mousePos.Y)
 	end
 

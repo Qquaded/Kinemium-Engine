@@ -1,12 +1,12 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4] or 30),
 		text = data.text or "",
@@ -55,9 +55,9 @@ return function(objects, data)
 
 		local borderColor = config.focused and config.focusColor or color3.new(0.3, 0.3, 0.3)
 
-		raylib.lib.DrawRectangleRounded(rect:translate(r), 0.2, 8, config.backgroundColor:ToRaylib(0))
+		adapter.lib.DrawRectangleRounded(rect:translate(r), 0.2, 8, config.backgroundColor:ToRaylib(0))
 
-		raylib.lib.DrawRectangleRoundedLinesEx(rect:translate(r), 0.2, 8, 2, borderColor:ToRaylib(0))
+		adapter.lib.DrawRectangleRoundedLinesEx(rect:translate(r), 0.2, 8, 2, borderColor:ToRaylib(0))
 
 		local displayText = config.text
 		local textColor = config.textColor
@@ -69,7 +69,7 @@ return function(objects, data)
 		local textX = r.x + 8
 		local textY = r.y + (r.height - config.fontSize) / 2
 
-		raylib.lib.DrawTextEx(
+		adapter.lib.DrawTextEx(
 			config.font,
 			tostring(displayText),
 			vector.create(textX, textY),
@@ -79,18 +79,18 @@ return function(objects, data)
 		)
 
 		if config.focused and math.floor(config.cursorBlink * 2) % 2 == 0 then
-			local textWidth = raylib.lib.MeasureTextEx(config.font, config.text, config.fontSize, config.spacing).x
-			raylib.lib.DrawRectangle(textX + textWidth + 2, textY, 2, config.fontSize, config.textColor:ToRaylib(0))
+			local textWidth = adapter.lib.MeasureTextEx(config.font, config.text, config.fontSize, config.spacing).x
+			adapter.lib.DrawRectangle(textX + textWidth + 2, textY, 2, config.fontSize, config.textColor:ToRaylib(0))
 		end
 
-		if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+		if rect.MouseIsInRect(r) and adapter.lib.IsMouseButtonReleased(0) == 1 then
 			config.focused = true
-		elseif not rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 then
+		elseif not rect.MouseIsInRect(r) and adapter.lib.IsMouseButtonReleased(0) == 1 then
 			config.focused = false
 		end
 
 		if config.focused then
-			local key = raylib.lib.GetCharPressed()
+			local key = adapter.lib.GetCharPressed()
 			while key > 0 do
 				if key >= 32 and key <= 126 then
 					config.text = config.text .. string.char(key)
@@ -98,10 +98,10 @@ return function(objects, data)
 						config.onChanged(config.text)
 					end
 				end
-				key = raylib.lib.GetCharPressed()
+				key = adapter.lib.GetCharPressed()
 			end
 
-			if raylib.lib.IsKeyPressed(259) == 1 and #config.text > 0 then
+			if adapter.lib.IsKeyPressed(259) == 1 and #config.text > 0 then
 				config.text = string.sub(config.text, 1, -2)
 				if config.onChanged then
 					config.onChanged(config.text)

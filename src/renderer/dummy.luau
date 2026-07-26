@@ -593,10 +593,10 @@ function KiRend.new(config: KiRendConf)
 			local gui = item.entry
 			pcall(
 				gui.render,
-				mockRaylib.lib,
+				mockadapter.lib,
 				gui.object and gui.object() or nil,
 				time,
-				mockRaylib.structs,
+				mockadapter.structs,
 				rendererObject.RuntimeLibrary
 			)
 		end

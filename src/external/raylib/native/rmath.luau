@@ -2,14 +2,14 @@
 --!optimize 2
 --!native
 
-local raylib = require("./raylib")
-local structs = raylib.structs
+local adapter = require("./raylib")
+local structs = adapter.structs
 
 local ffi = _G.zune.ffi
 local float = ffi.types.float
 local Vector3 = structs.Vector3
-type Vector3 = raylib.Vector3
-type Matrix = raylib.Matrix
+type Vector3 = adapter.Vector3
+type Matrix = adapter.Matrix
 
 type float = number
 

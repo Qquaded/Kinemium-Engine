@@ -1,4 +1,4 @@
-local raylib = require("@raylib")
+local raylib = require("@raylibadapter")
 local lib = raylib.lib
 local aereon = import("@Aereon")
 local gui = aereon.gui
@@ -36,6 +36,14 @@ browser = gui.apibrowser({
 				local endpoint = api_endpoint .. item.name
 				local data = HTTPService:GetAsync(endpoint)
 
+				if not data then
+					browser.setClassDescription(
+						item.name,
+						[[# 404
+						Documentation about this class is not found, You can check the docs here: https://kinemium-docs.vercel.app/docs]]
+					)
+					return
+				end
 				if string.find(data, "404") then
 					browser.setClassDescription(
 						item.name,

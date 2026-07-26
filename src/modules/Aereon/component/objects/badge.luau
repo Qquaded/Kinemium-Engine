@@ -1,10 +1,10 @@
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		x = data.x or data[1],
 		y = data.y or data[2],
@@ -28,18 +28,18 @@ return function(objects, data)
 	end
 
 	wrapper.render = function(dt)
-		local textWidth = raylib.lib.MeasureTextEx(config.font, config.text, config.fontSize, config.spacing).x
+		local textWidth = adapter.lib.MeasureTextEx(config.font, config.text, config.fontSize, config.spacing).x
 		local badgeWidth = math.max(config.minWidth, textWidth + 8)
 		local badgeHeight = config.fontSize + 6
 
 		local badgeRect = rect.new(config.x, config.y, badgeWidth, badgeHeight)
 
-		raylib.lib.DrawRectangleRounded(rect:translate(badgeRect), 0.5, 8, config.backgroundColor:ToRaylib(0))
+		adapter.lib.DrawRectangleRounded(rect:translate(badgeRect), 0.5, 8, config.backgroundColor:ToRaylib(0))
 
 		local textX = config.x + (badgeWidth - textWidth) / 2
 		local textY = config.y + 3
 
-		raylib.lib.DrawTextEx(
+		adapter.lib.DrawTextEx(
 			config.font,
 			config.text,
 			vector.create(textX, textY),

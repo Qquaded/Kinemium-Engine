@@ -2,7 +2,7 @@
 --!optimize 2
 --!native
 
-local raylib = require("./raylib")
+local adapter = require("./raylib")
 local ffi = _G.zune.ffi
 
 type float = number
@@ -10,7 +10,7 @@ type int = number
 type uint = number
 type bool = boolean
 type FFIPointer = any
-type Matrix = raylib.Matrix
+type Matrix = adapter.Matrix
 
 local void = ffi.types.void
 local i32 = ffi.types.i32
@@ -213,15 +213,15 @@ return {
 		rlCopyShaderBuffer = fn(void, { u32, u32, u32, u32, u32 }),
 		rlGetShaderBufferSize = fn(i32, { u32 }),
 		rlBindImageTexture = fn(void, { u32, u32, i32, u8 }),
-		rlGetMatrixModelview = fn(raylib.structs.Matrix, {}),
-		rlGetMatrixProjection = fn(raylib.structs.Matrix, {}),
-		rlGetMatrixTransform = fn(raylib.structs.Matrix, {}),
-		rlGetMatrixProjectionStereo = fn(raylib.structs.Matrix, { i32 }),
-		rlGetMatrixViewOffsetStereo = fn(raylib.structs.Matrix, { i32 }),
-		rlSetMatrixProjection = fn(void, { raylib.structs.Matrix }),
-		rlSetMatrixModelview = fn(void, { raylib.structs.Matrix }),
-		rlSetMatrixProjectionStereo = fn(void, { raylib.structs.Matrix, raylib.structs.Matrix }),
-		rlSetMatrixViewOffsetStereo = fn(void, { raylib.structs.Matrix, raylib.structs.Matrix }),
+		rlGetMatrixModelview = fn(adapter.structs.Matrix, {}),
+		rlGetMatrixProjection = fn(adapter.structs.Matrix, {}),
+		rlGetMatrixTransform = fn(adapter.structs.Matrix, {}),
+		rlGetMatrixProjectionStereo = fn(adapter.structs.Matrix, { i32 }),
+		rlGetMatrixViewOffsetStereo = fn(adapter.structs.Matrix, { i32 }),
+		rlSetMatrixProjection = fn(void, { adapter.structs.Matrix }),
+		rlSetMatrixModelview = fn(void, { adapter.structs.Matrix }),
+		rlSetMatrixProjectionStereo = fn(void, { adapter.structs.Matrix, adapter.structs.Matrix }),
+		rlSetMatrixViewOffsetStereo = fn(void, { adapter.structs.Matrix, adapter.structs.Matrix }),
 		rlLoadDrawCube = fn(void, {}),
 		rlLoadDrawQuad = fn(void, {}),
 	},

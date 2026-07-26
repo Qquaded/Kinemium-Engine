@@ -153,6 +153,6 @@ renderer.Pool.new("2d", function(data)
 	end
 
 	window.update(dt)
-	window.draw(dt, StudioThemeService.SelectedTheme)
+	window.draw(dt, StudioThemeService.SelectedTheme, renderer.Lib2d)
 end, -999999)
 -- we need this to draw as the very first item before all the other windows

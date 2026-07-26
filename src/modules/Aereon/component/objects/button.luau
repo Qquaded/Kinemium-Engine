@@ -1,9 +1,8 @@
-local raylib = require("@raylib")
 local rect = require("@arect")
 local color3 = require("@Color3")
 local effects = require("./effects")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
 		text = data.text or "Button",
@@ -25,7 +24,7 @@ return function(objects, data)
 		enableShadows = false,
 		enableGlow = false,
 		enablePress = true,
-	})
+	}, {}, raylib)
 
 	local wrapper = {}
 
@@ -66,7 +65,12 @@ return function(objects, data)
 
 		raylib.lib.DrawText(config.text, textX, textY, config.fontSize, config.textColor:ToRaylib(0))
 
-		if buttonEffects.isHovered() and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput and config.onClick then
+		if
+			buttonEffects.isHovered()
+			and raylib.lib.IsMouseButtonReleased(0) == 1
+			and not _G.__aereon_blockInput
+			and config.onClick
+		then
 			config.onClick()
 		end
 	end

@@ -7,8 +7,8 @@ local Color3 = require("@Color3")
 local CFrame = require("@CFrame")
 local NetworkOwnership = require("@NetworkOwnership")
 
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 
 local propTable = {
 	Attachment0 = nil,
@@ -211,7 +211,7 @@ return {
 			-- description: "Tos raylib color."
 			-- args: "c: any, a: number"
 			local function toRaylibColor(c, a)
-				return raylib.structs.Color:new({ r = c.R * 255, g = c.G * 255, b = c.B * 255, a = a or 255 })
+				return adapter.structs.Color:new({ r = c.R * 255, g = c.G * 255, b = c.B * 255, a = a or 255 })
 			end
 
 			local mainColor = toRaylibColor(color)
@@ -222,7 +222,7 @@ return {
 			local axisLen = 1.0
 			local axisStart = wPos0 - (wAxis0 * (axisLen / 2))
 			local axisEnd = wPos0 + (wAxis0 * (axisLen / 2))
-			rl.DrawCylinderEx(
+			adapter.DrawCylinderEx(
 				vector.create(axisStart.X, axisStart.Y, axisStart.Z),
 				vector.create(axisEnd.X, axisEnd.Y, axisEnd.Z),
 				0.02,
@@ -232,7 +232,7 @@ return {
 			)
 
 			-- 2. Draw Pivot Sphere
-			rl.DrawSphere(vector.create(wPos0.X, wPos0.Y, wPos0.Z), 0.05, mainColor)
+			adapter.DrawSphere(vector.create(wPos0.X, wPos0.Y, wPos0.Z), 0.05, mainColor)
 
 			-- 3. Draw Rotation Ring (Circle)
 			local ringRadius = 0.5
@@ -244,7 +244,7 @@ return {
 					+ (wNormal0 * math.cos(rad) * ringRadius)
 					+ (wPerp0 * math.sin(rad) * ringRadius)
 				if prevRingPoint then
-					rl.DrawLine3D(
+					adapter.DrawLine3D(
 						vector.create(prevRingPoint.X, prevRingPoint.Y, prevRingPoint.Z),
 						vector.create(ringPoint.X, ringPoint.Y, ringPoint.Z),
 						secondaryColor
@@ -261,7 +261,7 @@ return {
 
 			local angleDir = (wNormal0 * math.cos(currentAngle) + wPerp0 * math.sin(currentAngle)):Unit()
 			local angleEnd = wPos0 + (angleDir * ringRadius)
-			rl.DrawLine3D(
+			adapter.DrawLine3D(
 				vector.create(wPos0.X, wPos0.Y, wPos0.Z),
 				vector.create(angleEnd.X, angleEnd.Y, angleEnd.Z),
 				mainColor
@@ -277,7 +277,7 @@ return {
 				local lowDir = (wNormal0 * math.cos(low) + wPerp0 * math.sin(low)):Unit()
 				local highDir = (wNormal0 * math.cos(high) + wPerp0 * math.sin(high)):Unit()
 
-				rl.DrawLine3D(
+				adapter.DrawLine3D(
 					vector.create(wPos0.X, wPos0.Y, wPos0.Z),
 					vector.create(
 						wPos0.X + lowDir.X * ringRadius,
@@ -286,7 +286,7 @@ return {
 					),
 					limitColor
 				)
-				rl.DrawLine3D(
+				adapter.DrawLine3D(
 					vector.create(wPos0.X, wPos0.Y, wPos0.Z),
 					vector.create(
 						wPos0.X + highDir.X * ringRadius,
@@ -304,7 +304,7 @@ return {
 						+ (wNormal0 * math.cos(rad) * ringRadius)
 						+ (wPerp0 * math.sin(rad) * ringRadius)
 					if prevLimitPoint then
-						rl.DrawLine3D(
+						adapter.DrawLine3D(
 							vector.create(prevLimitPoint.X, prevLimitPoint.Y, prevLimitPoint.Z),
 							vector.create(limitPoint.X, limitPoint.Y, limitPoint.Z),
 							limitColor

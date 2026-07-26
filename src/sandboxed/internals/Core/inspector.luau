@@ -11,10 +11,11 @@ end
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local interface = require("@raylibadapter")
 local renderer = KinemiumRaylib.GetRenderer()
-local rl = KinemiumRaylib.GetLib()
+local rl = interface.lib
 local Selection = game:GetService("Selection")
-local structs = KinemiumRaylib.GetStructs()
+local structs = interface.structs
 local vend = KinemiumFontService.GetDefaultFont()
 local PropertyCategories = require("@PropertyCategories")
 local Theme = game:GetService("StudioThemeService").SelectedTheme
@@ -245,7 +246,7 @@ local function openColorPicker(selected, propName, initialColor, kpIndex)
 					s[p] = localColor
 				end
 			end,
-		})
+		}, interface)
 	end
 	colorPickerComp.setColor(initialColor)
 end
@@ -294,7 +295,7 @@ datatypes["string"] = {
 					comps.tb:setText(path)
 				end
 			end,
-		})
+		}, interface)
 
 		if isSoundProp then
 			comps.selected = selected
@@ -551,7 +552,7 @@ datatypes["boolean"] = {
 			onChanged = function(new)
 				selected[propName] = new
 			end,
-		})
+		}, interface)
 	end,
 	render = function(comp, ex, ey, ew, eh)
 		comp.set("obj_rect", arect.new(ex, ey, 22, 22))
@@ -693,7 +694,7 @@ datatypes["Color3"] = {
 				onClick = function()
 					openColorPicker(selected, propName, selected[propName])
 				end,
-			}),
+			}, interface),
 		}
 		comps.r:setText(tostring(round(propValue.R)))
 		comps.g:setText(tostring(round(propValue.G)))
@@ -852,7 +853,7 @@ datatypes["EnumItem"] = {
 			onSelect = function(_, option)
 				selected[propName] = Enum[propValue.EnumType.Name][option]
 			end,
-		})
+		}, interface)
 		return { _isDropdown = true, dp = dp }
 	end,
 	render = function(comp, ex, ey, ew, eh)
@@ -1151,7 +1152,7 @@ datatypes["ColorSequence"] = {
 					onClick = function()
 						openColorPicker(selected, propName, propValue.Keypoints[i].Color, i)
 					end,
-				}),
+				}, interface),
 			}
 			kcomps.pos:setText(tostring(kp.Position))
 			kcomps.r:setText(tostring(round(kp.Color.R)))
@@ -1484,8 +1485,12 @@ renderer.Pool.new("2d", function(data)
 
 	if game.Context == Enum.GameContext.Editor then
 		window.update(dt)
-		window.draw(dt, mainTheme.aereon)
+		window.draw(dt, mainTheme, renderer.Lib2d)
 	end
+
+	frame.Position = Theme.WindowConfig.Inspector.position
+	frame.AnchorPoint = Theme.WindowConfig.Inspector.anchorPoint
+	frame.Size = Theme.WindowConfig.Inspector.size
 
 	if rl.IsWindowResized() == 1 then
 		propback.x = frame.AbsolutePosition.X
@@ -1495,7 +1500,7 @@ renderer.Pool.new("2d", function(data)
 	end
 end)
 
-local raylib = require("@raylib")
+local raylib = require("@RaylibAdapter")
 local scrollableComp
 
 window.stepped = function(windowData)
@@ -1649,7 +1654,7 @@ window.stepped = function(windowData)
 			scrollbarColor = Color3.new(0.3, 0.3, 0.3),
 			scrollbarHoverColor = Color3.new(0.4, 0.4, 0.4),
 			scrollbarBackgroundTransparency = 1,
-		})
+		}, interface)
 	end
 
 	scrollableComp.set("child", inspectorContent)

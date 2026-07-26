@@ -4,9 +4,9 @@
 
 local ffi = zune.ffi
 
-local raylib = require("./raylib")
+local adapter = require("./raylib")
 
-local structs = raylib.structs
+local structs = adapter.structs
 
 local void = ffi.types.void
 local int = ffi.types.i32
@@ -33,23 +33,23 @@ local Mesh = structs.Mesh
 local Material = structs.Material
 local Model = structs.Model
 local ModelAnimation = structs.ModelAnimation
-type Vector2 = raylib.Vector2
-type Vector3 = raylib.Vector3
-type Vector4 = raylib.Vector4
-type Matrix = raylib.Matrix
-type Color = raylib.Color
-type Rectangle = raylib.Rectangle
-type Image = raylib.Image
-type Texture2D = raylib.Texture2D
-type Ray = raylib.Ray
-type RayCollision = raylib.RayCollision
-type BoundingBox = raylib.BoundingBox
-type Mesh = raylib.Mesh
-type Material = raylib.Material
-type Model = raylib.Model
-type ModelAnimation = raylib.ModelAnimation
-type BoneInfo = raylib.BoneInfo
-type Transform = raylib.Transform
+type Vector2 = adapter.Vector2
+type Vector3 = adapter.Vector3
+type Vector4 = adapter.Vector4
+type Matrix = adapter.Matrix
+type Color = adapter.Color
+type Rectangle = adapter.Rectangle
+type Image = adapter.Image
+type Texture2D = adapter.Texture2D
+type Ray = adapter.Ray
+type RayCollision = adapter.RayCollision
+type BoundingBox = adapter.BoundingBox
+type Mesh = adapter.Mesh
+type Material = adapter.Material
+type Model = adapter.Model
+type ModelAnimation = adapter.ModelAnimation
+type BoneInfo = adapter.BoneInfo
+type Transform = adapter.Transform
 
 local function fn(returns: any, args: { any })
 	return {
@@ -256,13 +256,13 @@ return {
 		-- void DrawBoundingBox(BoundingBox box, Color color);
 		DrawBoundingBox = fn(void, { BoundingBox, Color }),
 		-- void DrawBillboard(Camera camera, Texture2D texture, Vector3 position, float scale, Color tint);
-		DrawBillboard = fn(void, { raylib.ptrs.Camera, Texture2D, Vector3, float, Color }),
+		DrawBillboard = fn(void, { adapter.ptrs.Camera, Texture2D, Vector3, float, Color }),
 		-- void DrawBillboardRec(Camera camera, Texture2D texture, Rectangle source, Vector3 position, Vector2 size, Color tint);
-		DrawBillboardRec = fn(void, { raylib.ptrs.Camera, Texture2D, Rectangle, Vector3, Vector2, Color }),
+		DrawBillboardRec = fn(void, { adapter.ptrs.Camera, Texture2D, Rectangle, Vector3, Vector2, Color }),
 		-- void DrawBillboardPro(Camera camera, Texture2D texture, Rectangle source, Vector3 position, Vector3 up, Vector2 size, Vector2 origin, float rotation, Color tint);
 		DrawBillboardPro = fn(
 			void,
-			{ raylib.ptrs.Camera, Texture2D, Rectangle, Vector3, Vector3, Vector2, Vector2, float, Color }
+			{ adapter.ptrs.Camera, Texture2D, Rectangle, Vector3, Vector3, Vector2, Vector2, float, Color }
 		),
 		-- void UploadMesh(Mesh *mesh, bool dynamic);
 		UploadMesh = fn(void, { ffi.types.pointer, bool }),

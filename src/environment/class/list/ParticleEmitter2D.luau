@@ -7,12 +7,12 @@ local NumberSequenceKeypoint = require("@NumberSequenceKeypoint")
 local NumberRange = require("@NumberRange")
 local ColorSequence = require("@ColorSequence")
 local ColorSequenceKeypoint = require("@ColorSequenceKeypoint")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
 
-local lib = raylib.lib
-local structs = raylib.structs
-local const = raylib.const
+local lib = adapter.lib
+local structs = adapter.structs
+local const = adapter.const
 
 local function getRange(value, defaultMin, defaultMax)
 	if type(value) == "number" then

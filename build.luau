@@ -132,7 +132,7 @@ local function buildExecutable(name, exec_ext, lib_ext)
 	local l_exec = zpath.join(dir, EXECUTABLE_NAME .. exec_ext)
 
 	print("Copying libraries")
-	copyLibraries(lib_ext, dir, zpath.join(root, "external"))
+	copyLibraries(lib_ext, dir, "./vendor")
 
 	print("Copying assets")
 	copySandboxedSources(zjoin(root, "sandboxed"), sandboxEmbedRoot)

@@ -17,15 +17,18 @@ function kinec.getclosures()
 	return closures
 end
 
-function kinec.runC(code)
+function kinec.runC(code, includes)
 	local options = {
 		symbols = {},
+		includes = includes,
+		sysincludes = { "./external/tcc/include" },
 	}
 
 	for name, closure in pairs(closures) do
 		options.symbols[name] = closure
 	end
 
+	print(options)
 	local compiled = ffi.c.compile(code, options)
 	return compiled
 end

@@ -1,6 +1,6 @@
 -- devcell
 
-local raylib = require("@raylib")
+local raylib = require("@raylibadapter")
 local lib = raylib.lib
 local aereon = require("@Aereon")
 local gui = aereon.gui

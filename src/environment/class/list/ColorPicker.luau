@@ -1,6 +1,6 @@
 -- description: "Allows users to pick and adjust colors using a visual interface."
 local GuiObject = require("@GuiObject")
-local raylib = require("@Raylib")
+local adapter = require("@RaylibAdapter")
 local aereon = require("@Aereon")
 local gui = aereon.gui
 local signal = require("@Kinemium.signal")
@@ -8,7 +8,7 @@ local Color4 = require("@Color4")
 local arect = aereon.rect()
 local UDim2 = require("@UDim2")
 local Enum = require("@EnumMap")
-local lib = raylib.lib
+local lib = adapter.lib
 
 local propTable = {
 	Name = "ColorPicker",

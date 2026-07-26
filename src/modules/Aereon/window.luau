@@ -1,4 +1,4 @@
-return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
+return function(adapter: typeof(require("@raylib").lib), structs, game, theme)
 	local gui = require("./component/lib")
 	local arect = require("@arect")
 	local windowRegistry = {}
@@ -41,7 +41,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 		shadowTexture = buffer.create(16)
 		shadowSize = vector.create(0, 0)
 	else
-		shadowTexture = raylib.LoadTexture(zembed.AssetPath("kineasset://images/shadow.png"))
+		shadowTexture = adapter.LoadTexture(zembed.AssetPath("kineasset://images/shadow.png"))
 		shadowSize = vector.create(buffer.readi32(shadowTexture, 4), buffer.readi32(shadowTexture, 8))
 	end
 
@@ -215,7 +215,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 	end
 
 	local function measureTabWidth(text, fontSize)
-		return raylib.MeasureTextEx(vend, text, fontSize, 1).x + TAB_PAD_X * 2
+		return adapter.MeasureTextEx(vend, text, fontSize, 1).x + TAB_PAD_X * 2
 	end
 
 	local function getTabAtPosition(window, mousePos, fontSize)
@@ -239,7 +239,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 	end
 
 	local function isMouseInViewport(mousePos)
-		local sw, sh = raylib.GetRenderWidth(), raylib.GetRenderHeight()
+		local sw, sh = adapter.GetRenderWidth(), adapter.GetRenderHeight()
 		local toolbarH = 160
 		return mousePos.x >= 0
 			and mousePos.x <= sw - 400
@@ -403,7 +403,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 				self.x, self.y, self.width, self.height = parent.x, parent.y, parent.width, parent.height
 			else
 				self.x, self.y = 0, 0
-				self.width, self.height = raylib.GetRenderWidth(), raylib.GetRenderHeight()
+				self.width, self.height = adapter.GetRenderWidth(), adapter.GetRenderHeight()
 			end
 
 			self.Maximized = true
@@ -494,12 +494,12 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 			end
 		end
 
-		local mousePos = raylib.GetMousePosition()
-		local mousePressed = raylib.IsMouseButtonPressed(0)
-		local mouseRightPressed = raylib.IsMouseButtonPressed(1)
-		local mouseDown = raylib.IsMouseButtonDown(0)
-		local mouseReleased = raylib.IsMouseButtonReleased(0)
-		local mouseWheel = raylib.GetMouseWheelMove()
+		local mousePos = adapter.GetMousePosition()
+		local mousePressed = adapter.IsMouseButtonPressed(0)
+		local mouseRightPressed = adapter.IsMouseButtonPressed(1)
+		local mouseDown = adapter.IsMouseButtonDown(0)
+		local mouseReleased = adapter.IsMouseButtonReleased(0)
+		local mouseWheel = adapter.GetMouseWheelMove()
 		local tabFontSize = wval(wcfg, "TitleTextSize", 13)
 		local speed = 12 * dt
 
@@ -751,8 +751,10 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 
 	--  Draw
 
-	function module.draw(dt, selectedTheme)
+	function module.draw(dt, selectedTheme, lib)
 		dragSpring:step(dt)
+
+		raylib = lib
 
 		local wcfg = selectedTheme and selectedTheme.window or {}
 
@@ -822,7 +824,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 				local shadowAlpha = (focused and (1 - shadowTr) * 1.4 or (1 - shadowTr)) * alpha
 				local spread = focused and 18 or 10
 				local yBias = focused and 10 or 4
-				raylib.DrawTexturePro(
+				adapter.DrawTexturePro(
 					shadowTexture,
 					structs.Rectangle:new({ x = 0, y = 0, width = shadowSize.x, height = shadowSize.y }),
 					structs.Rectangle:new({
@@ -838,7 +840,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 			end
 
 			local mainRect = structs.Rectangle:new({ x = wx, y = wy, width = ww, height = drawH })
-			raylib.DrawRectangleRounded(mainRect, cornerFrac, 20, bodyColor:ToRaylib(tr(curBodyTransp)))
+			adapter.DrawRectangleRounded(mainRect, cornerFrac, 20, bodyColor:ToRaylib(tr(curBodyTransp)))
 			module.backgroundDrawed(wd)
 
 			-- Title bar
@@ -847,7 +849,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 				titleBarH = titleH
 
 				if not wd.Minimized then
-					raylib.DrawLineEx(
+					adapter.DrawLineEx(
 						vector.create(wx, wy + titleBarH),
 						vector.create(wx + ww, wy + titleBarH),
 						SEP_H,
@@ -863,33 +865,33 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 				end
 
 				-- Close
-				raylib.DrawCircleV(vector.create(cx1, cy), BTN_RADIUS, tlCol(btnRed))
+				adapter.DrawCircleV(vector.create(cx1, cy), BTN_RADIUS, tlCol(btnRed))
 				if showSymbols then
 					local r, sc = BTN_SYM_R, TL_SYM_R:ToRaylib(1 - alpha)
-					raylib.DrawLineEx(vector.create(cx1 - r, cy - r), vector.create(cx1 + r, cy + r), 1.2, sc)
-					raylib.DrawLineEx(vector.create(cx1 + r, cy - r), vector.create(cx1 - r, cy + r), 1.2, sc)
+					adapter.DrawLineEx(vector.create(cx1 - r, cy - r), vector.create(cx1 + r, cy + r), 1.2, sc)
+					adapter.DrawLineEx(vector.create(cx1 + r, cy - r), vector.create(cx1 - r, cy + r), 1.2, sc)
 				end
 
 				-- Minimise
-				raylib.DrawCircleV(vector.create(cx2, cy), BTN_RADIUS, tlCol(btnYel))
+				adapter.DrawCircleV(vector.create(cx2, cy), BTN_RADIUS, tlCol(btnYel))
 				if showSymbols then
 					local r, sc = BTN_SYM_R, TL_SYM_Y:ToRaylib(1 - alpha)
-					raylib.DrawLineEx(vector.create(cx2 - r, cy), vector.create(cx2 + r, cy), 1.2, sc)
+					adapter.DrawLineEx(vector.create(cx2 - r, cy), vector.create(cx2 + r, cy), 1.2, sc)
 				end
 
 				-- Maximise
-				raylib.DrawCircleV(vector.create(cx3, cy), BTN_RADIUS, tlCol(btnGrn))
+				adapter.DrawCircleV(vector.create(cx3, cy), BTN_RADIUS, tlCol(btnGrn))
 				if showSymbols then
 					local r, sc = BTN_SYM_R - 0.5, TL_SYM_G:ToRaylib(1 - alpha)
-					raylib.DrawLineEx(vector.create(cx3 - r, cy + r), vector.create(cx3, cy), 1.1, sc)
-					raylib.DrawLineEx(vector.create(cx3 - r, cy), vector.create(cx3 - r, cy + r), 1.1, sc)
-					raylib.DrawLineEx(vector.create(cx3 + r, cy - r), vector.create(cx3, cy), 1.1, sc)
-					raylib.DrawLineEx(vector.create(cx3 + r, cy), vector.create(cx3 + r, cy - r), 1.1, sc)
+					adapter.DrawLineEx(vector.create(cx3 - r, cy + r), vector.create(cx3, cy), 1.1, sc)
+					adapter.DrawLineEx(vector.create(cx3 - r, cy), vector.create(cx3 - r, cy + r), 1.1, sc)
+					adapter.DrawLineEx(vector.create(cx3 + r, cy - r), vector.create(cx3, cy), 1.1, sc)
+					adapter.DrawLineEx(vector.create(cx3 + r, cy), vector.create(cx3 + r, cy - r), 1.1, sc)
 				end
 
 				-- Title text
-				local tm = raylib.MeasureTextEx(vend, wd.title, titleFontSz, 1)
-				raylib.DrawTextEx(
+				local tm = adapter.MeasureTextEx(vend, wd.title, titleFontSz, 1)
+				adapter.DrawTextEx(
 					vend,
 					wd.title,
 					vector.create(wx + (ww - tm.x) / 2, wy + (titleBarH - titleFontSz) / 2),
@@ -900,7 +902,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 
 				if wd.Minimized then
 					local leftEdge = wx + BTN_LEFT + (BTN_RADIUS * 2 + BTN_SPACING) * 3 + 8
-					raylib.DrawTextEx(
+					adapter.DrawTextEx(
 						vend,
 						"Minimized",
 						vector.create(leftEdge, wy + (titleBarH - (titleFontSz - 2)) / 2),
@@ -922,7 +924,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 				if hasTabs then
 					local tabBarY = wy + titleBarH
 
-					raylib.DrawRectangleRec(
+					adapter.DrawRectangleRec(
 						structs.Rectangle:new({ x = wx, y = tabBarY, width = ww, height = tabAreaH }),
 						tabInactiveColor:ToRaylib(tr(titlebarTr))
 					)
@@ -932,19 +934,19 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 						local tw = math.max(measureTabWidth(tab.name, titleFontSz), TAB_MIN_W)
 						local isActive = wd.activeTab == i
 
-						raylib.DrawRectangleRec(
+						adapter.DrawRectangleRec(
 							structs.Rectangle:new({ x = curX, y = tabBarY, width = tw, height = tabAreaH }),
 							(isActive and tabActiveColor or tabInactiveColor):ToRaylib(tr(titlebarTr))
 						)
 
 						if isActive then
 							-- Active indicator bar
-							raylib.DrawRectangleRec(
+							adapter.DrawRectangleRec(
 								structs.Rectangle:new({ x = curX, y = tabBarY, width = tw, height = 2 }),
 								accentColor:ToRaylib(tr(wval(wcfg, "DragOutlineTransparency", 0)))
 							)
 							-- Erase the bottom separator for the active tab
-							raylib.DrawLineEx(
+							adapter.DrawLineEx(
 								vector.create(curX + 1, tabBarY + tabAreaH),
 								vector.create(curX + tw - 1, tabBarY + tabAreaH),
 								SEP_H + 0.5,
@@ -954,7 +956,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 
 						-- Divider between tabs
 						if i > 1 then
-							raylib.DrawLineEx(
+							adapter.DrawLineEx(
 								vector.create(curX, tabBarY + 5),
 								vector.create(curX, tabBarY + tabAreaH - 5),
 								0.5,
@@ -962,8 +964,8 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 							)
 						end
 
-						local lm = raylib.MeasureTextEx(vend, tab.name, titleFontSz, 1)
-						raylib.DrawTextEx(
+						local lm = adapter.MeasureTextEx(vend, tab.name, titleFontSz, 1)
+						adapter.DrawTextEx(
 							vend,
 							tab.name,
 							vector.create(curX + (tw - lm.x) / 2, tabBarY + (tabAreaH - titleFontSz) / 2),
@@ -975,7 +977,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 						curX = curX + tw
 					end
 
-					raylib.DrawLineEx(
+					adapter.DrawLineEx(
 						vector.create(wx, tabBarY + tabAreaH),
 						vector.create(wx + ww, tabBarY + tabAreaH),
 						SEP_H,
@@ -987,11 +989,11 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 				local statusBarH = wd.showStatusBar and STATUSBAR_H or 0
 				if wd.showStatusBar then
 					local sbY = wy + wd.height - statusBarH
-					raylib.DrawRectangleRec(
+					adapter.DrawRectangleRec(
 						structs.Rectangle:new({ x = wx, y = sbY, width = ww, height = statusBarH }),
 						curTitlebarColor:ToRaylib(tr(titlebarTr))
 					)
-					raylib.DrawLineEx(
+					adapter.DrawLineEx(
 						vector.create(wx, sbY),
 						vector.create(wx + ww, sbY),
 						SEP_H,
@@ -999,7 +1001,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 					)
 					if wd.statusText and wd.statusText ~= "" then
 						local statusFontSz = math.max(titleFontSz - 2, 10)
-						raylib.DrawTextEx(
+						adapter.DrawTextEx(
 							vend,
 							wd.statusText,
 							vector.create(wx + 8, sbY + (statusBarH - statusFontSz) / 2),
@@ -1011,11 +1013,11 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 				end
 
 				-- Window outline
-				raylib.DrawRectangleRoundedLinesEx(mainRect, cornerFrac, 20, 0.75, sepColor:ToRaylib(tr(titlebarTr)))
+				adapter.DrawRectangleRoundedLinesEx(mainRect, cornerFrac, 20, 0.75, sepColor:ToRaylib(tr(titlebarTr)))
 
 				-- Drag outline
 				if wd.IsDragging then
-					raylib.DrawRectangleRoundedLinesEx(
+					adapter.DrawRectangleRoundedLinesEx(
 						structs.Rectangle:new({ x = wx - 1, y = wy - 1, width = ww + 2, height = wd.height + 2 }),
 						cornerFrac,
 						20,
@@ -1030,7 +1032,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 					local contentH = wd.height - contentOffsetY - statusBarH
 
 					if not wd.DisableClipping then
-						raylib.BeginScissorMode(wx, wy + contentOffsetY, ww, contentH)
+						adapter.BeginScissorMode(wx, wy + contentOffsetY, ww, contentH)
 						table.insert(
 							_G.__aereon_scissorStack,
 							{ x = wx, y = wy + contentOffsetY, width = ww, height = contentH }
@@ -1089,7 +1091,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 					end
 
 					if not wd.DisableClipping then
-						raylib.EndScissorMode()
+						adapter.EndScissorMode()
 						if #_G.__aereon_scissorStack > 0 then
 							table.remove(_G.__aereon_scissorStack)
 						end
@@ -1109,7 +1111,7 @@ return function(raylib: typeof(require("@raylib").lib), structs, game, theme)
 				end
 			else
 				-- Minimized outline only
-				raylib.DrawRectangleRoundedLinesEx(mainRect, cornerFrac, 20, 0.75, sepColor:ToRaylib(tr(titlebarTr)))
+				adapter.DrawRectangleRoundedLinesEx(mainRect, cornerFrac, 20, 0.75, sepColor:ToRaylib(tr(titlebarTr)))
 			end
 		end
 	end

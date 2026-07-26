@@ -1,9 +1,9 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 local color3 = require("@Color3")
 local rect = require("@arect")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = data.obj_rect or rect.new(
 			data.x or data[1] or 0,
@@ -23,7 +23,7 @@ return function(objects, data)
 		scrollbarBackground = data.scrollbarBackground or color3.new(0.1, 0.1, 0.1),
 		scrollbarBackgroundTransparency = data.scrollbarBackgroundTransparency or 0.8,
 		child = data.child,
-		input = data.input or raylib.lib,
+		input = data.input or adapter.lib,
 		enabled = data.enabled or true,
 		inputButtons = data.inputButtons,
 		disableClipping = data.disableClipping or false,
@@ -54,7 +54,7 @@ return function(objects, data)
 
 	wrapper.render = function(dt)
 		dt = dt or 0
-		local input = config.input or raylib.lib
+		local input = config.input or adapter.lib
 		local mousePos = input.GetMousePosition()
 		local function isInRect(r)
 			return mousePos.x >= r.x
@@ -86,7 +86,7 @@ return function(objects, data)
 
 		-- Begin Clipping
 		if not config.disableClipping then
-			raylib.lib.BeginScissorMode(
+			adapter.lib.BeginScissorMode(
 				config.obj_rect.x,
 				config.obj_rect.y,
 				config.obj_rect.width,
@@ -142,7 +142,7 @@ return function(objects, data)
 		end
 
 		if not config.disableClipping then
-			raylib.lib.EndScissorMode()
+			adapter.lib.EndScissorMode()
 			if #_G.__aereon_scissorStack > 0 then
 				table.remove(_G.__aereon_scissorStack)
 			end
@@ -229,7 +229,7 @@ return function(objects, data)
 			end
 
 			-- Draw Track
-			raylib.lib.DrawRectangleRec(
+			adapter.lib.DrawRectangleRec(
 				rect:translate(trackRect),
 				config.scrollbarBackground:ToRaylib(1 - config.scrollbarBackgroundTransparency)
 			)
@@ -237,7 +237,7 @@ return function(objects, data)
 			-- Draw Thumb
 			local thumbColor = (isThumbHovered or config.scrollbarDrag.active) and config.scrollbarHoverColor
 				or config.scrollbarColor
-			raylib.lib.DrawRectangleRounded(rect:translate(thumbRect), 0.5, 4, thumbColor:ToRaylib(0))
+			adapter.lib.DrawRectangleRounded(rect:translate(thumbRect), 0.5, 4, thumbColor:ToRaylib(0))
 		end
 	end
 

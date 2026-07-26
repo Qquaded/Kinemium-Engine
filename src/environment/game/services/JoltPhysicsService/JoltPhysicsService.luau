@@ -23,7 +23,6 @@ local inverseMap = {} -- BodyID -> Part
 local bodyConnections = {} -- Part -> RBXScriptConnection
 local bodyTransformDirty = {} -- Part -> boolean
 local partsByNetworkId = {}
-local ownershipImpactTimestamps = {}
 
 local gravityBuffer = ffi.alloc(structs.JPH_Vec3:size(), structs.JPH_Vec3:alignment())
 local tempBodyPosition = ffi.alloc(structs.JPH_RVec3:size(), structs.JPH_RVec3:alignment())
@@ -32,14 +31,6 @@ local tempBodyLinear = ffi.alloc(structs.JPH_Vec3:size(), structs.JPH_Vec3:align
 local tempBodyAngular = ffi.alloc(structs.JPH_Vec3:size(), structs.JPH_Vec3:alignment())
 
 local terrainBodies = {} -- chunkKey -> BodyID
-
-local OWNERSHIP_IMPACT_COOLDOWN = 0.12
-local OWNERSHIP_IMPACT_CACHE_PRUNE_INTERVAL = 2
-local OWNERSHIP_IMPACT_MIN_CLOSING_SPEED = 2.5
-local OWNERSHIP_IMPACT_MIN_IMPULSE = 0.25
-local OWNERSHIP_IMPACT_MAX_IMPULSE = 250
-local OWNERSHIP_IMPACT_RADIUS_PADDING = 0.2
-local lastOwnershipImpactPrune = 0
 
 local collisionGroups = {
 	[0] = { name = "Default", collidesWith = {} },
@@ -92,10 +83,6 @@ local function getLayerForPart(part)
 	return (cgId * 4) + motionState
 end
 
-local function getNetworkAuthorityTarget(object)
-	return select(1, NetworkOwnership.GetControllerRoot(object)) or object
-end
-
 local function indexPart(part)
 	local networkId = part and part.NetworkId
 	if networkId ~= nil then
@@ -118,49 +105,6 @@ local function trackBodyMotion(part, bodyID, motionType)
 	end
 end
 
-local function getPartMass(part)
-	local assemblyMass = part.AssemblyMass or 0
-	if assemblyMass > 0 then
-		return assemblyMass
-	end
-
-	local mass = part.Mass or 1
-	if mass > 0 then
-		return mass
-	end
-
-	return 1
-end
-
-local function getPartRadius(part)
-	local size = part.Size or Vector3.new(1, 1, 1)
-	return math.max(size.X, size.Y, size.Z) * 0.5 + OWNERSHIP_IMPACT_RADIUS_PADDING
-end
-
-local function clampImpulse(impulse)
-	local magnitude = impulse:Magnitude()
-	if magnitude <= OWNERSHIP_IMPACT_MAX_IMPULSE then
-		return impulse
-	end
-	if magnitude <= 1e-6 then
-		return Vector3.zero
-	end
-	return impulse:Unit() * OWNERSHIP_IMPACT_MAX_IMPULSE
-end
-
-local function pruneOwnershipImpactCache(now)
-	if now - lastOwnershipImpactPrune < OWNERSHIP_IMPACT_CACHE_PRUNE_INTERVAL then
-		return
-	end
-
-	lastOwnershipImpactPrune = now
-	for key, timestamp in pairs(ownershipImpactTimestamps) do
-		if now - timestamp > OWNERSHIP_IMPACT_CACHE_PRUNE_INTERVAL * 3 then
-			ownershipImpactTimestamps[key] = nil
-		end
-	end
-end
-
 local function updatePhysicalProps(part)
 	local bodyID = bodiesMap[part]
 	local bodyPtr = bodyPointerMap[part]
@@ -169,9 +113,13 @@ local function updatePhysicalProps(part)
 	end
 
 	local physicalProperties = part.CustomPhysicalProperties
-	jolt.lib.JPH_Body_SetFriction(bodyPtr, physicalProperties.Friction)
-	local motionProps = jolt.lib.JPH_Body_GetMotionProperties(bodyPtr)
-	jolt.lib.JPH_MotionProperties_ScaleToMass(motionProps, part.Mass)
+	if physicalProperties.Friction then
+		jolt.lib.JPH_Body_SetFriction(bodyPtr, physicalProperties.Friction)
+	end
+	if part.Mass then
+		local motionProps = jolt.lib.JPH_Body_GetMotionProperties(bodyPtr)
+		jolt.lib.JPH_MotionProperties_ScaleToMass(motionProps, part.Mass)
+	end
 end
 
 local reusableJoltVec3 = { x = 0, y = 0, z = 0 }
@@ -269,7 +217,7 @@ end
 local function getMotionTypeForPart(part)
 	if not part.Anchored then
 		return 2
-	elseif part.isKinematic then
+	elseif part.IsKinematic then
 		return 1
 	end
 
@@ -347,18 +295,16 @@ local function buildShapeForPart(part, halfSize, motionType)
 	if part:IsA("MeshPart") then
 		local geometryPoints, geometryTriangles = getMeshPartGeometry(part)
 		if geometryPoints and geometryTriangles and part.CollisionFidelity ~= Enum.CollisionFidelity.Box then
-			if motionType == 2 then
-				log("rocking")
-				return buildDynamicMeshFallbackShape(part, halfSize, convexRadius)
-			elseif part.CollisionFidelity == Enum.CollisionFidelity.Hull then
+			if part.CollisionFidelity == Enum.CollisionFidelity.Hull then
 				if #geometryPoints >= 4 then
 					local hullShape = bodyMaker.convexHullShape(geometryPoints, convexRadius)
 					if hullShape ~= ffi.null then
-						log("using convex hull for", part.Name)
 						return hullShape
 					end
 				end
-				log("falling back to dynamic mesh for", part.Name)
+				warn("[Physics] Convex hull creation failed for", part.Name, "- falling back to primitive shape")
+				return buildDynamicMeshFallbackShape(part, halfSize, convexRadius)
+			elseif motionType == 2 then
 				return buildDynamicMeshFallbackShape(part, halfSize, convexRadius)
 			else
 				local meshShape = bodyMaker.meshShape(geometryPoints, geometryTriangles)
@@ -456,89 +402,6 @@ local function createBody(bodyInterface, part, motionType)
 	trackBodyMotion(part, bodyID, motionType)
 
 	--debugBody(bodyInterface, bodyID, part.Name)
-	return bodyID
-end
-
-local function createSoftBody(bodyInterface, softBody)
-	local mesh = softBody.Mesh
-	if not mesh or mesh.class ~= "EditableMesh" then
-		warn("[Physics] SoftBody missing valid EditableMesh")
-		return
-	end
-
-	local sharedSettings = lib.JPH_SoftBodySharedSettings_Create()
-
-	local vIds = {}
-	local index = 0
-
-	local vertexSize = structs.JPH_SoftBodyVertex:size()
-	local vertexAlign = structs.JPH_SoftBodyVertex:alignment()
-	local vBuffer = ffi.alloc(vertexSize, vertexAlign)
-
-	local sortedVIds = {}
-	for id, _ in pairs(mesh._vertices) do
-		table.insert(sortedVIds, id)
-	end
-	table.sort(sortedVIds)
-
-	for _, id in ipairs(sortedVIds) do
-		local pos = mesh._vertices[id]
-		table.insert(vIds, id)
-		index += 1
-
-		buffer.writef32(vBuffer, 0, pos.X) -- position.x
-		buffer.writef32(vBuffer, 4, pos.Y) -- position.y
-		buffer.writef32(vBuffer, 8, pos.Z) -- position.z
-		buffer.writef32(vBuffer, 12, 0) -- velocity.x
-		buffer.writef32(vBuffer, 16, 0) -- velocity.y
-		buffer.writef32(vBuffer, 20, 0) -- velocity.z
-		buffer.writef32(vBuffer, 24, 1.0) -- invMass (1.0 = 1kg)
-
-		lib.JPH_SoftBodySharedSettings_AddVertex(sharedSettings, vBuffer)
-
-		if index >= 512 then
-			warn("[Physics] SoftBody vertex limit (512) reached. Clipping mesh.")
-			break
-		end
-	end
-
-	local vIdToIndex = {}
-	for i, id in ipairs(vIds) do
-		vIdToIndex[id] = i - 1
-	end
-
-	for id, face in pairs(mesh._faces) do
-		local i1 = vIdToIndex[face[1]]
-		local i2 = vIdToIndex[face[2]]
-		local i3 = vIdToIndex[face[3]]
-
-		if i1 and i2 and i3 then
-			lib.JPH_SoftBodySharedSettings_AddFace(sharedSettings, i1, i2, i3)
-		end
-	end
-
-	local position = RVec3(0, 0, 0)
-
-	local rotation = structs.JPH_Quat:new({})
-	buffer.writef32(rotation, 12, 1)
-
-	local layer = getLayerForPart(softBody)
-	local creationSettings = lib.JPH_SoftBodyCreationSettings_Create(sharedSettings, position, rotation, layer)
-
-	local bodyPtr = lib.JPH_BodyInterface_CreateAndAddSoftBody(bodyInterface, creationSettings, 0) -- Activate=0
-	if bodyPtr == ffi.null then
-		warn("[Physics] Failed to create SoftBody")
-		return
-	end
-
-	local bodyID = lib.JPH_Body_GetID(bodyPtr)
-	softBodiesMap[softBody] = bodyID
-	softBodyStates[softBody] = {
-		vIds = vIds,
-	}
-	bodyPointerMap[softBody] = bodyPtr
-
-	log("[Physics] Created SoftBody for", softBody.Name, "with", index, "vertices")
 	return bodyID
 end
 
@@ -820,98 +683,6 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 
 		log("[Physics] Job system created")
 
-		local playersService = game:GetService("Players")
-
-		local function applyOwnershipImpactToPart(targetPart, impulse)
-			if not targetPart or targetPart.Parent == nil or targetPart.Anchored then
-				return
-			end
-
-			local clampedImpulse = clampImpulse(impulse)
-			if clampedImpulse:MagnitudeSquared() <= 1e-4 then
-				return
-			end
-
-			KinemiumPhysicsService.ApplyImpulse(targetPart, clampedImpulse)
-		end
-
-		local function relayOwnershipImpacts()
-			local localPlayer = playersService and playersService.LocalPlayer or nil
-			if not localPlayer then
-				return
-			end
-
-			local now = os.clock()
-			pruneOwnershipImpactCache(now)
-
-			local ownedBodies = {}
-			local unownedBodies = {}
-
-			for part in pairs(movingBodiesMap) do
-				if part.Parent and not part.Anchored and part.CanCollide ~= false and part.NetworkId then
-					if NetworkOwnership.IsOwnedByPlayer(part, localPlayer) then
-						ownedBodies[#ownedBodies + 1] = part
-					else
-						unownedBodies[#unownedBodies + 1] = part
-					end
-				end
-			end
-
-			if #unownedBodies == 0 or #ownedBodies == 0 then
-				return
-			end
-
-			for i = 1, #ownedBodies do
-				local sourcePart = ownedBodies[i]
-				local sourceRoot = getNetworkAuthorityTarget(sourcePart)
-				local sourcePosition = sourcePart.CFrame.Position
-				local sourceVelocity = sourcePart.AssemblyLinearVelocity or Vector3.zero
-				local sourceRadius = getPartRadius(sourcePart)
-				local sourceMass = getPartMass(sourcePart)
-
-				for j = 1, #unownedBodies do
-					local targetPart = unownedBodies[j]
-
-					if getNetworkAuthorityTarget(targetPart) == sourceRoot then
-						continue
-					end
-
-					local offset = targetPart.CFrame.Position - sourcePosition
-					local collisionDistance = sourceRadius + getPartRadius(targetPart)
-					if offset:MagnitudeSquared() > collisionDistance * collisionDistance then
-						continue
-					end
-
-					local targetVelocity = targetPart.AssemblyLinearVelocity or Vector3.zero
-					local relativeVelocity = sourceVelocity - targetVelocity
-					local relativeSpeed = relativeVelocity:Magnitude()
-					if relativeSpeed <= 1e-4 then
-						continue
-					end
-
-					local normal = offset:MagnitudeSquared() > 1e-4 and offset:Unit() or relativeVelocity:Unit()
-					local closingSpeed = relativeVelocity:Dot(normal)
-					if closingSpeed < OWNERSHIP_IMPACT_MIN_CLOSING_SPEED then
-						continue
-					end
-
-					local pairKey = `{sourcePart.NetworkId}:{targetPart.NetworkId}`
-					if now - (ownershipImpactTimestamps[pairKey] or 0) < OWNERSHIP_IMPACT_COOLDOWN then
-						continue
-					end
-
-					local targetMass = getPartMass(targetPart)
-					local reducedMass = (sourceMass * targetMass) / math.max(sourceMass + targetMass, 1e-4)
-					local impulse = clampImpulse(normal * (reducedMass * closingSpeed))
-					if impulse:Magnitude() < OWNERSHIP_IMPACT_MIN_IMPULSE then
-						continue
-					end
-
-					ownershipImpactTimestamps[pairKey] = now
-				end
-			end
-		end
-
 		-- Use existing bodyInterface from line 285
 
 		local function RemoveBody(part)
@@ -969,7 +740,9 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 						return
 					end
 
-					updatePhysicalProps(part)
+					if property == "CustomPhysicalProperties" or property == "Mass" then
+						updatePhysicalProps(part)
+					end
 
 					if
 						property == "Size"
@@ -2130,8 +1903,7 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 				jobSystem = jobSystem,
 				bodyInterface = bodyInterface,
 				broadPhaseLayerInterface = broadPhaseLayerInterface,
-				objectVsBroadPhaseFilter,
-				objectVsBroadPhaseFilter,
+				objectVsBroadPhaseFilter = objectVsBroadPhaseFilter,
 				ToJoltVec3 = ToJoltVec3,
 				FromJoltVec3 = FromJoltVec3,
 				RVec3 = RVec3,
@@ -2152,13 +1924,6 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 				game.Workspace.PhysicsEngine == Enum.PhysicsEngine.Jolt
 				or game.Workspace.PhysicsEngine == Enum.PhysicsEngine.Default
 			then
-				-- Only simulate physics when the game is running (not in editor edit mode)
-				local RunService = game:GetService("RunService")
-				if not RunService:IsRunning() then
-					return
-				end
-
-				-- Only re-set gravity when it actually changes to avoid FFI overhead.
 				local newGravity = game.Workspace.Gravity
 				local newWind = game.Workspace.GlobalWind
 				if newGravity ~= lastGravity or newWind ~= lastWind then
@@ -2210,12 +1975,8 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 						continue
 					end
 
-					if not NetworkOwnership.ShouldSimulatePhysicsForMachine(part, game) then
-						continue
-					end
 					_nSimulated += 1
 
-					--[]
 					local cf, linear, angular = CalculateBodyPhysics(part, bodyInterface, bodyID, true)
 
 					if not cf or not part.Parent then
@@ -2252,8 +2013,9 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 					print(string.format("[Physics] CFrame Sync took %.2f ms (%d parts)", _syncDur * 1000, _nSimulated))
 				end
 
-				if next(movingBodiesMap) ~= nil then
-					relayOwnershipImpacts()
+				local moving = 0
+				for i, v in pairs(movingBodiesMap) do
+					moving += 1
 				end
 
 				for softBody, bodyID in pairs(softBodiesMap) do
@@ -2283,19 +2045,6 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 						mesh._geometryDirty = true
 					end
 				end
-
-				--[[
-			local loopEnd = os.clock()
-			local totalEnd = os.clock()
-			log(
-				string.format(
-					"[Physics] Update complete. Physics time: %.2fms, Loop time: %.2fms, Total: %.2fms",
-					(loopStart - startTime) * 1000,
-					(loopEnd - loopStart) * 1000,
-					(totalEnd - startTime) * 1000
-				)
-			)
-				--]]
 			end
 		end)
 
@@ -2311,10 +2060,6 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 				end
 			elseif route == "RemovedPartFromRenderPool" then
 				RemoveBody(data)
-			elseif route == "UpdateSoftBody" then
-				if not softBodiesMap[data] then
-					createSoftBody(bodyInterface, data)
-				end
 			end
 		end
 

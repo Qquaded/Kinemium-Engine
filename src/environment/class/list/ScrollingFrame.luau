@@ -1,8 +1,8 @@
 -- description: "A container that displays a scrollable area of content."
 local Color3 = require("@Color3")
 local GuiObject = require("@GuiObject")
-local raylib = require("@Raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 local UDim = require("@UDim")
 local MouseCursor = require("@Kinemium.MouseCursor")
 
@@ -205,7 +205,7 @@ return {
 					object._dragOffsetY = mousePos.y - thumbY
 					object._velocity = 0 -- stop momentum when dragging
 					object._timeSinceLastScroll = 0
-					MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_ALL)
+					MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_ALL)
 				end
 
 				-- Click on track to jump (if not clicking thumb)
@@ -230,7 +230,7 @@ return {
 				-- Stop dragging
 				if lib.IsMouseButtonReleased(0) == 1 then
 					object._draggingThumb = false
-					MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
+					MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
 				end
 
 				-- Drag update

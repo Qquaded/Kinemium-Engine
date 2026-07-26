@@ -2,8 +2,8 @@
 local Vector3 = require("@Vector3")
 local Enum = require("@EnumMap")
 
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 
 local propTable = {
 	Attachment0 = nil,
@@ -66,19 +66,19 @@ return {
 						local arrowLength = math.min(magnitude / 20, 20) * 5
 						local endPos = position + (direction * arrowLength)
 
-						rl.DrawCylinderEx(
+						adapter.DrawCylinderEx(
 							vector.create(position.X, position.Y, position.Z),
 							vector.create(endPos.X, endPos.Y, endPos.Z),
 							0.1,
 							0.1,
 							8,
-							raylib.structs.Color:new({ r = 0, g = 0, b = 255, a = 255 })
+							adapter.structs.Color:new({ r = 0, g = 0, b = 255, a = 255 })
 						)
 
-						rl.DrawCubeWiresV(
+						adapter.DrawCubeWiresV(
 							vector.create(position.X, position.Y, position.Z),
 							vector.create(parent.Size.X, parent.Size.Y, parent.Size.Z),
-							raylib.structs.Color:new({ r = 0, g = 0, b = 255, a = 255 })
+							adapter.structs.Color:new({ r = 0, g = 0, b = 255, a = 255 })
 						)
 					end
 				end

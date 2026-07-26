@@ -218,8 +218,8 @@ function kinegif.GetDuration(gif: Gif): number
 end
 
 function kinegif.Load(path: string): Gif
-	local raylib = require("@raylib")
-	local lib = raylib.lib
+	local adapter = require("@RaylibAdapter")
+	local lib = adapter.lib
 
 	local rawFrames = kinegif.CreateFrames(path)
 	assert(#rawFrames > 0, `GIF has no frames: {path}`)
@@ -271,7 +271,7 @@ function kinegif.Load(path: string): Gif
 		end
 
 		-- upload composited canvas as texture
-		local img = lib.GenImageColor(frame.width, frame.height, raylib.const.BLANK)
+		local img = lib.GenImageColor(frame.width, frame.height, adapter.const.BLANK)
 		local texture = lib.LoadTextureFromImage(img)
 		lib.UnloadImage(img)
 
@@ -357,10 +357,10 @@ function kinegif.Seek(gif: Gif, timestamp: number)
 end
 
 function kinegif.Draw(gif: Gif, x: number, y: number, width: number?, height: number?, tint: any?)
-	local raylib = require("@raylib")
-	local lib = raylib.lib
-	local structs = raylib.structs
-	local color = tint or raylib.const.WHITE
+	local adapter = require("@RaylibAdapter")
+	local lib = adapter.lib
+	local structs = adapter.structs
+	local color = tint or adapter.const.WHITE
 
 	local w = width or gif.width
 	local h = height or gif.height

@@ -2,8 +2,8 @@
 local Color3 = require("@Color3")
 local NetworkOwnership = require("@NetworkOwnership")
 
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 
 local propTable = {
 	Attachment0 = nil,
@@ -106,7 +106,7 @@ return {
 			local axisX = att.Parent.CFrame:VectorToWorldSpace(att.Axis):Unit()
 
 			local rlPos = vector.create(pos.X, pos.Y, pos.Z)
-			local rlColorEdge = raylib.structs.Color:new({
+			local rlColorEdge = adapter.structs.Color:new({
 				r = instance.Color.R * 255,
 				g = instance.Color.G * 255,
 				b = instance.Color.B * 255,
@@ -132,7 +132,7 @@ return {
 
 				local pt = vector.create(pX, pY, pZ)
 				if lastPoint then
-					rl.DrawLine3D(lastPoint, pt, rlColorEdge)
+					adapter.DrawLine3D(lastPoint, pt, rlColorEdge)
 				end
 				lastPoint = pt
 			end

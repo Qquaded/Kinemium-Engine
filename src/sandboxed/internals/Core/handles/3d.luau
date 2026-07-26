@@ -8,7 +8,7 @@ end
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
 local rlservice = game:GetService("KinemiumRaylib")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local UserInputService = game:GetService("UserInputService")
 
 if UserInputService:GetOS() == Enum.Platform.Linux then
@@ -20,8 +20,8 @@ if FlagExists("cli") or FlagExists("headless") then
 	return
 end
 
-local lib = raylib.lib
-local const = raylib.const
+local lib = adapter.lib
+local const = adapter.const
 local renderer = rlservice.GetRenderer()
 local Selection = game:GetService("Selection")
 local freecam = renderer.Freecam
@@ -631,7 +631,7 @@ NewCategoryToolbar:Fire("Tools", {
 						)
 
 					lib.DrawRectangleRounded(
-						raylib.structs.Rectangle:new({
+						adapter.structs.Rectangle:new({
 							x = px,
 							y = py,
 							width = checkboxSize,
@@ -647,13 +647,13 @@ NewCategoryToolbar:Fire("Tools", {
 							vector.create(px + 3, py + 9),
 							vector.create(px + 7, py + 13),
 							2,
-							raylib.const.WHITE
+							adapter.const.WHITE
 						)
 						lib.DrawLineEx(
 							vector.create(px + 7, py + 13),
 							vector.create(px + 13, py + 4),
 							2,
-							raylib.const.WHITE
+							adapter.const.WHITE
 						)
 					end
 
@@ -671,8 +671,8 @@ NewCategoryToolbar:Fire("Tools", {
 				if moveIcon then
 					lib.DrawTexturePro(
 						moveIcon.texture,
-						raylib.structs.Rectangle:new({ x = 0, y = 0, width = moveIcon.x, height = moveIcon.y }),
-						raylib.structs.Rectangle:new({
+						adapter.structs.Rectangle:new({ x = 0, y = 0, width = moveIcon.x, height = moveIcon.y }),
+						adapter.structs.Rectangle:new({
 							x = iconX,
 							y = row1Y + (rowHeight - smallIconSize) / 2,
 							width = smallIconSize,
@@ -700,8 +700,8 @@ NewCategoryToolbar:Fire("Tools", {
 				if rotIcon then
 					lib.DrawTexturePro(
 						rotIcon.texture,
-						raylib.structs.Rectangle:new({ x = 0, y = 0, width = rotIcon.x, height = rotIcon.y }),
-						raylib.structs.Rectangle:new({
+						adapter.structs.Rectangle:new({ x = 0, y = 0, width = rotIcon.x, height = rotIcon.y }),
+						adapter.structs.Rectangle:new({
 							x = iconX,
 							y = row2Y + (rowHeight - smallIconSize) / 2,
 							width = smallIconSize,

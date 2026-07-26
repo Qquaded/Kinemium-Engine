@@ -1,8 +1,7 @@
-local raylib = require("@raylib")
 local rect = require("@arect")
 local Color3 = require("@Color3")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1],

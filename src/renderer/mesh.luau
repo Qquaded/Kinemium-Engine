@@ -1,11 +1,7 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-local lib = raylib.lib
-local r3dapi = require("@r3d")
-local r3d = r3dapi.lib
-local _r3dstructs = r3dapi.structs
-local ffi = zune.ffi
-local meshgen = require("./meshgen")
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
+local lib = adapter.lib
+
 local modelRegistry = {}
 local meshDataRegistry = {} -- CPU-side R3D_MeshData for file-loaded models
 
@@ -37,80 +33,23 @@ end
 
 local function GenerateMesh(meshId: string, params: any)
 	local meshData
-	local gpuMesh
-
-	print(meshId)
 
 	if meshId == "cube" then
-		meshData = r3d.R3D_GenMeshDataCube(params.width or 1, params.height or 1, params.length or 1)
-		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0) -- 4 = R3D_PRIMITIVE_TRIANGLES, 0 = Static usages
+		meshData = lib.GenMeshCube(params.width or 2, params.height or 2, params.length or 2)
 	elseif meshId == "sphere" then
-		meshData = r3d.R3D_GenMeshDataSphere(params.radius or 1, params.rings or 16, params.slices or 16)
-		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
+		meshData = lib.GetMeshSphere(params.radius or 1, params.rings or 16, params.slices or 16)
 	elseif meshId == "cylinder" then
-		meshData = r3d.R3D_GenMeshDataCylinder(params.radius or 1, params.height or 2, params.slices or 16)
-		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
+		meshData = lib.GenMeshCylinder(params.radius or 1, params.height or 2, params.slices or 16)
 	elseif meshId == "plane" then
-		meshData = r3d.R3D_GenMeshDataPlane(params.width or 10, params.length or 10, params.resX or 1, params.resZ or 1)
-		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
+		meshData = lib.GenMeshPlane(params.width or 10, params.length or 10, params.resX or 1, params.resZ or 1)
 	elseif meshId == "torus" then
-		meshData =
-			r3d.R3D_GenMeshDataTorus(params.radius or 1, params.size or 0.3, params.radSeg or 16, params.sides or 16)
-		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
-	elseif meshId == "wedge" then
-		meshData = r3d.R3D_GenMeshDataSlope(
-			params.width or 1,
-			params.height or 1,
-			params.length or 1,
-			params.slopeNormal or vector.create(1, 1, 0)
-		)
-		gpuMesh = r3d.R3D_LoadMesh(4, meshData, ffi.null, 0)
-	elseif meshId == "cornerwedge" then
-		local width = params.width or 1
-		local height = params.height or 1
-		local length = params.length or 1
-
-		local hx = width * 0.5
-		local hy = height * 0.5
-		local hz = length * 0.5
-
-		local a = { x = -hx, y = -hy, z = -hz } -- back-left
-		local b = { x = hx, y = -hy, z = -hz } -- back-right
-		local c = { x = hx, y = -hy, z = hz } -- front-right
-		local d = { x = -hx, y = -hy, z = hz } -- front-left
-		local e = { x = -hx, y = hy, z = -hz } -- top apex
-
-		local triangles = {
-			-- Bottom face (flipped)
-			{ a, b, c },
-			{ a, c, d },
-
-			-- Back face (-Z)
-			{ a, e, b },
-
-			-- Left face (-X)
-			{ a, d, e },
-
-			-- Right slope
-			{ b, e, c },
-
-			-- Front slope
-			{ d, c, e },
-		}
-
-		-- buildFromTriangles returns { cpuMeshData, gpuMesh }
-		local custom = meshgen.buildFromTriangles(triangles, { usage = meshgen.Usage.Static })
-		if not custom then
-			return nil
-		end
-		return custom
-	else
+		meshData = lib.GenMeshTorus(params.radius or 1, params.size or 0.3, params.radSeg or 16, params.sides or 16)
 		warn(`Unknown mesh type: {meshId}`)
 		return nil
 	end
 
 	log(`Generated mesh: {meshId} ({meshId})`)
-	return { meshData, gpuMesh }
+	return { meshData }
 end
 
 local _preloadedMeshesCache = nil

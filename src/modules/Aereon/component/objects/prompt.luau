@@ -1,12 +1,12 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 local rect = require("@arect")
 local color3 = require("@Color3")
 local textButton = require("./textButton")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1] or 0,
@@ -111,7 +111,7 @@ return function(objects, data)
 					end
 					wrapper.hide()
 				end,
-			})
+			}, raylib)
 		end
 		return wrapper
 	end
@@ -151,12 +151,12 @@ return function(objects, data)
 			config.animScale = config.animScale + (1 - config.animScale) * 0.20 -- scale speed
 		end
 
-		local screenW = raylib.lib.GetScreenWidth()
-		local screenH = raylib.lib.GetScreenHeight()
+		local screenW = adapter.lib.GetScreenWidth()
+		local screenH = adapter.lib.GetScreenHeight()
 
 		-- Overlay
 		local overlayAlpha = config.animAlpha * 0.65
-		raylib.lib.DrawRectangle(0, 0, screenW, screenH, config.overlayColor:ToRaylib(1 - overlayAlpha))
+		adapter.lib.DrawRectangle(0, 0, screenW, screenH, config.overlayColor:ToRaylib(1 - overlayAlpha))
 
 		-- Resolve center position
 		local baseX = config.obj_rect.x == 0 and (screenW - config.obj_rect.width) / 2 or config.obj_rect.x
@@ -177,7 +177,7 @@ return function(objects, data)
 		for i = 1, 5 do
 			local spread = i * 5
 			local alpha = 0.04 + (5 - i) * 0.04
-			raylib.lib.DrawRectangleRounded(
+			adapter.lib.DrawRectangleRounded(
 				rect:translate(
 					rect.new(pr.x - spread * 0.5, pr.y + spread * 0.6, pr.width + spread, pr.height + spread * 0.5)
 				),
@@ -188,7 +188,7 @@ return function(objects, data)
 		end
 
 		-- Border
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(pr),
 			config.rounded[1],
 			config.rounded[2],
@@ -196,7 +196,7 @@ return function(objects, data)
 		)
 
 		-- Background (inset 1px from border)
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(rect.new(pr.x + 1, pr.y + 1, pr.width - 2, pr.height - 2)),
 			config.rounded[1],
 			config.rounded[2],
@@ -215,7 +215,7 @@ return function(objects, data)
 				or math.max(config.closeButtonHover - dt * 10, 0)
 
 			if config.closeButtonHover > 0 then
-				raylib.lib.DrawRectangleRounded(
+				adapter.lib.DrawRectangleRounded(
 					rect:translate(closeRect),
 					0.3,
 					8,
@@ -232,20 +232,20 @@ return function(objects, data)
 				0.55 - config.closeButtonHover * 0.35
 			)
 
-			raylib.lib.DrawLineEx(
+			adapter.lib.DrawLineEx(
 				vector.create(closeX + lp, closeY + lp),
 				vector.create(closeX + closeSize - lp, closeY + closeSize - lp),
 				lt,
 				xCol:ToRaylib(1 - iconAlpha)
 			)
-			raylib.lib.DrawLineEx(
+			adapter.lib.DrawLineEx(
 				vector.create(closeX + closeSize - lp, closeY + lp),
 				vector.create(closeX + lp, closeY + closeSize - lp),
 				lt,
 				xCol:ToRaylib(1 - iconAlpha)
 			)
 
-			if isCloseHovered and raylib.lib.IsMouseButtonReleased(0) == 1 then
+			if isCloseHovered and adapter.lib.IsMouseButtonReleased(0) == 1 then
 				if config.onClose then
 					config.onClose()
 				end
@@ -258,7 +258,7 @@ return function(objects, data)
 
 		-- Title
 		if config.title ~= "" then
-			raylib.lib.DrawTextEx(
+			adapter.lib.DrawTextEx(
 				config.font,
 				config.title,
 				vector.create(pr.x + config.padding, contentY),
@@ -271,7 +271,7 @@ return function(objects, data)
 
 		-- Message
 		if config.message ~= "" then
-			raylib.lib.DrawTextEx(
+			adapter.lib.DrawTextEx(
 				config.font,
 				config.message,
 				vector.create(pr.x + config.padding, contentY),
@@ -305,7 +305,7 @@ return function(objects, data)
 		local btnX = pr.x + pr.width - config.padding - totalBtnW
 
 		-- Thin separator above buttons
-		raylib.lib.DrawLineEx(
+		adapter.lib.DrawLineEx(
 			vector.create(pr.x + config.padding, btnY - config.buttonSpacing),
 			vector.create(pr.x + pr.width - config.padding, btnY - config.buttonSpacing),
 			1,

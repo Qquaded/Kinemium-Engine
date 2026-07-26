@@ -43,8 +43,8 @@ end
 
 GuiObject.inherit(propTable)
 
-local raylib = require("@raylib")
-local lib = raylib.lib
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
 local defaultFont = lib.GetFontDefault()
 
 return {

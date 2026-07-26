@@ -2,7 +2,7 @@
 local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
 local UDim2 = require("@UDim2")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local MouseCursor = require("@Kinemium.MouseCursor")
 
 local aereon = require("@Aereon")
@@ -27,8 +27,10 @@ local function getParentMetrics(parent)
 	if parent.AbsoluteSize then
 		parentSize = parent.AbsoluteSize
 	elseif parent.Size and parent.Size.ToPixels then
-		local dpiScale = raylib.lib.GetWindowScaleDPI()
-		parentSize = parent.Size:ToPixels(Vector2.new(raylib.lib.GetRenderWidth() / dpiScale.x, raylib.lib.GetRenderHeight() / dpiScale.y))
+		local dpiScale = adapter.lib.GetWindowScaleDPI()
+		parentSize = parent.Size:ToPixels(
+			Vector2.new(adapter.lib.GetRenderWidth() / dpiScale.x, adapter.lib.GetRenderHeight() / dpiScale.y)
+		)
 	end
 
 	return parentAbsPos, parentSize
@@ -56,24 +58,16 @@ return {
 					end
 
 					if instance.isDragging == true then
-						local mousePos = raylib.lib.GetMousePosition()
+						local mousePos = adapter.lib.GetMousePosition()
 						local newAbsX = mousePos.x - instance.dragOffset.X
 						local newAbsY = mousePos.y - instance.dragOffset.Y
 
 						if instance.RespectScreenBounds then
-							local dpiScale = raylib.lib.GetWindowScaleDPI()
-							local screenW = raylib.lib.GetScreenWidth() / dpiScale.x
-							local screenH = raylib.lib.GetScreenHeight() / dpiScale.y
-							newAbsX = math.clamp(
-								newAbsX,
-								0,
-								screenW - absoluteSize.X
-							)
-							newAbsY = math.clamp(
-								newAbsY,
-								0,
-								screenH - absoluteSize.Y
-							)
+							local dpiScale = adapter.lib.GetWindowScaleDPI()
+							local screenW = adapter.lib.GetScreenWidth() / dpiScale.x
+							local screenH = adapter.lib.GetScreenHeight() / dpiScale.y
+							newAbsX = math.clamp(newAbsX, 0, screenW - absoluteSize.X)
+							newAbsY = math.clamp(newAbsY, 0, screenH - absoluteSize.Y)
 						end
 
 						local parentAbsPos, parentSize = getParentMetrics(adornee.Parent)
@@ -90,21 +84,21 @@ return {
 							relativeY - scaleYOffset
 						)
 
-						MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_RESIZE_ALL)
+						MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_RESIZE_ALL)
 					end
 
 					local new = arect.new(absolutePosition.X, absolutePosition.Y, absoluteSize.X, absoluteSize.Y)
 					if arect.MouseIsInRect(new) then
-						if raylib.lib.IsMouseButtonDown(0) == 1 then
+						if adapter.lib.IsMouseButtonDown(0) == 1 then
 							if not instance.isDragging then
-								local mousePos = raylib.lib.GetMousePosition()
+								local mousePos = adapter.lib.GetMousePosition()
 								instance.dragOffset =
 									Vector3.new(mousePos.x - absolutePosition.X, mousePos.y - absolutePosition.Y, 0)
 							end
 							instance.isDragging = true
-						elseif raylib.lib.IsMouseButtonReleased(0) == 1 then
+						elseif adapter.lib.IsMouseButtonReleased(0) == 1 then
 							instance.isDragging = false
-							MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
+							MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
 						end
 					end
 				end

@@ -1,10 +1,10 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
 		rounded = data.rounded or { 0.08, 8 },
@@ -98,11 +98,11 @@ return function(objects, data)
 
 	wrapper.render = function(dt)
 		local r = config.obj_rect
-		local mousePos = raylib.lib.GetMousePosition()
-		local mousePressed = raylib.lib.IsMouseButtonPressed(0) == 1
+		local mousePos = adapter.lib.GetMousePosition()
+		local mousePressed = adapter.lib.IsMouseButtonPressed(0) == 1
 
 		-- Background
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(r),
 			config.rounded[1],
 			config.rounded[2],
@@ -124,7 +124,7 @@ return function(objects, data)
 
 		for _, word in ipairs(words) do
 			local testLine = currentLine == "" and word or currentLine .. " " .. word
-			local lineWidth = raylib.lib.MeasureText(testLine, fontSize)
+			local lineWidth = adapter.lib.MeasureText(testLine, fontSize)
 
 			if lineWidth > maxWidth then
 				table.insert(questionLines, currentLine)
@@ -139,7 +139,7 @@ return function(objects, data)
 		end
 
 		for _, line in ipairs(questionLines) do
-			raylib.lib.DrawText(line, r.x + config.padding, currentY, fontSize, config.textColor:ToRaylib(0))
+			adapter.lib.DrawText(line, r.x + config.padding, currentY, fontSize, config.textColor:ToRaylib(0))
 			currentY = currentY + 20
 		end
 
@@ -168,13 +168,13 @@ return function(objects, data)
 				bgColor = config.optionHoverColor
 			end
 
-			raylib.lib.DrawRectangleRounded(rect:translate(optionRect), 0.1, 8, bgColor:ToRaylib(0))
+			adapter.lib.DrawRectangleRounded(rect:translate(optionRect), 0.1, 8, bgColor:ToRaylib(0))
 
 			-- Progress bar if voted or closed
 			if config.userVoted or config.closed then
 				local progressWidth = (optionRect.width - 4) * (percentage / 100)
 				if progressWidth > 0 then
-					raylib.lib.DrawRectangleRounded(
+					adapter.lib.DrawRectangleRounded(
 						structs.Rectangle:new({
 							x = optionRect.x + 2,
 							y = optionRect.y + 2,
@@ -191,7 +191,7 @@ return function(objects, data)
 			-- Avatar
 			local contentX = optionRect.x + 12
 			if option.avatar then
-				raylib.lib.DrawTexturePro(
+				adapter.lib.DrawTexturePro(
 					option.avatar.texture,
 					structs.Rectangle:new({ x = 0, y = 0, width = option.avatar.x, height = option.avatar.y }),
 					structs.Rectangle:new({
@@ -202,13 +202,13 @@ return function(objects, data)
 					}),
 					vector.create(0, 0),
 					0,
-					raylib.const.WHITE
+					adapter.const.WHITE
 				)
 				contentX = contentX + config.avatarSize + 12
 			else
 				-- Placeholder avatar circle
 				local avatarCenterY = optionRect.y + config.optionHeight / 2
-				raylib.lib.DrawCircle(
+				adapter.lib.DrawCircle(
 					contentX + config.avatarSize / 2,
 					avatarCenterY,
 					config.avatarSize / 2,
@@ -218,15 +218,15 @@ return function(objects, data)
 			end
 
 			-- Option text
-			raylib.lib.DrawText(option.text, contentX, optionRect.y + 12, 13, config.textColor:ToRaylib(0))
+			adapter.lib.DrawText(option.text, contentX, optionRect.y + 12, 13, config.textColor:ToRaylib(0))
 
 			-- Vote count and percentage (right side)
 			if config.userVoted or config.closed then
 				local voteText = string.format("%d vote%s", option.votes, option.votes == 1 and "" or "s")
 				local percentText = string.format("%.0f%%", percentage)
 
-				local percentWidth = raylib.lib.MeasureText(percentText, 16)
-				raylib.lib.DrawText(
+				local percentWidth = adapter.lib.MeasureText(percentText, 16)
+				adapter.lib.DrawText(
 					percentText,
 					optionRect.x + optionRect.width - percentWidth - 12,
 					optionRect.y + 10,
@@ -234,8 +234,8 @@ return function(objects, data)
 					config.textColor:ToRaylib(0)
 				)
 
-				local voteWidth = raylib.lib.MeasureText(voteText, 11)
-				raylib.lib.DrawText(
+				local voteWidth = adapter.lib.MeasureText(voteText, 11)
+				adapter.lib.DrawText(
 					voteText,
 					optionRect.x + optionRect.width - voteWidth - 12,
 					optionRect.y + 32,
@@ -260,7 +260,7 @@ return function(objects, data)
 			footerText = footerText .. " • Poll closed"
 		end
 
-		raylib.lib.DrawText(footerText, r.x + config.padding, currentY, 12, config.dimTextColor:ToRaylib(0))
+		adapter.lib.DrawText(footerText, r.x + config.padding, currentY, 12, config.dimTextColor:ToRaylib(0))
 
 		for _, m in pairs(config.modifiers) do
 			m()

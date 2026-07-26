@@ -1,12 +1,12 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		x = data.x or data[1],
 		y = data.y or data[2],
@@ -32,7 +32,7 @@ return function(objects, data)
 			config.rotation = config.rotation - 360
 		end
 
-		raylib.lib.DrawRing(
+		adapter.lib.DrawRing(
 			vector.create(config.x, config.y),
 			config.radius - config.thickness,
 			config.radius,

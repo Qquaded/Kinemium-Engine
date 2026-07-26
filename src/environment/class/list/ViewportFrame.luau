@@ -1,7 +1,7 @@
 -- description: "A frame that displays a 3D viewport."
 local Frame = require("@Frame")
 local GuiObject = require("@GuiObject")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local utils = require("@bufferutils")
 local r3d = require("@r3d")
 
@@ -23,15 +23,15 @@ local function resetRenderTexture(object, width, height)
 	local w = math.max(1, math.floor(width or 1))
 	local h = math.max(1, math.floor(height or 1))
 	if object._rendertexture then
-		raylib.lib.UnloadRenderTexture(object._rendertexture)
+		adapter.lib.UnloadRenderTexture(object._rendertexture)
 	end
-	local rtx = raylib.lib.LoadRenderTexture(w, h)
+	local rtx = adapter.lib.LoadRenderTexture(w, h)
 	object._rendertexture = rtx
 	object._rtWidth = w
 	object._rtHeight = h
 	local tex = utils.extract.texture(rtx)
-	raylib.lib.SetTextureFilter(tex, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
-	raylib.lib.SetTextureWrap(tex, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
+	adapter.lib.SetTextureFilter(tex, adapter.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
+	adapter.lib.SetTextureWrap(tex, adapter.const.TextureWrap.TEXTURE_WRAP_CLAMP)
 end
 
 local function getRenderableMesh(part)
@@ -119,7 +119,7 @@ return {
 			local camera = object.Camera
 			if rtx and camera and camera._raylibcam then
 				lib.BeginTextureMode(rtx)
-				lib.ClearBackground(raylib.const.BLANK)
+				lib.ClearBackground(adapter.const.BLANK)
 				lib.EndTextureMode()
 
 				rlib.R3D_BeginEx(rtx, camera._raylibcam)
@@ -131,7 +131,7 @@ return {
 						local mesh = getRenderableMesh(child)
 						if mesh then
 							local material = buildMaterial(child)
-							local matrix = child.CFrame:ToRaylibMatrixScale(child.Size, raylib.structs)
+							local matrix = child.CFrame:ToRaylibMatrixScale(child.Size, adapter.structs)
 							rlib.R3D_DrawMeshPro(mesh, material, matrix)
 						end
 					end
@@ -147,7 +147,7 @@ return {
 					height = frameSize.Y,
 				})
 
-				lib.DrawTexturePro(tex, source, dest, vector.create(0, 0), 0, raylib.const.WHITE)
+				lib.DrawTexturePro(tex, source, dest, vector.create(0, 0), 0, adapter.const.WHITE)
 			end
 
 			GuiObject.renderChildren(lib, object, dt, structs, renderer)
@@ -169,7 +169,7 @@ return {
 
 		instance.Destroying:Connect(function()
 			if instance._rendertexture then
-				raylib.lib.UnloadRenderTexture(instance._rendertexture)
+				adapter.lib.UnloadRenderTexture(instance._rendertexture)
 				instance._rendertexture = nil
 			end
 		end)

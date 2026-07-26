@@ -1,49 +1,30 @@
-local raylib = require("@raylib")
-
-local structs = raylib.structs
-
 local rect = require("@arect")
-
 local color3 = require("@Color3")
-
 local effects = require("./effects")
 
-return function(objects, data)
-	local config = {
+return function(objects, data, raylib)
+	local structs = raylib.structs
 
+	local config = {
 		obj_rect = rect.new(
 			data.x or data[1] or 0,
 			data.y or data[2] or 0,
 			data.width or data[3] or 40,
 			data.height or data[4] or 40
 		),
-
 		image = data.image or data.icon,
-
 		backgroundColor = data.backgroundColor or color3.new(0.2, 0.2, 0.2),
-
 		hoverColor = data.hoverColor or color3.new(0.3, 0.3, 0.3),
-
 		pressColor = data.pressColor or color3.new(0.15, 0.15, 0.15),
-
 		imageColor = data.imageColor or color3.new(1, 1, 1),
-
 		imageTransparency = data.imageTransparency or 0,
-
 		imageScale = data.imageScale or 0.7,
-
 		rounded = data.rounded or { 0.5, 8 },
-
 		onClick = data.onClick,
-
 		shadowColor = data.shadowColor or color3.new(0, 0, 0),
-
 		shadowLayers = data.shadowLayers or 6,
-
 		shadowOffsetX = data.shadowOffsetX or 0,
-
 		shadowOffsetY = data.shadowOffsetY or 4,
-
 		shadowSpread = data.shadowSpread or 3,
 	}
 
@@ -68,7 +49,7 @@ return function(objects, data)
 		shadowSpread = config.shadowSpread,
 
 		pressSquish = 2,
-	})
+	}, {}, raylib)
 
 	local function lerp(a, b, t)
 		return a + (b - a) * t

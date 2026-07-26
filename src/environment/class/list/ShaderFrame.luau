@@ -1,6 +1,6 @@
 -- description: "Creates a shader-based frame for custom rendering."
 local GuiObject = require("@GuiObject")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
 local propTable = {
 	Name = "ShaderFrame",
@@ -38,9 +38,9 @@ propTable.render = function(lib, object, dt, structs, renderer)
 	if object.Shader then
 		object._frameCount = (object._frameCount or 0) + 1
 
-		raylib.lib.BeginShaderMode(object.Shader._shader)
+		adapter.lib.BeginShaderMode(object.Shader._shader)
 
-		local time = raylib.lib.GetTime()
+		local time = adapter.lib.GetTime()
 		local safeW = math.max(size.X, 1)
 		local safeH = math.max(size.Y, 1)
 
@@ -62,10 +62,10 @@ propTable.render = function(lib, object, dt, structs, renderer)
 		object.Shader:SetUniform("iResolution", { safeW, safeH, 1 }, true)
 		object.Shader:SetUniform("iMouse", { localX, localY, localX, localY }, true)
 	end
-	raylib.lib.DrawRectangle(pos.X, pos.Y, size.X, size.Y, raylib.const.WHITE)
+	adapter.lib.DrawRectangle(pos.X, pos.Y, size.X, size.Y, adapter.const.WHITE)
 
 	if object.Shader then
-		raylib.lib.EndShaderMode()
+		adapter.lib.EndShaderMode()
 	end
 
 	GuiObject.renderChildren(lib, object, dt, structs, renderer)

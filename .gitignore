@@ -12,3 +12,5 @@ zunedb.exe
 src/projects.toml
 .devin
 zune.exe
+vendor
+external/build

@@ -5,7 +5,7 @@ local TweenInfo = require("@TweenInfo")
 local UDim2 = require("@UDim2")
 local signal = require("@Kinemium.signal")
 local Vector2 = require("@Vector2")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
 local SEGMENTS = 16
 local CORNER_SEGMENTS = 8
@@ -32,23 +32,23 @@ local function resolveBlendMode(raylib, value)
 	end
 
 	if type(value) ~= "string" then
-		return raylib.const.BlendMode.BLEND_ALPHA
+		return adapter.const.BlendMode.BLEND_ALPHA
 	end
 
 	local normalized = string.lower(value)
 	if normalized == "additive" or normalized == "add" then
-		return raylib.const.BlendMode.BLEND_ADDITIVE
+		return adapter.const.BlendMode.BLEND_ADDITIVE
 	elseif normalized == "multiply" or normalized == "multiplied" then
-		return raylib.const.BlendMode.BLEND_MULTIPLIED
+		return adapter.const.BlendMode.BLEND_MULTIPLIED
 	elseif normalized == "premultiply" or normalized == "premultipliedalpha" or normalized == "premultiplied" then
-		return raylib.const.BlendMode.BLEND_ALPHA_PREMULTIPLY
+		return adapter.const.BlendMode.BLEND_ALPHA_PREMULTIPLY
 	elseif normalized == "addcolors" then
-		return raylib.const.BlendMode.BLEND_ADD_COLORS
+		return adapter.const.BlendMode.BLEND_ADD_COLORS
 	elseif normalized == "subtract" or normalized == "subtractcolors" then
-		return raylib.const.BlendMode.BLEND_SUBTRACT_COLORS
+		return adapter.const.BlendMode.BLEND_SUBTRACT_COLORS
 	end
 
-	return raylib.const.BlendMode.BLEND_ALPHA
+	return adapter.const.BlendMode.BLEND_ALPHA
 end
 
 local function drawCornerArc(lib, cx, cy, radius, angleStart, angleEnd, color)
@@ -970,6 +970,8 @@ local propTable = {
 		if not object.Visible then
 			return
 		end
+
+		lib = renderer.Lib2d
 
 		local drawPos, size = calculateDrawParams(object, lib, dt, structs, renderer)
 		local mousePos = vector.create(lib.GetMouseX(), lib.GetMouseY(), 0)

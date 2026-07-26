@@ -6,9 +6,9 @@ if RunService:IsServer() then
 end
 
 local rlservice = game:GetService("KinemiumRaylib")
-local raylib = require("@raylib")
-local lib = raylib.lib
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
+local structs = adapter.structs
 local renderer = rlservice.GetRenderer()
 local Selection = game:GetService("Selection")
 
@@ -406,9 +406,9 @@ local function drawHandles(absPos, absSize, object)
 		lib.DrawCircleLinesV(vector.create(h.pos.X, h.pos.Y), chs, SelectionBorderColor)
 
 		if isHovering then
-			if raylib.lib.IsMouseButtonPressed(0) == 1 then
+			if adapter.lib.IsMouseButtonPressed(0) == 1 then
 				activeHandle = h
-				dragStartMouse = raylib.lib.GetMousePosition()
+				dragStartMouse = adapter.lib.GetMousePosition()
 				dragStartPos = absPos
 				dragStartSize = absSize
 				object._EditorOverride = true
@@ -416,8 +416,8 @@ local function drawHandles(absPos, absSize, object)
 		end
 	end
 
-	if activeHandle and raylib.lib.IsMouseButtonDown(0) == 1 then
-		local mouse = raylib.lib.GetMousePosition()
+	if activeHandle and adapter.lib.IsMouseButtonDown(0) == 1 then
+		local mouse = adapter.lib.GetMousePosition()
 		local dx = mouse.x - dragStartMouse.x
 		local dy = mouse.y - dragStartMouse.y
 
@@ -457,7 +457,7 @@ local function drawHandles(absPos, absSize, object)
 		object.Position = UDim2.new(0, relativeX, 0, relativeY)
 	end
 
-	if raylib.lib.IsMouseButtonReleased(0) == 1 then
+	if adapter.lib.IsMouseButtonReleased(0) == 1 then
 		if activeHandle then
 			object._EditorOverride = nil
 			activeHandle = nil
@@ -468,15 +468,15 @@ local function drawHandles(absPos, absSize, object)
 	local fontSize = 17
 	local padding = 6
 
-	local textSize = raylib.lib.MeasureTextEx(vend, text, fontSize, 1)
+	local textSize = adapter.lib.MeasureTextEx(vend, text, fontSize, 1)
 
 	local bgX = absPos.X + absSize.X - textSize.X - padding * 2
 	local bgY = absPos.Y + absSize.Y - textSize.Y - padding * 2
 
 	local backgroundRect = Arect.new(bgX, bgY, textSize.X + padding * 2, textSize.Y + padding * 2)
 
-	raylib.lib.DrawRectangleRec(Arect:translate(backgroundRect), backgroundColor)
-	raylib.lib.DrawTextEx(vend, text, vector.create(bgX + padding, bgY + padding), fontSize, 1, TextColor)
+	adapter.lib.DrawRectangleRec(Arect:translate(backgroundRect), backgroundColor)
+	adapter.lib.DrawTextEx(vend, text, vector.create(bgX + padding, bgY + padding), fontSize, 1, TextColor)
 end
 
 local function highlight(selected)
@@ -537,8 +537,8 @@ local function highlight(selected)
 end
 
 renderer.Pool.new("2d", function()
-	local dt = raylib.lib.GetFrameTime()
-	local mousePos = raylib.lib.GetMousePosition()
+	local dt = adapter.lib.GetFrameTime()
+	local mousePos = adapter.lib.GetMousePosition()
 
 	local selected = Selection:Get()
 	local first = Selection:Get()[1]

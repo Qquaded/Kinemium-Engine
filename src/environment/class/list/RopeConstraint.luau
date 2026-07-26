@@ -2,8 +2,8 @@
 local Color3 = require("@Color3")
 local NetworkOwnership = require("@NetworkOwnership")
 
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 
 local propTable = {
 	Attachment0 = nil,
@@ -103,7 +103,7 @@ return {
 			local straightDist = (p1 - p0):Magnitude()
 			local sag = math.max(ropeLen - straightDist, 0) * 0.5
 
-			local rlColor = raylib.structs.Color:new({
+			local rlColor = adapter.structs.Color:new({
 				r = instance.Color.R * 255,
 				g = instance.Color.G * 255,
 				b = instance.Color.B * 255,
@@ -122,13 +122,13 @@ return {
 
 				local pt = vector.create(lx, ly, lz)
 				if lastPt then
-					rl.DrawCylinderEx(lastPt, pt, instance.Thickness, instance.Thickness, 8, rlColor)
+					adapter.DrawCylinderEx(lastPt, pt, instance.Thickness, instance.Thickness, 8, rlColor)
 				else
-					rl.DrawSphere(vector.create(p0.X, p0.Y, p0.Z), 0.1, rlColor)
+					adapter.DrawSphere(vector.create(p0.X, p0.Y, p0.Z), 0.1, rlColor)
 				end
 				lastPt = pt
 			end
-			rl.DrawSphere(vector.create(p1.X, p1.Y, p1.Z), 0.1, rlColor)
+			adapter.DrawSphere(vector.create(p1.X, p1.Y, p1.Z), 0.1, rlColor)
 		end
 
 		instance.Changed:Connect(function(prop)

@@ -1,8 +1,7 @@
-local raylib = require("@raylib")
-local rect = require("@arect")
-local color3 = require("@Color3")
+return function(config, data, raylib)
+	local rect = require("@arect")
+	local color3 = require("@Color3")
 
-return function(config)
 	config = config or {}
 
 	local state = {

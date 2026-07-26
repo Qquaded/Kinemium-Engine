@@ -1,5 +1,5 @@
-local raylib = require("@raylib")
-local const = raylib.const
+local adapter = require("@RaylibAdapter")
+local const = adapter.const
 
 local COLORS = {
 	keyword = const.SKYBLUE,

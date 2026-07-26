@@ -1,13 +1,12 @@
-local rl = require("@raylib")
 local ideBuffer = require("./idebuffer")
 local EnumMap = require("@EnumMap")
 local Color3 = require("@Color3")
 local MouseCursor = require("@Kinemium.MouseCursor")
 
-local structs = rl.structs
-local const = rl.const
-
-return function(raylib: typeof(rl.lib), theme, aereon, game)
+return function(raylib, theme, aereon, game)
+	local adapter = require("@raylibadapter")
+	local structs = adapter.structs
+	local const = adapter.const
 	local rect = aereon.rect()
 	local TextBox = {}
 	TextBox.__index = TextBox
@@ -704,14 +703,14 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 			suggestions = result
 		elseif type(provider) == "table" then
 			if type(provider.updateAutocomplete) == "function" then
-				local editorAdapter = {
+				local editorraylib = {
 					text = self.buffer,
 					autocomplete = self.autocomplete,
 				}
 				if type(provider.indexVariables) == "function" then
-					pcall(provider.indexVariables, editorAdapter, game)
+					pcall(provider.indexVariables, editorraylib, game)
 				end
-				local ok = pcall(provider.updateAutocomplete, editorAdapter, game)
+				local ok = pcall(provider.updateAutocomplete, editorraylib, game)
 				if ok then
 					self.autocomplete.items = normalizeAutocompleteItems(self.autocomplete.items)
 					if self.autocomplete.visible and #self.autocomplete.items > 0 then
@@ -1805,7 +1804,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				and type(provider.step) == "function"
 				and self.iconLoader
 			then
-				local editorAdapter = {
+				local editorraylib = {
 					isActive = self.isFocused,
 					text = self.buffer,
 					autocomplete = self.autocomplete,
@@ -1813,7 +1812,7 @@ return function(raylib: typeof(rl.lib), theme, aereon, game)
 				}
 				renderedByProvider = pcall(
 					provider.step,
-					editorAdapter,
+					editorraylib,
 					x,
 					gutterWidth,
 					self.padding,

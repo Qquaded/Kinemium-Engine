@@ -73,7 +73,7 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			WindowTitleHeight = 29,
 			ShadowsEnabled = true,
 			ShadowTransparency = 0.98,
-			CornerRadius = 5,
+			CornerRadius = 0.5,
 			ShadowColor = Color3.new(0, 0, 0),
 			ArrowImageColor = Color3.new(1, 1, 1),
 			TitleColor = Color3.new(1, 1, 1),
@@ -151,6 +151,86 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		themes = themes,
 		SelectedTheme = themes.dark,
 	})
+
+	function StudioThemeService.MakeUIPadded()
+		StudioThemeService.SelectedTheme.WindowConfig = {
+			Explorer = {
+				position = UDim2.new(1, -20, 0, 40),
+				anchorPoint = Vector2.new(1, 0),
+				size = UDim2.new(0, 400, 0.38, 0),
+			},
+			GameSettings = {
+				position = UDim2.new(0.5, 0, 0.5, 0),
+				anchorPoint = Vector2.new(0.5, 0.5),
+				size = UDim2.new(0.5, 0, 0.7, 0),
+			},
+			Toolbox = {
+				position = UDim2.new(0.5, 0, 0.5, 0),
+				anchorPoint = Vector2.new(0.5, 0.5),
+				size = UDim2.new(0.6, 0, 0.7, 0),
+			},
+			Inspector = {
+				position = UDim2.new(1, -20, 0.44, 0),
+				anchorPoint = Vector2.new(1, 0),
+				size = UDim2.new(0, 400, 0.55, 0),
+			},
+			Output = {
+				position = UDim2.new(0, 20, 0.99, 0),
+				anchorPoint = Vector2.new(0, 1),
+				size = UDim2.new(1, -450, 0, 200),
+			},
+			Toolbar = {
+				position = UDim2.new(0, 0, 0, 0),
+				anchorPoint = Vector2.new(0, 0),
+				size = UDim2.new(1, 0, 0, 170),
+			},
+			CodeEditor = {
+				position = UDim2.new(0, 20, 0, 40),
+				anchorPoint = Vector2.new(0, 0),
+				size = UDim2.new(0, 800, 0, 600),
+			},
+		}
+	end
+
+	function StudioThemeService.MakeUIBoxed()
+		StudioThemeService.SelectedTheme.WindowConfig = {
+			Toolbar = {
+				position = UDim2.new(0, 0, 0, 0),
+				anchorPoint = Vector2.new(0, 0),
+				size = UDim2.new(1, 0, 0, 200),
+			},
+			Explorer = {
+				position = UDim2.new(1, 0, 0, 0),
+				anchorPoint = Vector2.new(1, 0),
+				size = UDim2.new(0, 400, 0.5, -20),
+			},
+			Inspector = {
+				position = UDim2.new(1, 0, 0.45, 20),
+				anchorPoint = Vector2.new(1, 0),
+				size = UDim2.new(0, 400, 0.6, 0),
+			},
+			CodeEditor = {
+				position = UDim2.new(0, 0, 0, 40),
+				anchorPoint = Vector2.new(0, 0),
+				size = UDim2.new(1, -400, 1, -240),
+			},
+			Output = {
+				position = UDim2.new(0, 0, 1, 0),
+				anchorPoint = Vector2.new(0, 1),
+				size = UDim2.new(1, -400, 0, 200),
+			},
+			GameSettings = {
+				position = UDim2.new(0.5, 0, 0.5, 0),
+				anchorPoint = Vector2.new(0.5, 0.5),
+				size = UDim2.new(0.5, 0, 0.7, 0),
+			},
+			Toolbox = {
+				position = UDim2.new(0.5, 0, 0.5, 0),
+				anchorPoint = Vector2.new(0.5, 0.5),
+				size = UDim2.new(0.6, 0, 0.7, 0),
+			},
+		}
+	end
 
 	function StudioThemeService:ExportThemeAsJson()
 		local function serialize(tbl)

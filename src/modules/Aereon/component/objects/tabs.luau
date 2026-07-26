@@ -1,10 +1,10 @@
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local rect = require("@arect")
 local color3 = require("@Color3")
 local effects = require("./effects")
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4] or 40),
 		tabs = data.tabs or { "Tab 1", "Tab 2", "Tab 3" },
@@ -62,7 +62,7 @@ return function(objects, data)
 
 		local tabWidth = r.width / #config.tabs
 
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(r),
 			0.2,
 			8,
@@ -75,7 +75,7 @@ return function(objects, data)
 
 		local indicatorRect = rect.new(config.animX, r.y + r.height - 3, tabWidth, 3)
 
-		raylib.lib.DrawRectangle(
+		adapter.lib.DrawRectangle(
 			indicatorRect.x,
 			indicatorRect.y,
 			indicatorRect.width,
@@ -113,15 +113,15 @@ return function(objects, data)
 				tabBgColor = config.tabEffects[i].getCurrentColor()
 			end
 
-			raylib.lib.DrawRectangle(tabRect.x, tabRect.y, tabRect.width, tabRect.height, tabBgColor:ToRaylib(0.5))
+			adapter.lib.DrawRectangle(tabRect.x, tabRect.y, tabRect.width, tabRect.height, tabBgColor:ToRaylib(0.5))
 
-			local textWidth = raylib.lib.MeasureTextEx(config.font, tab, config.fontSize, config.spacing).x
+			local textWidth = adapter.lib.MeasureTextEx(config.font, tab, config.fontSize, config.spacing).x
 
 			local textX = tabX + (tabWidth - textWidth) / 2
 
 			local textY = r.y + (r.height - config.fontSize) / 2
 
-			raylib.lib.DrawTextEx(
+			adapter.lib.DrawTextEx(
 				config.font,
 				tab,
 				vector.create(textX, textY),
@@ -130,7 +130,7 @@ return function(objects, data)
 				config.textColor:ToRaylib(0)
 			)
 
-			if config.tabEffects[i].isHovered() and raylib.lib.IsMouseButtonReleased(0) == 1 then
+			if config.tabEffects[i].isHovered() and adapter.lib.IsMouseButtonReleased(0) == 1 then
 				config.activeIndex = i
 
 				if config.onTabChange then

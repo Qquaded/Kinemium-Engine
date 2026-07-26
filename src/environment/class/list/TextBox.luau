@@ -2,11 +2,11 @@
 local Enum = require("@EnumMap")
 local logic = require("@Kinemium.2dinput")
 local GuiObject = require("@GuiObject")
-local rl = require("@raylib")
+local adapter = require("@raylib")
 local Color3 = require("@Color3")
 local aereon = require("@Aereon")
-local raylib = require("@raylib")
-local lib = raylib.lib
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
 
 local propTable = {
 	Name = "TextBox",
@@ -110,7 +110,6 @@ local propTable = {
 	KeyRepeatAcceleration = 0.85,
 }
 GuiObject.inherit(propTable)
-
 
 local defaultFont = lib.GetFontDefault()
 
@@ -236,7 +235,7 @@ return {
 		logic:SetupSignals(propTable)
 		instance:SetProperties(propTable)
 
-		local TextBoxClass = aereon.textbox(rl.lib, game)
+		local TextBoxClass = aereon.textbox(adapter.lib, game)
 
 		instance._aereonInput = TextBoxClass.new({
 			text = instance.Text,

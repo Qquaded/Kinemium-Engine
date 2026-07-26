@@ -1,16 +1,16 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
-local font = raylib.lib.GetFontDefault()
+local font = adapter.lib.GetFontDefault()
 
 local function drawText(fnt, text, x, y, size, color)
-	raylib.lib.DrawTextEx(fnt, text, vector.create(x, y), size, 1, color)
+	adapter.lib.DrawTextEx(fnt, text, vector.create(x, y), size, 1, color)
 end
 
 local function measureText(fnt, text, size)
-	local v = raylib.lib.MeasureTextEx(fnt, text, size, 1)
+	local v = adapter.lib.MeasureTextEx(fnt, text, size, 1)
 	return v.x, v.y
 end
 
@@ -37,7 +37,7 @@ local function fmtMs(secs)
 	return string.format("%.2fms", secs * 1000)
 end
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
 		profiler = data.profiler,
@@ -115,12 +115,12 @@ return function(objects, data)
 		end
 
 		-- ── Input: single rising-edge click, computed once per frame ────────────
-		local mouseDownNow = raylib.lib.IsMouseButtonDown(0) == 1
+		local mouseDownNow = adapter.lib.IsMouseButtonDown(0) == 1
 		local clicked = mouseDownNow and not config._prevMouseDown
 		config._prevMouseDown = mouseDownNow
 
 		-- Key toggle (Z)
-		if raylib.lib.IsKeyPressed(raylib.const.KeyboardKey.KEY_Z) then
+		if adapter.lib.IsKeyPressed(adapter.const.KeyboardKey.KEY_Z) then
 			config.paused = not config.paused
 			if config.paused then
 				config._snapshot = {
@@ -149,7 +149,7 @@ return function(objects, data)
 		local L = layout()
 
 		-- ── Background ──────────────────────────────────────────────────────────
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(r),
 			config.rounded[1],
 			config.rounded[2],
@@ -158,7 +158,7 @@ return function(objects, data)
 
 		-- ── Header ──────────────────────────────────────────────────────────────
 		local hdr = L.headerRect
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(rect.new(hdr.x, hdr.y, hdr.width, hdr.height)),
 			0.3,
 			6,
@@ -201,8 +201,8 @@ return function(objects, data)
 		-- ── Timeline strip ──────────────────────────────────────────────────────
 		local tl = L.timelineRect
 
-		raylib.lib.DrawRectangle(tl.x, tl.y, tl.width, tl.height, config.headerColor:ToRaylib(0))
-		raylib.lib.DrawRectangleLines(tl.x, tl.y, tl.width, tl.height, config.gridColor:ToRaylib(0))
+		adapter.lib.DrawRectangle(tl.x, tl.y, tl.width, tl.height, config.headerColor:ToRaylib(0))
+		adapter.lib.DrawRectangleLines(tl.x, tl.y, tl.width, tl.height, config.gridColor:ToRaylib(0))
 
 		local targetMs = 1 / 60
 		local maxMs = 0
@@ -223,7 +223,13 @@ return function(objects, data)
 		-- 60fps target line
 		local targetRatio = math.min(targetMs / maxMs, 1)
 		local targetLineY = tl.y + tl.height - math.floor(targetRatio * tl.height)
-		raylib.lib.DrawLine(tl.x, targetLineY, tl.x + tl.width, targetLineY, color3.new(0.30, 0.85, 0.45):ToRaylib(0.4))
+		adapter.lib.DrawLine(
+			tl.x,
+			targetLineY,
+			tl.x + tl.width,
+			targetLineY,
+			color3.new(0.30, 0.85, 0.45):ToRaylib(0.4)
+		)
 
 		-- Frame bars
 		local maxBars = profiler.maxFrames or 120
@@ -252,10 +258,10 @@ return function(objects, data)
 			end
 
 			if config._selectedFrame == i then
-				raylib.lib.DrawRectangle(bx, tl.y, barW, tl.height, config.selectedFrameColor:ToRaylib(0.06))
+				adapter.lib.DrawRectangle(bx, tl.y, barW, tl.height, config.selectedFrameColor:ToRaylib(0.06))
 			end
 
-			raylib.lib.DrawRectangle(bx, by, math.max(barW - 1, 1), bh, barCol:ToRaylib(0))
+			adapter.lib.DrawRectangle(bx, by, math.max(barW - 1, 1), bh, barCol:ToRaylib(0))
 
 			local bRect = rect.new(bx, tl.y, barW, tl.height)
 			if rect.MouseIsInRect(bRect) then
@@ -294,13 +300,13 @@ return function(objects, data)
 		for _, gm in ipairs(gridMs) do
 			local gx = det.x + math.floor((gm / 1000) / detMaxMs * det.width)
 			if gx <= det.x + det.width then
-				raylib.lib.DrawLine(gx, det.y, gx, det.y + det.height, config.gridColor:ToRaylib(0))
+				adapter.lib.DrawLine(gx, det.y, gx, det.y + det.height, config.gridColor:ToRaylib(0))
 				drawText(fnt, gm .. "ms", gx + 2, det.y + 1, fs - 2, config.mutedColor:ToRaylib(0.4))
 			end
 		end
 
 		local marker16x = det.x + math.floor(targetMs / detMaxMs * det.width)
-		raylib.lib.DrawLine(marker16x, det.y, marker16x, det.y + det.height, config.markerColor:ToRaylib(0.45))
+		adapter.lib.DrawLine(marker16x, det.y, marker16x, det.y + det.height, config.markerColor:ToRaylib(0.45))
 
 		local selFrame = config._selectedFrame and frames[config._selectedFrame]
 		if not selFrame then
@@ -373,8 +379,8 @@ return function(objects, data)
 				end
 
 				local zCol = zoneColor(z.name or "")
-				raylib.lib.DrawRectangle(zx, zy, zw, laneH, zCol:ToRaylib(0.15))
-				raylib.lib.DrawRectangle(zx, zy, zw, 2, zCol:ToRaylib(0))
+				adapter.lib.DrawRectangle(zx, zy, zw, laneH, zCol:ToRaylib(0.15))
+				adapter.lib.DrawRectangle(zx, zy, zw, 2, zCol:ToRaylib(0))
 
 				if zw > 28 then
 					local label = z.name or "?"
@@ -402,8 +408,8 @@ return function(objects, data)
 							local zx = det.x + math.floor(zStart / detMaxMs * det.width)
 							local zw = math.max(2, math.floor(zDuration / detMaxMs * det.width))
 							local zCol = zoneColor(workerName)
-							raylib.lib.DrawRectangle(zx, workerY, zw, laneH, zCol:ToRaylib(0.12))
-							raylib.lib.DrawRectangle(zx, workerY, zw, 2, zCol:ToRaylib(0))
+							adapter.lib.DrawRectangle(zx, workerY, zw, laneH, zCol:ToRaylib(0.12))
+							adapter.lib.DrawRectangle(zx, workerY, zw, 2, zCol:ToRaylib(0))
 							if zw > 40 then
 								drawText(fnt, workerName, zx + 3, workerY + 2, fs - 1, config.textColor:ToRaylib(0))
 							end
@@ -436,7 +442,7 @@ return function(objects, data)
 			local tw = measureText(fnt, tipText, fs)
 			local tx = math.min(tip.x, r.x + r.width - tw - 10)
 			local ty = tip.y - fs - 6
-			raylib.lib.DrawRectangle(tx - 4, ty - 2, tw + 8, fs + 6, config.backgroundColor:ToRaylib(0.05))
+			adapter.lib.DrawRectangle(tx - 4, ty - 2, tw + 8, fs + 6, config.backgroundColor:ToRaylib(0.05))
 			drawText(fnt, tipText, tx, ty, fs, config.textColor:ToRaylib(0))
 		end
 

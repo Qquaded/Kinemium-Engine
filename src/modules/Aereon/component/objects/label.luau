@@ -1,9 +1,8 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-local color3 = require("@Color3")
-local rect = require("@arect")
+return function(objects, data, raylib)
+	local structs = raylib.structs
+	local color3 = require("@Color3")
+	local rect = require("@arect")
 
-return function(objects, data)
 	local config = {
 		obj_rect = rect.new(data.x or data[1] or 0, data.y or data[2] or 0, 0, data.fontSize or 18),
 		text = data.text or "Label",

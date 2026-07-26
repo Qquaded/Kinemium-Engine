@@ -1,12 +1,12 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		x = data.x or data[1],
 		y = data.y or data[2],
@@ -44,7 +44,7 @@ return function(objects, data)
 			local stepColor = isActive and config.activeColor or config.inactiveColor
 
 			if i < config.steps then
-				raylib.lib.DrawRectangle(
+				adapter.lib.DrawRectangle(
 					stepX + config.size,
 					stepY + config.size / 2 - 1,
 					config.spacing - config.size,
@@ -53,7 +53,7 @@ return function(objects, data)
 				)
 			end
 
-			raylib.lib.DrawCircleV(
+			adapter.lib.DrawCircleV(
 				vector.create(stepX + config.size / 2, stepY + config.size / 2),
 				config.size / 2,
 				stepColor:ToRaylib(0)
@@ -61,8 +61,8 @@ return function(objects, data)
 
 			local stepText = tostring(i)
 			local fontSize = config.size / 2
-			local textWidth = raylib.lib.MeasureTextEx(config.font, stepText, fontSize, config.fontSpacing).x
-			raylib.lib.DrawTextEx(
+			local textWidth = adapter.lib.MeasureTextEx(config.font, stepText, fontSize, config.fontSpacing).x
+			adapter.lib.DrawTextEx(
 				config.font,
 				stepText,
 				vector.create(stepX + config.size / 2 - textWidth / 2, stepY + config.size / 2 - fontSize / 2),

@@ -1,12 +1,9 @@
 local Instance = require("@Instance")
 local Color3 = require("@Color3")
-local raylib = require("@raylib")
-local r3d = require("@r3d")
-local rlib = r3d.lib
-local r3dstructs = r3d.structs
+local adapter = require("@RaylibAdapter")
+
 local meshgen = require("@meshgen")
 local Vector3 = require("@Vector3")
-local grassgen = require("../../classlibs/grassgen")
 
 local EDGE_TABLE = {
 	0x0,
@@ -1838,7 +1835,7 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 			return mat
 		end
 
-		local identity = raylib.lib.MatrixIdentity()
+		local identity = adapter.lib.MatrixIdentity()
 		local grassWindBuf = buffer.create(4)
 		buffer.writef32(grassWindBuf, 0, 0.22)
 		local grassTimeBuf = buffer.create(4)
@@ -1870,7 +1867,7 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 					and renderer.MeshPool.DrawMeshInstanced
 				then
 					if grassShader then
-						buffer.writef32(grassTimeBuf, 0, raylib.lib.GetTime())
+						buffer.writef32(grassTimeBuf, 0, adapter.lib.GetTime())
 						rlib.R3D_SetSurfaceShaderUniform(grassShader, "u_windStrength", grassWindBuf)
 						rlib.R3D_SetSurfaceShaderUniform(grassShader, "u_time", grassTimeBuf)
 					end
@@ -1886,10 +1883,6 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 				end
 			end
 		end)
-	end
-
-	if not isHeadlessRuntime then
-		Terrain:StartRendering()
 	end
 
 	return Terrain

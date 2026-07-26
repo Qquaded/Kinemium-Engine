@@ -1,11 +1,11 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-local const = raylib.const
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
+local const = adapter.const
 local rect = require("@arect")
 local color3 = require("@Color3")
 local shaderLib = require("./shader")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = data.rect
 			or rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
@@ -38,10 +38,10 @@ return function(objects, data)
 	wrapper.modifiers = {
 		outline = function(value, color, transparency)
 			table.insert(config.modifiers, function()
-				raylib.lib.DrawRectangleLinesEx(
+				adapter.lib.DrawRectangleLinesEx(
 					rect:translate(config.obj_rect),
 					value,
-					color:ToRaylib(transparency) or raylib.const.WHITE
+					color:ToRaylib(transparency) or adapter.const.WHITE
 				)
 			end)
 			return wrapper
@@ -118,9 +118,9 @@ return function(objects, data)
 		end
 
 		local shaderObj = shaderLib.activeShaders[config.shaderName]
-		raylib.lib.BeginShaderMode(shaderObj)
-		raylib.lib.DrawRectangleRec(rect:translate(config.obj_rect), config.color:ToRaylib(config.bgtransparency))
-		raylib.lib.EndShaderMode()
+		adapter.lib.BeginShaderMode(shaderObj)
+		adapter.lib.DrawRectangleRec(rect:translate(config.obj_rect), config.color:ToRaylib(config.bgtransparency))
+		adapter.lib.EndShaderMode()
 
 		for _, modifier in pairs(config.modifiers) do
 			modifier()

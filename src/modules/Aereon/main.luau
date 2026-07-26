@@ -1,10 +1,10 @@
 -- Aereon | by devcell
 local Aereon = {}
 
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
 -- init
-local lib = raylib.lib
+local lib = adapter.lib
 
 -- datatypes
 local Color3 = require("@Color3")
@@ -62,7 +62,7 @@ local themes = {
 
 -- data
 local gui = require("./component/lib")
-Aereon.raylib = raylib
+Aereon.raylib = adapter
 Aereon.themes = themes
 Aereon.gui = gui
 
@@ -98,7 +98,7 @@ end
 
 function Aereon.window(game, theme, priority)
 	syncDefaultFont(game)
-	local lib = window(raylib.lib, raylib.structs, game, function()
+	local lib = window(adapter.lib, adapter.structs, game, function()
 		return theme
 	end)
 	priority = priority or 0

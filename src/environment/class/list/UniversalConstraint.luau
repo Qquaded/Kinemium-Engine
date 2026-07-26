@@ -1,7 +1,7 @@
 -- description: "A modifier class that creates a universal constraint between two attachments."
 local Color3 = require("@Color3")
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 local NetworkOwnership = require("@NetworkOwnership")
 
 local propTable = {
@@ -114,11 +114,11 @@ return {
 
 			local rlPos = vector.create(pos.X, pos.Y, pos.Z)
 			local rlDir = vector.create(pos.X + axisZ.X, pos.Y + axisZ.Y, pos.Z + axisZ.Z)
-			local rlColor = raylib.structs.Color:new({ r = 255, g = 0, b = 0, a = 200 })
-			local rlLines = raylib.structs.Color:new({ r = 0, g = 255, b = 0, a = 200 })
+			local rlColor = adapter.structs.Color:new({ r = 255, g = 0, b = 0, a = 200 })
+			local rlLines = adapter.structs.Color:new({ r = 0, g = 255, b = 0, a = 200 })
 
-			rl.DrawLine3D(rlPos, rlDir, rlColor) -- Draw strictly locked twist axis in Red
-			rl.DrawSphere(rlPos, 0.1, rlLines) -- Center
+			adapter.DrawLine3D(rlPos, rlDir, rlColor) -- Draw strictly locked twist axis in Red
+			adapter.DrawSphere(rlPos, 0.1, rlLines) -- Center
 		end
 
 		instance.Changed:Connect(function(prop)

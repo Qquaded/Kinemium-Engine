@@ -1,13 +1,12 @@
 local Shader = {}
 Shader.__index = Shader
 
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
 local util = require("@kineshader")
-local r3d = require("@r3d")
 
 function Shader.fromMemoryRaylib(vs, fs)
-	local shader = raylib.lib.LoadShaderFromMemory(vs, fs)
+	local shader = adapter.lib.LoadShaderFromMemory(vs, fs)
 	return Shader.new({ _shader = shader, _type = "raylib" })
 end
 
@@ -39,7 +38,7 @@ function Shader.new(source)
 	elseif self._type == "raylib" then
 		local vertex = source.vertex and zembed.AssetPath(source.vertex) or nil
 		local fragment = source.fragment and zembed.AssetPath(source.fragment) or nil
-		self._shader = raylib.lib.LoadShader(vertex, fragment)
+		self._shader = adapter.lib.LoadShader(vertex, fragment)
 	elseif self._type == "surface" then
 		if source.glsl then
 			self._shader = r3d.lib.R3D_LoadSurfaceShaderFromMemory(source.glsl)
@@ -73,9 +72,9 @@ function Shader:SetUniform(name, value)
 				self._shader,
 				name,
 				value,
-				raylib.const.ShaderUniformDataType.SHADER_UNIFORM_FLOAT
+				adapter.const.ShaderUniformDataType.SHADER_UNIFORM_FLOAT
 			)
-			uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_FLOAT
+			uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_FLOAT
 		elseif type(value) == "table" then
 			if value.__type then
 				if value.__type == "Vector3" then
@@ -83,57 +82,57 @@ function Shader:SetUniform(name, value)
 						self._shader,
 						name,
 						{ value.X, value.Y, value.Z },
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
 				elseif value.__type == "CFrame" then
 					uniformPtr = util.SetShaderValueRaw(
 						self._shader,
 						name,
 						{ value.Position.X, value.Position.Y, value.Position.Z },
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
 				elseif value.__type == "Color3" then
 					uniformPtr = util.SetShaderValueRaw(
 						self._shader,
 						name,
 						{ value.R, value.G, value.B },
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
 				elseif value.__type == "Color4" then
 					uniformPtr = util.SetShaderValueRaw(
 						self._shader,
 						name,
 						{ value.R, value.G, value.B, value.A },
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
 				elseif value.__type == "Vector2" then
 					uniformPtr = util.SetShaderValueRaw(
 						self._shader,
 						name,
 						{ value.X, value.Y },
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
 				elseif value.__type == "UDim2" then
 					uniformPtr = util.SetShaderValueRaw(
 						self._shader,
 						name,
 						{ value.X.Scale, value.X.Offset, value.Y.Scale, value.Y.Offset },
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
 				elseif value.__type == "UDim" then
 					uniformPtr = util.SetShaderValueRaw(
 						self._shader,
 						name,
 						{ value.Scale, value.Offset },
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
 				end
 			else
 				local valueCount = #value
@@ -142,25 +141,25 @@ function Shader:SetUniform(name, value)
 						self._shader,
 						name,
 						value,
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC4
 				elseif valueCount == 3 then
 					uniformPtr = util.SetShaderValueRaw(
 						self._shader,
 						name,
 						value,
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC3
 				elseif valueCount == 2 then
 					uniformPtr = util.SetShaderValueRaw(
 						self._shader,
 						name,
 						value,
-						raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
+						adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
 					)
-					uniformType = raylib.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
+					uniformType = adapter.const.ShaderUniformDataType.SHADER_UNIFORM_VEC2
 				end
 			end
 		end
@@ -175,7 +174,7 @@ function Shader:SetUniform(name, value)
 			r3d.lib.R3D_SetScreenShaderUniform(self._shader, name, uniformPtr)
 		elseif self._type == "raylib" then
 			if uniformType then
-				raylib.lib.SetShaderValue(self._shader, name, uniformPtr, uniformType)
+				adapter.lib.SetShaderValue(self._shader, name, uniformPtr, uniformType)
 			end
 		end
 	end
@@ -199,13 +198,13 @@ function Shader:Unload()
 	elseif self._type == "screen" then
 		r3d.lib.R3D_UnloadScreenShader(self._shader)
 	elseif self._type == "raylib" then
-		raylib.lib.UnloadShader(self._shader)
+		adapter.lib.UnloadShader(self._shader)
 	end
 end
 
 function Shader:GetUniformLoc(field)
 	if self._type == "raylib" then
-		return raylib.lib.GetShaderLocation(self._shader, field)
+		return adapter.lib.GetShaderLocation(self._shader, field)
 	end
 	return false, "Not a raylib shader type"
 end

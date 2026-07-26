@@ -2,8 +2,8 @@
 local Color3 = require("@Color3")
 local NetworkOwnership = require("@NetworkOwnership")
 
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 
 local propTable = {
 	Attachment0 = nil,
@@ -92,13 +92,13 @@ return {
 			local axisY = att.Parent.CFrame:VectorToWorldSpace(att.SecondaryAxis):Unit()
 
 			local rlPos = vector.create(pos.X, pos.Y, pos.Z)
-			local rlColorPlane = raylib.structs.Color:new({
+			local rlColorPlane = adapter.structs.Color:new({
 				r = instance.Color.R * 255,
 				g = instance.Color.G * 255,
 				b = instance.Color.B * 255,
 				a = 50,
 			})
-			local rlColorEdge = raylib.structs.Color:new({
+			local rlColorEdge = adapter.structs.Color:new({
 				r = instance.Color.R * 255,
 				g = instance.Color.G * 255,
 				b = instance.Color.B * 255,
@@ -127,12 +127,12 @@ return {
 				pos.Z + axisX.Z * size - axisY.Z * size
 			)
 
-			rl.DrawTriangle3D(p1, p2, p3, rlColorPlane)
-			rl.DrawTriangle3D(p1, p3, p4, rlColorPlane)
-			rl.DrawLine3D(p1, p2, rlColorEdge)
-			rl.DrawLine3D(p2, p3, rlColorEdge)
-			rl.DrawLine3D(p3, p4, rlColorEdge)
-			rl.DrawLine3D(p4, p1, rlColorEdge)
+			adapter.DrawTriangle3D(p1, p2, p3, rlColorPlane)
+			adapter.DrawTriangle3D(p1, p3, p4, rlColorPlane)
+			adapter.DrawLine3D(p1, p2, rlColorEdge)
+			adapter.DrawLine3D(p2, p3, rlColorEdge)
+			adapter.DrawLine3D(p3, p4, rlColorEdge)
+			adapter.DrawLine3D(p4, p1, rlColorEdge)
 		end
 
 		instance.Changed:Connect(function(prop)

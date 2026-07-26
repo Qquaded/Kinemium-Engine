@@ -2,9 +2,9 @@
 --!optimize 2
 --!native
 
-local raylib = require("./raylib")
+local adapter = require("./raylib")
 
-local structs = raylib.structs
+local structs = adapter.structs
 
 local ffi = zune.ffi
 
@@ -41,22 +41,22 @@ local VrDeviceInfo = structs.VrDeviceInfo
 local FilePathList = structs.FilePathList
 local AutomationEvent = structs.AutomationEvent
 local AutomationEventList = structs.AutomationEventList
-type Vector2 = raylib.Vector2
-type Vector3 = raylib.Vector3
-type Matrix = raylib.Matrix
-type Color = raylib.Color
-type Image = raylib.Image
-type Texture = raylib.Texture
-type RenderTexture2D = raylib.RenderTexture2D
-type Shader = raylib.Shader
-type Camera3D = raylib.Camera3D
-type Camera2D = raylib.Camera2D
-type Ray = raylib.Ray
-type VrStereoConfig = raylib.VrStereoConfig
-type VrDeviceInfo = raylib.VrDeviceInfo
-type FilePathList = raylib.FilePathList
-type AutomationEvent = raylib.AutomationEvent
-type AutomationEventList = raylib.AutomationEventList
+type Vector2 = adapter.Vector2
+type Vector3 = adapter.Vector3
+type Matrix = adapter.Matrix
+type Color = adapter.Color
+type Image = adapter.Image
+type Texture = adapter.Texture
+type RenderTexture2D = adapter.RenderTexture2D
+type Shader = adapter.Shader
+type Camera3D = adapter.Camera3D
+type Camera2D = adapter.Camera2D
+type Ray = adapter.Ray
+type VrStereoConfig = adapter.VrStereoConfig
+type VrDeviceInfo = adapter.VrDeviceInfo
+type FilePathList = adapter.FilePathList
+type AutomationEvent = adapter.AutomationEvent
+type AutomationEventList = adapter.AutomationEventList
 
 local function fn(returns: any, args: { any })
 	return {

@@ -1,10 +1,10 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
 local immediate = {}
 
@@ -29,7 +29,7 @@ immediate.switch = function(data)
 		offColor.B + (onColor.B - offColor.B) * animProgress
 	)
 
-	raylib.lib.DrawRectangleRounded(rect:translate(r), 0.5, 8, currentColor:ToRaylib(0))
+	adapter.lib.DrawRectangleRounded(rect:translate(r), 0.5, 8, currentColor:ToRaylib(0))
 
 	local handleSize = r.height - 6
 	local handleMinX = r.x + 3
@@ -37,14 +37,14 @@ immediate.switch = function(data)
 	local handleX = handleMinX + (handleMaxX - handleMinX) * animProgress
 	local handleY = r.y + 3
 
-	raylib.lib.DrawRectangleRounded(
+	adapter.lib.DrawRectangleRounded(
 		structs.Rectangle:new({ x = handleX, y = handleY, width = handleSize, height = handleSize }),
 		0.5,
 		8,
 		handleColor:ToRaylib(0)
 	)
 
-	if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
+	if rect.MouseIsInRect(r) and adapter.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 		value = not value
 		if onChanged then
 			onChanged(value)
@@ -76,8 +76,8 @@ immediate.textbox = function(data)
 
 	local borderColor = focused and focusColor or color3.new(0.3, 0.3, 0.3)
 
-	raylib.lib.DrawRectangleRounded(rect:translate(r), 0.2, 8, backgroundColor:ToRaylib(0))
-	raylib.lib.DrawRectangleRoundedLinesEx(rect:translate(r), 0.2, 8, 2, borderColor:ToRaylib(0))
+	adapter.lib.DrawRectangleRounded(rect:translate(r), 0.2, 8, backgroundColor:ToRaylib(0))
+	adapter.lib.DrawRectangleRoundedLinesEx(rect:translate(r), 0.2, 8, 2, borderColor:ToRaylib(0))
 
 	local displayText = text
 	local displayColor = textColor
@@ -89,21 +89,21 @@ immediate.textbox = function(data)
 	local textX = r.x + 8
 	local textY = r.y + (r.height - fontSize) / 2
 
-	raylib.lib.DrawText(tostring(displayText), textX, textY, fontSize, displayColor:ToRaylib(0))
+	adapter.lib.DrawText(tostring(displayText), textX, textY, fontSize, displayColor:ToRaylib(0))
 
 	if focused and math.floor(cursorBlink * 2) % 2 == 0 then
-		local textWidth = raylib.lib.MeasureText(text, fontSize)
-		raylib.lib.DrawRectangle(textX + textWidth + 2, textY, 2, fontSize, textColor:ToRaylib(0))
+		local textWidth = adapter.lib.MeasureText(text, fontSize)
+		adapter.lib.DrawRectangle(textX + textWidth + 2, textY, 2, fontSize, textColor:ToRaylib(0))
 	end
 
-	if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
+	if rect.MouseIsInRect(r) and adapter.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 		focused = true
-	elseif not rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
+	elseif not rect.MouseIsInRect(r) and adapter.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 		focused = false
 	end
 
 	if focused then
-		local key = raylib.lib.GetCharPressed()
+		local key = adapter.lib.GetCharPressed()
 		while key > 0 do
 			if key >= 32 and key <= 126 then
 				text = text .. string.char(key)
@@ -111,10 +111,10 @@ immediate.textbox = function(data)
 					onChanged(text)
 				end
 			end
-			key = raylib.lib.GetCharPressed()
+			key = adapter.lib.GetCharPressed()
 		end
 
-		if raylib.lib.IsKeyPressed(259) == 1 and #text > 0 then
+		if adapter.lib.IsKeyPressed(259) == 1 and #text > 0 then
 			text = string.sub(text, 1, -2)
 			if onChanged then
 				onChanged(text)
@@ -142,26 +142,26 @@ immediate.dropdown = function(data)
 
 	local expanded = data.expanded or false
 
-	raylib.lib.DrawRectangleRounded(rect:translate(r), 0.2, 8, backgroundColor:ToRaylib(0))
+	adapter.lib.DrawRectangleRounded(rect:translate(r), 0.2, 8, backgroundColor:ToRaylib(0))
 
 	local selectedText = options[selectedIndex] or "Select..."
 	local textX = r.x + 8
 	local textY = r.y + (r.height - fontSize) / 2
 
-	raylib.lib.DrawText(selectedText, textX, textY, fontSize, textColor:ToRaylib(0))
+	adapter.lib.DrawText(selectedText, textX, textY, fontSize, textColor:ToRaylib(0))
 
 	local arrowSize = 8
 	local arrowX = r.x + r.width - arrowSize - 8
 	local arrowY = r.y + r.height / 2
 	if expanded then
-		raylib.lib.DrawTriangle(
+		adapter.lib.DrawTriangle(
 			vector.create(arrowX, arrowY + arrowSize / 2),
 			vector.create(arrowX + arrowSize, arrowY + arrowSize / 2),
 			vector.create(arrowX + arrowSize / 2, arrowY - arrowSize / 2),
 			textColor:ToRaylib(0)
 		)
 	else
-		raylib.lib.DrawTriangle(
+		adapter.lib.DrawTriangle(
 			vector.create(arrowX, arrowY - arrowSize / 2),
 			vector.create(arrowX + arrowSize, arrowY - arrowSize / 2),
 			vector.create(arrowX + arrowSize / 2, arrowY + arrowSize / 2),
@@ -169,7 +169,7 @@ immediate.dropdown = function(data)
 		)
 	end
 
-	if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
+	if rect.MouseIsInRect(r) and adapter.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 		expanded = not expanded
 	end
 
@@ -178,7 +178,7 @@ immediate.dropdown = function(data)
 		local listHeight = itemHeight * #options
 		local listY = r.y + r.height + 2
 
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			structs.Rectangle:new({ x = r.x, y = listY, width = r.width, height = listHeight }),
 			0.2,
 			8,
@@ -190,7 +190,7 @@ immediate.dropdown = function(data)
 			local itemRect = rect.new(r.x, itemY, r.width, itemHeight)
 
 			if rect.MouseIsInRect(itemRect) then
-				raylib.lib.DrawRectangle(
+				adapter.lib.DrawRectangle(
 					itemRect.x,
 					itemRect.y,
 					itemRect.width,
@@ -198,7 +198,7 @@ immediate.dropdown = function(data)
 					hoverColor:ToRaylib(0)
 				)
 
-				if raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
+				if adapter.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 					selectedIndex = i
 					expanded = false
 					if onSelect then
@@ -207,7 +207,7 @@ immediate.dropdown = function(data)
 				end
 			end
 
-			raylib.lib.DrawText(option, r.x + 8, itemY + (itemHeight - fontSize) / 2, fontSize, textColor:ToRaylib(0))
+			adapter.lib.DrawText(option, r.x + 8, itemY + (itemHeight - fontSize) / 2, fontSize, textColor:ToRaylib(0))
 		end
 	end
 
@@ -254,7 +254,7 @@ immediate.colorpicker = function(data)
 				r_val, g_val, b_val = c, 0, x_val
 			end
 
-			raylib.lib.DrawPixel(
+			adapter.lib.DrawPixel(
 				gradientRect.x + x,
 				gradientRect.y + y,
 				color3.new(r_val + m, g_val + m, b_val + m):ToRaylib(0)
@@ -268,12 +268,12 @@ immediate.colorpicker = function(data)
 	for y = 0, hueBarRect.height - 1 do
 		local hue = (y / hueBarRect.height) * 360
 		local hueColor = color3.fromHSV(hue, 1, 1)
-		raylib.lib.DrawRectangle(hueBarRect.x, hueBarRect.y + y, hueBarRect.width, 1, hueColor:ToRaylib(0))
+		adapter.lib.DrawRectangle(hueBarRect.x, hueBarRect.y + y, hueBarRect.width, 1, hueColor:ToRaylib(0))
 	end
 
-	if rect.MouseIsInRect(gradientRect) and raylib.lib.IsMouseButtonDown(0) == 1 and not _G.__aereon_blockInput then
-		local mouseX = raylib.lib.GetMouseX()
-		local mouseY = raylib.lib.GetMouseY()
+	if rect.MouseIsInRect(gradientRect) and adapter.lib.IsMouseButtonDown(0) == 1 and not _G.__aereon_blockInput then
+		local mouseX = adapter.lib.GetMouseX()
+		local mouseY = adapter.lib.GetMouseY()
 
 		local s = math.clamp((mouseX - gradientRect.x) / gradientRect.width, 0, 1)
 		local v = math.clamp(1 - (mouseY - gradientRect.y) / gradientRect.height, 0, 1)
@@ -285,8 +285,8 @@ immediate.colorpicker = function(data)
 		end
 	end
 
-	if rect.MouseIsInRect(hueBarRect) and raylib.lib.IsMouseButtonDown(0) == 1 and not _G.__aereon_blockInput then
-		local mouseY = raylib.lib.GetMouseY()
+	if rect.MouseIsInRect(hueBarRect) and adapter.lib.IsMouseButtonDown(0) == 1 and not _G.__aereon_blockInput then
+		local mouseY = adapter.lib.GetMouseY()
 		local hue = math.clamp((mouseY - hueBarRect.y) / hueBarRect.height * 360, 0, 360)
 		local _, s, v = color:ToHSV()
 
@@ -299,11 +299,11 @@ immediate.colorpicker = function(data)
 	local h, s, v = color:ToHSV()
 	local circleX = gradientRect.x + s * gradientRect.width
 	local circleY = gradientRect.y + (1 - v) * gradientRect.height
-	raylib.lib.DrawCircleLines(circleX, circleY, 5, color3.new(1, 1, 1):ToRaylib(0))
-	raylib.lib.DrawCircleLines(circleX, circleY, 6, color3.new(0, 0, 0):ToRaylib(0))
+	adapter.lib.DrawCircleLines(circleX, circleY, 5, color3.new(1, 1, 1):ToRaylib(0))
+	adapter.lib.DrawCircleLines(circleX, circleY, 6, color3.new(0, 0, 0):ToRaylib(0))
 
 	local hueY = hueBarRect.y + (h / 360) * hueBarRect.height
-	raylib.lib.DrawRectangle(hueBarRect.x, hueY - 2, hueBarRect.width, 4, color3.new(1, 1, 1):ToRaylib(0))
+	adapter.lib.DrawRectangle(hueBarRect.x, hueY - 2, hueBarRect.width, 4, color3.new(1, 1, 1):ToRaylib(0))
 
 	return color
 end
@@ -328,11 +328,11 @@ immediate.slider = function(data)
 	local handleY = r.y - 2
 
 	-- Background
-	raylib.lib.DrawRectangleRounded(rect:translate(r), 0.5, 8, backgroundColor:ToRaylib(0))
+	adapter.lib.DrawRectangleRounded(rect:translate(r), 0.5, 8, backgroundColor:ToRaylib(0))
 
 	-- Fill
 	local fillWidth = (value - min) / (max - min) * r.width
-	raylib.lib.DrawRectangleRounded(
+	adapter.lib.DrawRectangleRounded(
 		structs.Rectangle:new({ x = r.x, y = r.y, width = fillWidth, height = r.height }),
 		0.5,
 		8,
@@ -340,7 +340,7 @@ immediate.slider = function(data)
 	)
 
 	-- Handle
-	raylib.lib.DrawRectangleRounded(
+	adapter.lib.DrawRectangleRounded(
 		structs.Rectangle:new({ x = handleX, y = handleY, width = handleSize, height = handleSize }),
 		0.5,
 		8,
@@ -349,8 +349,8 @@ immediate.slider = function(data)
 
 	-- Handle interaction
 	local handleRect = rect.new(handleX, handleY, handleSize, handleSize)
-	if rect.MouseIsInRect(handleRect) and raylib.lib.IsMouseButtonDown(0) == 1 and not _G.__aereon_blockInput then
-		local mouseX = raylib.lib.GetMouseX()
+	if rect.MouseIsInRect(handleRect) and adapter.lib.IsMouseButtonDown(0) == 1 and not _G.__aereon_blockInput then
+		local mouseX = adapter.lib.GetMouseX()
 		local newValue = min + (mouseX - r.x) / r.width * (max - min)
 		value = math.clamp(newValue, min, max)
 		if onChanged then
@@ -378,8 +378,8 @@ immediate.textbutton = function(data)
 	local onClick = data.onClick
 
 	local isHovered = rect.MouseIsInRect(r)
-	local isPressed = isHovered and raylib.lib.IsMouseButtonDown(0) == 1
-	local wasClicked = isHovered and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput
+	local isPressed = isHovered and adapter.lib.IsMouseButtonDown(0) == 1
+	local wasClicked = isHovered and adapter.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput
 
 	-- Determine button color based on state
 	local currentColor = backgroundColor
@@ -390,14 +390,14 @@ immediate.textbutton = function(data)
 	end
 
 	-- Draw button background
-	raylib.lib.DrawRectangleRounded(rect:translate(r), cornerRadius, 8, currentColor:ToRaylib(0))
+	adapter.lib.DrawRectangleRounded(rect:translate(r), cornerRadius, 8, currentColor:ToRaylib(0))
 
 	-- Draw text centered
-	local textWidth = raylib.lib.MeasureText(text, fontSize)
+	local textWidth = adapter.lib.MeasureText(text, fontSize)
 	local textX = r.x + (r.width - textWidth) / 2
 	local textY = r.y + (r.height - fontSize) / 2
 
-	raylib.lib.DrawText(text, textX, textY, fontSize, textColor:ToRaylib(0))
+	adapter.lib.DrawText(text, textX, textY, fontSize, textColor:ToRaylib(0))
 
 	-- Handle click
 	if wasClicked and onClick then

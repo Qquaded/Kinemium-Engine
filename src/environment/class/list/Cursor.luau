@@ -1,7 +1,7 @@
 -- description: "Controls the appearance and behavior of the mouse cursor in the user interface."
 local GuiObject = require("@GuiObject")
 
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
 local Vector2 = require("@Vector2")
 local Color3 = require("@Color3")
@@ -35,12 +35,12 @@ local function generateCursorImages(object)
 					local newFilePath = string.gsub(filePath, name, "")
 					newFilePath = newFilePath .. string.gsub(name, ".cur", ".png")
 					fs.writeFile(newFilePath, content)
-					object._cache[string.gsub(name, ".cur", "")] = raylib.lib.LoadTexture(newFilePath)
+					object._cache[string.gsub(name, ".cur", "")] = adapter.lib.LoadTexture(newFilePath)
 				end
                 --]]
 			elseif string.find(name, ".png") and not _G.IsHeadless then
 				local filePath = fs.path.join(iconpack_path, name)
-				object._cache[string.gsub(name, ".png", "")] = raylib.lib.LoadTexture(filePath)
+				object._cache[string.gsub(name, ".png", "")] = adapter.lib.LoadTexture(filePath)
 			end
 		end
 	end
@@ -49,18 +49,18 @@ end
 GuiObject.inherit(propTable)
 
 propTable.render = function(lib, object, dt, structs, renderer)
-	raylib.lib.HideCursor()
+	adapter.lib.HideCursor()
 
 	if not object._cache then
 		return
 	end
-	local pos = raylib.lib.GetMousePosition()
+	local pos = adapter.lib.GetMousePosition()
 	local arrow = object._cache.arrow
 	local sizex, sizey = buffer.readi32(arrow, 4), buffer.readi32(arrow, 8)
 	local objectSize = object.Size
 
-	--raylib.lib.DrawTexturePro(texture: buffer, source: buffer, dest: buffer, origin: vector, rotation: number, tint: buffer)
-	raylib.lib.DrawTexturePro(
+	--adapter.lib.DrawTexturePro(texture: buffer, source: buffer, dest: buffer, origin: vector, rotation: number, tint: buffer)
+	adapter.lib.DrawTexturePro(
 		arrow,
 		structs.Rectangle:new({ x = 0, y = 0, width = sizex, height = sizey }),
 		structs.Rectangle:new({
@@ -71,7 +71,7 @@ propTable.render = function(lib, object, dt, structs, renderer)
 		}),
 		vector.create(0, 0),
 		0,
-		raylib.const.WHITE
+		adapter.const.WHITE
 	)
 end
 

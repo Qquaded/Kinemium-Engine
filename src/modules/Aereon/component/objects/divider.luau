@@ -1,7 +1,6 @@
-local raylib = require("@raylib")
-local color3 = require("@Color3")
+return function(objects, data, raylib)
+	local color3 = require("@Color3")
 
-return function(objects, data)
 	local config = {
 		x = data.x or data[1],
 		y = data.y or data[2],

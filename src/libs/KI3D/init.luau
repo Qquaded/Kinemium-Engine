@@ -1,7 +1,7 @@
 --!optimize 2
 
-local raylib = require("@raylib")
-local lib = raylib.lib
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
 local ki3d = {}
 local utils = require("@bufferutils")
 
@@ -58,15 +58,15 @@ end
 local function makeRuntime(currentRT, w, h, filterObj)
 	return {
 		lib = lib,
-		structs = raylib.structs,
-		const = raylib.const,
+		structs = adapter.structs,
+		const = adapter.const,
 		texture = utils.extract.texture(currentRT),
 		depth = utils.extract.texture(depthRT),
 		normal = utils.extract.texture(normalRT),
 		width = w,
 		height = h,
 		size = { x = 0, y = 0, width = w, height = -h },
-		rect = raylib.structs.Rectangle,
+		rect = adapter.structs.Rectangle,
 		shaderobj = filterObj.shader,
 	}
 end
@@ -141,7 +141,7 @@ ki3d.Frame = function(self, camera, drawFn)
 	--  Pass 1: Depth
 	if _depthShader then
 		lib.BeginTextureMode(depthRT)
-		lib.ClearBackground(raylib.const.BLACK)
+		lib.ClearBackground(adapter.const.BLACK)
 		_G._globalShaderOverride = _depthShader
 		drawFn()
 		_G._globalShaderOverride = nil
@@ -151,7 +151,7 @@ ki3d.Frame = function(self, camera, drawFn)
 	--  Pass 2: Normals
 	if _normalShader then
 		lib.BeginTextureMode(normalRT)
-		lib.ClearBackground(raylib.const.BLACK)
+		lib.ClearBackground(adapter.const.BLACK)
 		_G._globalShaderOverride = _normalShader
 		drawFn()
 		_G._globalShaderOverride = nil
@@ -160,7 +160,7 @@ ki3d.Frame = function(self, camera, drawFn)
 
 	--  Pass 3: Main scene
 	lib.BeginTextureMode(sceneRT)
-	lib.ClearBackground(raylib.const.BLACK)
+	lib.ClearBackground(adapter.const.BLACK)
 	drawFn()
 	lib.EndTextureMode()
 
@@ -175,9 +175,9 @@ ki3d.Frame = function(self, camera, drawFn)
 	local flipRect = { x = 0, y = 0, width = W, height = -H } -- GL Y-flip: for rendering scene into filter
 	local copyRect = { x = 0, y = 0, width = W, height = H } -- no flip: for RT-to-RT copies
 	local origin = vector.create(0, 0)
-	local WHITE = raylib.const.WHITE
-	local BLANK = raylib.const.BLANK
-	local BLACK = raylib.const.BLACK
+	local WHITE = adapter.const.WHITE
+	local BLANK = adapter.const.BLANK
+	local BLACK = adapter.const.BLACK
 
 	for _, filter in ipairs(sorted) do
 		local runtime = makeRuntime(currentRT, W, H, filter)
@@ -213,7 +213,7 @@ ki3d.Frame = function(self, camera, drawFn)
 			lib.BeginTextureMode(currentRT)
 			lib.ClearBackground(BLACK)
 			lib.DrawTextureRec(utils.extract.texture(swapRT), runtime.rect:new(copyRect), origin, WHITE)
-			lib.BeginBlendMode(raylib.const.BlendMode.BLEND_MULTIPLIED)
+			lib.BeginBlendMode(adapter.const.BlendMode.BLEND_MULTIPLIED)
 			lib.DrawTextureRec(utils.extract.texture(outputRT), runtime.rect:new(flipRect), origin, WHITE)
 			lib.EndBlendMode()
 			lib.EndTextureMode()
@@ -238,15 +238,15 @@ ki3d.Draw = function(self, _camera)
 	local W = lib.GetRenderWidth()
 	local H = lib.GetRenderHeight()
 
-	lib.ClearBackground(raylib.const.BLACK)
-	lib.BeginBlendMode(raylib.const.BlendMode.BLEND_ALPHA)
+	lib.ClearBackground(adapter.const.BLACK)
+	lib.BeginBlendMode(adapter.const.BlendMode.BLEND_ALPHA)
 
 	-- source: +H = read texture normally (y-up storage, OpenGL convention)
 	-- dest:   -H = flip on screen (compensates for GL vs screen Y-axis)
-	local source = raylib.structs.Rectangle:new({ x = 0, y = 0, width = W, height = -H })
-	local dest = raylib.structs.Rectangle:new({ x = 0, y = 0, width = W, height = -H })
+	local source = adapter.structs.Rectangle:new({ x = 0, y = 0, width = W, height = -H })
+	local dest = adapter.structs.Rectangle:new({ x = 0, y = 0, width = W, height = -H })
 
-	lib.DrawTexturePro(utils.extract.texture(self.finalRT), source, dest, vector.create(0, 0), 0, raylib.const.WHITE)
+	lib.DrawTexturePro(utils.extract.texture(self.finalRT), source, dest, vector.create(0, 0), 0, adapter.const.WHITE)
 
 	lib.EndBlendMode()
 end
@@ -291,7 +291,7 @@ ki3d.Begin3D = function(self, target)
 		return
 	end
 	lib.BeginTextureMode(target or sceneRT)
-	lib.ClearBackground(raylib.const.BLACK)
+	lib.ClearBackground(adapter.const.BLACK)
 end
 
 ki3d.End3D = function(self)

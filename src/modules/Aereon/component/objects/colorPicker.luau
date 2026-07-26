@@ -1,15 +1,8 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+return function(objects, data, raylib)
+	local rect = require("@arect")
+	local color3 = require("@Color3")
+	local font = raylib.lib.GetFontDefault()
 
-local rect = require("@arect")
-local color3 = require("@Color3")
-local font = raylib.lib.GetFontDefault()
-
-local function drawText(fnt, text, x, y, size, color)
-	raylib.lib.DrawTextEx(fnt, text, vector.create(x, y), size, 1, color)
-end
-
-return function(objects, data)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
 		h = 0,
@@ -35,6 +28,12 @@ return function(objects, data)
 		da = 0,
 		lerpSpeed = 12, -- higher = snappier
 	}
+
+	local structs = raylib.structs
+
+	local function drawText(fnt, text, x, y, size, color)
+		raylib.lib.DrawTextEx(fnt, text, vector.create(x, y), size, 1, color)
+	end
 
 	local function updateColor()
 		local c = color3.fromHSV(config.h, config.s, config.v)

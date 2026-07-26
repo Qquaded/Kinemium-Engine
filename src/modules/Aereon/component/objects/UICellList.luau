@@ -1,8 +1,7 @@
-local raylib = require("@raylib")
 local MergedCell = require("./cellItem")
 local arect = require("@arect")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local cells = {}
 	local cellRefs = {}
 	local cellOffsets = {}

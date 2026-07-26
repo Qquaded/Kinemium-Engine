@@ -1,9 +1,8 @@
-local raylib = require("@raylib")
 local color3 = require("@Color3")
 local rect = require("@arect")
 local effects = require("./effects")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1] or 0,
@@ -25,7 +24,7 @@ return function(objects, data)
 		rounded = data.rounded or { 0.3, 8 },
 		onClick = data.onClick,
 		shadowColor = data.shadowColor or color3.new(0, 0, 0),
-		shadowLayers = data.shadowLayers or 6,
+		shadowLayers = data.shadowLayers or 2,
 		shadowOffsetX = data.shadowOffsetX or 0,
 		shadowOffsetY = data.shadowOffsetY or 4,
 		shadowSpread = data.shadowSpread or 3,
@@ -45,7 +44,7 @@ return function(objects, data)
 		shadowOffsetY = config.shadowOffsetY,
 		shadowSpread = config.shadowSpread,
 		pressSquish = 2,
-	})
+	}, {}, raylib)
 
 	local function lerp(a, b, t)
 		return a + (b - a) * t
@@ -138,7 +137,12 @@ return function(objects, data)
 			)
 		end
 
-		if buttonEffects.isHovered() and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput and config.onClick then
+		if
+			buttonEffects.isHovered()
+			and raylib.lib.IsMouseButtonReleased(0) == 1
+			and not _G.__aereon_blockInput
+			and config.onClick
+		then
 			config.onClick()
 		end
 	end

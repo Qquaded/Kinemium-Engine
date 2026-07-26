@@ -3,13 +3,13 @@ local Vector2 = require("@Vector2")
 local Vector3 = require("@Vector3")
 local UDim2 = require("@UDim2")
 local Enum = require("@EnumMap")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
 local raycast = require("@raycast")
 
-local lib = raylib.lib
-local const = raylib.const
-local structs = raylib.structs
+local lib = adapter.lib
+local const = adapter.const
+local structs = adapter.structs
 
 local propTable = {
 	Name = "SurfaceGui",

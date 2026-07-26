@@ -5,9 +5,8 @@ local KinemiumShaderService = Instance.new("KinemiumShaderService")
 KinemiumShaderService.ExplorerHidden = true
 KinemiumShaderService._Intents = Enum.PluginIntents.Graphics
 
-local r3d = require("@r3d")
-local raylib = require("@raylib")
-local rlib = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rlib = adapter.lib
 
 KinemiumShaderService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	if IsHeadless == true then
@@ -30,7 +29,6 @@ KinemiumShaderService.InitRenderer = function(renderer, renderer_signal, datamod
 			local chain_array = zune.ffi.create(zune.ffi.types.pointer:array(1))
 			local shader = shaderobj._shader
 			chain_array:writeptr(0, shader)
-			r3d.lib.R3D_SetScreenShaderChain(chain_array, 1)
 		end
 
 		local function activateMaterialShader(shaderobj)
@@ -65,13 +63,10 @@ KinemiumShaderService.InitRenderer = function(renderer, renderer_signal, datamod
 							rlib.UnloadShader(ShaderObject._shader)
 							return true
 						elseif ShaderObject._type == "surface" then
-							r3d.lib.R3D_UnloadSurfaceShader(ShaderObject._shader)
 							return true
 						elseif ShaderObject._type == "sky" then
-							r3d.lib.R3D_UnloadSkyShader(ShaderObject._shader)
 							return true
 						elseif ShaderObject._type == "screen" then
-							r3d.lib.R3D_UnloadScreenShader(ShaderObject._shader)
 							return true
 						end
 					end
@@ -108,11 +103,8 @@ KinemiumShaderService.InitRenderer = function(renderer, renderer_signal, datamod
 					end
 				end
 
-				r3d.lib.R3D_SetScreenShaderChain(chain_array, count)
 				return {
-					Unload = function()
-						r3d.lib.R3D_SetScreenShaderChain(nil, 0)
-					end,
+					Unload = function() end,
 				}
 			end,
 		})

@@ -15,8 +15,22 @@ local Walk = require("@FileWalker")
 local fs = zune.fs
 local filesystem = require("@filesystem")
 local httpServerViewer = require("@httpServerViewer")
+local auto_flags = {}
 
-if not filesystem.exists("./external/build") then
+_G.FlagExists = function(flag)
+	if auto_flags[flag] then
+		return true
+	end
+	local args = zune.process.args
+	for _, v in pairs(args) do
+		if v == "--" .. flag then
+			return true
+		end
+	end
+	return false
+end
+
+if not filesystem.exists("./external/build") and not zembed.IsEmbedded() and not FlagExists("igs") then
 	print("Please build the engine's libraries:")
 	local command = ``
 	if zune.platform.os == "windows" then
@@ -30,21 +44,30 @@ end
 
 filesystem.createFolder(".", "vendor")
 
-Walk.Walk("./external/build", function(path, entry)
+local headerfiles = {}
+
+local seen = {}
+
+Walk.Walk("./external", function(path, entry)
 	if entry.kind == "file" and entry.extension == `.{zune.ffi.suffix}` then
 		if filesystem.exists("vendor/" .. entry.name) then
 			return
 		end
 		fs.copy(path, "vendor/" .. entry.name)
 		print("Copied " .. path)
+	elseif entry.extension == `.h` then
+		local dir = path:match("(.+)[/\\][^/\\]+$")
+		if dir and not seen[dir] then
+			seen[dir] = true
+			table.insert(headerfiles, dir)
+		end
 	end
 end)
+table.insert(headerfiles, "./external/r3d/include")
 
 if zune.platform.os == "windows" then
 	require("@vcredistInstaller")
 end
-
-local auto_flags = {}
 
 if filesystem.exists("./exported") then
 	local read = filesystem.read("./exported/flags.toml")
@@ -76,7 +99,10 @@ _G.ENGINE_VERSION = "1.10.7"
 _G.ENGINE_ENDPOINT = {
 	MARKETPLACE = "https://quadigen.github.io/Kinemium-Engine-Plugins/plugins.json",
 	API = "https://kinemium-docs.vercel.app/api/docs/",
+	USERAPI = "https://msi.tail721598.ts.net",
+	WEB = "https://kinemium-platform.vercel.app",
 }
+
 _G.ZUNE_EMBEDDED = nil
 
 if zembed.IsEmbedded() then
@@ -104,19 +130,6 @@ _G.iodebug = function(...)
 end
 
 _G.task = zune.task
-
-_G.FlagExists = function(flag)
-	if auto_flags[flag] then
-		return true
-	end
-	local args = zune.process.args
-	for _, v in pairs(args) do
-		if v == "--" .. flag then
-			return true
-		end
-	end
-	return false
-end
 
 _G.include = function(path)
 	local required = require(path)
@@ -305,7 +318,7 @@ kilang.env.GetFlagValue = GetFlagValue
 
 -- SETUP PROFILER
 renderer:SetProfiler(ENGINE_PROFILER)
-renderer:UseRlCamera(Kinemium_camera._raylibcam)
+renderer:UseRlCamera(Kinemium_camera._raylibcam, Kinemium_camera)
 
 -- FILE SYSTEM UTILITIES
 local function normalizeScriptPath(path)
@@ -387,13 +400,13 @@ local function loadInternals()
 		if isScriptPath(path) then
 			loadedCount += 1
 			task.spawn(function()
-				local threadid, success, result = kilang:execute(code, {
+				local threadid, success, result, f, n = kilang:execute(code, {
 					SecurityCapabilities = Enum.SecurityCapabilities.Internals,
 					StackId = path,
 				})
 
 				if not success and result ~= nil then
-					error(`Error loading internal {threadid}: {tostring(result)}`)
+					warn(`Error loading internal {threadid}: {tostring(result)}`)
 				end
 			end)
 		elseif path:match("%.c$") then
@@ -403,7 +416,6 @@ local function loadInternals()
 	end)
 
 	log(string.format("[Internals] Queued %d internal scripts", loadedCount))
-	print("fart")
 end
 
 -- LOAD USER SCRIPTS
@@ -446,7 +458,7 @@ function Kinemium:run()
 				StackId = path,
 			})
 			if not success then
-				print(`{id}: {tostring(result)}`)
+				print(`{path}-{id}: {tostring(result)}`)
 			end
 		end)
 	end)
@@ -467,6 +479,7 @@ if FlagExists("kilang") then
 		task.spawn(function()
 			local _, success, result = kilang:execute(line, {
 				SecurityCapabilities = Enum.SecurityCapabilities.Internals,
+				StackId = "repl-" .. tostring(math.random(1, 999)),
 			})
 			if not success then
 				evalError(result)

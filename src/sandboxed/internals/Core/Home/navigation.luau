@@ -8,7 +8,7 @@ if RunService:IsServer() then
 end
 
 local rlservice = game:GetService("KinemiumRaylib")
-local raylib = require("@raylib")
+local raylib = require("@raylibadapter")
 local lib = raylib.lib
 local renderer = rlservice.GetRenderer()
 local aereon = require("@Aereon")

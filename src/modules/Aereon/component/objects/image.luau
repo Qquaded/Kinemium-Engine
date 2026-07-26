@@ -1,9 +1,8 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-
 local rect = require("@arect")
 
-return function(objects, data)
+return function(objects, data, raylib)
+	local structs = raylib.structs
+
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
 		texture = data.texture,

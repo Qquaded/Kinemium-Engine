@@ -1,15 +1,15 @@
-local raylib = require("@raylib")
-local color3 = require("@Color3")
-local rect = require("@arect")
-local Aereon = require("@Aereon")
+return function(objects, data, raylib)
+	local color3 = require("@Color3")
+	local rect = require("@arect")
+	local Aereon = require("@Aereon")
 
-return function(objects, data)
 	--  config
 	local config = {
 		files = data.files or {},
 		isOpen = data.isOpen or false,
 		onOpen = data.onOpen,
 		game = data.game,
+		onSubmit = data.onSubmit,
 
 		-- Layout
 		width = data.width or 700,
@@ -343,7 +343,11 @@ return function(objects, data)
 					fontSize = config.fontSize,
 					escapeBlurs = false,
 					blurOnSubmit = false,
-					onSubmit = function()
+					onSubmit = function(text)
+						if config.onSubmit then
+							config.onSubmit(text)
+							return
+						end
 						local sel = config._filtered[config.selectedIndex]
 						if sel then
 							if config.onOpen then

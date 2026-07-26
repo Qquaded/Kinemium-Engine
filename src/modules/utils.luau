@@ -1,9 +1,9 @@
 local bufferUtils = { extract = {}, string = {} }
 
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local box2d = require("@box2d")
 local box2d_structs = box2d.structs
-local const, structs, lib = raylib.const, raylib.structs, raylib.lib
+local const, structs, lib = adapter.const, adapter.structs, adapter.lib
 local ffi = zune.ffi
 
 local function getOfs(source, field)

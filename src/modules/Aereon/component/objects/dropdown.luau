@@ -1,13 +1,12 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+return function(objects, data, raylib)
+	local structs = raylib.structs
 
-local rect = require("@arect")
-local color3 = require("@Color3")
-local MouseCursor = require("@Kinemium.MouseCursor")
+	local rect = require("@arect")
+	local color3 = require("@Color3")
+	local MouseCursor = require("@Kinemium.MouseCursor")
 
-local defaultFont = raylib.lib.GetFontDefault()
+	local defaultFont = raylib.lib.GetFontDefault()
 
-return function(objects, data)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4] or 36),
 		options = data.options or { "Option 1", "Option 2", "Option 3" },

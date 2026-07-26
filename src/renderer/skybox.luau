@@ -1,10 +1,10 @@
-local rl = require("@raylib")
+local adapter = require("@raylib")
 local zembed = require("@zembed")
 local ffi = zune.ffi
-local lib = rl.lib
+local lib = adapter.lib
 
-local structs = rl.structs
-local const = rl.const
+local structs = adapter.structs
+local const = adapter.const
 
 local skybox = { _loaded = false }
 
@@ -130,7 +130,7 @@ function skybox.Load(png)
 	local envLoc = lib.GetShaderLocation(skybox.Shader, "environmentMap")
 	assert(envLoc ~= -1, "skybox shader missing uniform: environmentMap")
 
-	setShaderLoc(skybox.Shader, rl.const.ShaderLocationIndex.SHADER_LOC_MAP_CUBEMAP, envLoc)
+	setShaderLoc(skybox.Shader, adapter.const.ShaderLocationIndex.SHADER_LOC_MAP_CUBEMAP, envLoc)
 	setMaterialShaderOnModel(skybox.Model, skybox.Shader)
 
 	local img = lib.LoadImage(zembed.AssetPath(png or "kineasset://sky/default/images/cubemap.png"))

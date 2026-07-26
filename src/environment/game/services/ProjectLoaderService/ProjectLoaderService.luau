@@ -60,7 +60,7 @@ export type ProjectConfig = {
 	},
 }
 
-local function buildProjectConfig(name, iconPath, description, PluginLoader)
+local function buildProjectConfig(name, iconPath, description, PluginLoader, dimension)
 	local plugins_built = {}
 
 	for i, data in pairs(PluginLoader.GetLoadedPlugins()) do
@@ -73,6 +73,7 @@ local function buildProjectConfig(name, iconPath, description, PluginLoader)
 			name = name,
 			icon = iconPath,
 			desc = description,
+			dimension = dimension,
 		},
 		pointers = {
 			assets = "game.ReplicatedStorage",
@@ -123,7 +124,7 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal, datamode
 							continue
 						end
 						project.manifest = zune.serde.toml.decode(fs.readFile(project.path .. "/kproj.toml"))
-						table.insert(result, project)
+						result[project.name] = project
 					end
 
 					return result
@@ -136,7 +137,7 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal, datamode
 
 		StartObserve = function(path) end,
 
-		NewProject = function(name, path, iconPath, description)
+		NewProject = function(name, path, iconPath, description, selectedDimension)
 			if not name then
 				return
 			end
@@ -154,6 +155,7 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal, datamode
 				name = name,
 				engine_version = ENGINE_VERSION,
 				last_opened = os.time(),
+				dimension = selectedDimension,
 			}
 
 			local encoded = toml.encode({
@@ -182,7 +184,13 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal, datamode
 					task.wait()
 				until datamodel:GetService("PluginLoader")
 
-				local config = buildProjectConfig(name, iconPath, description, datamodel:GetService("PluginLoader"))
+				local config = buildProjectConfig(
+					name,
+					iconPath,
+					description,
+					datamodel:GetService("PluginLoader"),
+					selectedDimension
+				)
 				local encodedProject = serde.toml.encode(config)
 				fs.writeFile(kprojFile, encodedProject)
 			end)

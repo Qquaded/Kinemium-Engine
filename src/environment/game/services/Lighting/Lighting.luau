@@ -1,12 +1,11 @@
 local Instance = require("@Instance")
 local Vector3 = require("@Vector3")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
-local const = raylib.const
-local lib = raylib.lib
+local const = adapter.const
+local lib = adapter.lib
 local Lighting = Instance.new("Lighting")
 local Color3 = require("@Color3")
-local r3d = require("@r3d")
 local rlib = r3d.lib
 local Stars = {}
 local Enum = require("@EnumMap")
@@ -53,33 +52,6 @@ function Lighting:GetSunDirection()
 	return calculateSunDirection(self.ClockTime, self.GeographicLatitude)
 end
 
-local function setSkyObject(r3d_sky)
-	local environment: FFIPointer = rlib.R3D_GetEnvironment()
-
-	local iden = lib.QuaternionIdentity()
-
-	local envbackground = r3d.structs.R3D_EnvBackground:new({
-		sky = r3d_sky,
-		energy = 1.0,
-		rotation = iden,
-		skyBlur = 0,
-	})
-
-	local offset = r3d.structs.R3D_Environment:offset("background")
-	environment:write(offset, envbackground, 0, r3d.structs.R3D_EnvBackground:size())
-
-	rlib.R3D_SetEnvironment(environment)
-end
-
-local function loadSky(cubemapPath)
-	cubemapPath = zembed.AssetPath(cubemapPath)
-	local r3d_sky = rlib.R3D_LoadCubemap(cubemapPath, 5)
-	setSkyObject(r3d_sky)
-	return function()
-		rlib.R3D_UnloadCubemap(r3d_sky)
-	end
-end
-
 local function setAllEnvironmentEffects()
 	local environment: FFIPointer = rlib.R3D_GetEnvironment()
 	rlib.R3D_SetEnvironment(environment)
@@ -114,7 +86,7 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 	local light = rlib.R3D_CreateLight(0) -- R3D_LIGHT_DIR
 	rlib.R3D_SetLightDirection(light, vector.create(-1, -1, -1))
-	rlib.R3D_SetLightColor(light, raylib.const.WHITE)
+	rlib.R3D_SetLightColor(light, adapter.const.WHITE)
 	rlib.R3D_SetLightEnergy(light, 1.0)
 	rlib.R3D_SetLightActive(light, true)
 	rlib.R3D_SetShadowSoftness(light, 3)
@@ -229,7 +201,6 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 		unload = function()
 			rlib.R3D_UnloadCubemap(sky)
 		end
-		setSkyObject(sky)
 		currentCustomSky = sky
 	end
 end

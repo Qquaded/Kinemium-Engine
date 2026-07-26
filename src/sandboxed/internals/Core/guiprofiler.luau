@@ -3,7 +3,7 @@ local ProfilerService = game:GetService("ProfilerService")
 local ENGINE_PROFILER = ProfilerService.ENGINE_PROFILER
 
 local rlservice = game:GetService("KinemiumRaylib")
-local raylib = require("@raylib")
+local raylib = require("@RaylibAdapter")
 local lib = raylib.lib
 local renderer = rlservice.GetRenderer()
 local arect = require("@arect")

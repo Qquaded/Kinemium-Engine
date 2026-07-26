@@ -88,30 +88,30 @@ end
 function ligaturesModule.measureLigature(rl, ligature, fontSize, spacing, vend)
 	local unicode = ligaturesModule.ligatures[ligature]
 	if unicode then
-		return rl.MeasureTextEx(vend, unicode, fontSize, spacing).x
+		return adapter.MeasureTextEx(vend, unicode, fontSize, spacing).x
 	end
 
 	-- fallback: measure raw text
-	return rl.MeasureTextEx(vend, ligature, fontSize, spacing).x
+	return adapter.MeasureTextEx(vend, ligature, fontSize, spacing).x
 end
 
 -- Draw a ligature manually using raylib shapes
 function ligaturesModule.drawLigature(rl, ligature, x, y, fontSize, spacing, color, vend)
 	if ligature == "->" then
 		-- Draw "-" text
-		rl.DrawTextEx(vend, "-", vector.create(x, y), fontSize, spacing, color)
-		local dashWidth = rl.MeasureTextEx(vend, "-", fontSize, spacing).x
+		adapter.DrawTextEx(vend, "-", vector.create(x, y), fontSize, spacing, color)
+		local dashWidth = adapter.MeasureTextEx(vend, "-", fontSize, spacing).x
 		-- Draw > as two lines
 		local arrowX = x + dashWidth
 		local arrowY = y + fontSize / 2
 		local arrowSize = fontSize * 0.4
-		rl.DrawLineEx(
+		adapter.DrawLineEx(
 			vector.create(arrowX, arrowY - arrowSize / 2),
 			vector.create(arrowX + arrowSize, arrowY),
 			1,
 			color
 		)
-		rl.DrawLineEx(
+		adapter.DrawLineEx(
 			vector.create(arrowX, arrowY + arrowSize / 2),
 			vector.create(arrowX + arrowSize, arrowY),
 			1,
@@ -120,15 +120,15 @@ function ligaturesModule.drawLigature(rl, ligature, x, y, fontSize, spacing, col
 		return dashWidth + arrowSize
 	elseif ligature == "!=" then
 		-- Draw "!" and "=" text
-		rl.DrawTextEx(vend, "!", vector.create(x, y), fontSize, spacing, color)
-		local bangWidth = rl.MeasureTextEx(vend, "!", fontSize, spacing).x
-		rl.DrawTextEx(vend, "=", vector.create(x + bangWidth, y), fontSize, spacing, color)
-		local eqWidth = rl.MeasureTextEx(vend, "=", fontSize, spacing).x
+		adapter.DrawTextEx(vend, "!", vector.create(x, y), fontSize, spacing, color)
+		local bangWidth = adapter.MeasureTextEx(vend, "!", fontSize, spacing).x
+		adapter.DrawTextEx(vend, "=", vector.create(x + bangWidth, y), fontSize, spacing, color)
+		local eqWidth = adapter.MeasureTextEx(vend, "=", fontSize, spacing).x
 		-- Draw slash through =
 		local slashX1 = x + bangWidth
 		local slashX2 = x + bangWidth + eqWidth
 		local slashY = y + fontSize / 2
-		rl.DrawLineEx(
+		adapter.DrawLineEx(
 			vector.create(slashX1, slashY - fontSize * 0.3),
 			vector.create(slashX2, slashY + fontSize * 0.3),
 			1,
@@ -137,27 +137,27 @@ function ligaturesModule.drawLigature(rl, ligature, x, y, fontSize, spacing, col
 		return bangWidth + eqWidth
 	elseif ligature == "<=" then
 		-- Draw "<" and "=" text
-		rl.DrawTextEx(vend, "<", vector.create(x, y), fontSize, spacing, color)
-		local lessWidth = rl.MeasureTextEx(vend, "<", fontSize, spacing).x
-		rl.DrawTextEx(vend, "=", vector.create(x + lessWidth, y), fontSize, spacing, color)
-		local eqWidth = rl.MeasureTextEx(vend, "=", fontSize, spacing).x
+		adapter.DrawTextEx(vend, "<", vector.create(x, y), fontSize, spacing, color)
+		local lessWidth = adapter.MeasureTextEx(vend, "<", fontSize, spacing).x
+		adapter.DrawTextEx(vend, "=", vector.create(x + lessWidth, y), fontSize, spacing, color)
+		local eqWidth = adapter.MeasureTextEx(vend, "=", fontSize, spacing).x
 		return lessWidth + eqWidth
 	elseif ligature == ">=" then
 		-- Draw ">" and "=" text
-		rl.DrawTextEx(vend, ">", vector.create(x, y), fontSize, spacing, color)
-		local greaterWidth = rl.MeasureTextEx(vend, ">", fontSize, spacing).x
-		rl.DrawTextEx(vend, "=", vector.create(x + greaterWidth, y), fontSize, spacing, color)
-		local eqWidth = rl.MeasureTextEx(vend, "=", fontSize, spacing).x
+		adapter.DrawTextEx(vend, ">", vector.create(x, y), fontSize, spacing, color)
+		local greaterWidth = adapter.MeasureTextEx(vend, ">", fontSize, spacing).x
+		adapter.DrawTextEx(vend, "=", vector.create(x + greaterWidth, y), fontSize, spacing, color)
+		local eqWidth = adapter.MeasureTextEx(vend, "=", fontSize, spacing).x
 		return greaterWidth + eqWidth
 	else
 		-- Fallback: draw as Unicode if available, else as text
 		local unicode = ligaturesModule.ligatures[ligature]
 		if unicode then
-			rl.DrawTextEx(vend, unicode, vector.create(x, y), fontSize, spacing, color)
-			return rl.MeasureTextEx(vend, unicode, fontSize, spacing).x
+			adapter.DrawTextEx(vend, unicode, vector.create(x, y), fontSize, spacing, color)
+			return adapter.MeasureTextEx(vend, unicode, fontSize, spacing).x
 		else
-			rl.DrawTextEx(vend, ligature, vector.create(x, y), fontSize, spacing, color)
-			return rl.MeasureTextEx(vend, ligature, fontSize, spacing).x
+			adapter.DrawTextEx(vend, ligature, vector.create(x, y), fontSize, spacing, color)
+			return adapter.MeasureTextEx(vend, ligature, fontSize, spacing).x
 		end
 	end
 end
@@ -170,7 +170,7 @@ function ligaturesModule.measureTextWidth(text, fontSize, spacing, ligaturesEnab
 	local totalWidth = 0
 	for _, segment in ipairs(segments) do
 		if segment.type == "text" then
-			totalWidth += rl.MeasureTextEx(vend, segment.content, fontSize, spacing).x
+			totalWidth += adapter.MeasureTextEx(vend, segment.content, fontSize, spacing).x
 		elseif segment.type == "ligature" then
 			totalWidth += ligaturesModule.measureLigature(rl, segment.content, fontSize, spacing, vend)
 		end

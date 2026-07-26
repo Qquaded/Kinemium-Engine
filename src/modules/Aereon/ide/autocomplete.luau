@@ -1,8 +1,8 @@
 local Autocomplete = {}
 
 local cachedIcons = {}
-local raylib = require("@raylib")
-local const = raylib.const
+local adapter = require("@RaylibAdapter")
+local const = adapter.const
 local cachedTextures = {}
 local Color3 = require("@Color3")
 
@@ -447,12 +447,12 @@ function Autocomplete.step(
 		local acHeight = math.min(#editor.autocomplete.items, maxVisible) * acItemHeight
 
 		local viewportW, viewportH
-		if type(raylib.GetRenderWidth) == "function" and type(raylib.GetRenderHeight) == "function" then
-			viewportW = raylib.GetRenderWidth()
-			viewportH = raylib.GetRenderHeight()
-		elseif type(raylib.GetScreenWidth) == "function" and type(raylib.GetScreenHeight) == "function" then
-			viewportW = raylib.GetScreenWidth()
-			viewportH = raylib.GetScreenHeight()
+		if type(adapter.GetRenderWidth) == "function" and type(adapter.GetRenderHeight) == "function" then
+			viewportW = adapter.GetRenderWidth()
+			viewportH = adapter.GetRenderHeight()
+		elseif type(adapter.GetScreenWidth) == "function" and type(adapter.GetScreenHeight) == "function" then
+			viewportW = adapter.GetScreenWidth()
+			viewportH = adapter.GetScreenHeight()
 		else
 			viewportW = x + acWidth + 8
 			viewportH = y + acHeight + 8
@@ -491,8 +491,8 @@ function Autocomplete.step(
 		local acX, acY = editor.autocomplete.currentX, editor.autocomplete.currentY
 		local background = rect.new(acX, acY, acWidth, acHeight)
 
-		raylib.DrawRectangleRounded(rect:translate(background), 0.1, 15, Color3.new(0.12, 0.12, 0.12):ToRaylib(0))
-		raylib.DrawRectangleRoundedLinesEx(
+		adapter.DrawRectangleRounded(rect:translate(background), 0.1, 15, Color3.new(0.12, 0.12, 0.12):ToRaylib(0))
+		adapter.DrawRectangleRoundedLinesEx(
 			rect:translate(background),
 			0.1,
 			15,
@@ -506,7 +506,7 @@ function Autocomplete.step(
 			--local itemRect = rect.new(acX, itemY, acWidth, acItemHeight)
 
 			if i == editor.autocomplete.selectedIndex then
-				raylib.DrawRectangleRounded(
+				adapter.DrawRectangleRounded(
 					rect:translate(rect.new(acX + 2, itemY + 1, acWidth - 4, acItemHeight - 2)),
 					0.1,
 					15,
@@ -526,7 +526,7 @@ function Autocomplete.step(
 				if textureData and textureData.texture then
 					local iconX = acX + acPadding
 					local iconY = itemY + (acItemHeight - iconSize) / 2
-					raylib.DrawTexturePro(
+					adapter.DrawTexturePro(
 						textureData.texture,
 						rect:translate(rect.new(0, 0, textureData.x, textureData.y)),
 						rect:translate(rect.new(iconX, iconY, iconSize, iconSize)),
@@ -537,7 +537,7 @@ function Autocomplete.step(
 				end
 			end
 
-			raylib.DrawTextEx(
+			adapter.DrawTextEx(
 				vend,
 				item.label,
 				vector.create(acX + acPadding + iconSize + 6, itemY + (acItemHeight - (fontSize - 4)) / 2),
@@ -548,7 +548,7 @@ function Autocomplete.step(
 
 			local typeText = item.type
 			local tw = measureTextWidth(typeText, fontSize - 6, spacing)
-			raylib.DrawTextEx(
+			adapter.DrawTextEx(
 				vend,
 				typeText,
 				vector.create(acX + acWidth - tw - acPadding, itemY + (acItemHeight - (fontSize - 6)) / 2),

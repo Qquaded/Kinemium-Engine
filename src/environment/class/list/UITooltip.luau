@@ -2,12 +2,12 @@
 local Vector2 = require("@Vector2")
 local Color3 = require("@Color3")
 local Enum = require("@EnumMap")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local RichText = require("@Kinemium.richtext")
 
 local aereon = require("@Aereon")
 local arect = aereon.rect()
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
 local propTable = {
 	Name = "UITooltip",
@@ -51,12 +51,12 @@ return {
 
 					local new = arect.new(absolutePosition.X, absolutePosition.Y, absoluteSize.X, absoluteSize.Y)
 					if arect.MouseIsInRect(new) then
-						local position = raylib.lib.GetMousePosition()
+						local position = adapter.lib.GetMousePosition()
 						local framePos = Vector2.new(position.x + 5, position.y - object.TextSize - 3)
 						local frameSize = Vector2.new(10000, math.max(object.TextSize * 4, 48))
 						local layout, spacing = RichText.GetLayout(object, frameSize, renderer, defaultFont)
 						if layout then
-							RichText.DrawLayout(raylib.lib, object, framePos, frameSize, layout, spacing)
+							RichText.DrawLayout(adapter.lib, object, framePos, frameSize, layout, spacing)
 						end
 					end
 				end

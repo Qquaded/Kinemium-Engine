@@ -1,10 +1,10 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		centerX = data.centerX or data[1] or 400,
 		centerY = data.centerY or data[2] or 300,
@@ -72,8 +72,8 @@ return function(objects, data)
 			return
 		end
 
-		local mousePos = raylib.lib.GetMousePosition()
-		local mousePressed = raylib.lib.IsMouseButtonPressed(0) == 1
+		local mousePos = adapter.lib.GetMousePosition()
+		local mousePressed = adapter.lib.IsMouseButtonPressed(0) == 1
 
 		local numItems = #config.items
 		if numItems == 0 then
@@ -146,13 +146,13 @@ return function(objects, data)
 				local x2_inner = config.centerX + math.cos(a2) * config.innerRadius
 				local y2_inner = config.centerY + math.sin(a2) * config.innerRadius
 
-				raylib.lib.DrawTriangle(
+				adapter.lib.DrawTriangle(
 					vector.create(x1_outer, y1_outer),
 					vector.create(x2_outer, y2_outer),
 					vector.create(x1_inner, y1_inner),
 					segmentColor:ToRaylib(0)
 				)
-				raylib.lib.DrawTriangle(
+				adapter.lib.DrawTriangle(
 					vector.create(x2_outer, y2_outer),
 					vector.create(x2_inner, y2_inner),
 					vector.create(x1_inner, y1_inner),
@@ -165,7 +165,7 @@ return function(objects, data)
 			local divY1 = config.centerY + math.sin(angle2) * config.innerRadius
 			local divX2 = config.centerX + math.cos(angle2) * config.radius
 			local divY2 = config.centerY + math.sin(angle2) * config.radius
-			raylib.lib.DrawLineEx(
+			adapter.lib.DrawLineEx(
 				vector.create(divX1, divY1),
 				vector.create(divX2, divY2),
 				1,
@@ -178,7 +178,7 @@ return function(objects, data)
 				local iconX = config.centerX + math.cos(midAngle) * iconDistance
 				local iconY = config.centerY + math.sin(midAngle) * iconDistance
 
-				raylib.lib.DrawTexturePro(
+				adapter.lib.DrawTexturePro(
 					config.items[i].texture.texture,
 					structs.Rectangle:new({
 						x = 0,
@@ -194,7 +194,7 @@ return function(objects, data)
 					}),
 					vector.create(0, 0),
 					0,
-					raylib.const.WHITE
+					adapter.const.WHITE
 				)
 			end
 
@@ -206,7 +206,7 @@ return function(objects, data)
 
 		-- Draw center circle
 		local centerColor = config.centerHovered and config.centerHoverColor or config.centerColor
-		raylib.lib.DrawCircle(config.centerX, config.centerY, config.innerRadius, centerColor:ToRaylib(0))
+		adapter.lib.DrawCircle(config.centerX, config.centerY, config.innerRadius, centerColor:ToRaylib(0))
 
 		-- Center click handling
 		if config.centerHovered and mousePressed and config.onCenterClick then

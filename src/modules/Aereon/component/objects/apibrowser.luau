@@ -1,11 +1,11 @@
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local rect = require("@arect")
 local color3 = require("@Color3")
 local aereon = require("@Aereon")
 local MDXFormatter = require("../mdxFormatter")
-local structs = raylib.structs
+local structs = adapter.structs
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local gui = aereon.gui
 	local wrapper = {}
 	local config = {
@@ -156,8 +156,8 @@ return function(objects, data)
 	--  Drawing helpers
 
 	local function drawText(text, x, y, size, spacing, color)
-		raylib.lib.DrawTextEx(
-			config.font or raylib.lib.GetFontDefault(),
+		adapter.lib.DrawTextEx(
+			config.font or adapter.lib.GetFontDefault(),
 			text,
 			vector.create(x, y),
 			size,
@@ -167,7 +167,7 @@ return function(objects, data)
 	end
 
 	local function measureText(text, size, spacing)
-		local m = raylib.lib.MeasureTextEx(config.font or raylib.lib.GetFontDefault(), text, size, spacing)
+		local m = adapter.lib.MeasureTextEx(config.font or adapter.lib.GetFontDefault(), text, size, spacing)
 		return m.x
 	end
 
@@ -283,25 +283,25 @@ return function(objects, data)
 	local function drawIcon(x, y, size, iconType, color)
 		local r = structs.Rectangle:new({ x = x, y = y, width = size, height = size })
 		if iconType == "expanded" then
-			raylib.lib.DrawTriangle(
+			adapter.lib.DrawTriangle(
 				vector.create(x + 2, y + 3),
 				vector.create(x + size - 2, y + 3),
 				vector.create(x + size / 2, y + size - 3),
 				color:ToRaylib(0)
 			)
 		elseif iconType == "collapsed" then
-			raylib.lib.DrawTriangle(
+			adapter.lib.DrawTriangle(
 				vector.create(x + 3, y + 2),
 				vector.create(x + size - 3, y + size / 2),
 				vector.create(x + 3, y + size - 2),
 				color:ToRaylib(0)
 			)
 		elseif iconType == "class" then
-			raylib.lib.DrawRectangleRounded(r, 0.3, 6, color:ToRaylib(0))
+			adapter.lib.DrawRectangleRounded(r, 0.3, 6, color:ToRaylib(0))
 		elseif iconType == "enum" then
-			raylib.lib.DrawCircle(x + size / 2, y + size / 2, size / 2, color:ToRaylib(0))
+			adapter.lib.DrawCircle(x + size / 2, y + size / 2, size / 2, color:ToRaylib(0))
 		else
-			raylib.lib.DrawRectangle(x + 2, y + 2, size - 4, size - 4, color:ToRaylib(0))
+			adapter.lib.DrawRectangle(x + 2, y + 2, size - 4, size - 4, color:ToRaylib(0))
 		end
 	end
 
@@ -311,7 +311,7 @@ return function(objects, data)
 		local tw = measureText(typeLabel, config.labelFontSize, config.labelFontSpacing)
 		local pw = tw + 12
 		local ph = 16
-		raylib.lib.DrawRectangleRounded(rect:translate(rect.new(x, y, pw, ph)), 0.5, 6, pillColor:ToRaylib(0))
+		adapter.lib.DrawRectangleRounded(rect:translate(rect.new(x, y, pw, ph)), 0.5, 6, pillColor:ToRaylib(0))
 		drawText(
 			typeLabel,
 			x + 6,
@@ -330,14 +330,14 @@ return function(objects, data)
 		local isSelected = config.selectedItem == item
 
 		if isSelected then
-			raylib.lib.DrawRectangleRounded(
+			adapter.lib.DrawRectangleRounded(
 				rect:translate(rect.new(itemRect.x + 2, itemRect.y + 1, itemRect.width - 4, itemRect.height - 2)),
 				0.18,
 				6,
 				config.selectedColor:ToRaylib(0)
 			)
 		elseif hoverAlpha > 0 then
-			raylib.lib.DrawRectangleRounded(
+			adapter.lib.DrawRectangleRounded(
 				rect:translate(rect.new(itemRect.x + 2, itemRect.y + 1, itemRect.width - 4, itemRect.height - 2)),
 				0.18,
 				6,
@@ -411,8 +411,8 @@ return function(objects, data)
 		end,
 		render = function(dt)
 			local r = leftPanelContent.rect
-			local mousePos = raylib.lib.GetMousePosition()
-			local mousePressed = raylib.lib.IsMouseButtonPressed(0) == 1
+			local mousePos = adapter.lib.GetMousePosition()
+			local mousePressed = adapter.lib.IsMouseButtonPressed(0) == 1
 			local currentY = r.y + config.padding
 			local contentStartY = currentY
 
@@ -429,7 +429,7 @@ return function(objects, data)
 				local isActiveCat = config.selectedCategoryIndex == i
 
 				if isActiveCat then
-					raylib.lib.DrawRectangleRounded(
+					adapter.lib.DrawRectangleRounded(
 						rect:translate(
 							rect.new(categoryRect.x, categoryRect.y + 1, categoryRect.width, categoryRect.height - 2)
 						),
@@ -437,14 +437,14 @@ return function(objects, data)
 						6,
 						config.panelColor:ToRaylib(0)
 					)
-					raylib.lib.DrawRectangleRounded(
+					adapter.lib.DrawRectangleRounded(
 						rect:translate(rect.new(categoryRect.x, categoryRect.y + 6, 3, categoryRect.height - 12)),
 						0.5,
 						4,
 						config.accentColor:ToRaylib(0)
 					)
 				elseif hoverAlpha > 0 then
-					raylib.lib.DrawRectangleRounded(
+					adapter.lib.DrawRectangleRounded(
 						rect:translate(
 							rect.new(categoryRect.x, categoryRect.y + 1, categoryRect.width, categoryRect.height - 2)
 						),
@@ -481,7 +481,7 @@ return function(objects, data)
 				local catNameColor = isActiveCat and config.textColor or color3.new(0.72, 0.74, 0.78)
 				drawText(catText, textX, textY, config.fontSize, config.fontSpacing, catNameColor)
 
-				raylib.lib.DrawRectangleRounded(rect:translate(badgeRect), 0.5, 6, config.accentDim:ToRaylib(0))
+				adapter.lib.DrawRectangleRounded(rect:translate(badgeRect), 0.5, 6, config.accentDim:ToRaylib(0))
 				drawText(
 					countText,
 					badgeRect.x + (badgeRect.width - countWidth) / 2,
@@ -530,8 +530,8 @@ return function(objects, data)
 		end,
 		render = function(dt)
 			local r = middlePanelContent.rect
-			local mousePos = raylib.lib.GetMousePosition()
-			local mousePressed = raylib.lib.IsMouseButtonPressed(0) == 1
+			local mousePos = adapter.lib.GetMousePosition()
+			local mousePressed = adapter.lib.IsMouseButtonPressed(0) == 1
 			local currentY = r.y
 			local contentStartY = currentY
 
@@ -552,7 +552,7 @@ return function(objects, data)
 				local isSelected = config.selectedItem == item
 
 				if isSelected then
-					raylib.lib.DrawRectangleRounded(
+					adapter.lib.DrawRectangleRounded(
 						rect:translate(
 							rect.new(itemRect.x + 2, itemRect.y + 1, itemRect.width - 4, itemRect.height - 2)
 						),
@@ -560,14 +560,14 @@ return function(objects, data)
 						6,
 						config.selectedColor:ToRaylib(0)
 					)
-					raylib.lib.DrawRectangleRounded(
+					adapter.lib.DrawRectangleRounded(
 						rect:translate(rect.new(itemRect.x + 2, itemRect.y + 4, 3, itemRect.height - 8)),
 						0.5,
 						4,
 						config.accentColor:ToRaylib(0)
 					)
 				elseif hoverAlpha > 0 then
-					raylib.lib.DrawRectangleRounded(
+					adapter.lib.DrawRectangleRounded(
 						rect:translate(
 							rect.new(itemRect.x + 2, itemRect.y + 1, itemRect.width - 4, itemRect.height - 2)
 						),
@@ -653,7 +653,7 @@ return function(objects, data)
 			end
 			currentY = currentY + 26
 
-			raylib.lib.DrawRectangle(
+			adapter.lib.DrawRectangle(
 				r.x + config.padding,
 				currentY,
 				r.width - config.padding * 2,
@@ -696,13 +696,13 @@ return function(objects, data)
 				local descTextHeight = ((#descLines - 1) * descLineHeight) + config.fontSize
 				local descBoxHeight = descTextHeight + descPY * 2
 
-				raylib.lib.DrawRectangleRounded(
+				adapter.lib.DrawRectangleRounded(
 					rect:translate(rect.new(r.x + config.padding, currentY, descBoxWidth, descBoxHeight)),
 					0.10,
 					6,
 					config.panelColor:ToRaylib(0)
 				)
-				raylib.lib.DrawRectangleRounded(
+				adapter.lib.DrawRectangleRounded(
 					rect:translate(rect.new(r.x + config.padding, currentY + 6, 3, descBoxHeight - 12)),
 					0.5,
 					4,
@@ -777,23 +777,23 @@ return function(objects, data)
 
 	wrapper.render = function(dt)
 		local r = config.obj_rect
-		local mousePos = raylib.lib.GetMousePosition()
-		local mousePressed = raylib.lib.IsMouseButtonPressed(0) == 1
+		local mousePos = adapter.lib.GetMousePosition()
+		local mousePressed = adapter.lib.IsMouseButtonPressed(0) == 1
 
 		-- Background & Border
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(rect.new(r.x - 2, r.y - 2, r.width + 4, r.height + 4)),
 			config.rounded[1],
 			config.rounded[2],
 			config.shadowColor:ToRaylib(0)
 		)
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(r),
 			config.rounded[1],
 			config.rounded[2],
 			config.borderColor:ToRaylib(0)
 		)
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(rect.new(r.x + 1, r.y + 1, r.width - 2, r.height - 2)),
 			config.rounded[1],
 			config.rounded[2],
@@ -813,20 +813,20 @@ return function(objects, data)
 			r.x + config.leftPanelWidth + 1,
 			r.x + config.leftPanelWidth + config.middlePanelWidth + 2,
 		}) do
-			raylib.lib.DrawRectangle(divX, r.y + 1, 1, r.height - 2, config.dividerColor:ToRaylib(0))
-			raylib.lib.DrawRectangle(divX + 1, r.y + 1, 1, r.height - 2, color3.new(0.10, 0.11, 0.13):ToRaylib(0))
+			adapter.lib.DrawRectangle(divX, r.y + 1, 1, r.height - 2, config.dividerColor:ToRaylib(0))
+			adapter.lib.DrawRectangle(divX + 1, r.y + 1, 1, r.height - 2, color3.new(0.10, 0.11, 0.13):ToRaylib(0))
 		end
 
 		-- LEFT PANEL
 		local leftHeaderRect = rect.new(leftPanel.x, leftPanel.y, leftPanel.width, config.headerHeight)
-		raylib.lib.DrawRectangle(
+		adapter.lib.DrawRectangle(
 			leftHeaderRect.x,
 			leftHeaderRect.y,
 			leftHeaderRect.width,
 			config.headerHeight,
 			config.headerColor:ToRaylib(0)
 		)
-		raylib.lib.DrawRectangle(
+		adapter.lib.DrawRectangle(
 			leftHeaderRect.x,
 			leftHeaderRect.y + config.headerHeight - 1,
 			leftHeaderRect.width,
@@ -863,14 +863,14 @@ return function(objects, data)
 
 		-- MIDDLE PANEL
 		local middleHeaderRect = rect.new(middlePanel.x, middlePanel.y, middlePanel.width, config.headerHeight)
-		raylib.lib.DrawRectangle(
+		adapter.lib.DrawRectangle(
 			middleHeaderRect.x,
 			middleHeaderRect.y,
 			middleHeaderRect.width,
 			middleHeaderRect.height,
 			config.headerColor:ToRaylib(0)
 		)
-		raylib.lib.DrawRectangle(
+		adapter.lib.DrawRectangle(
 			middleHeaderRect.x,
 			middleHeaderRect.y + config.headerHeight - 1,
 			middleHeaderRect.width,
@@ -943,8 +943,8 @@ return function(objects, data)
 				updateMiddlePanel()
 			end
 		else
-			raylib.lib.DrawRectangleRounded(rect:translate(searchRect), 0.22, 8, config.panelColor:ToRaylib(0))
-			raylib.lib.DrawRectangleRoundedLines(rect:translate(searchRect), 0.22, 8, config.borderColor:ToRaylib(0))
+			adapter.lib.DrawRectangleRounded(rect:translate(searchRect), 0.22, 8, config.panelColor:ToRaylib(0))
+			adapter.lib.DrawRectangleRoundedLines(rect:translate(searchRect), 0.22, 8, config.borderColor:ToRaylib(0))
 			drawText(
 				config.middleSearch == "" and "Search..." or config.middleSearch,
 				searchRect.x + 30,
@@ -968,14 +968,14 @@ return function(objects, data)
 
 		-- RIGHT PANEL
 		local rightHeaderRect = rect.new(rightPanel.x, rightPanel.y, rightPanel.width, config.headerHeight)
-		raylib.lib.DrawRectangle(
+		adapter.lib.DrawRectangle(
 			rightHeaderRect.x,
 			rightHeaderRect.y,
 			rightHeaderRect.width,
 			rightHeaderRect.height,
 			config.headerColor:ToRaylib(0)
 		)
-		raylib.lib.DrawRectangle(
+		adapter.lib.DrawRectangle(
 			rightHeaderRect.x,
 			rightHeaderRect.y + config.headerHeight - 1,
 			rightHeaderRect.width,

@@ -1,4 +1,4 @@
-local rl = require("@raylib")
+local raylib = require("@RaylibAdapter")
 --local aereon = require("@Aereon")
 
 local ideBuffer = require("./idebuffer")
@@ -11,8 +11,8 @@ local beautifier = require("./beautifier")
 local completions = require("./k_completions")
 local luau = zune.luau
 
-local structs = rl.structs
-local const = rl.const
+local structs = raylib.structs
+local const = raylib.const
 
 local function sanitizeText(text)
 	-- Replace non-ASCII spaces and tabs with standard ones
@@ -31,7 +31,7 @@ local function sanitizeText(text)
 	return text
 end
 
-return function(raylib: typeof(rl.lib), theme, aereon, game)
+return function(raylib: typeof(raylib.lib), theme, aereon, game)
 	local rect = aereon.rect()
 	local editor = {}
 	local KinemiumFontService = game:GetService("KinemiumFontService")

@@ -1,9 +1,8 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-local color3 = require("@Color3")
-local rect = require("@arect")
+return function(objects, data, raylib)
+	local structs = raylib.structs
+	local color3 = require("@Color3")
+	local rect = require("@arect")
 
-return function(objects, data)
 	local config = {
 		options = data.options or {}, -- { {text = "...", callback = ...}, ... }
 		isOpen = data.isOpen or false,

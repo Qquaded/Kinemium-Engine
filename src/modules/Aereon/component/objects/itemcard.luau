@@ -1,9 +1,3 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-local rect = require("@arect")
-local color3 = require("@Color3")
-local MouseCursor = require("@Kinemium.MouseCursor")
-
 local function lerp(a, b, t)
 	return a + (b - a) * t
 end
@@ -11,7 +5,12 @@ local function easeOut3(t)
 	return 1 - (1 - t) ^ 3
 end
 
-return function(objects, data)
+return function(objects, data, raylib)
+	local structs = raylib.structs
+	local rect = require("@arect")
+	local color3 = require("@Color3")
+	local MouseCursor = require("@Kinemium.MouseCursor")
+
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
 		rounded = data.rounded or { 0.08, 8 },

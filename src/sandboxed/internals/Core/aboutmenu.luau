@@ -5,8 +5,8 @@ local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
 local aereon = require("@Aereon")
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 local gui = aereon.gui
 local rect = require("@arect")
 local vend = KinemiumFontService.GetDefaultFontSmall()
@@ -37,7 +37,7 @@ local aboutPrompt = gui.prompt({
 
 		local iconRectSource = rect.new(0, 0, logoIcon.x, logoIcon.y)
 
-		local tint = raylib.const.WHITE
+		local tint = rl.const.WHITE
 		rl.DrawTexturePro(
 			logoIcon.texture,
 			rect:translate(iconRectSource),

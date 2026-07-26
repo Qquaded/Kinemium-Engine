@@ -4,8 +4,8 @@ local UDim2 = require("@UDim2")
 local Frame = require("@Frame")
 local Color3 = require("@Color3")
 local Enum = require("@EnumMap")
-local raylib = require("@raylib")
-local lib = raylib.lib
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
 local GuiObject = require("@GuiObject")
 local RichText = require("@Kinemium.richtext")
 
@@ -45,7 +45,7 @@ Frame.inherit(propTable)
 local defaultFont = lib.GetFontDefault()
 
 propTable.render = function(lib, object, dt, structs, renderer)
-	local framePos, frameSize = GuiObject.render(lib, object, dt, structs, renderer)
+	local framePos, frameSize = GuiObject.render(lib, object, dt, adapter.structs, renderer)
 	if not object.Visible or not framePos or not frameSize then
 		return
 	end

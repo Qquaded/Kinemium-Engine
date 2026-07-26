@@ -1,9 +1,5 @@
 local meshgen = require("@meshgen")
 
-local r3dapi = require("@r3d")
-local r3dlib = r3dapi.lib
-local r3dstructs = r3dapi.structs
-local r3dconst = r3dapi.constants
 local ffi = zune.ffi
 local sharedGrassMaterialPtr: any = nil
 
@@ -18,12 +14,7 @@ local INSTANCE_POSITION_STRIDE = 12
 local INSTANCE_ROTATION_STRIDE = 16
 local INSTANCE_SCALE_STRIDE = 12
 local INSTANCE_COLOR_STRIDE = 4
-local INSTANCE_FLAGS = bit32.bor(
-	r3dconst.R3D_INSTANCE_POSITION,
-	r3dconst.R3D_INSTANCE_ROTATION,
-	r3dconst.R3D_INSTANCE_SCALE,
-	r3dconst.R3D_INSTANCE_COLOR
-)
+local INSTANCE_FLAGS = nil
 
 local sharedBladeQuadMesh: any = nil
 local sharedGrassMaterial: buffer? = nil
@@ -76,29 +67,7 @@ local function setMaterialShaderField(matBuf: buffer, shaderPtr: any)
 end
 
 function grassgen.getGrassMaterial(): buffer?
-	if sharedGrassMaterial then
-		return sharedGrassMaterial
-	end
-
-	local defaultMat = r3dlib.R3D_GetDefaultMaterial()
-	local matBuf = buffer.create(r3dstructs.R3D_Material:size())
-	buffer.copy(matBuf, 0, defaultMat, 0, r3dstructs.R3D_Material:size())
-
-	buffer.writei32(matBuf, r3dstructs.R3D_Material:offset("transparencyMode"), r3dconst.R3D_TRANSPARENCY_DISABLED)
-	buffer.writei32(matBuf, r3dstructs.R3D_Material:offset("cullMode"), r3dconst.R3D_CULL_NONE)
-
-	local src = readGrassShaderSource()
-	local sh = r3dlib.R3D_LoadSurfaceShaderFromMemory(src)
-
-	if sh then
-		sharedGrassShader = sh
-		setMaterialShaderField(matBuf, sh)
-	end
-
-	sharedGrassMaterial = matBuf
-	sharedGrassMaterialPtr = ffi.dupe(matBuf)
-
-	return sharedGrassMaterialPtr
+	return nil
 end
 
 function grassgen.getGrassSurfaceShader(): any

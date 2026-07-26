@@ -1,10 +1,9 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-local color3 = require("@Color3")
-local rect = require("@arect")
-local textButton = require("./textButton")
+return function(objects, data, raylib)
+	local structs = raylib.structs
+	local color3 = require("@Color3")
+	local rect = require("@arect")
+	local textButton = require("./textButton")
 
-return function(objects, data)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1] or 0,
@@ -50,7 +49,7 @@ return function(objects, data)
 		shadowOffsetX = data.shadowOffsetX or 0,
 		shadowOffsetY = data.shadowOffsetY or 4,
 		shadowSpread = data.shadowSpread or 3,
-	})
+	}, raylib)
 
 	local wrapper = {}
 

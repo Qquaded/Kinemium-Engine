@@ -91,9 +91,13 @@ RunService.RenderStepped:Connect(function()
 		end
 		if mouse.Target and mouse.Target:IsA("BasePart") then
 			if mouse.Target.Size.X > 200 or mouse.Target.Size.Y > 200 or mouse.Target.Size.Z > 200 then
+				Highlight.Adornee = nil
+				mouse.Icon = Enum.KinemiumMouseCursor.MOUSE_CURSOR_DEFAULT
 				return
 			end
 			if mouse.Target.Transparency > 0.3 then
+				Highlight.Adornee = nil
+				mouse.Icon = Enum.KinemiumMouseCursor.MOUSE_CURSOR_DEFAULT
 				return
 			end
 			if Selection.Get()[1] and Selection.Get()[1]:IsA("Model") then
@@ -128,9 +132,13 @@ RunService.RenderStepped:Connect(function()
 			end
 		end
 		if mouse.Target.Size.X > 200 or mouse.Target.Size.Y > 200 or mouse.Target.Size.Z > 200 then
+			Highlight.Adornee = nil
+			mouse.Icon = Enum.KinemiumMouseCursor.MOUSE_CURSOR_DEFAULT
 			return
 		end
 		if mouse.Target.Transparency > 0.3 then
+			Highlight.Adornee = nil
+			mouse.Icon = Enum.KinemiumMouseCursor.MOUSE_CURSOR_DEFAULT
 			return
 		end
 		Highlight.Adornee = mouse.Target

@@ -108,10 +108,8 @@ local function RayIntersectOBB(ox, oy, oz, dx, dy, dz, part)
 	return true, t, ox + dx * t, oy + dy * t, oz + dz * t, normX, normY, normZ
 end
 
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local MouseCursor = require("@Kinemium.MouseCursor")
-local r3d = require("@r3d")
-local rlib = r3d.lib
 local raycastMod = require("@raycast")
 
 local Button1Down = signal.new()
@@ -199,14 +197,14 @@ local function readRayCollision(buf)
 })
 export type RayCollision = typeof(RayCollision:new({}))
 	--]]
-	local hit = buffer.readu8(buf, raylib.structs.RayCollision:offset("hit"))
-	local distance = buffer.readf32(buf, raylib.structs.RayCollision:offset("distance"))
-	local px = buffer.readf32(buf, raylib.structs.RayCollision:offset("point"))
-	local py = buffer.readf32(buf, raylib.structs.RayCollision:offset("point") + 4)
-	local pz = buffer.readf32(buf, raylib.structs.RayCollision:offset("point") + 8)
-	local nx = buffer.readf32(buf, raylib.structs.RayCollision:offset("normal"))
-	local ny = buffer.readf32(buf, raylib.structs.RayCollision:offset("normal") + 4)
-	local nz = buffer.readf32(buf, raylib.structs.RayCollision:offset("normal") + 8)
+	local hit = buffer.readu8(buf, adapter.structs.RayCollision:offset("hit"))
+	local distance = buffer.readf32(buf, adapter.structs.RayCollision:offset("distance"))
+	local px = buffer.readf32(buf, adapter.structs.RayCollision:offset("point"))
+	local py = buffer.readf32(buf, adapter.structs.RayCollision:offset("point") + 4)
+	local pz = buffer.readf32(buf, adapter.structs.RayCollision:offset("point") + 8)
+	local nx = buffer.readf32(buf, adapter.structs.RayCollision:offset("normal"))
+	local ny = buffer.readf32(buf, adapter.structs.RayCollision:offset("normal") + 4)
+	local nz = buffer.readf32(buf, adapter.structs.RayCollision:offset("normal") + 8)
 	return {
 		hit = hit,
 		distance = distance,
@@ -265,6 +263,7 @@ return {
 			end
 		end)
 
+		--[[
 		renderer.EventBus:Connect(function(route, data)
 			if route == "MouseData" then
 				local position = data.position
@@ -369,7 +368,7 @@ return {
 						if part.__cachedMatrix and not part.__matrixDirty then
 							matrix = part.__cachedMatrix
 						else
-							matrix = part.CFrame:ToRaylibMatrixScale(part.Size, raylib.structs)
+							matrix = part.CFrame:ToRaylibMatrixScale(part.Size, adapter.structs)
 						end
 
 						local ok, collision = pcall(rlib.R3D_RaycastMesh, ray, cpuMeshData, matrix)
@@ -389,7 +388,7 @@ return {
 
 					local terrain = Workspace:FindFirstChild("Terrain")
 					if terrain and terrain._chunks then
-						local identity = raylib.lib.MatrixIdentity()
+						local identity = adapter.lib.MatrixIdentity()
 						for _, chunk in pairs(terrain._chunks) do
 							if chunk._cpuMeshData then
 								local ok, collision = pcall(rlib.R3D_RaycastMesh, ray, chunk._cpuMeshData, identity)
@@ -437,6 +436,7 @@ return {
 				end
 			end
 		end)
+		--]]
 
 		return instance
 	end,

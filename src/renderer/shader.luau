@@ -1,8 +1,8 @@
 local shader = {}
 
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
-local lib, const, structs = raylib.lib, raylib.const, raylib.structs
+local lib, const, structs = adapter.lib, adapter.const, adapter.structs
 local ffi = zune.ffi
 local fs = zune.fs
 local ptr = require("./ptr")

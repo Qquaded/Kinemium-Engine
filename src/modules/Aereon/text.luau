@@ -1,6 +1,6 @@
 -- devcell
-local rl = require("@raylib")
-local raylib = rl.lib
+local adapter = require("@raylib")
+local raylib = adapter.lib
 
 local Atext = {}
 
@@ -11,7 +11,7 @@ function Atext.AddLanguage(name, data)
 end
 
 Atext.DrawTextEx = function(font, text, position, fontSize, spacing, color)
-	raylib.lib.DrawTextEx(font, text, position, fontSize, spacing, color)
+	adapter.lib.DrawTextEx(font, text, position, fontSize, spacing, color)
 end
 
 return Atext

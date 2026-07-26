@@ -4,9 +4,9 @@
 
 local ffi = zune.ffi
 
-local raylib = require("./raylib")
+local adapter = require("./raylib")
 
-local structs = raylib.structs
+local structs = adapter.structs
 
 local void = ffi.types.void
 local int = ffi.types.i32
@@ -28,12 +28,12 @@ local Rectangle = structs.Rectangle
 local Image = structs.Image
 local GlyphInfo = structs.GlyphInfo
 local Font = structs.Font
-type Vector2 = raylib.Vector2
-type Color = raylib.Color
-type Rectangle = raylib.Rectangle
-type Image = raylib.Image
-type GlyphInfo = raylib.GlyphInfo
-type Font = raylib.Font
+type Vector2 = adapter.Vector2
+type Color = adapter.Color
+type Rectangle = adapter.Rectangle
+type Image = adapter.Image
+type GlyphInfo = adapter.GlyphInfo
+type Font = adapter.Font
 
 local function fn(returns: any, args: { any })
 	return {

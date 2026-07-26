@@ -1,10 +1,13 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-local rect = require("@arect")
-
-return function(objects, data)
+return function(objects, data, raylib)
+	local structs = raylib.structs
+	local rect = require("@arect")
 	local config = {
-		obj_rect = data.rect or rect.new(data.x or data[1] or 0, data.y or data[2] or 0, data.width or data[3] or 100, data.height or data[4] or 100),
+		obj_rect = data.rect or rect.new(
+			data.x or data[1] or 0,
+			data.y or data[2] or 0,
+			data.width or data[3] or 100,
+			data.height or data[4] or 100
+		),
 		instance = data.instance or data.target or nil,
 		datamodel = data.datamodel or data.game or nil,
 		renderer = data.renderer or nil,
@@ -58,7 +61,7 @@ return function(objects, data)
 		if config.instance and config.instance.render then
 			if config.instance.ClassName == "ScreenGui" then
 				config.instance.OverrideScreenSize = true
-				
+
 				local UDim2 = require("@UDim2")
 				local Vector2 = require("@Vector2")
 				config.instance.Size = UDim2.new(0, config.obj_rect.width, 0, config.obj_rect.height)
@@ -68,7 +71,7 @@ return function(objects, data)
 				config.instance.AbsolutePosition = vector.create(config.obj_rect.x, config.obj_rect.y, 0)
 				config.instance.AbsoluteSize = vector.create(config.obj_rect.width, config.obj_rect.height, 0)
 			end
-			
+
 			config.instance.render(raylib.lib, config.instance, dt, structs, config.renderer, config.datamodel)
 		end
 	end

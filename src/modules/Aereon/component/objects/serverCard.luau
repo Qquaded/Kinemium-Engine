@@ -29,8 +29,8 @@
 	  }
 --]]
 
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 local color3 = require("@Color3")
 local rect = require("@arect")
 local MouseCursor = require("@Kinemium.MouseCursor")
@@ -68,7 +68,7 @@ local function colA(c3, a255) -- explicit byte alpha
 end
 
 local function fillRounded(rx, ry, rw, rh, radius, color)
-	raylib.lib.DrawRectangleRounded(
+	adapter.lib.DrawRectangleRounded(
 		structs.Rectangle:new({ x = rx, y = ry, width = rw, height = rh }),
 		radius / math.min(rw, rh) * 2,
 		SEGMENTS,
@@ -79,24 +79,24 @@ end
 local function strokeRounded(rx, ry, rw, rh, radius, thick, color) end
 
 local function hline(rx, ry, rw, color)
-	raylib.lib.DrawRectangle(rx, ry, rw, 1, color)
+	adapter.lib.DrawRectangle(rx, ry, rw, 1, color)
 end
 
 local function drawText(font, text, x, y, size, color)
 	if font then
-		raylib.lib.DrawTextEx(font, text, vector.create(x, y), size, 1, color)
-		return math.floor(raylib.lib.MeasureTextEx(font, text, size, 1).x)
+		adapter.lib.DrawTextEx(font, text, vector.create(x, y), size, 1, color)
+		return math.floor(adapter.lib.MeasureTextEx(font, text, size, 1).x)
 	else
-		raylib.lib.DrawText(text, x, y, size, color)
-		return raylib.lib.MeasureText(text, size)
+		adapter.lib.DrawText(text, x, y, size, color)
+		return adapter.lib.MeasureText(text, size)
 	end
 end
 
 local function measureText(font, text, size)
 	if font then
-		return math.floor(raylib.lib.MeasureTextEx(font, text, size, 1).x)
+		return math.floor(adapter.lib.MeasureTextEx(font, text, size, 1).x)
 	else
-		return raylib.lib.MeasureText(text, size)
+		return adapter.lib.MeasureText(text, size)
 	end
 end
 
@@ -131,7 +131,7 @@ local function drawPingBars(rightEdge, midY, ping)
 		local bh = heights[i]
 		local by = midY - math.floor(bh / 2)
 		local bcol = i <= filled and col(pCol) or col(T.border)
-		raylib.lib.DrawRectangle(bx, by, barW, bh, bcol)
+		adapter.lib.DrawRectangle(bx, by, barW, bh, bcol)
 	end
 	return sx
 end
@@ -152,13 +152,13 @@ local function drawChevron(cx, cy, size, open, color)
 	local h = math.floor(size * 0.45)
 	local hw = math.floor(size * 0.5)
 	local dy = open and -h or h
-	raylib.lib.DrawLineEx(
+	adapter.lib.DrawLineEx(
 		vector.create(cx - hw, cy - (open and h / 2 or -h / 2)),
 		vector.create(cx, cy + (open and -h / 2 or h / 2)),
 		1.5,
 		color
 	)
-	raylib.lib.DrawLineEx(
+	adapter.lib.DrawLineEx(
 		vector.create(cx, cy + (open and -h / 2 or h / 2)),
 		vector.create(cx + hw, cy - (open and h / 2 or -h / 2)),
 		1.5,
@@ -172,7 +172,7 @@ local PLAYER_H = 44
 local PAD = 16 -- horizontal padding inside card
 local INNER_PAD = 12 -- tighter padding for sub-rows
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		x = data.x or 0,
 		y = data.y or 0,
@@ -229,7 +229,7 @@ return function(objects, data)
 		local H = cardHeight()
 		local font = config.font
 
-		local mouseClick = raylib.lib.IsMouseButtonPressed(0) == 1
+		local mouseClick = adapter.lib.IsMouseButtonPressed(0) == 1
 
 		fillRounded(ox, oy, W, H, RADIUS, col(T.card))
 		strokeRounded(ox, oy, W, H, RADIUS, 1, col(T.border))
@@ -240,9 +240,9 @@ return function(objects, data)
 		if hHovered then
 			-- tint just the header area (clipped to top rounded corners when collapsed)
 			fillRounded(ox, oy, W, config.expanded and HEADER_H or H, RADIUS, col(T.cardHover))
-			MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
+			MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
 		else
-			MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
+			MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
 		end
 
 		if hHovered and mouseClick then
@@ -252,7 +252,7 @@ return function(objects, data)
 		-- Online dot
 		local dotX = ox + PAD + 4
 		local dotY = oy + math.floor(HEADER_H / 2)
-		raylib.lib.DrawCircle(dotX, dotY, 4, col(T.green))
+		adapter.lib.DrawCircle(dotX, dotY, 4, col(T.green))
 
 		-- Server name
 		local nameX = dotX + 14
@@ -329,7 +329,7 @@ return function(objects, data)
 				drawText(font, mc.label, mcx, lY, 11, col(T.textTer))
 				drawText(font, mc.value, mcx, vY, 12, col(T.textPri))
 				if i < #metaCols then
-					raylib.lib.DrawRectangle(ox + i * colW, cy + 6, 1, META_H - 12, col(T.border))
+					adapter.lib.DrawRectangle(ox + i * colW, cy + 6, 1, META_H - 12, col(T.border))
 				end
 			end
 			cy = cy + META_H
@@ -352,7 +352,7 @@ return function(objects, data)
 
 				-- Alternating row tint
 				if idx % 2 == 0 then
-					raylib.lib.DrawRectangle(ox + 1, rowY, W - 2, PLAYER_H, colA(T.surface, 80))
+					adapter.lib.DrawRectangle(ox + 1, rowY, W - 2, PLAYER_H, colA(T.surface, 80))
 				end
 
 				-- Initials block (no icon)

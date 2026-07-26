@@ -1,12 +1,9 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+return function(objects, data, raylib)
+	local defaultFont = raylib.lib.GetFontDefault()
 
-return function(objects, data)
 	local config = {
 		targetRect = data.targetRect,
 		text = data.text or "Tooltip",
@@ -19,6 +16,7 @@ return function(objects, data)
 		visible = false,
 		animAlpha = 0,
 	}
+	local structs = raylib.structs
 
 	local wrapper = {}
 

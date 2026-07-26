@@ -8,8 +8,8 @@ end
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local rl = KinemiumRaylib.GetLib()
-local structs = KinemiumRaylib.GetStructs()
+local rl = Kinemiumadapter.GetLib()
+local structs = Kinemiumadapter.GetStructs()
 local StudioThemeService = game:GetService("StudioThemeService")
 local ScriptContext = game:GetService("ScriptContext")
 
@@ -64,7 +64,7 @@ local viewerGui = Instance.new("ScreenGui")
 viewerGui.Name = "UIBuilderViewer"
 
 local window = aereon.window(game, nil, 1)
-local renderer = KinemiumRaylib.GetRenderer()
+local renderer = Kinemiumadapter.GetRenderer()
 
 local comps = aereon.create({
 	runButton = {
@@ -134,7 +134,7 @@ local myWindow = window.create({
 				)
 
 				-- Draw a background for the viewer area
-				rl.DrawRectangle(
+				adapter.DrawRectangle(
 					winX + leftWidth + pad * 2,
 					winY + pad,
 					rightWidth,
@@ -148,7 +148,7 @@ local myWindow = window.create({
 					arect.new(winX + leftWidth + pad * 2, winY + pad, rightWidth, contentHeight)
 				)
 
-				comps.render(rl.GetFrameTime())
+				comps.render(adapter.GetFrameTime())
 			end,
 		},
 	},
@@ -159,7 +159,7 @@ renderer.Pool.new("2d", function(data)
 		return
 	end
 
-	local dt = rl.GetFrameTime()
+	local dt = adapter.GetFrameTime()
 	local mainTheme = StudioThemeService.SelectedTheme
 
 	window.update(dt)

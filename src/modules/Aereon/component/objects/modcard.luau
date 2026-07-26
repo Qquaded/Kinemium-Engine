@@ -1,6 +1,6 @@
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
-local structs = raylib.structs
+local structs = adapter.structs
 
 local rect = require("@arect")
 
@@ -77,21 +77,21 @@ local C = {
 --  draw helpers
 
 local function dt(fnt, text, x, y, size, col, spacing)
-	raylib.lib.DrawTextEx(fnt, text, vector.create(x, y), size, spacing or 0.7, col)
+	adapter.lib.DrawTextEx(fnt, text, vector.create(x, y), size, spacing or 0.7, col)
 end
 
 local function mt(fnt, text, size, spacing)
-	local v = raylib.lib.MeasureTextEx(fnt, text, size, spacing or 0.7)
+	local v = adapter.lib.MeasureTextEx(fnt, text, size, spacing or 0.7)
 
 	return v.x, v.y
 end
 
 local function rrect(rx, ry, rw, rh, round, col)
-	raylib.lib.DrawRectangleRounded(structs.Rectangle:new({ x = rx, y = ry, width = rw, height = rh }), round, 8, col)
+	adapter.lib.DrawRectangleRounded(structs.Rectangle:new({ x = rx, y = ry, width = rw, height = rh }), round, 8, col)
 end
 
 local function rrectL(rx, ry, rw, rh, round, thick, col)
-	raylib.lib.DrawRectangleRoundedLinesEx(
+	adapter.lib.DrawRectangleRoundedLinesEx(
 		structs.Rectangle:new({ x = rx, y = ry, width = rw, height = rh }),
 		round,
 		8,
@@ -101,15 +101,15 @@ local function rrectL(rx, ry, rw, rh, round, thick, col)
 end
 
 local function clip(rx, ry, rw, rh)
-	raylib.lib.BeginScissorMode(rx, ry, rw, rh)
+	adapter.lib.BeginScissorMode(rx, ry, rw, rh)
 end
 
 local function unclip()
-	raylib.lib.EndScissorMode()
+	adapter.lib.EndScissorMode()
 end
 
 local function mouseIn(rx, ry, rw, rh)
-	local mp = raylib.lib.GetMousePosition()
+	local mp = adapter.lib.GetMousePosition()
 
 	return mp.x >= rx and mp.x <= rx + rw and mp.y >= ry and mp.y <= ry + rh
 end
@@ -119,7 +119,7 @@ local function drawIcon(tex, rx, ry, rw, rh)
 		return
 	end
 
-	raylib.lib.DrawTexturePro(
+	adapter.lib.DrawTexturePro(
 		tex.texture,
 		structs.Rectangle:new({ x = 0, y = 0, width = tex.x, height = tex.y }),
 		structs.Rectangle:new({
@@ -130,7 +130,7 @@ local function drawIcon(tex, rx, ry, rw, rh)
 		}),
 		vector.create(0, 0),
 		0,
-		raylib.const.WHITE
+		adapter.const.WHITE
 	)
 end
 
@@ -192,8 +192,8 @@ end
 
 --  component
 
-return function(objects, data)
-	local defFont = raylib.lib.GetFontDefault()
+return function(objects, data, raylib)
+	local defFont = adapter.lib.GetFontDefault()
 
 	local config = {
 
@@ -635,9 +635,9 @@ return function(objects, data)
 
 		local fs = config.fontSize
 
-		local mPress = raylib.lib.IsMouseButtonPressed(0) == 1
+		local mPress = adapter.lib.IsMouseButtonPressed(0) == 1
 
-		local wheel = raylib.lib.GetMouseWheelMove()
+		local wheel = adapter.lib.GetMouseWheelMove()
 
 		--  layout constants
 
@@ -817,9 +817,9 @@ return function(objects, data)
 
 		local tabBarY = shellY + headerH
 
-		raylib.lib.DrawRectangle(shellX, tabBarY, shellW, tabBarH, C.tabBarBg:ToRaylib(0.86))
+		adapter.lib.DrawRectangle(shellX, tabBarY, shellW, tabBarH, C.tabBarBg:ToRaylib(0.86))
 
-		raylib.lib.DrawLineEx(
+		adapter.lib.DrawLineEx(
 			vector.create(shellX, tabBarY + tabBarH - 1),
 			vector.create(shellX + shellW, tabBarY + tabBarH - 1),
 			1,
@@ -851,7 +851,7 @@ return function(objects, data)
 
 				-- active underline
 
-				raylib.lib.DrawRectangle(tabX + 6, tabBarY + tabBarH - 3, tabW - 12, 3, C.tabActive:ToRaylib(0))
+				adapter.lib.DrawRectangle(tabX + 6, tabBarY + tabBarH - 3, tabW - 12, 3, C.tabActive:ToRaylib(0))
 			elseif isHov then
 				rrect(tabX, tabBarY + 8, tabW, tabBarH - 16, 0.5, C.tagBg:ToRaylib(0.18))
 
@@ -903,7 +903,7 @@ return function(objects, data)
 
 		rrect(mainX, bodyY, mainW, bodyH, 0.035, C.panelBg:ToRaylib(0.22))
 		rrectL(mainX, bodyY, mainW, bodyH, 0.035, 1, C.border:ToRaylib(0.10))
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			structs.Rectangle:new({ x = mainX, y = bodyY, width = mainW, height = math.floor(bodyH * 0.32) }),
 			0.035,
 			8,
@@ -937,7 +937,7 @@ return function(objects, data)
 		for _, section in ipairs(config.sections) do
 			if section.type == "heading" then
 				if cy + headingFS >= bodyY and cy <= bodyY + bodyH then
-					raylib.lib.DrawRectangle(cx - 18, cy + 2, 4, headingFS - 4, C.accent:ToRaylib(0))
+					adapter.lib.DrawRectangle(cx - 18, cy + 2, 4, headingFS - 4, C.accent:ToRaylib(0))
 					dt(bfnt, section.text, cx, cy, headingFS, C.sectionHead:ToRaylib(0), 0.85)
 				end
 
@@ -965,7 +965,7 @@ return function(objects, data)
 					local blines = wrapText(fnt, item, cw - bulletIndent - 12, bulletFS, 0.68)
 
 					if cy + bulletFS >= bodyY and cy <= bodyY + bodyH then
-						raylib.lib.DrawCircleV(
+						adapter.lib.DrawCircleV(
 							vector.create(cx + 5, cy + bulletFS / 2 + 1),
 							3.5,
 							C.bulletDot:ToRaylib(0)
@@ -994,7 +994,7 @@ return function(objects, data)
 				totalContentH = totalContentH + 6
 			elseif section.type == "divider" then
 				if cy >= bodyY and cy <= bodyY + bodyH then
-					raylib.lib.DrawLineEx(
+					adapter.lib.DrawLineEx(
 						vector.create(cx, cy + 8),
 						vector.create(cx + cw, cy + 8),
 						1,
@@ -1045,7 +1045,7 @@ return function(objects, data)
 		rrect(sidebarX, bodyY, sidebarW, bodyH, 0.035, C.sidebarBg:ToRaylib(0.18))
 
 		rrectL(sidebarX, bodyY, sidebarW, bodyH, 0.035, 1, C.border:ToRaylib(0.10))
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			structs.Rectangle:new({ x = sidebarX, y = bodyY, width = sidebarW, height = math.floor(bodyH * 0.24) }),
 			0.035,
 			8,
@@ -1098,7 +1098,7 @@ return function(objects, data)
 
 		-- separator
 
-		raylib.lib.DrawLineEx(
+		adapter.lib.DrawLineEx(
 			vector.create(sidebarX + sp, sy),
 			vector.create(sidebarX + sidebarW - sp, sy),
 			1,
@@ -1126,7 +1126,7 @@ return function(objects, data)
 
 		-- separator
 
-		raylib.lib.DrawLineEx(
+		adapter.lib.DrawLineEx(
 			vector.create(sidebarX + sp, sy),
 			vector.create(sidebarX + sidebarW - sp, sy),
 			1,

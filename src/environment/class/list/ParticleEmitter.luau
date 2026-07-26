@@ -9,15 +9,11 @@ local NumberSequenceKeypoint = require("@NumberSequenceKeypoint")
 local ColorSequence = require("@ColorSequence")
 local NumberRange = require("@NumberRange")
 local ColorSequenceKeypoint = require("@ColorSequenceKeypoint")
-local r3d = require("@r3d")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
 
-local rlib = r3d.lib
-local r3dstructs = r3d.structs
-local const = r3d.constants
-local lib = raylib.lib
-local structs = raylib.structs
+local lib = adapter.lib
+local structs = adapter.structs
 
 local BLEND_MIX = 0
 
@@ -222,7 +218,7 @@ local function buildDefaultSize()
 end
 
 local function createMaterial(texturePath)
-	local baseMaterial = rlib.R3D_GetDefaultMaterial()
+	local baseMaterial = adapter.lib.R3D_GetDefaultMaterial()
 	local material = buffer.create(r3dstructs.R3D_Material:size())
 	buffer.copy(material, 0, baseMaterial, 0, r3dstructs.R3D_Material:size())
 
@@ -231,7 +227,8 @@ local function createMaterial(texturePath)
 		local ok, data = pcall(zune.fs.readFileSync, texturePath, true)
 		if ok and data then
 			local ext = lib.GetFileExtension(texturePath)
-			local okLoad, map = pcall(rlib.R3D_LoadAlbedoMapFromMemory, ext, data, buffer.len(data), raylib.const.WHITE)
+			local okLoad, map =
+				pcall(adapter.lib.R3D_LoadAlbedoMapFromMemory, ext, data, buffer.len(data), adapter.const.WHITE)
 			if okLoad then
 				buffer.copy(material, r3dstructs.R3D_Material:offset("albedo"), map, 0, r3dstructs.R3D_AlbedoMap:size())
 				return material, map
@@ -362,7 +359,7 @@ return {
 			return instance
 		end
 
-		local particleMesh = rlib.R3D_GenMeshQuad(1, 1, 1, 1, vector.create(0, 0, 1))
+		local particleMesh = adapter.lib.R3D_GenMeshQuad(1, 1, 1, 1, vector.create(0, 0, 1))
 		local particleMaterial, albedoMap = createMaterial(instance.Texture)
 		local emissionMap = nil
 		local instanceFlags = bit32.bor(
@@ -371,7 +368,7 @@ return {
 			const.R3D_INSTANCE_SCALE,
 			const.R3D_INSTANCE_COLOR
 		)
-		local instanceBuffer = rlib.R3D_LoadInstanceBuffer(instance.MaxParticles, instanceFlags)
+		local instanceBuffer = adapter.lib.R3D_LoadInstanceBuffer(instance.MaxParticles, instanceFlags)
 		local SHADOW_AUTO = 0
 		local SHADOW_DISABLED = 8
 		local flipbookTime = 0
@@ -384,9 +381,9 @@ return {
 
 		local function rebuildInstanceBuffer()
 			if instanceBuffer then
-				pcall(rlib.R3D_UnloadInstanceBuffer, instanceBuffer)
+				pcall(adapter.lib.R3D_UnloadInstanceBuffer, instanceBuffer)
 			end
-			instanceBuffer = rlib.R3D_LoadInstanceBuffer(instance.MaxParticles, instanceFlags)
+			instanceBuffer = adapter.lib.R3D_LoadInstanceBuffer(instance.MaxParticles, instanceFlags)
 		end
 
 		local updateFlipbook
@@ -459,11 +456,11 @@ return {
 
 		local function updateMaterial()
 			if albedoMap then
-				pcall(rlib.R3D_UnloadAlbedoMap, albedoMap)
+				pcall(adapter.lib.R3D_UnloadAlbedoMap, albedoMap)
 				albedoMap = nil
 			end
 			if emissionMap then
-				pcall(rlib.R3D_UnloadEmissionMap, emissionMap)
+				pcall(adapter.lib.R3D_UnloadEmissionMap, emissionMap)
 				emissionMap = nil
 			end
 			local material, map = createMaterial(instance.Texture)
@@ -475,8 +472,14 @@ return {
 				local ok, data = pcall(zune.fs.readFileSync, emissionTexture, true)
 				if ok and data then
 					local ext = lib.GetFileExtension(emissionTexture)
-					local okLoad, map2 =
-						pcall(rlib.R3D_LoadEmissionMapFromMemory, ext, data, buffer.len(data), raylib.const.WHITE, 1)
+					local okLoad, map2 = pcall(
+						adapter.lib.R3D_LoadEmissionMapFromMemory,
+						ext,
+						data,
+						buffer.len(data),
+						adapter.const.WHITE,
+						1
+					)
 					if okLoad then
 						emissionMap = map2
 						buffer.copy(
@@ -681,10 +684,10 @@ return {
 			local ups = game and game:GetService("UnifiedPhysicsService")
 
 			local okMap = pcall(function()
-				mappedPosition = rlib.R3D_MapInstances(instanceBuffer, const.R3D_INSTANCE_POSITION)
-				mappedRotation = rlib.R3D_MapInstances(instanceBuffer, const.R3D_INSTANCE_ROTATION)
-				mappedScale = rlib.R3D_MapInstances(instanceBuffer, const.R3D_INSTANCE_SCALE)
-				mappedColor = rlib.R3D_MapInstances(instanceBuffer, const.R3D_INSTANCE_COLOR)
+				mappedPosition = adapter.lib.R3D_MapInstances(instanceBuffer, const.R3D_INSTANCE_POSITION)
+				mappedRotation = adapter.lib.R3D_MapInstances(instanceBuffer, const.R3D_INSTANCE_ROTATION)
+				mappedScale = adapter.lib.R3D_MapInstances(instanceBuffer, const.R3D_INSTANCE_SCALE)
+				mappedColor = adapter.lib.R3D_MapInstances(instanceBuffer, const.R3D_INSTANCE_COLOR)
 			end)
 
 			local mappedFlags = bit32.bor(
@@ -751,13 +754,13 @@ return {
 					)
 				end)
 				if okWrite then
-					pcall(rlib.R3D_UnmapInstances, instanceBuffer, instanceFlags)
+					pcall(adapter.lib.R3D_UnmapInstances, instanceBuffer, instanceFlags)
 					return
 				end
 			end
 
 			if mappedFlags ~= 0 then
-				pcall(rlib.R3D_UnmapInstances, instanceBuffer, mappedFlags)
+				pcall(adapter.lib.R3D_UnmapInstances, instanceBuffer, mappedFlags)
 			end
 
 			local positionBuffer = buffer.create(activeCount * 12)
@@ -773,10 +776,22 @@ return {
 			)
 
 			pcall(function()
-				rlib.R3D_UploadInstances(instanceBuffer, const.R3D_INSTANCE_POSITION, 0, activeCount, positionBuffer)
-				rlib.R3D_UploadInstances(instanceBuffer, const.R3D_INSTANCE_ROTATION, 0, activeCount, rotationBuffer)
-				rlib.R3D_UploadInstances(instanceBuffer, const.R3D_INSTANCE_SCALE, 0, activeCount, scaleBuffer)
-				rlib.R3D_UploadInstances(instanceBuffer, const.R3D_INSTANCE_COLOR, 0, activeCount, colorBuffer)
+				adapter.lib.R3D_UploadInstances(
+					instanceBuffer,
+					const.R3D_INSTANCE_POSITION,
+					0,
+					activeCount,
+					positionBuffer
+				)
+				adapter.lib.R3D_UploadInstances(
+					instanceBuffer,
+					const.R3D_INSTANCE_ROTATION,
+					0,
+					activeCount,
+					rotationBuffer
+				)
+				adapter.lib.R3D_UploadInstances(instanceBuffer, const.R3D_INSTANCE_SCALE, 0, activeCount, scaleBuffer)
+				adapter.lib.R3D_UploadInstances(instanceBuffer, const.R3D_INSTANCE_COLOR, 0, activeCount, colorBuffer)
 			end)
 		end
 
@@ -883,13 +898,13 @@ return {
 				renderer.Pool.Destroy(renderId)
 			end
 			if instanceBuffer then
-				pcall(rlib.R3D_UnloadInstanceBuffer, instanceBuffer)
+				pcall(adapter.lib.R3D_UnloadInstanceBuffer, instanceBuffer)
 			end
 			if particleMesh then
-				pcall(rlib.R3D_UnloadMesh, particleMesh)
+				pcall(adapter.lib.R3D_UnloadMesh, particleMesh)
 			end
 			if albedoMap then
-				pcall(rlib.R3D_UnloadAlbedoMap, albedoMap)
+				pcall(adapter.lib.R3D_UnloadAlbedoMap, albedoMap)
 			end
 			local ups = game and game:GetService("UnifiedPhysicsService")
 			for i = 1, activeCount do

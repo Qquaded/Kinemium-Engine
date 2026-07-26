@@ -1,5 +1,5 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 local color3 = require("@Color3")
 local rect = require("@arect")
 local effects = require("./effects")
@@ -29,7 +29,7 @@ local ColorLookupTable = {
 }
 
 local function fillRounded(rx, ry, rw, rh, radius, color)
-	raylib.lib.DrawRectangleRounded(
+	adapter.lib.DrawRectangleRounded(
 		structs.Rectangle:new({ x = rx, y = ry, width = rw, height = rh }),
 		radius / math.min(rw, rh) * 2,
 		SEGMENTS,
@@ -39,18 +39,18 @@ end
 
 local function drawText(font, text, x, y, size, color)
 	if font then
-		raylib.lib.DrawTextEx(font, text, vector.create(x, y), size, 1, color)
-		return math.floor(raylib.lib.MeasureTextEx(font, text, size, 1).x)
+		adapter.lib.DrawTextEx(font, text, vector.create(x, y), size, 1, color)
+		return math.floor(adapter.lib.MeasureTextEx(font, text, size, 1).x)
 	end
-	raylib.lib.DrawText(text, x, y, size, color)
-	return raylib.lib.MeasureText(text, size)
+	adapter.lib.DrawText(text, x, y, size, color)
+	return adapter.lib.MeasureText(text, size)
 end
 
 local function measureText(font, text, size)
 	if font then
-		return math.floor(raylib.lib.MeasureTextEx(font, text, size, 1).x)
+		return math.floor(adapter.lib.MeasureTextEx(font, text, size, 1).x)
 	end
-	return raylib.lib.MeasureText(text, size)
+	return adapter.lib.MeasureText(text, size)
 end
 
 --[[
@@ -67,7 +67,7 @@ end
 	  shadowOffsetY      – optional
 --]]
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = nil,
 		x = data.x or data[1] or 0,
@@ -157,7 +157,7 @@ return function(objects, data)
 		local fnt = config.font
 		local fs = config.fontSize
 
-		local mousePressed = raylib.lib.IsMouseButtonPressed(0) == 1
+		local mousePressed = adapter.lib.IsMouseButtonPressed(0) == 1
 
 		local mainW = W - CHEVRON_W
 		local mainRect = rect.new(ox, oy, mainW, BUTTON_H)
@@ -173,14 +173,14 @@ return function(objects, data)
 		local chevHov = chevEffects.isHovered()
 
 		if mainHov or chevHov then
-			MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
+			MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
 		else
-			MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
+			MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
 		end
 
 		-- Render main button background via effects, then square off the right edge
 		local mainDraw = mainEffects.renderAll(mainRect, rounded)
-		raylib.lib.DrawRectangle(
+		adapter.lib.DrawRectangle(
 			mainDraw.x + mainDraw.width - RADIUS,
 			mainDraw.y,
 			RADIUS,
@@ -193,7 +193,7 @@ return function(objects, data)
 
 		-- Divider line between the two halves
 		local pressShift = math.floor(mainEffects.getPressProgress() * 1)
-		raylib.lib.DrawRectangle(
+		adapter.lib.DrawRectangle(
 			ox + mainW,
 			oy + 6 + pressShift,
 			1,
@@ -209,7 +209,7 @@ return function(objects, data)
 
 		local shadowOff = math.floor((1 - mainEffects.getPressProgress()) * 1)
 		if fnt then
-			raylib.lib.DrawTextEx(
+			adapter.lib.DrawTextEx(
 				fnt,
 				option.label,
 				vector.create(labelX + shadowOff, labelY + shadowOff),
@@ -217,7 +217,7 @@ return function(objects, data)
 				1,
 				color3.new(0, 0, 0):ToRaylib(0.35)
 			)
-			raylib.lib.DrawTextEx(
+			adapter.lib.DrawTextEx(
 				fnt,
 				option.label,
 				vector.create(labelX, labelY),
@@ -226,14 +226,14 @@ return function(objects, data)
 				ColorLookupTable.textOnPri:ToRaylib(0)
 			)
 		else
-			raylib.lib.DrawText(
+			adapter.lib.DrawText(
 				option.label,
 				labelX + shadowOff,
 				labelY + shadowOff,
 				fs,
 				color3.new(0, 0, 0):ToRaylib(0.35)
 			)
-			raylib.lib.DrawText(option.label, labelX, labelY, fs, ColorLookupTable.textOnPri:ToRaylib(0))
+			adapter.lib.DrawText(option.label, labelX, labelY, fs, ColorLookupTable.textOnPri:ToRaylib(0))
 		end
 
 		-- Chevron icon
@@ -241,13 +241,13 @@ return function(objects, data)
 		local cy = chevDraw.y + math.floor(chevDraw.height / 2)
 		local hw, hh = 5, 3
 		local open = config.open
-		raylib.lib.DrawLineEx(
+		adapter.lib.DrawLineEx(
 			vector.create(cx - hw, cy + (open and hh or -hh)),
 			vector.create(cx, cy + (open and -hh or hh)),
 			1.5,
 			ColorLookupTable.textOnPri:ToRaylib(0)
 		)
-		raylib.lib.DrawLineEx(
+		adapter.lib.DrawLineEx(
 			vector.create(cx, cy + (open and -hh or hh)),
 			vector.create(cx + hw, cy + (open and hh or -hh)),
 			1.5,
@@ -255,7 +255,7 @@ return function(objects, data)
 		)
 
 		-- Main button click
-		if mainHov and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
+		if mainHov and adapter.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 			if config.onAction then
 				config.onAction(option, config.selectedIndex)
 			end
@@ -276,7 +276,7 @@ return function(objects, data)
 
 			fillRounded(popupX - 2, popupY - 2, popupW + 4, popupH + 4, RADIUS + 1, color3.new(0, 0, 0):ToRaylib(0.24))
 			fillRounded(popupX, popupY, popupW, popupH, RADIUS, ColorLookupTable.popupBg:ToRaylib(0))
-			raylib.lib.DrawRectangleRoundedLines(
+			adapter.lib.DrawRectangleRoundedLines(
 				structs.Rectangle:new({ x = popupX, y = popupY, width = popupW, height = popupH }),
 				RADIUS / math.min(popupW, popupH) * 2,
 				SEGMENTS,
@@ -312,9 +312,9 @@ return function(objects, data)
 
 				local dotX = itemRect.x + 16
 				local dotY = itemRect.y + math.floor(ITEM_H / 2)
-				raylib.lib.DrawCircleLines(dotX, dotY, 6, ColorLookupTable.border:ToRaylib(0))
+				adapter.lib.DrawCircleLines(dotX, dotY, 6, ColorLookupTable.border:ToRaylib(0))
 				if isSelected then
-					raylib.lib.DrawCircle(dotX, dotY, 3, ColorLookupTable.selectedDot:ToRaylib(0))
+					adapter.lib.DrawCircle(dotX, dotY, 3, ColorLookupTable.selectedDot:ToRaylib(0))
 				end
 
 				local textX = itemRect.x + 32
@@ -324,7 +324,7 @@ return function(objects, data)
 				drawText(fnt, opt.description, textX, dY, fs - 1, ColorLookupTable.textSec:ToRaylib(0))
 
 				if i < #config.options then
-					raylib.lib.DrawRectangle(
+					adapter.lib.DrawRectangle(
 						popupX + 12,
 						itemY + ITEM_H - 1,
 						popupW - 24,
@@ -339,7 +339,7 @@ return function(objects, data)
 				end
 
 				if itemHov then
-					MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
+					MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
 				end
 
 				itemY = itemY + ITEM_H

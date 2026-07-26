@@ -1,5 +1,5 @@
 local Enum = require("@EnumMap")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
 local MouseCursor = {}
 
@@ -40,7 +40,7 @@ end
 function MouseCursor.request(cursor)
 	if not cursorState.managed then
 		if cursorState.applied ~= cursor then
-			raylib.lib.SetMouseCursor(cursor)
+			adapter.lib.SetMouseCursor(cursor)
 			cursorState.applied = cursor
 		end
 		return
@@ -60,7 +60,7 @@ function MouseCursor.commitFrame()
 
 	cursorState.managed = false
 	if cursorState.applied ~= cursorState.requested then
-		raylib.lib.SetMouseCursor(cursorState.requested)
+		adapter.lib.SetMouseCursor(cursorState.requested)
 		cursorState.applied = cursorState.requested
 	end
 end

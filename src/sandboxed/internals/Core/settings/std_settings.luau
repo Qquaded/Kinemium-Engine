@@ -2,16 +2,13 @@
 
 local aereon = require("@Aereon")
 local Theme = game:GetService("StudioThemeService").SelectedTheme
-local textbox = aereon.textbox(Theme, game)
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
-local gui = aereon.gui
 local vend = KinemiumFontService.GetDefaultFontSmall()
 local rect = require("@arect")
-local ConfigService = game:GetService("ConfigService")
 local renderer = game:GetService("KinemiumRaylib").GetRenderer()
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 local RunService = game:GetService("RunService")
 
 if RunService:IsServer() then
@@ -74,7 +71,6 @@ renderer.Hook.new("After2D", function(data)
 		return
 	end
 	local dt = rl.GetFrameTime()
-	local mainTheme = StudioThemeService.SelectedTheme
 	main_window.x = frame.AbsolutePosition.X
 	main_window.y = frame.AbsolutePosition.Y
 	main_window.width = frame.AbsoluteSize.X
@@ -83,7 +79,7 @@ renderer.Hook.new("After2D", function(data)
 		return
 	end
 	window.update(dt)
-	window.draw(dt, mainTheme.aereon)
+	window.draw(dt, StudioThemeService.SelectedTheme, renderer.Lib2d)
 end)
 
 main_window.stepped = function(wd)

@@ -20,13 +20,15 @@ HttpService.InitRenderer = function(renderer, renderer_signal, game)
 		opts = opts or {}
 		headers = headers or {}
 
+		headers["user-agent"] = "KinemiumEngine"
+
 		HttpService.RequestStarted:Fire({ Method = method, URL = url })
 
 		local success, response = pcall(function()
 			return net.http.request(url, {
 				method = method,
 				headers = headers,
-				body = body,
+				body = JSON.encode(body),
 				timeout = opts.Timeout,
 				allow_redirects = opts.AllowRedirects,
 			}, opts.ReturnBuffer and true or false)
@@ -56,6 +58,7 @@ HttpService.InitRenderer = function(renderer, renderer_signal, game)
 
 	function HttpService:PostAsync(url, body, headers, opts)
 		local res = request("POST", url, body, headers, opts)
+		print(res)
 		return res.Body, res
 	end
 

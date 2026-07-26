@@ -1,4 +1,4 @@
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local rect = require("@arect")
 local color3 = require("@Color3")
 local syntax = require("../../../modules/Aereon/ide/syntax")
@@ -196,17 +196,17 @@ function MDXFormatter.createRenderer(options)
 	local theme = merge(defaultTheme, options.theme)
 	local styles = merge(defaultStyles, options.styles)
 	local custom = options.components or {}
-	local font = options.font or raylib.lib.GetFontDefault()
+	local font = options.font or adapter.lib.GetFontDefault()
 
 	local renderer = {}
 	renderer.contentHeight = 1
 
 	local function drawText(text, x, y, size, spacing, color, transparency)
-		raylib.lib.DrawTextEx(font, text or "", vector.create(x, y), size, spacing, color:ToRaylib(transparency or 0))
+		adapter.lib.DrawTextEx(font, text or "", vector.create(x, y), size, spacing, color:ToRaylib(transparency or 0))
 	end
 
 	local function measureText(text, size, spacing)
-		local measured = raylib.lib.MeasureTextEx(font, text or "", size, spacing)
+		local measured = adapter.lib.MeasureTextEx(font, text or "", size, spacing)
 		return measured.x
 	end
 
@@ -252,7 +252,7 @@ function MDXFormatter.createRenderer(options)
 		local topGap = block.level == 1 and 2 or 6
 		local height = size + topGap + 8
 
-		local dt = raylib.lib.GetFrameTime()
+		local dt = adapter.lib.GetFrameTime()
 		local key = block.text
 		headingHoverAlpha[key] = headingHoverAlpha[key] or 0
 
@@ -264,13 +264,13 @@ function MDXFormatter.createRenderer(options)
 		local alpha = headingHoverAlpha[key]
 		if alpha > 0.001 then
 			local highlightColor = color3.new(theme.accentColor.R, theme.accentColor.G, theme.accentColor.B)
-			raylib.lib.DrawRectangle(x, y, width, height, highlightColor:ToRaylib(1 - alpha * 0.88))
+			adapter.lib.DrawRectangle(x, y, width, height, highlightColor:ToRaylib(1 - alpha * 0.88))
 		end
 
 		drawText(block.text, x, y + topGap, size, styles.headingSpacing, theme.headingColor, 0)
 
 		if block.level <= 2 then
-			raylib.lib.DrawRectangle(x, y + height - 1, width, 1, theme.borderColor:ToRaylib(0))
+			adapter.lib.DrawRectangle(x, y + height - 1, width, 1, theme.borderColor:ToRaylib(0))
 			height += 8
 		end
 
@@ -321,13 +321,13 @@ function MDXFormatter.createRenderer(options)
 		end
 		local height = math.max(styles.codeLineHeight, #lines * styles.codeLineHeight) + styles.tableCellPadding * 2
 
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(rect.new(x, y, width, height)),
 			0.08,
 			6,
 			theme.panelColor:ToRaylib(0)
 		)
-		raylib.lib.DrawRectangleRoundedLines(
+		adapter.lib.DrawRectangleRoundedLines(
 			rect:translate(rect.new(x, y, width, height)),
 			0.08,
 			6,
@@ -343,7 +343,7 @@ function MDXFormatter.createRenderer(options)
 			if isLuau then
 				local tokens = syntax.highlight(line)
 				for _, token in ipairs(tokens) do
-					raylib.lib.DrawTextEx(
+					adapter.lib.DrawTextEx(
 						font,
 						token.text,
 						vector.create(cursorX, lineY),
@@ -351,7 +351,7 @@ function MDXFormatter.createRenderer(options)
 						styles.codeSpacing,
 						token.color
 					)
-					local w = raylib.lib.MeasureTextEx(font, token.text, styles.codeFontSize, styles.codeSpacing)
+					local w = adapter.lib.MeasureTextEx(font, token.text, styles.codeFontSize, styles.codeSpacing)
 					cursorX += w.x
 				end
 			else
@@ -368,18 +368,18 @@ function MDXFormatter.createRenderer(options)
 		local totalRows = #block.rows + 1
 		local height = totalRows * styles.tableRowHeight
 
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(rect.new(x, y, width, height)),
 			0.06,
 			6,
 			theme.panelColor:ToRaylib(0)
 		)
-		raylib.lib.DrawRectangle(x, y, width, styles.tableRowHeight, theme.headerColor:ToRaylib(0))
+		adapter.lib.DrawRectangle(x, y, width, styles.tableRowHeight, theme.headerColor:ToRaylib(0))
 
 		for col, header in ipairs(block.headers) do
 			local cellX = x + (col - 1) * cellWidth
 			if col > 1 then
-				raylib.lib.DrawRectangle(cellX, y, 1, height, theme.borderColor:ToRaylib(0))
+				adapter.lib.DrawRectangle(cellX, y, 1, height, theme.borderColor:ToRaylib(0))
 			end
 			drawText(
 				header,
@@ -393,7 +393,7 @@ function MDXFormatter.createRenderer(options)
 
 		for rowIndex, row in ipairs(block.rows) do
 			local rowY = y + rowIndex * styles.tableRowHeight
-			raylib.lib.DrawRectangle(x, rowY, width, 1, theme.borderColor:ToRaylib(0))
+			adapter.lib.DrawRectangle(x, rowY, width, 1, theme.borderColor:ToRaylib(0))
 			for col = 1, columns do
 				local cellX = x + (col - 1) * cellWidth
 				local value = row[col] or ""
@@ -420,7 +420,7 @@ function MDXFormatter.createRenderer(options)
 		table = renderTable,
 		separator = function(block, x, y, width)
 			local midY = y + 6
-			raylib.lib.DrawRectangle(x, midY, width, 1, theme.borderColor:ToRaylib(0))
+			adapter.lib.DrawRectangle(x, midY, width, 1, theme.borderColor:ToRaylib(0))
 			return 13
 		end,
 	}

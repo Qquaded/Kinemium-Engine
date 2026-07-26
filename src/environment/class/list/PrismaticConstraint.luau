@@ -6,8 +6,8 @@ local _state = require("@State")
 local Color3 = require("@Color3")
 local NetworkOwnership = require("@NetworkOwnership")
 
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 
 local propTable = {
 	Attachment0 = nil,
@@ -191,7 +191,7 @@ return {
 			-- description: "Tos raylib color."
 			-- args: "c: any, a: number"
 			local function toRaylibColor(c, a)
-				return raylib.structs.Color:new({ r = c.R * 255, g = c.G * 255, b = c.B * 255, a = a or 255 })
+				return adapter.structs.Color:new({ r = c.R * 255, g = c.G * 255, b = c.B * 255, a = a or 255 })
 			end
 
 			local mainColor = toRaylibColor(color)
@@ -202,14 +202,14 @@ return {
 			local axisLen = 10.0
 			local axisStart = wPos0 - (wAxis0 * (axisLen / 2))
 			local axisEnd = wPos0 + (wAxis0 * (axisLen / 2))
-			rl.DrawLine3D(
+			adapter.DrawLine3D(
 				vector.create(axisStart.X, axisStart.Y, axisStart.Z),
 				vector.create(axisEnd.X, axisEnd.Y, axisEnd.Z),
 				secondaryColor
 			)
 
 			-- 2. Draw Attachment Points
-			rl.DrawSphere(vector.create(wPos0.X, wPos0.Y, wPos0.Z), 0.05, mainColor)
+			adapter.DrawSphere(vector.create(wPos0.X, wPos0.Y, wPos0.Z), 0.05, mainColor)
 
 			-- 3. Draw Current Position (if active)
 			local currentPos = 0
@@ -217,7 +217,7 @@ return {
 				currentPos = KinemiumPhysicsService.GetSliderPosition(_activeConstraint)
 			end
 			local relativePos = wPos0 + (wAxis0 * currentPos)
-			rl.DrawSphere(vector.create(relativePos.X, relativePos.Y, relativePos.Z), 0.08, mainColor)
+			adapter.DrawSphere(vector.create(relativePos.X, relativePos.Y, relativePos.Z), 0.08, mainColor)
 
 			-- 4. Draw Limits
 			if instance.LimitsEnabled then
@@ -235,14 +235,14 @@ return {
 				local function drawTick(center)
 					local s = center - (perp * tickLen)
 					local e = center + (perp * tickLen)
-					rl.DrawLine3D(vector.create(s.X, s.Y, s.Z), vector.create(e.X, e.Y, e.Z), limitColor)
+					adapter.DrawLine3D(vector.create(s.X, s.Y, s.Z), vector.create(e.X, e.Y, e.Z), limitColor)
 				end
 
 				drawTick(lowPos)
 				drawTick(highPos)
 
 				-- Draw segment between limits
-				rl.DrawLine3D(
+				adapter.DrawLine3D(
 					vector.create(lowPos.X, lowPos.Y, lowPos.Z),
 					vector.create(highPos.X, highPos.Y, highPos.Z),
 					limitColor

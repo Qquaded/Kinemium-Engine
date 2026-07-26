@@ -1,7 +1,7 @@
 local Color3 = require("@Color3")
 local Enum = require("@EnumMap")
-local raylib = require("@raylib")
-local lib = raylib.lib
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
 local arect = require("@arect")
 
 local RichText = {}
@@ -100,7 +100,7 @@ local function resolveColor3(c, transparency)
 		if c.ToRaylib then
 			return c:ToRaylib(transparency)
 		elseif c.R and c.G and c.B then
-			return raylib.structs.Color:new({
+			return adapter.structs.Color:new({
 				r = math.clamp(math.floor(c.R * 255 + 0.5), 0, 255),
 				g = math.clamp(math.floor(c.G * 255 + 0.5), 0, 255),
 				b = math.clamp(math.floor(c.B * 255 + 0.5), 0, 255),
@@ -108,7 +108,7 @@ local function resolveColor3(c, transparency)
 			})
 		end
 	end
-	return raylib.structs.Color:new({
+	return adapter.structs.Color:new({
 		r = 255,
 		g = 255,
 		b = 255,

@@ -3,7 +3,7 @@ if RunService:IsServer() then
 	return
 end
 
-local raylib = require("@raylib")
+local raylib = require("@raylibadapter")
 local lib = raylib.lib
 local aereon = import("@Aereon")
 

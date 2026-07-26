@@ -1,10 +1,9 @@
-local raylib = require("@raylib")
-local _structs = raylib.structs
+local adapter = require("@RaylibAdapter")
 local objects = {}
 local StyleSheet = require("./stylesheet")
 local MDXFormatter = require("./mdxFormatter")
 
-local _defaultFont = raylib.lib.GetFontDefault()
+local _defaultFont = adapter.lib.GetFontDefault()
 
 local comps = {}
 
@@ -18,7 +17,9 @@ local function create(path, data)
 	if styledData.font == nil and _defaultFont ~= nil then
 		styledData.font = _defaultFont
 	end
-	return require(path)(objects, styledData) :: CreatedComponent
+	local comp = require(path)(objects, styledData, adapter) :: CreatedComponent
+	table.insert(objects, comp)
+	return comp
 end
 
 comps.badge = function(data)
@@ -38,6 +39,9 @@ comps.cellparser = function(data)
 end
 comps.profiler = function(data)
 	return create("./objects/profilergui", data)
+end
+comps.comptoggle = function(data)
+	return create("./objects/comptoggle", data)
 end
 comps.button = function(data)
 	return create("./objects/button", data)
@@ -203,7 +207,7 @@ function comps.notify(message, toastType, duration)
 		end
 	end
 
-	local screenHeight = raylib.lib.GetScreenHeight()
+	local screenHeight = adapter.lib.GetScreenHeight()
 
 	return comps.toast({
 		message = message,

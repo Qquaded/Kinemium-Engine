@@ -3,7 +3,7 @@ if RunService:IsServer() then
 	return
 end
 
-local raylib = require("@raylib")
+local raylib = require("@raylibadapter")
 local MouseCursor = require("@Kinemium.MouseCursor")
 local lib = raylib.lib
 local aereon = require("@Aereon")

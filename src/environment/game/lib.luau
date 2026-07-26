@@ -121,7 +121,7 @@ function DataModel.new(RENDERER, ...)
 				zune.process.exit(0)
 			end
 		else
-			error(
+			print(
 				"Failed to require service '"
 					.. name
 					.. "' at path '"

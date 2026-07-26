@@ -10,8 +10,8 @@ local r3d = require("@r3d")
 local rlib = r3d.lib
 local r3dstructs = r3d.structs
 local r3dconst = r3d.constants
-local raylib = require("@raylib")
-local lib = raylib.lib
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
 local ffi = zune.ffi
 
 local U32_MOD = 4294967296

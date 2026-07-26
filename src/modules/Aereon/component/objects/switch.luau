@@ -1,12 +1,12 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1],
@@ -47,7 +47,7 @@ return function(objects, data)
 			config.offColor.B + (config.onColor.B - config.offColor.B) * config.animProgress
 		)
 
-		raylib.lib.DrawRectangleRounded(rect:translate(r), 0.5, 8, currentColor:ToRaylib(0))
+		adapter.lib.DrawRectangleRounded(rect:translate(r), 0.5, 8, currentColor:ToRaylib(0))
 
 		local handleSize = r.height - 6
 		local handleMinX = r.x + 3
@@ -55,14 +55,14 @@ return function(objects, data)
 		local handleX = handleMinX + (handleMaxX - handleMinX) * config.animProgress
 		local handleY = r.y + 3
 
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			structs.Rectangle:new({ x = handleX, y = handleY, width = handleSize, height = handleSize }),
 			0.5,
 			8,
 			config.handleColor:ToRaylib(0)
 		)
 
-		if rect.MouseIsInRect(r) and raylib.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
+		if rect.MouseIsInRect(r) and adapter.lib.IsMouseButtonReleased(0) == 1 and not _G.__aereon_blockInput then
 			config.value = not config.value
 			if config.onChanged then
 				config.onChanged(config.value)

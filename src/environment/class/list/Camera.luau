@@ -3,14 +3,14 @@
 local Vector3 = require("@Vector3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local Vector2 = require("@Vector2")
 
 _G.SecurityCapabilities = Enum.SecurityCapabilities.Internals
 
-local lib = raylib.lib
-local structs = raylib.structs
-local const = raylib.const
+local lib = adapter.lib
+local structs = adapter.structs
+local const = adapter.const
 
 local propTable = {
 	FieldOfView = 70,

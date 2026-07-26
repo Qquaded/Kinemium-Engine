@@ -1,10 +1,9 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
-local color3 = require("@Color3")
-local rect = require("@arect")
-local LayoutEngine = require("../../../LayoutEngine")
+return function(objects, data, raylib)
+	local structs = raylib.structs
+	local color3 = require("@Color3")
+	local rect = require("@arect")
+	local LayoutEngine = require("../../../LayoutEngine")
 
-return function(objects, data)
 	local config = {
 		obj_rect = rect.new(data.x or 0, data.y or 0, data.width or 100, data.height or 100),
 		direction = data.direction or LayoutEngine.Direction.Vertical,

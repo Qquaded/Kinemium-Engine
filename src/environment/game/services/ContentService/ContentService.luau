@@ -21,7 +21,7 @@ ContentService._Intents = Enum.PluginIntents.Network
 
 local net = zune.net
 local fs = zune.fs
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
 local function request(url: string, options: any, bytes: boolean)
 	local res = net.http.request(url, options, bytes)

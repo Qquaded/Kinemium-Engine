@@ -1,5 +1,5 @@
 local Instance = require("@Instance")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local Enum = require("@Enum")
 local Vector2 = require("@Vector2")
 
@@ -20,9 +20,9 @@ TextService.InitRenderer = function(renderer, signal, datamodel)
 			end
 			local resolvedFont = renderer.Font.Get(baseFontName)
 			if not resolvedFont then
-				resolvedFont = renderer.Font.Get(Enum.Font.DefaultEngineFont.Value) or raylib.lib.GetFontDefault()
+				resolvedFont = renderer.Font.Get(Enum.Font.DefaultEngineFont.Value) or adapter.lib.GetFontDefault()
 			end
-			local measured = raylib.lib.MeasureTextEx(resolvedFont, text, textSize, spacing)
+			local measured = adapter.lib.MeasureTextEx(resolvedFont, text, textSize, spacing)
 			return Vector2.new(measured.x, measured.y)
 		end,
 		measureMultilineText = function(text, font, textSize, spacing)

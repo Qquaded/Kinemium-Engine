@@ -4,15 +4,15 @@ local Color3 = require("@Color3")
 local CFrame = require("@CFrame")
 local Enum = require("@EnumMap")
 local r3d = require("@r3d")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
 
 local rlib = r3d.lib
 local r3dstructs = r3d.structs
 local ffi = zune.ffi
-local lib = raylib.lib
-local const = raylib.const
-local structs = raylib.structs
+local lib = adapter.lib
+local const = adapter.const
+local structs = adapter.structs
 
 local propTable = {
 	Transparency = 0,
@@ -108,7 +108,7 @@ local function loadAlbedoMap(path, color)
 	end
 
 	local ext = lib.GetFileExtension(path)
-	local okLoad, map = pcall(rlib.R3D_LoadAlbedoMapFromMemory, ext, data, buffer.len(data), color)
+	local okLoad, map = pcall(adapter.lib.R3D_LoadAlbedoMapFromMemory, ext, data, buffer.len(data), color)
 	if okLoad then
 		return map
 	end
@@ -139,7 +139,7 @@ local function loadAlbedoMapFromEditable(editableImage, color)
 	end
 	lib.MemFree(memPtr)
 
-	local okLoad, map = pcall(rlib.R3D_LoadAlbedoMapFromMemory, ".png", data, size, color)
+	local okLoad, map = pcall(adapter.lib.R3D_LoadAlbedoMapFromMemory, ".png", data, size, color)
 	if okLoad then
 		return map
 	end
@@ -247,13 +247,13 @@ return {
 
 			if map then
 				if instance._decalHasMaps then
-					pcall(rlib.R3D_UnloadDecalMaps, decal)
+					pcall(adapter.lib.R3D_UnloadDecalMaps, decal)
 				end
 				buffer.copy(decal, r3dstructs.R3D_Decal:offset("albedo"), map, 0, r3dstructs.R3D_AlbedoMap:size())
 				instance._decalHasMaps = true
 			else
 				if instance._decalHasMaps then
-					pcall(rlib.R3D_UnloadDecalMaps, decal)
+					pcall(adapter.lib.R3D_UnloadDecalMaps, decal)
 					instance._decalHasMaps = false
 				end
 				local fallback = r3dstructs.R3D_AlbedoMap:new({ color = color })
@@ -331,7 +331,7 @@ return {
 			if renderId and renderer and renderer.Pool then
 				renderer.Pool.Destroy(renderId)
 			end
-			pcall(rlib.R3D_UnloadDecalMaps, decal)
+			pcall(adapter.lib.R3D_UnloadDecalMaps, decal)
 		end)
 
 		return instance

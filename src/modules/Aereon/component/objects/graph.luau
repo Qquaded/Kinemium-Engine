@@ -1,12 +1,11 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+return function(objects, data, raylib)
+	local structs = raylib.structs
 
-local rect = require("@arect")
-local color3 = require("@Color3")
+	local rect = require("@arect")
+	local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+	local defaultFont = raylib.lib.GetFontDefault()
 
-return function(objects, data)
 	local CAP = data.capacity or 120
 
 	local config = {

@@ -1,26 +1,25 @@
-local raylib = require("@raylib")
-local color3 = require("@Color3")
-local rect = require("@arect")
-local textButton = require("./textButton")
-local imageButton = require("./imageButton")
-local zembed = require("@zembed")
+return function(objects, data, raylib)
+	local color3 = require("@Color3")
+	local rect = require("@arect")
+	local textButton = require("./textButton")
+	local imageButton = require("./imageButton")
+	local zembed = require("@zembed")
 
-local pathIcon = nil
-local function getPathIcon()
-	if not pathIcon then
-		local tex = raylib.lib.LoadTexture(zembed.AssetPath("kineasset://images/icons/Folder.png"))
-		if tex then
-			pathIcon = {
-				texture = tex,
-				x = buffer.readi32(tex, 4),
-				y = buffer.readi32(tex, 8),
-			}
+	local pathIcon = nil
+	local function getPathIcon()
+		if not pathIcon then
+			local tex = raylib.lib.LoadTexture(zembed.AssetPath("kineasset://images/icons/Folder.png"))
+			if tex then
+				pathIcon = {
+					texture = tex,
+					x = buffer.readi32(tex, 4),
+					y = buffer.readi32(tex, 8),
+				}
+			end
 		end
+		return pathIcon
 	end
-	return pathIcon
-end
 
-return function(objects, data)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1] or 0,
@@ -65,7 +64,7 @@ return function(objects, data)
 				end
 			end
 		end,
-	})
+	}, raylib)
 
 	local imgBtn = imageButton({}, {
 		image = getPathIcon(),
@@ -84,7 +83,7 @@ return function(objects, data)
 				end
 			end
 		end,
-	})
+	}, raylib)
 
 	local wrapper = {}
 

@@ -1,9 +1,9 @@
 --!optimize 2
 --!native
 local blurmod = {}
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
-local lib, structs, const = raylib.lib, raylib.structs, raylib.const
+local lib, structs, const = adapter.lib, adapter.structs, adapter.const
 
 local function extract_texture(v)
 	if type(v) == "table" and v.id then

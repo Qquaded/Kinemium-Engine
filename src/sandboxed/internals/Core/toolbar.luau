@@ -11,10 +11,11 @@ local ProjectLoaderService = game:GetService("ProjectLoaderService")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local rl = KinemiumRaylib.GetLib()
+local interface = require("@raylibadapter")
+local rl = interface.lib
 local renderer = KinemiumRaylib.GetRenderer()
 
-local structs = KinemiumRaylib.GetStructs()
+local structs = interface.structs
 local vend = KinemiumFontService.GetDefaultFont()
 local currentlySelected = ""
 local Theme = game:GetService("StudioThemeService").SelectedTheme
@@ -191,7 +192,7 @@ local fileMenu = gui.menu({
 			end,
 		},
 	},
-})
+}, interface)
 
 local function create_window(title, frame)
 	local initialPos = frame.AbsolutePosition or vector.create(0, 0)
@@ -316,13 +317,13 @@ local function renderButton(xPos, name, element, windowData, dt)
 			width = effectiveWidth,
 			height = cellHeight,
 			text = "",
-			backgroundTransparency = 1,
+			backgroundTransparency = 0.7,
 			backgroundColor = element.backgroundColor or Color3.new(0.18, 0.18, 0.18),
 			hoverColor = element.hoverColor or Color3.new(0.35, 0.35, 0.35),
 			onClick = function()
 				element.callback(element, aRect.new(winX + xPos, winY, effectiveWidth, cellHeight))
 			end,
-		})
+		}, interface)
 		componentCache[key] = aereonElement
 	end
 
@@ -357,7 +358,7 @@ local function renderButton(xPos, name, element, windowData, dt)
 
 	if name then
 		local textX = currentRect.x + effectiveWidth / 2 - labelWidth / 2
-		local textY = currentRect.y + cellHeight - 18
+		local textY = currentRect.y + cellHeight - 23
 		rl.DrawTextEx(vend, name, vector.create(textX, textY), 16, 1, TextColor)
 	end
 
@@ -402,7 +403,7 @@ local function renderToggleButton(xPos, name, element, windowData, dt)
 					)
 				end
 			end,
-		})
+		}, interface)
 		componentCache[key] = aereonElement
 	end
 
@@ -517,7 +518,7 @@ local function renderDropdownButton(xPos, name, element, windowData, dt)
 					end
 				end
 			end,
-		})
+		}, interface)
 		componentCache[key] = aereonElement
 	end
 
@@ -566,7 +567,7 @@ local function renderSeperator(xPos, windowData, element, dt)
 			height = element.height or 70,
 			color = element.color or Color3.new(0.2, 0.2, 0.2),
 			vertical = false,
-		})
+		}, interface)
 		componentCache[key] = aereonElement
 	end
 
@@ -638,7 +639,7 @@ local function drawCategories(windowData, dt)
 				onClick = function()
 					currentlySelected = name
 				end,
-			})
+			}, interface)
 			componentCache[key] = aereonElement
 		end
 
@@ -699,11 +700,15 @@ renderer.Pool.new("2d", function(data)
 
 	ishared.ToolbarMinimized = propback.Minimized
 
+	frame.Position = Theme.WindowConfig.Toolbar.position
+	frame.AnchorPoint = Theme.WindowConfig.Toolbar.anchorPoint
+	frame.Size = Theme.WindowConfig.Toolbar.size
+
 	local dt = rl.GetFrameTime()
 	local mainTheme = StudioThemeService.SelectedTheme
 
 	window.update(dt)
-	window.draw(dt, mainTheme.aereon)
+	window.draw(dt, mainTheme, renderer.Lib2d)
 end)
 
 local function renderImageDropdownButton(xPos, name, element, windowData, dt)

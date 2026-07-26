@@ -1369,12 +1369,12 @@ return {
 			local ctrl = rawget(self, "_humanoidController")
 			if ctrl then
 				-- Avoid duplicates
-				for _, entry in ipairs(ctrl.accessories) do
+				for _, entry in ipairs(ctadapter.accessories) do
 					if entry.accessory == accessory then
 						return
 					end
 				end
-				table.insert(ctrl.accessories, {
+				table.insert(ctadapter.accessories, {
 					accessory = accessory,
 					attachmentPoint = attachPoint,
 				})
@@ -1390,9 +1390,9 @@ return {
 
 			local ctrl = rawget(self, "_humanoidController")
 			if ctrl then
-				for i, entry in ipairs(ctrl.accessories) do
+				for i, entry in ipairs(ctadapter.accessories) do
 					if entry.accessory == accessory then
-						table.remove(ctrl.accessories, i)
+						table.remove(ctadapter.accessories, i)
 						break
 					end
 				end
@@ -1409,7 +1409,7 @@ return {
 			local result = {}
 			local ctrl = rawget(self, "_humanoidController")
 			if ctrl then
-				for _, entry in ipairs(ctrl.accessories) do
+				for _, entry in ipairs(ctadapter.accessories) do
 					if entry.accessory and entry.accessory.Parent ~= nil then
 						table.insert(result, entry.accessory)
 					end

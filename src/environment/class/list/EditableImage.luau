@@ -3,9 +3,9 @@ local Vector2 = require("@Vector2")
 local _Color3 = require("@Color3")
 local _Enum = require("@EnumMap")
 local _signal = require("@Kinemium.signal")
-local raylib = require("@raylib")
-local rlib = raylib.lib
-local rconst = raylib.const
+local adapter = require("@RaylibAdapter")
+local rlib = adapter.lib
+local rconst = adapter.const
 
 local propTable = {
 	Size = Vector2.new(1024, 1024),
@@ -25,9 +25,9 @@ return {
 		end
 		instance._dirty = false
 
-		local _Vector2Struct = raylib.structs.Vector2
-		local RectangleStruct = raylib.structs.Rectangle
-		local ColorStruct = raylib.structs.Color
+		local _Vector2Struct = adapter.structs.Vector2
+		local RectangleStruct = adapter.structs.Rectangle
+		local ColorStruct = adapter.structs.Color
 
 		instance.Changed:Connect(function(prop)
 			if prop == "Size" then
@@ -202,8 +202,8 @@ return {
 
 		-- description: "Sharpens the image"
 		function instance:Sharpen()
-			rlib.SetTextureFilter(instance._texture, raylib.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
-			rlib.SetTextureWrap(instance._texture, raylib.const.TextureWrap.TEXTURE_WRAP_CLAMP)
+			rlib.SetTextureFilter(instance._texture, adapter.const.TextureFilter.TEXTURE_FILTER_TRILINEAR)
+			rlib.SetTextureWrap(instance._texture, adapter.const.TextureWrap.TEXTURE_WRAP_CLAMP)
 			rlib.GenTextureMipmaps(instance._texture)
 		end
 

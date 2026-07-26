@@ -63,8 +63,8 @@ CoreGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 						renderer.Pool.Destroy(renderId)
 						return
 					end
-					local dt = renderer.Raylib.lib.GetFrameTime()
-					child.render(renderer.Raylib.lib, child, dt, renderer.Raylib.structs, renderer, datamodel)
+					local dt = renderer.adapter.lib.GetFrameTime()
+					child.render(renderer.adapter.lib, child, dt, renderer.adapter.structs, renderer, datamodel)
 				end, -5)
 			end
 		end

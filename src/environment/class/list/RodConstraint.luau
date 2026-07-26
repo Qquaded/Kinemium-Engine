@@ -2,8 +2,8 @@
 local Color3 = require("@Color3")
 local NetworkOwnership = require("@NetworkOwnership")
 
-local raylib = require("@raylib")
-local rl = raylib.lib
+local adapter = require("@RaylibAdapter")
+local rl = adapter.lib
 
 local propTable = {
 	Attachment0 = nil,
@@ -89,16 +89,16 @@ return {
 
 			local rlPos0 = vector.create(pos0.X, pos0.Y, pos0.Z)
 			local rlPos1 = vector.create(pos1.X, pos1.Y, pos1.Z)
-			local rlColor = raylib.structs.Color:new({
+			local rlColor = adapter.structs.Color:new({
 				r = instance.Color.R * 255,
 				g = instance.Color.G * 255,
 				b = instance.Color.B * 255,
 				a = 255,
 			})
 
-			rl.DrawLine3D(rlPos0, rlPos1, rlColor)
-			rl.DrawSphere(rlPos0, 0.15, rlColor)
-			rl.DrawSphere(rlPos1, 0.15, rlColor)
+			adapter.DrawLine3D(rlPos0, rlPos1, rlColor)
+			adapter.DrawSphere(rlPos0, 0.15, rlColor)
+			adapter.DrawSphere(rlPos1, 0.15, rlColor)
 		end
 
 		instance.Changed:Connect(function(prop)

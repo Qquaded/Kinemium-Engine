@@ -13,8 +13,8 @@ local PreRender = signal.new()
 local PreGuiRender = signal.new()
 local GuiRender = signal.new()
 
-local raylib = require("@raylib")
-local lib = raylib.lib
+local adapter = require("@RaylibAdapter")
+local lib = adapter.lib
 
 local renderBindings = {}
 local sortedRenderBindings = {}

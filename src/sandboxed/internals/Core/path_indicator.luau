@@ -14,11 +14,22 @@ indicator.Parent = LocalPlayer.PlayerGui
 local label = Instance.new("TextLabel")
 label.TextColor3 = Color3.new(1, 1, 1)
 label.BackgroundColor3 = Color3.new(0, 0, 0)
-label.BackgroundTransparency = 1
+label.BackgroundTransparency = 0.3
 label.TextSize = 15
 label.Position = UDim2.new(0, 10, 0, 50)
 label.TextXAlignment = Enum.TextXAlignment.Left
 label.Parent = indicator
+
+label.MouseEnter:Connect(function()
+	label.BackgroundTransparency = 0.6
+end)
+
+label.MouseLeave:Connect(function()
+	label.BackgroundTransparency = 0.3
+end)
+
+local corner = Instance.new("UICorner")
+corner.Parent = label
 
 ishared.path_enabled = true
 
@@ -44,10 +55,10 @@ RunService.RenderStepped:Connect(function()
 
 		local stripped = string.gsub(replaced, "<image:[^>]+>", "")
 		local size = TextService.MeasureText(stripped, Enum.Font.DefaultEngineFont, 15, 1)
-		label.Size = UDim2.new(0, size.X + 20, 0, size.Y + 25)
+		label.Size = UDim2.new(0, size.X + 50, 0, size.Y + 25)
 		label.Text = replaced
 	end
 
-	label.Position = ishared.ToolbarMinimized == true and UDim2.new(0, 10, 0, 30) or UDim2.new(0, 10, 0, 180)
+	label.Position = ishared.ToolbarMinimized == true and UDim2.new(0, 10, 0, 40) or UDim2.new(0, 10, 0, 180)
 	label.TextTransparency = ishared.path_enabled and 0 or 1
 end)

@@ -1,11 +1,11 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 local color3 = require("@Color3")
 local rect = require("@arect")
 local LayoutEngine = require("@LayoutEngine")
 local MouseCursor = require("@Kinemium.MouseCursor")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(data.x or 0, data.y or 0, data.width or 800, data.height or 80),
 		title = data.title or "Project Name",
@@ -68,19 +68,19 @@ return function(objects, data)
 		local r = config.obj_rect
 		config.isHovered = rect.MouseIsInRect(r)
 
-		local mousePressed = raylib.lib.IsMouseButtonPressed(0) == 1
+		local mousePressed = adapter.lib.IsMouseButtonPressed(0) == 1
 
 		if config.isHovered then
-			MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
+			MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
 		else
-			MouseCursor.request(raylib.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
+			MouseCursor.request(adapter.const.MouseCursor.MOUSE_CURSOR_DEFAULT)
 		end
 
 		local bgColor = config.isHovered and config.hoverColor or config.backgroundColor
 		local lift = config.isHovered and -1 or 0
 
 		-- shadow
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(rect.new(r.x, r.y + 2, r.width, r.height)),
 			config.rounded[1],
 			config.rounded[2],
@@ -88,9 +88,9 @@ return function(objects, data)
 		)
 
 		-- accent bar
-		raylib.lib.DrawRectangle(r.x, r.y + 10, 3, r.height - 20, config.accentColor:ToRaylib(0))
+		adapter.lib.DrawRectangle(r.x, r.y + 10, 3, r.height - 20, config.accentColor:ToRaylib(0))
 
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(rect.new(r.x, r.y + lift, r.width, r.height)),
 			config.rounded[1],
 			config.rounded[2],
@@ -143,20 +143,20 @@ return function(objects, data)
 
 		local itIcon = get_item("icon")
 		local iconRect = rect.new(r.x + itIcon._x, r.y + itIcon._y, itIcon._actualWidth, itIcon._actualHeight)
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(iconRect),
 			config.rounded[1],
 			config.rounded[2],
 			config.backgroundColor:ToRaylib(0.18)
 		)
 		if config.icon then
-			raylib.lib.DrawTexturePro(
+			adapter.lib.DrawTexturePro(
 				config.icon.texture,
 				structs.Rectangle:new({ x = 0, y = 0, width = config.icon.x, height = config.icon.y }),
 				rect:translate(iconRect),
 				vector.create(0, 0),
 				0,
-				raylib.const.WHITE
+				adapter.const.WHITE
 			)
 		end
 
@@ -164,7 +164,7 @@ return function(objects, data)
 		local titleX, titleY = r.x + itInfo._x, r.y + itInfo._y + 2
 
 		if config.font then
-			raylib.lib.DrawTextEx(
+			adapter.lib.DrawTextEx(
 				config.font,
 				config.title,
 				vector.create(titleX, titleY),
@@ -173,7 +173,7 @@ return function(objects, data)
 				config.textColor:ToRaylib(0)
 			)
 		else
-			raylib.lib.DrawText(config.title, titleX, titleY, 18, config.textColor:ToRaylib(0))
+			adapter.lib.DrawText(config.title, titleX, titleY, 18, config.textColor:ToRaylib(0))
 		end
 
 		local subY = titleY + 22
@@ -183,7 +183,7 @@ return function(objects, data)
 		end
 
 		if config.font then
-			raylib.lib.DrawTextEx(
+			adapter.lib.DrawTextEx(
 				config.font,
 				tagString,
 				vector.create(titleX, subY),
@@ -192,7 +192,7 @@ return function(objects, data)
 				config.dimTextColor:ToRaylib(0)
 			)
 		else
-			raylib.lib.DrawText(tagString, titleX, subY, 14, config.dimTextColor:ToRaylib(0))
+			adapter.lib.DrawText(tagString, titleX, subY, 14, config.dimTextColor:ToRaylib(0))
 		end
 
 		for child, item in pairs(childMap) do

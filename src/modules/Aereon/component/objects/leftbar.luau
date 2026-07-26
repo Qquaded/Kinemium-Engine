@@ -1,10 +1,9 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+return function(objects, data, raylib)
+	local structs = raylib.structs
 
-local rect = require("@arect")
-local color3 = require("@Color3")
+	local rect = require("@arect")
+	local color3 = require("@Color3")
 
-return function(objects, data)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4]),
 		rounded = data.rounded or { 0.1, 8 },

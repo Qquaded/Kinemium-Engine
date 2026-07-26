@@ -1,12 +1,12 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local defaultFont = raylib.lib.GetFontDefault()
+local defaultFont = adapter.lib.GetFontDefault()
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(data.x or data[1], data.y or data[2], data.width or data[3], data.height or data[4] or 20),
 		value = data.value or 0.5,
@@ -39,8 +39,8 @@ return function(objects, data)
 
 	wrapper.render = function(dt)
 		local r = config.obj_rect
-		local mousePos = raylib.lib.GetMousePosition()
-		local mouseDown = raylib.lib.IsMouseButtonDown(0) == 1
+		local mousePos = adapter.lib.GetMousePosition()
+		local mouseDown = adapter.lib.IsMouseButtonDown(0) == 1
 
 		local trackHeight = r.height * 0.3
 		local trackY = r.y + (r.height - trackHeight) / 2
@@ -57,19 +57,19 @@ return function(objects, data)
 			config.dragging = false
 		end
 
-		raylib.lib.DrawRectangleRounded(rect:translate(trackRect), 0.5, 8, config.trackColor:ToRaylib(0))
+		adapter.lib.DrawRectangleRounded(rect:translate(trackRect), 0.5, 8, config.trackColor:ToRaylib(0))
 
 		local normalizedValue = (config.value - config.min) / (config.max - config.min)
 		local fillWidth = r.width * normalizedValue
 		local fillRect = rect.new(r.x, trackY, fillWidth, trackHeight)
 
-		raylib.lib.DrawRectangleRounded(rect:translate(fillRect), 0.5, 8, config.fillColor:ToRaylib(0))
+		adapter.lib.DrawRectangleRounded(rect:translate(fillRect), 0.5, 8, config.fillColor:ToRaylib(0))
 
 		local handleX = r.x + fillWidth
 		local handleY = r.y + r.height / 2
 		local handleRadius = r.height * 0.6
 
-		raylib.lib.DrawCircleV(vector.create(handleX, handleY), handleRadius, config.handleColor:ToRaylib(0))
+		adapter.lib.DrawCircleV(vector.create(handleX, handleY), handleRadius, config.handleColor:ToRaylib(0))
 	end
 
 	table.insert(objects, wrapper)

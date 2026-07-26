@@ -1,9 +1,9 @@
-local raylib = require("@raylib")
-local structs = raylib.structs
+local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 local color3 = require("@Color3")
 local rect = require("@arect")
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = {
 		obj_rect = rect.new(
 			data.x or data[1] or 0,
@@ -48,7 +48,7 @@ return function(objects, data)
 	wrapper.render = function(dt)
 		if config.backgroundTransparency < 1 then
 			local r, g, b = config.backgroundColor:ToRGB()
-			raylib.lib.DrawRectangleRec(
+			adapter.lib.DrawRectangleRec(
 				rect:translate(config.obj_rect),
 				structs.Color:new({ r = r, g = g, b = b, a = math.floor(255 * (1 - config.backgroundTransparency)) })
 			)

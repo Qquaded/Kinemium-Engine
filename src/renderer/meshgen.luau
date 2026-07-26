@@ -1,6 +1,3 @@
-local r3dapi = require("@r3d")
-local r3d = r3dapi.lib
-local r3dstructs = r3dapi.structs
 local ffi = zune.ffi
 
 local U32 = 4294967296

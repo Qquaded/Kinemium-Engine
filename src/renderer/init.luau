@@ -17,8 +17,8 @@ local shader = require("./renderer/shader")
 local freecam = require("./renderer/freecam")
 local meshlib = require("./renderer/mesh")
 local utils = require("@bufferutils")
-local r3d = require("@r3d")
-local rlib = r3d.lib
+local filament = require("@Filament")
+local adapter = require("@Raylibadapter")
 
 local cachedMousePos = Vector2.new(0, 0)
 local cachedMouseDelta = Vector2.new(0, 0)
@@ -47,6 +47,8 @@ function KiRend.new(config: KiRendConf)
 	local Dimension = "3D"
 
 	lib.SetTraceLogLevel(const.TraceLogLevel.LOG_ERROR)
+
+	print("[Kine] Setup window..")
 
 	local useVsync = true
 	local useWindowMSAA = FlagExists("windowmsaa")
@@ -80,14 +82,38 @@ function KiRend.new(config: KiRendConf)
 	end
 	lib.SetExitKey(0)
 
-	ok, err = pcall(rlib.R3D_Init, config.width, config.height)
-	if not ok then
-		error("Failed to initialize R3D: " .. tostring(err))
-	end
-	pcall(rlib.R3D_SetUpscaleMode, 1)
-	pcall(rlib.R3D_SetTextureWrap, raylib.const.TextureWrap.TEXTURE_WRAP_REPEAT)
+	local sceneTarget = lib.LoadRenderTexture(config.width, config.height)
 
-	local lastRenderWidth, lastRenderHeight = config.width, config.height
+	local function readRenderTexFields(rt)
+		local raw = type(rt) == "table" and rt.getraw and rt:getraw() or rt
+		local texOffset = structs.RenderTexture:offset("texture")
+		local texId = buffer.readu32(raw, texOffset + structs.Texture:offset("id"))
+		local texW = buffer.readi32(raw, texOffset + structs.Texture:offset("width")) -- was readi16
+		local texH = buffer.readi32(raw, texOffset + structs.Texture:offset("height")) -- was readi16
+		return texId, texW, texH
+	end
+
+	local texId, texW, texH = readRenderTexFields(sceneTarget)
+	print("[Kine] sceneTarget texId:", texId, "w:", texW, "h:", texH)
+	local ctx = filament.lib.Kine_Filament_Create(texW, texH)
+	print("Filament ctx:", ctx)
+	assert(ctx ~= nil and ctx ~= 0, "Kine_Filament_Create failed")
+	local filamentCube = filament.lib.Kine_Filament_CreateMesh(ctx, 1)
+
+	local filamentPixelBuf = buffer.create(texW * texH * 4)
+	local filamentTexId = filament.lib.Kine_Filament_GetColorTextureId(ctx)
+
+	local filamentTexBuf = buffer.create(structs.Texture2D:size())
+	buffer.writeu32(filamentTexBuf, structs.Texture2D:offset("id"), filamentTexId)
+	buffer.writei32(filamentTexBuf, structs.Texture2D:offset("width"), texW)
+	buffer.writei32(filamentTexBuf, structs.Texture2D:offset("height"), texH)
+	buffer.writei32(filamentTexBuf, structs.Texture2D:offset("mipmaps"), 1)
+	buffer.writei32(
+		filamentTexBuf,
+		structs.Texture2D:offset("format"),
+		raylib.const.PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
+	)
+
 	local requested3DRenderScale = math.clamp(config.renderScale or 1, 0.1, 1)
 	local autoScale3D = if config.autoScale3D == nil then true else config.autoScale3D
 	local max3DRenderPixels = config.max3DRenderPixels or (1920 * 1080)
@@ -190,8 +216,6 @@ function KiRend.new(config: KiRendConf)
 		return width, height, scale
 	end
 
-	print(3)
-
 	local function apply3DResolution(targetWidth, targetHeight)
 		local width, height, scale = compute3DResolution(targetWidth, targetHeight)
 		internalRenderWidth = width
@@ -200,14 +224,8 @@ function KiRend.new(config: KiRendConf)
 		perf_stats.render_width = width
 		perf_stats.render_height = height
 		perf_stats.render_scale = scale
-
-		print("resolution..")
-		rlib.R3D_SetResolution(width, height)
-		print(6)
 		return width, height, scale
 	end
-
-	print(4)
 
 	apply3DResolution(config.width, config.height)
 
@@ -263,6 +281,8 @@ function KiRend.new(config: KiRendConf)
 			self.Internal3DRenderScale = actualScale
 			return width, height, actualScale
 		end,
+
+		Lib2d = adapter.lib,
 
 		SetAutoScale3D = function(self, enabled)
 			autoScale3D = enabled ~= false
@@ -720,7 +740,10 @@ function KiRend.new(config: KiRendConf)
 		end
 	end
 
-	function rendererObject:UseRlCamera(raylibCam)
+	local camObject
+
+	function rendererObject:UseRlCamera(raylibCam, c)
+		camObject = c
 		activeCamera = raylibCam
 	end
 
@@ -793,6 +816,13 @@ function KiRend.new(config: KiRendConf)
 		meshCalls = draw_calls_count
 		instancedBatches = instanced_draw_calls_count
 
+		if camObject then
+			local cf = camObject.CFrame
+			filament.lib.Kine_Filament_SetCameraPosition(ctx, cf.Position.X, cf.Position.Y, cf.Position.Z)
+			local pos = cf.Position
+			local target = pos + cf:GetLookVector()
+			filament.lib.Kine_Filament_SetCameraLookAt(ctx, pos.X, pos.Y, pos.Z, target.X, target.Y, target.Z, 0, 1, 0)
+		end
 		perf_stats.call3d_ms = 0
 		local callStart = os.clock()
 		if draw_calls_count > 0 or instanced_draw_calls_count > 0 or decal_draw_calls_count > 0 then
@@ -802,9 +832,9 @@ function KiRend.new(config: KiRendConf)
 				end
 				--
 				if rendererObject.Enable3DRT and rendererObject.TDRT then
-					rlib.R3D_BeginEx(rendererObject.TDRT, activeCamera)
+					-- replaced by filament
 				else
-					rlib.R3D_Begin(activeCamera)
+					-- replaced by filament
 				end
 
 				for i = 1, draw_calls_count do
@@ -812,7 +842,13 @@ function KiRend.new(config: KiRendConf)
 					if drawCall.Begin then
 						drawCall.Begin()
 					end
-					rlib.R3D_DrawMeshPro(drawCall.mesh, drawCall.material, drawCall.matrix)
+
+					local rawMatrix = drawCall.matrix
+					if type(rawMatrix) == "table" and rawMatrix.getraw then
+						rawMatrix = rawMatrix:getraw()
+					end
+					filament.lib.Kine_Filament_DrawMesh(ctx, filamentCube, 1.0, 0.5, 0.1, nil, 0.0, rawMatrix)
+
 					if drawCall.End then
 						drawCall.End()
 					end
@@ -823,7 +859,6 @@ function KiRend.new(config: KiRendConf)
 					if drawCall.Begin then
 						drawCall.Begin()
 					end
-					rlib.R3D_DrawMeshInstanced(drawCall.mesh, drawCall.material, drawCall.instances, drawCall.count)
 					if drawCall.End then
 						drawCall.End()
 					end
@@ -836,14 +871,11 @@ function KiRend.new(config: KiRendConf)
 					if drawCall.Begin then
 						drawCall.Begin()
 					end
-					rlib.R3D_DrawDecalPro(drawCall.decal, drawCall.transform)
 					if drawCall.End then
 						drawCall.End()
 					end
 				end
-				rlib.R3D_End()
 				for i = 1, #renderer_instance_buffers_to_unload do
-					pcall(rlib.R3D_UnloadInstanceBuffer, renderer_instance_buffers_to_unload[i])
 				end
 				table.clear(renderer_instance_buffers_to_unload)
 			end
@@ -905,7 +937,6 @@ function KiRend.new(config: KiRendConf)
 	function rendererObject:Render2D()
 		if rendererObject.EnableUIRT and not rendererObject.UIRT then
 			rendererObject.UIRT = lib.LoadRenderTexture(lib.GetRenderWidth(), lib.GetRenderHeight())
-			print("Render Texture Created")
 			return -- skip a frame
 		end
 		MouseCursor.beginFrame()
@@ -1078,10 +1109,19 @@ function KiRend.new(config: KiRendConf)
 					lib.UnloadRenderTexture(rendererObject.TDRT)
 					rendererObject.TDRT = lib.LoadRenderTexture(internalWidth, internalHeight)
 				end
+				lib.UnloadRenderTexture(sceneTarget)
+				sceneTarget = lib.LoadRenderTexture(renderWidth, renderHeight)
+				local rTexId, rTexW, rTexH = readRenderTexFields(sceneTarget)
+				filament.lib.Kine_Filament_Resize(ctx, rTexW, rTexH)
 				if rendererObject.EnableUIRT and rendererObject.UIRT then
 					lib.UnloadRenderTexture(rendererObject.UIRT)
 					rendererObject.UIRT = lib.LoadRenderTexture(renderWidth, renderHeight)
 				end
+				texW, texH = rTexW, rTexH
+				filamentTexId = filament.lib.Kine_Filament_GetColorTextureId(ctx)
+				buffer.writeu32(filamentTexBuf, structs.Texture2D:offset("id"), filamentTexId)
+				buffer.writei32(filamentTexBuf, structs.Texture2D:offset("width"), texW)
+				buffer.writei32(filamentTexBuf, structs.Texture2D:offset("height"), texH)
 			end
 		end
 
@@ -1118,6 +1158,21 @@ function KiRend.new(config: KiRendConf)
 		lib.ClearBackground(const.BLACK)
 
 		rendererObject:Render3D()
+		filament.lib.Kine_Filament_RenderFrame(ctx)
+		filament.lib.Kine_Filament_DebugPrintPixel(ctx)
+
+		local srcRec = structs.Rectangle:new({ x = 0, y = 0, width = texW, height = -texH })
+		local dstRec =
+			structs.Rectangle:new({ x = 0, y = 0, width = lib.GetRenderWidth(), height = lib.GetRenderHeight() })
+		lib.DrawTexturePro(
+			filamentTexBuf,
+			srcRec,
+			dstRec,
+			vector.create(0, 0),
+			0,
+			structs.Color:new({ r = 255, g = 255, b = 255, a = 255 })
+		)
+
 		rendererObject:Render2D()
 
 		local dispatchStart = os.clock()

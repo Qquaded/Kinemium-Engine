@@ -4,7 +4,7 @@ if RunService:IsServer() then
 end
 
 local rlservice = game:GetService("KinemiumRaylib")
-local raylib = require("@raylib")
+local raylib = require("@raylibadapter")
 local MouseCursor = require("@Kinemium.MouseCursor")
 local lib = raylib.lib
 local renderer = rlservice.GetRenderer()
@@ -142,7 +142,8 @@ local function generateProjectCards()
 				ishared.GameIcon = projectData.icon
 				ishared.EnableHomescreen = false
 				ProjectLoaderService.LoadProject(ishared.FolderPath, projectData)
-				renderer:SetDimension("3D")
+				print(projectData)
+				renderer:SetDimension(projectData.manifest.dimension or "3D")
 				_G.IsHoveringOnWindow = true
 			end,
 		})
@@ -168,18 +169,20 @@ local projectPath = textbox.new({
 	maxLength = 56,
 })
 
+local selectedDimension
+
 local dimension = gui.dropdown({
 	x = 0,
 	y = 0,
 	width = 200,
 	height = 30,
 
-	options = { "2D", "3D" },
+	options = { "3D", "2D" },
 	font = vend,
-	selectedIndex = 2,
+	selectedIndex = 1,
 
 	onSelect = function(index, value)
-		print("Selected:", index, value)
+		selectedDimension = value
 	end,
 })
 
@@ -248,10 +251,20 @@ group = aereon.create({
 					ishared.GameName = gnInput
 					ishared.FolderPath = projInput
 					ishared.GameIcon = gameiconPath
-					ProjectLoaderService.NewProject(ishared.GameName, ishared.FolderPath, gameiconPath)
+					ProjectLoaderService.NewProject(
+						ishared.GameName,
+						ishared.FolderPath,
+						gameiconPath,
+						selectedDimension
+					)
 					ProjectSyncService:StartSyncing(ishared.FolderPath)
 					ishared.EnableHomescreen = false
-					renderer:SetDimension("3D")
+					renderer:SetDimension(selectedDimension)
+
+					if selectedDimension == "2D" then
+						StudioThemeService.MakeUIBoxed()
+						workspace.Baseplate:Destroy()
+					end
 
 					if ishared.RBXLPlacefile then
 						local file = ishared.RBXLPlacefile

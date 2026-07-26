@@ -3,7 +3,7 @@ local logic = {}
 local Enum = require("@EnumMap")
 local MouseCursor = require("@Kinemium.MouseCursor")
 local signal = require("@Kinemium.signal")
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 
 local function renderCaret(showCaret, object, renderer, lib)
 	if showCaret then
@@ -42,7 +42,7 @@ local function renderCaret(showCaret, object, renderer, lib)
 		local caretHeight = fontSize
 
 		--DrawRectangle: (posX: int, posY: int, width: int, height: int, color: Color) -> (),
-		lib.DrawRectangle(caretX, caretY, 2, caretHeight, raylib.const.BLACK)
+		lib.DrawRectangle(caretX, caretY, 2, caretHeight, adapter.const.BLACK)
 	end
 end
 

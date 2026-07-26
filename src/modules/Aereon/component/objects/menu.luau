@@ -1,8 +1,8 @@
-local raylib = require("@raylib")
+local adapter = require("@RaylibAdapter")
 local rect = require("@arect")
 local color3 = require("@Color3")
 
-local DEFAULT_FONT = raylib.lib.GetFontDefault()
+local DEFAULT_FONT = adapter.lib.GetFontDefault()
 
 --
 -- Constants
@@ -90,7 +90,7 @@ end
 local function drawPanel(config, x, y, w, h)
 	for i = 1, SHADOW_LAYERS do
 		local alpha = SHADOW_ALPHA_BASE - i * SHADOW_ALPHA_STEP
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(rect.new(x + i, y + i * 2, w, h)),
 			config.rounded[1],
 			config.rounded[2],
@@ -98,7 +98,7 @@ local function drawPanel(config, x, y, w, h)
 		)
 	end
 
-	raylib.lib.DrawRectangleRounded(
+	adapter.lib.DrawRectangleRounded(
 		rect:translate(rect.new(x, y, w, h)),
 		config.rounded[1],
 		config.rounded[2],
@@ -126,7 +126,7 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 
 	if ht > 0.01 then
 		local baseColor = isDanger and config.dangerHoverColor or config.hoverColor
-		raylib.lib.DrawRectangleRounded(
+		adapter.lib.DrawRectangleRounded(
 			rect:translate(itemRect),
 			config.itemRounded[1],
 			config.itemRounded[2],
@@ -143,7 +143,7 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 	-- Icon / checkmark
 	if item.checked then
 		local checkAlpha = lerpf(-0.3, 0, ht)
-		raylib.lib.DrawTextEx(
+		adapter.lib.DrawTextEx(
 			config.Font,
 			"✓",
 			vector.create(iconX, midY),
@@ -153,7 +153,7 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 		)
 	elseif item.icon then
 		local iconAlpha = lerpf(isDisabled and 0.4 or 0.3, 0, ht * 0.4)
-		raylib.lib.DrawTextEx(
+		adapter.lib.DrawTextEx(
 			config.Font,
 			item.icon,
 			vector.create(iconX, midY),
@@ -164,7 +164,7 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 	end
 
 	-- Label
-	raylib.lib.DrawTextEx(
+	adapter.lib.DrawTextEx(
 		config.Font,
 		item.label,
 		vector.create(labelX, midY),
@@ -175,9 +175,9 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 
 	-- Shortcut
 	if item.shortcut then
-		local sw = raylib.lib.MeasureTextEx(config.Font, item.shortcut, config.fontSize, 1)
+		local sw = adapter.lib.MeasureTextEx(config.Font, item.shortcut, config.fontSize, 1)
 		local shortcutX = x + menuW - config.rightPadding - sw.x - (item.submenu and 16 or 0)
-		raylib.lib.DrawTextEx(
+		adapter.lib.DrawTextEx(
 			config.Font,
 			item.shortcut,
 			vector.create(shortcutX, midY),
@@ -189,7 +189,7 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 
 	-- Submenu arrow
 	if item.submenu then
-		raylib.lib.DrawTextEx(
+		adapter.lib.DrawTextEx(
 			config.Font,
 			"›",
 			vector.create(x + menuW - config.rightPadding - 10, midY),
@@ -218,7 +218,7 @@ local function drawRegularItem(config, item, itemId, x, itemY, menuW, depth, dt,
 	end
 
 	-- Click
-	local clicked = isHovered and raylib.lib.IsMouseButtonReleased(0) == 1 and not isDisabled and not item.submenu
+	local clicked = isHovered and adapter.lib.IsMouseButtonReleased(0) == 1 and not isDisabled and not item.submenu
 
 	return item.submenu and openSubmenuPath[depth] == itemId, clicked
 end
@@ -233,7 +233,7 @@ local function drawItems(config, items, x, y, menuW, depth, wrapper, dt)
 
 	for i, item in ipairs(items) do
 		if item.type == "separator" then
-			raylib.lib.DrawRectangle(
+			adapter.lib.DrawRectangle(
 				x + config.leftPadding,
 				itemY + 3,
 				menuW - config.leftPadding - config.rightPadding,
@@ -242,7 +242,7 @@ local function drawItems(config, items, x, y, menuW, depth, wrapper, dt)
 			)
 			itemY = itemY + 7
 		elseif item.type == "category" then
-			raylib.lib.DrawTextEx(
+			adapter.lib.DrawTextEx(
 				config.Font,
 				string.upper(item.label),
 				vector.create(
@@ -285,7 +285,7 @@ end
 -- Factory
 --
 
-return function(objects, data)
+return function(objects, data, raylib)
 	local config = buildConfig(data)
 	local wrapper = {}
 
