@@ -409,6 +409,8 @@ function KiRend.new(config: KiRendConf)
 				drawCall.Color = color
 				drawCall.matrix = matrix
 				drawCall.Transparency = transparency
+				drawCall.Metallic = data.metallic
+				drawCall.Roughness = data.roughness
 				drawCall.Begin = begin
 				drawCall.End = nil
 			end,
@@ -865,8 +867,8 @@ function KiRend.new(config: KiRendConf)
 						drawCall.Color.B,
 						nil,
 						drawCall.Transparency,
-						0.5,
-						0.5,
+						drawCall.Roughness,
+						drawCall.Metallic,
 						rawMatrix
 					)
 

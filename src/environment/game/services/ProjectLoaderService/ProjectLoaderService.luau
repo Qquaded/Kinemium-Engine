@@ -273,6 +273,11 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal, datamode
 			return result
 		end,
 	})
+
+	if FlagExists("project") then
+		local projectPath = GetFlagValue("project")
+		-- TODO: runtime
+	end
 end
 
 return ProjectLoaderService

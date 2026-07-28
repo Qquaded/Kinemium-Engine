@@ -266,6 +266,8 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	end
 
 	function StudioThemeService:LoadThemeJson(theme) end
+
+	StudioThemeService.MakeUIBoxed()
 end
 
 return StudioThemeService

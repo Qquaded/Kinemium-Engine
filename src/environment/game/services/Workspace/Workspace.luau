@@ -19,8 +19,6 @@ local TERRAIN_CHUNK_SIZE = 16
 local meshMap = mesh.PreloadStandardMeshes()
 local TRANSPARENCY_EPSILON = 0.001
 
-print(meshMap)
-
 local activeMaterialShader = nil
 
 local function isPartOpaque(part)
@@ -32,30 +30,6 @@ local function worldToChunk(pos)
 		return 0, 0, 0
 	end
 	return math.floor(pos.X / CHUNK_SIZE), math.floor(pos.Y / CHUNK_SIZE), math.floor(pos.Z / CHUNK_SIZE)
-end
-
-local function profileBegin(name)
-	if ENGINE_PROFILER then
-		ENGINE_PROFILER:Begin(name)
-	end
-end
-
-local function profileSetCounter(name, value)
-	if ENGINE_PROFILER then
-		ENGINE_PROFILER:SetCounter(name, value)
-	end
-end
-
-local function profileNextFrame()
-	if ENGINE_PROFILER then
-		ENGINE_PROFILER:NextFrame()
-	end
-end
-
-local function profileEnd()
-	if ENGINE_PROFILER then
-		ENGINE_PROFILER:End()
-	end
 end
 
 Workspace.InitRenderer = function(renderer, signal, game)
@@ -79,6 +53,8 @@ Workspace.InitRenderer = function(renderer, signal, game)
 					matrix = matrix,
 					color = object.Color,
 					transparency = object.Transparency,
+					metallic = object.Metallic,
+					roughness = object.Roughness,
 				})
 			end
 		end

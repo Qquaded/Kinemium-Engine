@@ -1,5 +1,3 @@
-
-
 #include "kine_filament_shim.h"
 struct rlTexture {
     unsigned int id;
@@ -57,6 +55,9 @@ using namespace filament::geometry;
     #include <GL/gl.h>
     static void* kine_get_current_gl_context() { return (void*)wglGetCurrentContext(); }
 #elif defined(__APPLE__)
+    // Apple's OpenGL headers are deprecated as of 10.14+ but still ship and work;
+    // silence the barrage of warnings rather than fight the toolchain.
+    #define GL_SILENCE_DEPRECATION
     #include <OpenGL/OpenGL.h>
     #include <OpenGL/gl.h>
     static void* kine_get_current_gl_context() { return (void*)CGLGetCurrentContext(); }
@@ -87,6 +88,13 @@ using namespace filament::geometry;
 #define GL_COLOR_ATTACHMENT0 0x8CE0
 #endif
 
+// APIENTRY is only ever defined for us by <windows.h>. On Linux/macOS the GL
+// calling convention is just the platform default, so make it a no-op there
+// instead of hardcoding a Windows-only calling convention into these typedefs.
+#ifndef APIENTRY
+#define APIENTRY
+#endif
+
 typedef void    (APIENTRY* PFNGLBINDFRAMEBUFFERPROC)(GLenum, GLuint);
 typedef void    (APIENTRY* PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC)(GLenum, GLenum, GLenum, GLint*);
 typedef void    (APIENTRY* PFNGLGENFRAMEBUFFERSPROC)(GLsizei, GLuint*);
@@ -104,10 +112,25 @@ static void kine_init_gl_ext() {
     static bool done = false;
     if (done) return;
     done = true;
+#if defined(_WIN32)
     kine_glBindFramebuffer     = (PFNGLBINDFRAMEBUFFERPROC)wglGetProcAddress("glBindFramebuffer");
     kine_glGenFramebuffers     = (PFNGLGENFRAMEBUFFERSPROC)wglGetProcAddress("glGenFramebuffers");
     kine_glDeleteFramebuffers  = (PFNGLDELETEFRAMEBUFFERSPROC)wglGetProcAddress("glDeleteFramebuffers");
     kine_glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)wglGetProcAddress("glFramebufferTexture2D");
+#elif defined(__APPLE__)
+    // Apple's OpenGL framework has always linked these directly (core since
+    // GL 3.0, and macOS's GL implementation tops out at 4.1 core) -- no
+    // runtime lookup needed or even possible via a "wgl/glX"-style API.
+    kine_glBindFramebuffer      = &glBindFramebuffer;
+    kine_glGenFramebuffers      = &glGenFramebuffers;
+    kine_glDeleteFramebuffers   = &glDeleteFramebuffers;
+    kine_glFramebufferTexture2D = &glFramebufferTexture2D;
+#else
+    kine_glBindFramebuffer      = (PFNGLBINDFRAMEBUFFERPROC)glXGetProcAddress((const GLubyte*)"glBindFramebuffer");
+    kine_glGenFramebuffers      = (PFNGLGENFRAMEBUFFERSPROC)glXGetProcAddress((const GLubyte*)"glGenFramebuffers");
+    kine_glDeleteFramebuffers   = (PFNGLDELETEFRAMEBUFFERSPROC)glXGetProcAddress((const GLubyte*)"glDeleteFramebuffers");
+    kine_glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)glXGetProcAddress((const GLubyte*)"glFramebufferTexture2D");
+#endif
 }
 
 using namespace filament;
@@ -170,13 +193,74 @@ struct KineFilamentContext {
 
     Material*        defaultMaterial = nullptr;
     Entity           sunLight;
-    void* raylibCtx = nullptr;
-    void* raylibDC  = nullptr;
+
+    // Raylib's GL context, captured at Create() time so we can hand control
+    // back after we've made Filament's own shared context current.
+    //   Windows : raylibCtx = HGLRC,          raylibDC = HDC
+    //   macOS   : raylibCtx = CGLContextObj   (no separate "DC" concept)
+    //   Linux   : raylibCtx = GLXContext,     raylibDisplay = Display*,
+    //             raylibDrawable = GLXDrawable
+    void*         raylibCtx      = nullptr;
+    void*         raylibDC       = nullptr;
+    void*         raylibDisplay  = nullptr;
+    unsigned long raylibDrawable = 0;
+
     void* filamentCtx = nullptr;
     math::float4 skyColor = {0.53f, 0.81f, 0.92f, 1.0f};
 
     std::vector<KineDrawCall> drawCalls;
 };
+
+// ---------------------------------------------------------------------------
+// Platform GL-context save/restore helpers.
+//
+// Create() needs to: (1) remember raylib's current context, (2) drop it so
+// Filament's Engine::create() can set up its own shared context cleanly, and
+// (3) hand control back to raylib once Filament is initialized. Destroy()
+// needs to (1) again on the way out so Filament's teardown calls land on the
+// right context.
+// ---------------------------------------------------------------------------
+
+static void kine_capture_raylib_context(KineFilamentContext* ctx)
+{
+#if defined(_WIN32)
+    ctx->raylibCtx = (void*)wglGetCurrentContext();
+    ctx->raylibDC  = (void*)wglGetCurrentDC();
+#elif defined(__APPLE__)
+    ctx->raylibCtx = (void*)CGLGetCurrentContext();
+#else
+    ctx->raylibCtx      = (void*)glXGetCurrentContext();
+    ctx->raylibDisplay  = (void*)glXGetCurrentDisplay();
+    ctx->raylibDrawable = (unsigned long)glXGetCurrentDrawable();
+#endif
+}
+
+static void kine_release_current_gl_context()
+{
+#if defined(_WIN32)
+    wglMakeCurrent(nullptr, nullptr);
+#elif defined(__APPLE__)
+    CGLSetCurrentContext(nullptr);
+#else
+    Display* dpy = glXGetCurrentDisplay();
+    if (dpy) glXMakeCurrent(dpy, None, nullptr);
+#endif
+}
+
+static void kine_restore_raylib_context(KineFilamentContext* ctx)
+{
+    if (!ctx || !ctx->raylibCtx) return;
+#if defined(_WIN32)
+    wglMakeCurrent((HDC)ctx->raylibDC, (HGLRC)ctx->raylibCtx);
+#elif defined(__APPLE__)
+    CGLSetCurrentContext((CGLContextObj)ctx->raylibCtx);
+#else
+    if (ctx->raylibDisplay)
+        glXMakeCurrent((Display*)ctx->raylibDisplay,
+                        (GLXDrawable)ctx->raylibDrawable,
+                        (GLXContext)ctx->raylibCtx);
+#endif
+}
 
 // ---------------------------------------------------------------------------
 // Embedded minimal unlit+texture material bytes.
@@ -261,8 +345,8 @@ static KineMesh* buildCube()
     Face faces[6] = {
         { 0, 0,  1,  1, 0, 0,  0, 1, 0}, // +Z
         { 0, 0, -1, -1, 0, 0,  0, 1, 0}, // -Z
-        { 1, 0,  0,  0, 0, 1,  0, 1, 0}, // +X
-        {-1, 0,  0,  0, 0,-1,  0, 1, 0}, // -X
+        { 1, 0,  0,  0, 1, 0,  0, 0, 1}, // +X
+        {-1, 0,  0,  0, 1, 0,  0, 0,-1}, // -X
         { 0, 1,  0,  1, 0, 0,  0, 0,-1}, // +Y
         { 0,-1,  0,  1, 0, 0,  0, 0, 1}, // -Y
     };
@@ -466,10 +550,9 @@ KineFilamentContext* Kine_Filament_Create(int width, int height)
     if (!sharedGLContext) return nullptr;
 
     auto* ctx = new KineFilamentContext();
-    ctx->raylibCtx = sharedGLContext;
-    ctx->raylibDC  = (void*)wglGetCurrentDC();
+    kine_capture_raylib_context(ctx);
 
-    wglMakeCurrent(nullptr, nullptr);
+    kine_release_current_gl_context();
 
     ctx->engine = Engine::create(backend::Backend::OPENGL, nullptr, sharedGLContext);
     if (!ctx->engine) { delete ctx; return nullptr; }
@@ -477,7 +560,7 @@ KineFilamentContext* Kine_Filament_Create(int width, int height)
     // Re-bind raylib's context now that the engine (and its internal shared
     // context) exist, so our own raw GL calls below have something to work
     // against.
-    wglMakeCurrent((HDC)ctx->raylibDC, (HGLRC)ctx->raylibCtx);
+    kine_restore_raylib_context(ctx);
 
     kine_init_gl_ext();
 
@@ -528,7 +611,7 @@ KineFilamentContext* Kine_Filament_Create(int width, int height)
         return nullptr;
     }
 
-    wglMakeCurrent((HDC)ctx->raylibDC, (HGLRC)ctx->raylibCtx);
+    kine_restore_raylib_context(ctx);
 
     fprintf(stderr, "[Kine] Create succeeded, colorTextureId=%u\n", ctx->colorTextureId);
     return ctx;
@@ -543,8 +626,7 @@ void Kine_Filament_Destroy(KineFilamentContext* ctx)
 {
     if (!ctx) return;
 
-    if (ctx->raylibDC && ctx->raylibCtx)
-        wglMakeCurrent((HDC)ctx->raylibDC, (HGLRC)ctx->raylibCtx);
+    kine_restore_raylib_context(ctx);
 
     if (ctx->engine) {
         for (auto& dc : ctx->drawCalls) {
