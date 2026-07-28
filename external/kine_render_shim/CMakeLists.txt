@@ -41,6 +41,21 @@ if(NOT TARGET raylib)
                 LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
                 ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
             )
+
+            if(UNIX AND NOT APPLE)
+                set_target_properties(raylib PROPERTIES
+                    VERSION ""
+                    SOVERSION ""
+                )
+            endif()
+        endif()
+
+        if(TARGET raylib)
+            set_target_properties(raylib PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+                LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+                ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+            )
         endif()
     else()
         find_package(raylib REQUIRED)
