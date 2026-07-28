@@ -626,6 +626,10 @@ module.lib = {
 		return raylib.lib.GetCharPressed()
 	end,
 
+	LoadImageFromMemory = function(arg1, arg2, arg3)
+		return raylib.lib.LoadImageFromMemory(arg1, arg2, arg3)
+	end,
+
 	DrawCircleV = function(center, radius, color)
 		return raylib.lib.DrawCircleV(center, radius, color)
 	end,

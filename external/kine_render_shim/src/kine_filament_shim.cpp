@@ -44,6 +44,8 @@ struct RenderTexture {
 #include <math/mat4.h>
 
 #include "rlgl.h"
+#include <geometry/SurfaceOrientation.h>
+using namespace filament::geometry;
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -164,12 +166,14 @@ struct KineFilamentContext {
     unsigned int     readFboId        = 0;
     int              width  = 0;
     int              height = 0;
+    Texture* whiteTex = nullptr;
 
     Material*        defaultMaterial = nullptr;
     Entity           sunLight;
     void* raylibCtx = nullptr;
     void* raylibDC  = nullptr;
     void* filamentCtx = nullptr;
+    math::float4 skyColor = {0.53f, 0.81f, 0.92f, 1.0f};
 
     std::vector<KineDrawCall> drawCalls;
 };
@@ -359,17 +363,42 @@ static void uploadMesh(KineMesh* m, Engine* engine)
     size_t vsize = m->vertices.size() * sizeof(KineVertex);
     size_t isize = m->indices.size()  * sizeof(uint16_t);
 
-    m->vb = VertexBuffer::Builder()  
-        .vertexCount((uint32_t)m->vertices.size())  
-        .bufferCount(1)  
-        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, offsetof(KineVertex, px), sizeof(KineVertex))  
-        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, offsetof(KineVertex, u), sizeof(KineVertex))  
+    // --- compute packed tangent frames from the normals we already have ---
+    std::vector<math::float3> normals(m->vertices.size());
+    for (size_t i = 0; i < m->vertices.size(); ++i)
+        normals[i] = { m->vertices[i].nx, m->vertices[i].ny, m->vertices[i].nz };
+
+    std::vector<math::short4> quats(m->vertices.size());
+    auto orientation = SurfaceOrientation::Builder()
+        .vertexCount((uint32_t)m->vertices.size())
+        .normals(normals.data())
+        .build();
+    orientation->getQuats(quats.data(), (uint32_t)m->vertices.size());
+
+    delete orientation;
+
+    m->vb = VertexBuffer::Builder()
+        .vertexCount((uint32_t)m->vertices.size())
+        .bufferCount(2)   // buffer 0 = interleaved pos/uv, buffer 1 = tangents
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, offsetof(KineVertex, px), sizeof(KineVertex))
+        .attribute(VertexAttribute::UV0,      0, VertexBuffer::AttributeType::FLOAT2, offsetof(KineVertex, u),  sizeof(KineVertex))
+        .attribute(VertexAttribute::TANGENTS, 1, VertexBuffer::AttributeType::SHORT4, 0, sizeof(math::short4))
+        .normalized(VertexAttribute::TANGENTS)
         .build(*engine);
 
+    // buffer 0: interleaved position/normal/uv, as before
     void* vcopy = malloc(vsize);
     memcpy(vcopy, m->vertices.data(), vsize);
     m->vb->setBufferAt(*engine, 0,
         VertexBuffer::BufferDescriptor(vcopy, vsize,
+            [](void* buf, size_t, void*){ free(buf); }, nullptr));
+
+    // buffer 1: packed tangent-frame quaternions
+    size_t qsize = quats.size() * sizeof(math::short4);
+    void* qcopy = malloc(qsize);
+    memcpy(qcopy, quats.data(), qsize);
+    m->vb->setBufferAt(*engine, 1,
+        VertexBuffer::BufferDescriptor(qcopy, qsize,
             [](void* buf, size_t, void*){ free(buf); }, nullptr));
 
     m->ib = IndexBuffer::Builder()
@@ -440,16 +469,15 @@ KineFilamentContext* Kine_Filament_Create(int width, int height)
     ctx->raylibCtx = sharedGLContext;
     ctx->raylibDC  = (void*)wglGetCurrentDC();
 
-    ctx->engine = Engine::create(backend::Backend::OPENGL, nullptr, nullptr);
+    wglMakeCurrent(nullptr, nullptr);
+
+    ctx->engine = Engine::create(backend::Backend::OPENGL, nullptr, sharedGLContext);
     if (!ctx->engine) { delete ctx; return nullptr; }
 
-    ctx->filamentCtx = (void*)wglGetCurrentContext();
-
-    wglMakeCurrent(nullptr, nullptr);
-    BOOL ok = wglShareLists((HGLRC)ctx->raylibCtx, (HGLRC)ctx->filamentCtx);
-    fprintf(stderr, "[Kine] wglShareLists: %s\n", ok ? "OK" : "FAILED");
-
-    wglMakeCurrent((HDC)ctx->raylibDC, (HGLRC)ctx->filamentCtx);
+    // Re-bind raylib's context now that the engine (and its internal shared
+    // context) exist, so our own raw GL calls below have something to work
+    // against.
+    wglMakeCurrent((HDC)ctx->raylibDC, (HGLRC)ctx->raylibCtx);
 
     kine_init_gl_ext();
 
@@ -467,19 +495,29 @@ KineFilamentContext* Kine_Filament_Create(int width, int height)
     ctx->view->setPostProcessingEnabled(false);
 
     Renderer::ClearOptions clearOptions;
-    clearOptions.clearColor = {1.0f, 0.0f, 0.0f, 1.0f};
+    clearOptions.clearColor = ctx->skyColor;
     clearOptions.clear = true;
     ctx->renderer->setClearOptions(clearOptions);
 
     ctx->defaultMaterial = buildDefaultMaterial(ctx->engine);
 
+    static const uint8_t whitePixel[4] = {255, 255, 255, 255};
+    ctx->whiteTex = Texture::Builder()
+        .width(1).height(1).levels(1)
+        .format(Texture::InternalFormat::RGBA8)
+        .build(*ctx->engine);
+
+    Texture::PixelBufferDescriptor pb(
+        whitePixel, 4, Texture::Format::RGBA, Texture::Type::UBYTE);
+    ctx->whiteTex->setImage(*ctx->engine, 0, std::move(pb));
+
     ctx->sunLight = EntityManager::get().create();
     LightManager::Builder(LightManager::Type::SUN)
         .color(Color::toLinear<ACCURATE>({1.0f, 0.98f, 0.95f}))
         .intensity(100000.0f)
-        .direction({0.0f, -1.0f, -0.5f})
+        .direction({0.5f, -1.0f, 0.8f})
         .sunAngularRadius(1.9f)
-        .castShadows(false)
+        .castShadows(true)
         .build(*ctx->engine, ctx->sunLight);
     ctx->scene->addEntity(ctx->sunLight);
 
@@ -576,7 +614,7 @@ void Kine_Filament_RenderFrame(KineFilamentContext* ctx)
 
     if (ctx->renderer->beginFrame(ctx->swapChain)) {
         Renderer::ClearOptions clearOptions;
-        clearOptions.clearColor = {1.0f, 0.0f, 0.0f, 1.0f};
+        clearOptions.clearColor = ctx->skyColor;
         clearOptions.clear = true;
         ctx->renderer->setClearOptions(clearOptions);
 
@@ -587,7 +625,7 @@ void Kine_Filament_RenderFrame(KineFilamentContext* ctx)
     }
     
     ctx->engine->flushAndWait();
-    
+
     for (auto& dc : ctx->drawCalls) {
         ctx->scene->remove(dc.entity);
         ctx->engine->destroy(dc.entity);
@@ -733,22 +771,45 @@ void Kine_Filament_DrawMesh(
     float r, float g, float b,
     KineFilamentTex*    tex,
     float               transparency,
+    float               roughness,
+    float               metallic,
     float*              mat4)
 {
     if (!ctx || !mesh || !mat4) return;
     if (!ctx->defaultMaterial) return;
 
     auto* m  = (KineMesh*)mesh;
-    // Build a per-draw material instance.
     MaterialInstance* mi = ctx->defaultMaterial->createInstance();
     mi->setParameter("baseColor", RgbaType::LINEAR, math::float4{r, g, b, 1.0f - transparency});
+    mi->setParameter("roughness", roughness);
+    mi->setParameter("metallic",  metallic);
 
-    // Convert raylib's column-major float[16] to Filament's mat4f.
+    static const TextureSampler sampler(
+        TextureSampler::MinFilter::LINEAR_MIPMAP_LINEAR,
+        TextureSampler::MagFilter::LINEAR,
+        TextureSampler::WrapMode::REPEAT);
+
+    if (tex) {
+        auto* th = (KineTexHandle*)tex;
+        mi->setParameter("baseColorMap", th->tex, sampler);
+        mi->setParameter("hasTexture", 1.0f);
+    } else {
+        mi->setParameter("baseColorMap", ctx->whiteTex, sampler);
+        mi->setParameter("hasTexture", 0.0f);
+    }
+
+    // Raylib's Matrix C struct is declared with fields in this order in memory:
+    //   m0, m4, m8, m12,  m1, m5, m9, m13,  m2, m6, m10, m14,  m3, m7, m11, m15
+    // So buffer offset [0]=m0, [1]=m4, [2]=m8, [3]=m12 (translation X!), etc.
+    // Translation (m12, m13, m14) lives at buffer positions [3], [7], [11].
+    // Filament mat4f(col0,col1,col2,col3) takes columns in standard OpenGL order
+    // where col3 = translation. We must stride every 4 elements to reconstruct
+    // each column correctly from raylib's interleaved memory layout.
     math::mat4f transform(
-        math::float4{mat4[0],  mat4[1],  mat4[2],  mat4[3]},
-        math::float4{mat4[4],  mat4[5],  mat4[6],  mat4[7]},
-        math::float4{mat4[8],  mat4[9],  mat4[10], mat4[11]},
-        math::float4{mat4[12], mat4[13], mat4[14], mat4[15]}
+        math::float4{mat4[0], mat4[4], mat4[8],  mat4[12]},  // col 0: m0,m1,m2,m3
+        math::float4{mat4[1], mat4[5], mat4[9],  mat4[13]},  // col 1: m4,m5,m6,m7
+        math::float4{mat4[2], mat4[6], mat4[10], mat4[14]},  // col 2: m8,m9,m10,m11
+        math::float4{mat4[3], mat4[7], mat4[11], mat4[15]}   // col 3: m12,m13,m14,m15 (translation)
     );
 
     Entity entity = EntityManager::get().create();
@@ -759,8 +820,8 @@ void Kine_Filament_DrawMesh(
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
                   m->vb, m->ib, 0, m->indexCount)
         .culling(false)
-        .receiveShadows(false)
-        .castShadows(false)
+        .receiveShadows(true)
+        .castShadows(true)
         .build(*ctx->engine, entity);
 
     auto& tcm = ctx->engine->getTransformManager();

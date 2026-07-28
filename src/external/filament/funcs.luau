@@ -67,6 +67,8 @@ export type Fns = {
 		b: float,
 		tex: FFIPointer,
 		transparency: float,
+		roughness: float,
+		metallic: float,
 		mat4: FFIPointer
 	) -> (),
 }
@@ -195,6 +197,8 @@ local funcs = {
 			ffi.types.float, -- r, g, b
 			ffi.types.pointer, -- tex (nullable)
 			ffi.types.float, -- transparency
+			ffi.types.float, -- roughness
+			ffi.types.float, -- metallic
 			ffi.types.pointer, -- mat4 float[16]
 		},
 	},

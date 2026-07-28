@@ -73,7 +73,13 @@ Workspace.InitRenderer = function(renderer, signal, game)
 				local mesh = meshMap[object.Shape.Name] and meshMap[object.Shape.Name][1] or meshMap["block"][1]
 				local material = defMaterial
 				--skybox.Draw(vector.create(0, 0, 0), 1)
-				renderer.MeshPool.DrawMesh(mesh, material, matrix)
+				renderer.MeshPool.DrawMesh({
+					material = material,
+					mesh = mesh,
+					matrix = matrix,
+					color = object.Color,
+					transparency = object.Transparency,
+				})
 			end
 		end
 	end)

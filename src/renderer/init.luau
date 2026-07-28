@@ -52,7 +52,7 @@ function KiRend.new(config: KiRendConf)
 
 	local useVsync = true
 	local useWindowMSAA = FlagExists("windowmsaa")
-	local windowFlags = bit32.bor(const.ConfigFlags.FLAG_WINDOW_RESIZABLE, const.ConfigFlags.FLAG_INTERLACED_HINT)
+	local windowFlags = bit32.bor(const.ConfigFlags.FLAG_WINDOW_RESIZABLE)
 	if useWindowMSAA then
 		windowFlags = bit32.bor(windowFlags, const.ConfigFlags.FLAG_MSAA_4X_HINT)
 		config.max3DRenderPixels = 3240000
@@ -390,7 +390,14 @@ function KiRend.new(config: KiRendConf)
 		},
 
 		MeshPool = {
-			DrawMesh = function(mesh, material, matrix, begin, End)
+			DrawMesh = function(data)
+				local mesh = data.mesh
+				local material = data.material
+				local color = data.color
+				local matrix = data.matrix
+				local begin = data.begin
+				local transparency = data.transparency
+
 				draw_calls_count = draw_calls_count + 1
 				local drawCall = renderer_draw_calls[draw_calls_count]
 				if not drawCall then
@@ -399,9 +406,11 @@ function KiRend.new(config: KiRendConf)
 				end
 				drawCall.mesh = mesh
 				drawCall.material = material
+				drawCall.Color = color
 				drawCall.matrix = matrix
+				drawCall.Transparency = transparency
 				drawCall.Begin = begin
-				drawCall.End = End
+				drawCall.End = nil
 			end,
 			DrawMeshInstanced = function(mesh, material, instances, count, begin, End, unloadAfterFrame)
 				instanced_draw_calls_count = instanced_draw_calls_count + 1
@@ -847,7 +856,19 @@ function KiRend.new(config: KiRendConf)
 					if type(rawMatrix) == "table" and rawMatrix.getraw then
 						rawMatrix = rawMatrix:getraw()
 					end
-					filament.lib.Kine_Filament_DrawMesh(ctx, filamentCube, 1.0, 0.5, 0.1, nil, 0.0, rawMatrix)
+
+					filament.lib.Kine_Filament_DrawMesh(
+						ctx,
+						filamentCube,
+						drawCall.Color.R,
+						drawCall.Color.G,
+						drawCall.Color.B,
+						nil,
+						drawCall.Transparency,
+						0.5,
+						0.5,
+						rawMatrix
+					)
 
 					if drawCall.End then
 						drawCall.End()
@@ -1159,7 +1180,6 @@ function KiRend.new(config: KiRendConf)
 
 		rendererObject:Render3D()
 		filament.lib.Kine_Filament_RenderFrame(ctx)
-		filament.lib.Kine_Filament_DebugPrintPixel(ctx)
 
 		local srcRec = structs.Rectangle:new({ x = 0, y = 0, width = texW, height = -texH })
 		local dstRec =

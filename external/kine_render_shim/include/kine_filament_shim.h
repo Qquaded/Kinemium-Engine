@@ -44,12 +44,15 @@ KINE_API void Kine_Filament_DebugPrintPixel(KineFilamentContext* ctx);
 KINE_API KineFilamentTex* Kine_Filament_CreateTex(KineFilamentContext* ctx, void* rlTexturePtr);
 KINE_API void             Kine_Filament_DestroyTex(KineFilamentContext* ctx, KineFilamentTex* tex);
 
+
 KINE_API void Kine_Filament_DrawMesh(
     KineFilamentContext* ctx,
     KineFilamentMesh*   mesh,
     float r, float g, float b,
     KineFilamentTex*    tex,
     float               transparency,
+    float               roughness,
+    float               metallic,
     float*              mat4);
 
 KINE_API void Kine_Filament_ReadPixels(KineFilamentContext* ctx, void* outPixels);
