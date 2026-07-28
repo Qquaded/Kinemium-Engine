@@ -137,14 +137,14 @@ This lets you add mods to your game, and you can set the environment of your sai
 Ki-nem-yum!!
 
 # This project uses
-- Raylib
-- Manifold
-- GameNetworkingSockets
-- Box2D
-- Jolt Physics
-- Native File Dialog (NFD)
+- [Raylib](https://github.com/raysan5/raylib)
+- [Manifold](https://github.com/elalish/manifold)
+- [GameNetworkingSockets](https://github.com/valvesoftware/gamenetworkingsockets)
+- [Box2D](https://github.com/erincatto/box2d)
+- [Jolt Physics](https://github.com/amerkoleci/joltc)
+- [Native File Dialog](https://github.com/btzy/nativefiledialog-extended)
+- [Filament](https://github.com/google/filament)
 - and most importantly.. Zune
-kv1.10.7
-
+- 
 # Do you like cats?
 <img width="444" height="200" alt="Silly Cat.... Hello.... Random Person...." src="https://github.com/user-attachments/assets/21672df2-d59e-4a6d-aee1-3b89c9263627" />
