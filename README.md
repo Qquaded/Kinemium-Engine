@@ -29,55 +29,67 @@ or connected to Roblox Corporation. Roblox is a trademark of Roblox Corporation
 
 # Features
 ## Datatypes
-- Axes
-- BoundingBox
-- BrickColor
-- CFrame
-- Color3
-- Color4
-- ColorSequence
-- ColorSequenceKeypoint
-- CustomPhysicalProperties
-- NumberSequence
-- NumberSequenceKeypoint
-- Random
-- Ray
-- Region
-- Spring
-- UDim
-- UDim2
-- Vector2
-- Vector3
-- Enum
-- Faces / NormalId
-- Rect / Region3
-- And a whole lot more..
+<details>
+  <summary>Click to expand/collapse all of Kinemium's Datatypes</summary>
+
+  - Axes
+  - BoundingBox
+  - BrickColor
+  - CFrame
+  - Color3
+  - Color4
+  - ColorSequence
+  - ColorSequenceKeypoint
+  - CustomPhysicalProperties
+  - NumberSequence
+  - NumberSequenceKeypoint
+  - Random
+  - Ray
+  - Region
+  - Spring
+  - UDim
+  - UDim2
+  - Vector2
+  - Vector3
+  - Enum
+  - Faces / NormalId
+  - Rect / Region3
+  - And a whole lot more..
+</details>
 
 ## Default Services
-- Debris
-- GuiSelectionService
-- HttpService
-- Lighting
-- LogService
-- Players
-- ReplicatedStorage
-- RunService
-- Selection
-- ServerScriptService
-- ServerStorage
-- StarterGui
-- TweenService
-- UserInputService
-- Workspace
+<details>
+  <summary>Click to expand/collapse all of Kinemium's Default Services</summary>
+
+  - Debris
+  - GuiSelectionService
+  - HttpService
+  - Lighting
+  - LogService
+  - Players
+  - ReplicatedStorage
+  - RunService
+  - Selection
+  - ServerScriptService
+  - ServerStorage
+  - StarterGui
+  - TweenService
+  - UserInputService
+  - Workspace
+</details>
 
 ## Kinemium Custom Services
-- KinemiumFFIService
-- KinemiumFontService
-- KinemiumIconLoader
-- KinemiumModService
-- KinemiumPhysicsService
-- KinemiumRaylib
-- KinemiumShaderService
+<details>
+  <summary>Click to expand/collapse all of Kinemium's Custom Services</summary>
+
+  - KinemiumFFIService
+  - KinemiumFontService
+  - KinemiumIconLoader
+  - KinemiumModService
+  - KinemiumPhysicsService
+  - KinemiumRaylib
+  - KinemiumShaderService
+</details>
 
 # That's cool.. But how do I use this?
 You can check out the guide here:
