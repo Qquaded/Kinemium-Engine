@@ -45,7 +45,6 @@ return function(adapter: typeof(require("@raylib").lib), structs, game, theme)
 		shadowSize = vector.create(buffer.readi32(shadowTexture, 4), buffer.readi32(shadowTexture, 8))
 	end
 
-	-- Traffic light button layout constants
 	local BTN_RADIUS = 6
 	local BTN_SPACING = 8
 	local BTN_LEFT = 12
@@ -55,7 +54,6 @@ return function(adapter: typeof(require("@raylib").lib), structs, game, theme)
 	local STATUSBAR_H = 18
 	local SEP_H = 1
 
-	-- Traffic light colours
 	local TL_RED = Color3.new(0.988, 0.369, 0.333)
 	local TL_YEL = Color3.new(0.988, 0.733, 0.173)
 	local TL_GRN = Color3.new(0.259, 0.808, 0.388)

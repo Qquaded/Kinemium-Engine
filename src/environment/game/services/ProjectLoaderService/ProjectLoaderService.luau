@@ -11,6 +11,7 @@ local toml = zune.serde.toml
 local fs = zune.fs
 local projectsFile = "./src/projects.toml"
 local zembed = require("@zembed")
+local currentProject
 
 if zembed.IsEmbedded() then
 	projectsFile = "./projects.toml"
@@ -172,6 +173,7 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal, datamode
 				fs.makeDir(path .. "/gui", true)
 				fs.makeDir(path .. "/objects", true)
 				fs.makeDir(path .. "/.vscode", true)
+				fs.makeDir(path .. "/scenes", true)
 
 				fs.writeFile(
 					path .. "/.vscode/settings.json",
@@ -202,13 +204,27 @@ ProjectLoaderService.InitRenderer = function(renderer, renderer_signal, datamode
 			return encoded
 		end,
 
+		CreateFile = function(folder, file, body)
+			local projectPath = datamodel:GetMetadata("ProjectPath")
+			assert(projectPath, "ProjectPath metadata is missing")
+
+			local dir = fs.path.join(projectPath, folder)
+			local filePath = fs.path.join(dir, file)
+
+			fs.makeDir(dir, true)
+			fs.createFile(filePath)
+			fs.writeFile(filePath, body)
+
+			return filePath
+		end,
+
 		LoadProject = function(projectPath, conf: { manifest: ProjectConfig })
 			local ProjectSyncService = datamodel:GetService("ProjectSyncService")
 			local PluginLoader = datamodel:GetService("PluginLoader")
 			local loadedPlugins = PluginLoader.GetLoadedPlugins()
 
 			datamodel:SetMetadata("ProjectManif", conf.manifest)
-
+			datamodel:SetMetadata("ProjectPath", projectPath)
 			-- not sure how to separate backups from the syncing function, maybe later
 			if conf.manifest.sync.live == true then
 				ProjectSyncService:StartSyncing(projectPath)

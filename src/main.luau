@@ -109,24 +109,28 @@ if zembed.IsEmbedded() then
 	_G.ZUNE_EMBEDDED = `./zune{zune.platform.os == "windows" and ".exe" or zune.platform.os == "macos" and ".app"}`
 end
 
+local function timestamp()
+	return os.date("%H:%M:%S")
+end
+
 _G.warn = function(...)
-	print("[\x1b[33mWARN\x1b[0m]", ...)
+	print("\x1b[90m[" .. timestamp() .. "]\x1b[0m [\x1b[33mWARN\x1b[0m]:", ...)
 end
 
 _G.log = function(...)
-	print("[\x1b[94mLOG\x1b[0m]", ...)
+	print("\x1b[90m[" .. timestamp() .. "]\x1b[0m [\x1b[94mINFO\x1b[0m]:", ...)
 end
 
 _G.runtime = function(...)
-	print("[\x1b[91mRUNTIME\x1b[0m]", ...)
+	print("\x1b[90m[" .. timestamp() .. "]\x1b[0m [\x1b[91mRUNTIME\x1b[0m]:", ...)
 end
 
 _G.evalError = function(...)
-	print("[\x1b[91mERROR\x1b[0m]", ...)
+	print("\x1b[90m[" .. timestamp() .. "]\x1b[0m [\x1b[91mERROR\x1b[0m]:", ...)
 end
 
 _G.iodebug = function(...)
-	print("\x1b[38;5;208m[DEBUG]\x1b[0m", ...)
+	print("\x1b[90m[" .. timestamp() .. "]\x1b[0m [\x1b[38;5;208mDEBUG\x1b[0m]:", ...)
 end
 
 _G.task = zune.task
@@ -311,6 +315,7 @@ kilang.renderer = renderer
 local Kinemium_env = require("./environment/get")
 
 local CEnv = kilang:init(Kinemium_camera, Kinemium_env)
+print("DEBUG kilang.env.print exists:", kilang.env.print ~= nil, "warn exists:", kilang.env.warn ~= nil)
 
 local game = kilang.env.game
 kilang.env.FlagExists = FlagExists
@@ -403,6 +408,19 @@ local function loadInternals()
 				local threadid, success, result, f, n = kilang:execute(code, {
 					SecurityCapabilities = Enum.SecurityCapabilities.Internals,
 					StackId = path,
+				}, {
+					require = function(path)
+						local success, result = pcall(function()
+							return require(path)
+						end)
+
+						if success then
+							return result
+						else
+							print(`Got result when trying to require path {path}: {result}`)
+							return {}
+						end
+					end,
 				})
 
 				if not success and result ~= nil then

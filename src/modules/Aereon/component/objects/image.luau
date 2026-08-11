@@ -15,6 +15,14 @@ return function(objects, data, raylib)
 		config.texture = tex
 	end
 
+	wrapper.get = function(c)
+		return config[c]
+	end
+
+	wrapper.get_rect = function()
+		return config.obj_rect
+	end
+
 	wrapper.render = function(dt)
 		if not config.texture then
 			return
@@ -27,7 +35,7 @@ return function(objects, data, raylib)
 			raylib.lib.DrawTexturePro(
 				config.texture.texture,
 				structs.Rectangle:new({ x = 0, y = 0, width = config.texture.x, height = config.texture.y }),
-				rect:translate(r),
+				rect.translate(r), -- was rect:translate(r)
 				vector.create(0, 0),
 				0,
 				raylib.const.WHITE

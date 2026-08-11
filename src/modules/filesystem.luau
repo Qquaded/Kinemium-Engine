@@ -88,6 +88,22 @@ function filesystem.walk(path, callback)
 	return true
 end
 
+function filesystem.entries(path)
+	return zunefs.entries(path)
+end
+
+function filesystem.makeDir(path)
+	zunefs.makeDir(path)
+end
+
+function filesystem.removeDir(path)
+	zunefs.deleteDir(path)
+end
+
+function filesystem.remove(path)
+	zunefs.deleteFile(path)
+end
+
 function filesystem.createFolder(path, name)
 	local combined = path .. "/" .. name
 	if not filesystem.exists(combined) then
@@ -104,12 +120,24 @@ function filesystem.createFile(path, name, data)
 	return combined
 end
 
+function filesystem.rename(oldPath: string, newPath: string, overwrite: boolean?)
+	zunefs.move(oldPath, newPath, overwrite)
+end
+
+function filesystem.kind(path)
+	return zunefs.stat(path).kind
+end
+
 function filesystem.exists(path)
 	return zunefs.stat(path).kind ~= "none"
 end
 
 function filesystem.read(file)
 	return zunefs.readFile(file)
+end
+
+function filesystem.write(path, data)
+	zunefs.writeFile(path, data)
 end
 
 return filesystem

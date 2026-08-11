@@ -1,7 +1,9 @@
 {
     "aliases": {
         "Vector3": "./src/environment/datatypes/Vector3",
+        "Pipeline": "./src/environment/datatypes/Pipeline",
         "Color4": "./src/environment/datatypes/Color4",
+        "Font": "./src/environment/datatypes/Font",
         "BoundingBox": "./src/environment/datatypes/BoundingBox",
         "NumberSequenceKeypoint": "./src/environment/datatypes/NumberSequenceKeypoint",
         "NumberSequence": "./src/environment/datatypes/NumberSequence",
@@ -10,6 +12,7 @@
         "Ray": "./src/environment/datatypes/Ray",
         "UDim": "./src/environment/datatypes/UDim",
         "FileWalker": "./src/modules/filewalker",
+        "Immco": "./src/modules/Immco",
         "dllLib": "./src/libs/dllLib",
         "Navmesh": "./src/libs/NavMesh",
         "ColorSequenceKeypoint": "./src/environment/datatypes/ColorSequenceKeypoint",
@@ -25,6 +28,7 @@
         "repr": "./src/modules/repr",
         "Color3": "./src/environment/datatypes/Color3",
         "Humanoid": "./src/environment/class/list/Humanoid",
+        "ScreenGui": "./src/environment/class/list/ScreenGui",
         "assetsaver": "./src/modules/assetsaver",
         "syntax_highlighter": "./src/modules/Aereon/ide/syntax",
         "zip": "./src/modules/zip",
@@ -90,6 +94,7 @@
         "LayoutEngine": "./src/modules/LayoutEngine",
         "Camera": "./src/environment/class/list/Camera",
         "Part": "./src/environment/class/list/Part",
+        "StudioTheme": "./src/environment/class/list/StudioTheme",
         "ParticleEmitter": "./src/environment/class/list/ParticleEmitter",
         "raycast": "./src/modules/raycast",
         "syntax": "./src/modules/Aereon/ide/syntax",
@@ -153,5 +158,10 @@
         "SerialWorker": "./src/environment/game/services/SerializationService/_worker",
         "SerialEncoder": "./src/environment/game/services/SerializationService/_encoder",
         "InputActionService": "./src/environment/game/services/InputActionService/InputActionService",
+
+        "kilang_sh": "./src/modules/Aereon/ide/languages/luau/syntax",
+        "kilang_beautifier": "./src/modules/Aereon/ide/languages/luau/beautifier",
+        "kilang_completions": "./src/modules/Aereon/ide/languages/luau/k_completions",
+        "kilang_autocomplete": "./src/modules/Aereon/ide/languages/luau/autocomplete"
     }
 }

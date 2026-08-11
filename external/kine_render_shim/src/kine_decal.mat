@@ -1,0 +1,29 @@
+material {
+    name : "KineDefault",
+    shadingModel : lit,
+    blending : transparent,
+    depthWrite : false,
+    requires : [ uv0 ],
+    parameters : [
+        { type : float4,   name : baseColor },
+        { type : float,    name : roughness },
+        { type : float,    name : metallic },
+        { type : float,    name : hasTexture },
+        { type : sampler2d, name : baseColorMap },
+        { type : float2,   name : uvScale },
+        { type : float2,   name : uvOffset }
+    ]
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        vec4 color = materialParams.baseColor;
+        if (materialParams.hasTexture > 0.5) {
+            vec2 uv = getUV0() * materialParams.uvScale + materialParams.uvOffset;
+            color *= texture(materialParams_baseColorMap, uv);
+        }
+        material.baseColor = color;
+        material.roughness = materialParams.roughness;
+        material.metallic  = materialParams.metallic;
+    }
+}

@@ -69,6 +69,8 @@ function KiRend.new(config: KiRendConf)
 		error("Failed to initialize window: " .. tostring(err))
 	end
 
+	adapter.lib.InitAudioDevice()
+
 	if lib.WindowShouldClose() == 0 then
 		lib.BeginDrawing()
 		lib.ClearBackground(const.BLACK)
@@ -242,6 +244,9 @@ function KiRend.new(config: KiRendConf)
 		TDRT = nil,
 		UIRT = nil,
 
+		FilamentContext = ctx,
+		Filament = filament,
+
 		DrawFps = true,
 		ShowPerfOverlay = false,
 		PerfStats = perf_stats,
@@ -340,6 +345,10 @@ function KiRend.new(config: KiRendConf)
 			end,
 		},
 
+		CreateFilamentMaterial = function(image)
+			return filament.lib.Kine_Filament_CreateTex(ctx, image)
+		end,
+
 		Font = {
 			SetResolver = function(resolver)
 				renderer_font_resolver = resolver
@@ -412,7 +421,12 @@ function KiRend.new(config: KiRendConf)
 				drawCall.Metallic = data.metallic
 				drawCall.Roughness = data.roughness
 				drawCall.Begin = begin
+				drawCall.CastShadow = data.CastShadow
+				drawCall.RecieveShadow = data.RecieveShadow
+				drawCall.Culling = data.Culling
+				drawCall.MaterialKind = data.MaterialKind
 				drawCall.End = nil
+				drawCall.texture = data.texture
 			end,
 			DrawMeshInstanced = function(mesh, material, instances, count, begin, End, unloadAfterFrame)
 				instanced_draw_calls_count = instanced_draw_calls_count + 1
@@ -859,17 +873,22 @@ function KiRend.new(config: KiRendConf)
 						rawMatrix = rawMatrix:getraw()
 					end
 
-					filament.lib.Kine_Filament_DrawMesh(
+					filament.lib.Kine_Filament_DrawMeshEx(
 						ctx,
 						filamentCube,
+						drawCall.MaterialKind or 0, -- 0 = default; see KineMaterialKind in the bindings
 						drawCall.Color.R,
 						drawCall.Color.G,
 						drawCall.Color.B,
-						nil,
-						drawCall.Transparency,
-						drawCall.Roughness,
-						drawCall.Metallic,
-						rawMatrix
+						drawCall.Roughness, -- param1
+						drawCall.Metallic, -- param2 (ior for glass/water)
+						1, -- param3 (thickness, glass/water only)
+						0, -- transmission (glass/water only)
+						rawMatrix,
+						true,
+						true,
+						false,
+						drawCall.texture
 					)
 
 					if drawCall.End then
@@ -1181,11 +1200,15 @@ function KiRend.new(config: KiRendConf)
 		lib.ClearBackground(const.BLACK)
 
 		rendererObject:Render3D()
-		filament.lib.Kine_Filament_RenderFrame(ctx)
+		filament.lib.Kine_Filament_RenderFrame(ctx, adapter.lib.GetFrameTime())
 
 		local srcRec = structs.Rectangle:new({ x = 0, y = 0, width = texW, height = -texH })
-		local dstRec =
-			structs.Rectangle:new({ x = 0, y = 0, width = lib.GetRenderWidth(), height = lib.GetRenderHeight() })
+		local dstRec = structs.Rectangle:new({
+			x = 0,
+			y = 0,
+			width = adapter.lib.GetRenderHeight(),
+			height = adapter.lib.GetRenderHeight(),
+		})
 		lib.DrawTexturePro(
 			filamentTexBuf,
 			srcRec,

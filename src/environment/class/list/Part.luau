@@ -30,7 +30,7 @@ local propTable = {
 	Shape = Enum.PartType.Block,
 	CastsShadow = true,
 	Reflectance = 0,
-	Roughness = 0,
+	Roughness = 2,
 	Metallic = 0,
 	Locked = false,
 	Orientation = Vector3.new(0, 0, 0),
@@ -41,6 +41,7 @@ local propTable = {
 	Name = "Part",
 	BaseClass = "BasePart",
 	IsKinematic = false,
+	CastShadow = true,
 
 	_mesh = nil,
 	_manifoldptr = nil,

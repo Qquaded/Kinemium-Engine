@@ -40,11 +40,10 @@ local function clamp(v)
 end
 
 function Color3.new(r, g, b)
-	return setmetatable({
-		R = clamp(r or 0),
-		G = clamp(g or 0),
-		B = clamp(b or 0),
-	}, Color3)
+	r = r or 0
+	g = g or 0
+	b = b or 0
+	return setmetatable({ R = r, G = g, B = b, __type = "Color3" }, Color3)
 end
 
 function Color3:ToHSV()
@@ -121,10 +120,29 @@ function Color3.fromHSV(h, s, v)
 end
 
 function Color3:ToRGB()
+	if self.R == nil or self.G == nil or self.B == nil then
+		print(
+			("Color3:ToRGB called on incomplete Color3 (R=%s, G=%s, B=%s)"):format(
+				tostring(self.R),
+				tostring(self.G),
+				tostring(self.B)
+			),
+			2
+		)
+		return 0, 0, 0
+	end
 	return math.floor(self.R * 255 + 0.5), math.floor(self.G * 255 + 0.5), math.floor(self.B * 255 + 0.5)
 end
 
 function Color3:Lerp(other, alpha)
+	return Color3.new(
+		self.R + (other.R - self.R) * alpha,
+		self.G + (other.G - self.G) * alpha,
+		self.B + (other.B - self.B) * alpha
+	)
+end
+
+function Color3:lerp(other, alpha)
 	return Color3.new(
 		self.R + (other.R - self.R) * alpha,
 		self.G + (other.G - self.G) * alpha,
@@ -146,8 +164,14 @@ end
 
 function Color3.__mul(a, b)
 	if type(a) == "number" then
+		if type(b) ~= "table" or b.R == nil or b.G == nil or b.B == nil then
+			error(("Color3.__mul: invalid Color3 operand (b): %s"):format(tostring(b)), 2)
+		end
 		return Color3.new(a * b.R, a * b.G, a * b.B)
 	elseif type(b) == "number" then
+		if type(a) ~= "table" or a.R == nil or a.G == nil or a.B == nil then
+			error(("Color3.__mul: invalid Color3 operand (a): %s"):format(tostring(a)), 2)
+		end
 		return Color3.new(a.R * b, a.G * b, a.B * b)
 	end
 	error("Color3 * Color3 is not supported (scalar only)")

@@ -1,6 +1,7 @@
 local Instance = require("@Instance")
 local StarterGui = Instance.new("StarterGui")
 local Enum = require("@EnumMap")
+local adapter = require("@RaylibAdapter")
 
 StarterGui:SetProperties({
 	Enabled = true,
@@ -34,8 +35,8 @@ StarterGui.InitRenderer = function(renderer, signal, datamodel)
 							renderer.Pool.Destroy(renderId)
 							return
 						end
-						local dt = renderer.adapter.lib.GetFrameTime()
-						child.render(renderer.adapter.lib, child, dt, renderer.adapter.structs, renderer, datamodel)
+						local dt = renderer.Lib2d.GetFrameTime()
+						child.render(renderer.Lib2d, child, dt, adapter.structs, renderer, datamodel)
 					end, -5)
 					cache[child.UniqueId] = renderId
 				end

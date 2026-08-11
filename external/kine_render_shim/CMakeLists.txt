@@ -9,59 +9,44 @@ option(KINE_VENDOR_RAYLIB "Fetch and build raylib automatically if not already p
 
 set(BUILD_SHARED_LIBS ${KINE_BUILD_SHARED})
 
-# --------------------------------------------------------------
-# raylib dependency
-# --------------------------------------------------------------
-# If this is built as a subdirectory of a bigger project that already
-# defines a `raylib` CMake target elsewhere (e.g. Kinemium-Engine's own
-# external/ setup), reuse that target instead of fetching a second copy.
-if(NOT TARGET raylib)
-    if(KINE_VENDOR_RAYLIB)
-        include(FetchContent)
-        set(FETCHCONTENT_QUIET FALSE)
+include(FetchContent)
 
-        # Pin to a specific raylib release. Bump this yourself when you
-        # want a newer version — using a floating branch here would make
-        # builds non-reproducible.
-        FetchContent_Declare(
-            raylib
-            GIT_REPOSITORY https://github.com/raysan5/raylib.git
-            GIT_TAG        5.5
-            GIT_SHALLOW    TRUE
-        )
+# SDL3
+FetchContent_Declare(
+    SDL3
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG release-3.2.0
+    GIT_SHALLOW TRUE
+)
 
-        set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-        set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
+set(SDL_SHARED ON CACHE BOOL "" FORCE)
+set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 
-        FetchContent_MakeAvailable(raylib)
+FetchContent_MakeAvailable(SDL3)
+install(TARGETS SDL3-shared SDL3_Headers EXPORT raylib-targets)
 
-        if(TARGET raylib)
-            set_target_properties(raylib PROPERTIES
-                RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-                LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-                ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-            )
+# raylib 6.0
+set(PLATFORM SDL CACHE STRING "" FORCE)
+set(USING_VERSION_SDL3 ON CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
 
-            if(UNIX AND NOT APPLE)
-                set_target_properties(raylib PROPERTIES
-                    VERSION ""
-                    SOVERSION ""
-                )
-            endif()
-        endif()
+FetchContent_Declare(
+    raylib
+    GIT_REPOSITORY https://github.com/raysan5/raylib.git
+    GIT_TAG 6.0
+    GIT_SHALLOW TRUE
+)
 
-        if(TARGET raylib)
-            set_target_properties(raylib PROPERTIES
-                RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-                LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-                ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-            )
-        endif()
-    else()
-        find_package(raylib REQUIRED)
-    endif()
-endif()
+FetchContent_MakeAvailable(raylib)
 
+set_target_properties(raylib PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+)
 # --------------------------------------------------------------
 # Library target
 # --------------------------------------------------------------
@@ -78,6 +63,8 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         raylib
 )
+
+
 
 # raylib's own CMake target doesn't reliably export its public include
 # directory when consumed via add_subdirectory/FetchContent (as opposed to
@@ -165,31 +152,46 @@ if(KINE_WITH_FILAMENT)
     set(MATC_EXE    "${FILAMENT_DIR}/bin/matc${CMAKE_EXECUTABLE_SUFFIX}")
     set(RESGEN_EXE  "${FILAMENT_DIR}/bin/resgen${CMAKE_EXECUTABLE_SUFFIX}")
 
-    set(MAT_SRC  "${CMAKE_CURRENT_SOURCE_DIR}/src/kine_default.mat")
-    set(MAT_BIN  "${CMAKE_CURRENT_BINARY_DIR}/kine_default.filamat")
     set(MAT_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
-    set(MAT_GEN_CPP "${MAT_GEN_DIR}/kine_default_package.c")
-    set(MAT_GEN_H   "${MAT_GEN_DIR}/kine_default_package.h")
-
     file(MAKE_DIRECTORY ${MAT_GEN_DIR})
 
-    add_custom_command(
-        OUTPUT  ${MAT_BIN}
-        COMMAND ${MATC_EXE} -a opengl -p desktop -o ${MAT_BIN} ${MAT_SRC}
-        DEPENDS ${MAT_SRC}
-        COMMENT "Compiling Filament material: kine_default.mat"
-    )
+    function(kine_add_material NAME)
+        set(_src "${CMAKE_CURRENT_SOURCE_DIR}/src/${NAME}.mat")
+        set(_bin "${CMAKE_CURRENT_BINARY_DIR}/${NAME}.filamat")
+        set(_cpp "${MAT_GEN_DIR}/${NAME}_package.c")
+        set(_h   "${MAT_GEN_DIR}/${NAME}_package.h")
 
-    add_custom_command(
-        OUTPUT  ${MAT_GEN_CPP} ${MAT_GEN_H}
-        COMMAND ${RESGEN_EXE} -c -p kine_default_package -x ${MAT_GEN_DIR} ${MAT_BIN}
-        DEPENDS ${MAT_BIN}
-        COMMENT "Generating material package: kine_default_package"
-    )
+        add_custom_command(
+            OUTPUT  ${_bin}
+            COMMAND ${MATC_EXE} -a opengl -p desktop -o ${_bin} ${_src}
+            DEPENDS ${_src}
+            COMMENT "Compiling Filament material: ${NAME}.mat"
+        )
+
+        add_custom_command(
+            OUTPUT  ${_cpp} ${_h}
+            COMMAND ${RESGEN_EXE} -c -p ${NAME}_package -x ${MAT_GEN_DIR} ${_bin}
+            DEPENDS ${_bin}
+            COMMENT "Generating material package: ${NAME}_package"
+        )
+
+        set(${NAME}_GEN_CPP ${_cpp} PARENT_SCOPE)
+        set(${NAME}_GEN_H   ${_h}   PARENT_SCOPE)
+    endfunction()
+
+    kine_add_material(kine_default)
+    kine_add_material(kine_glass)
+    kine_add_material(kine_neon)
+    kine_add_material(kine_water)
+    kine_add_material(kine_decal)
 
     add_library(kine_filament_shim
         src/kine_filament_shim.cpp
-        ${MAT_GEN_CPP}
+        ${kine_default_GEN_CPP}
+        ${kine_glass_GEN_CPP}
+        ${kine_neon_GEN_CPP}
+        ${kine_water_GEN_CPP}
+        ${kine_decal_GEN_CPP}
     )
 
     target_include_directories(kine_filament_shim

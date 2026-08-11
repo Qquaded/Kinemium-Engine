@@ -88,6 +88,10 @@ return function(objects, data, raylib)
 		return config.a
 	end
 
+	wrapper.get_rect = function()
+		return config.obj_rect
+	end
+
 	wrapper.render = function(dt)
 		-- TODO: use math.lerp in the future
 		config.dh = config.dh + (config.h - config.dh) * math.min(config.lerpSpeed * dt, 1)

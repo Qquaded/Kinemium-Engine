@@ -5,6 +5,9 @@ local KineFileService = Instance.new("KineFileService")
 KineFileService.ExplorerHidden = true
 KineFileService._Intents = Enum.PluginIntents.Filesystem
 
+local kine = require("./src/environment/game/services/KineFileService/filetypes/kine")
+local scene = require("./src/environment/game/services/KineFileService/filetypes/scene")
+
 local zembed = require("@zembed")
 local fs = zune.fs
 local process = zune.process
@@ -123,11 +126,11 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 
 				return wrapper
 			end
+			return
 		end,
 
 		ExportObject = function(instances, path, name)
-			local SerializationService = datamodel:GetService("SerializationService")
-			local serialized = SerializationService.SerializeInstancesAsync(instances)
+			local serialized = kine.serialize(instances, datamodel)
 			if serialized then
 				fs.writeFile(path .. "/" .. name .. ".kine", serialized)
 			end
@@ -160,10 +163,9 @@ KineFileService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		end,
 
 		DecodeFile = function(filePath)
-			local SerializationService = datamodel:GetService("SerializationService")
 			local read = fs.readFile(filePath, true)
 			if read then
-				local deserialized = SerializationService.Deserialize(read, nil, true)
+				local deserialized = kine.deserialize(read, datamodel)
 				if deserialized then
 					if #deserialized == 1 then
 						return deserialized[1]

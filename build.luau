@@ -137,6 +137,7 @@ local function buildExecutable(name, exec_ext, lib_ext)
 	print("Copying assets")
 	copySandboxedSources(zjoin(root, "sandboxed"), sandboxEmbedRoot)
 	zune.fs.copy(zjoin(root, "assets"), zjoin(dir, "assets"), true)
+
 	table.insert(l_args, "--out=" .. l_exec)
 
 	print("Bundling: zune " .. table.concat(l_args, " "))

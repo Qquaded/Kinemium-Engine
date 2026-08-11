@@ -14,3 +14,14 @@ baseplate.Name = "Baseplate"
 baseplate.Material = Enum.Material.SmoothPlastic
 baseplate.Parent = workspace
 baseplate.Anchored = true
+
+local spawnLocation = Instance.new("Part")
+spawnLocation.CFrame = CFrame.new(0, 0, 0)
+spawnLocation.Size = Vector3.new(6, 1, 6)
+spawnLocation.Name = "SpawnLocation"
+spawnLocation.Anchored = true
+spawnLocation.Parent = workspace
+
+local Decal = Instance.new("Decal")
+Decal.Texture = "./src/assets/icon/spawn.png"
+Decal.Parent = spawnLocation

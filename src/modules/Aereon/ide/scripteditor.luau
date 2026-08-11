@@ -5,23 +5,19 @@ local ideBuffer = require("./idebuffer")
 local EnumMap = require("@EnumMap")
 local Color3 = require("@Color3")
 local MouseCursor = require("@Kinemium.MouseCursor")
-local syntax = require("./syntax")
-local autocomplete = require("./autocomplete")
-local beautifier = require("./beautifier")
-local completions = require("./k_completions")
-local luau = zune.luau
+
+local languages = require("./languages")
+local autocomplete = require("./languages/luau/autocomplete")
 
 local structs = raylib.structs
 local const = raylib.const
 
 local function sanitizeText(text)
-	-- Replace non-ASCII spaces and tabs with standard ones
 	text = text:gsub("[\194\160]", " ") -- Non-breaking space (UTF-8)
 	text = text:gsub("[\226\128\168]", " ") -- Zero-width space
 	text = text:gsub("[\226\128\139]", "") -- Zero-width joiner
 	text = text:gsub("[\239\187\191]", "") -- BOM (Byte Order Mark)
 
-	-- Remove or replace any other non-printable characters
 	text = text:gsub("[^\9\10\13\32-\126\128-\255]", "")
 
 	-- Normalize line endings
@@ -173,6 +169,7 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 	editor.cursors = {}
 	editor._ast = nil
 	editor._astDirty = true
+	editor.language = languages.plaintext
 
 	editor.autocomplete = {
 		visible = false,
@@ -233,17 +230,21 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 	editor.highlightedToken = nil
 
 	local function refreshAutocomplete()
-		-- parse once, reuse everywhere
-		if editor._astDirty then
-			local ok, result = pcall(function()
-				return zune.luau.parse(editor:getCode())
-			end)
-			-- use the result even if it has parse errors, root is still populated
-			editor._ast = (ok and result and result.root) and result or nil
-			editor._astDirty = false
+		if not editor.language.getCompletions then
+			editor.autocomplete.visible = false
+			return
 		end
 
-		local items = autocomplete.getCompletions(editor, completions, editor._ast)
+		local ast = nil
+		if editor.language.parse then
+			if editor._astDirty then
+				editor._ast = editor.language.parse(editor:getCode())
+				editor._astDirty = false
+			end
+			ast = editor._ast
+		end
+
+		local items = editor.language.getCompletions(editor, ast)
 		if #items > 0 then
 			editor.autocomplete.items = items
 			editor.autocomplete.visible = true
@@ -396,9 +397,9 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 		if not tab then
 			return
 		end
-
 		self.currentBufferIndex = index
 		self.text = tab.buffer
+		self.language = tab.language
 		self.breakpoints = tab.breakpoints
 		self:updateBreakpoints()
 		self:getHistoryState(self.text)
@@ -419,7 +420,12 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 			newBuf:insertString(content)
 			newBuf:setCursor(1, 1)
 		end
-		local tab = { name = name or "untitled.lua", buffer = newBuf, breakpoints = {} }
+		local tab = {
+			name = name or "untitled.lua",
+			buffer = newBuf,
+			breakpoints = {},
+			language = languages.getForFilename(name or "untitled.lua"),
+		}
 		table.insert(self.buffers, tab)
 		self:activateBuffer(#self.buffers)
 	end
@@ -581,35 +587,28 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 	end
 
 	function editor:format()
+		if not self.language.format then
+			return
+		end
+
 		self:beginTextEdit()
-
-		local ok, parse = pcall(function()
-			return zune.luau.parse(self:getCode())
-		end)
-
-		if not ok or not parse then
+		local formatted, err = self.language.format(self:getCode())
+		if not formatted then
 			self:endTextEdit()
 			return
 		end
 
-		local formatted = beautifier.format(parse)
-
-		-- ensure we always end up with lines
 		if type(formatted) == "string" then
 			formatted = string.split(formatted, "\n")
 		end
-
 		if type(formatted) ~= "table" then
 			self:endTextEdit()
 			return
 		end
 
 		self.text.lines = formatted
-
-		-- reset cursor safely
 		self.text.cursor.line = math.clamp(self.text.cursor.line, 1, #self.text.lines)
 		self.text.cursor.col = math.clamp(self.text.cursor.col, 1, #self.text.lines[self.text.cursor.line] + 1)
-
 		self:endTextEdit()
 		self._highlightCache = {}
 		self:updateLSP()
@@ -639,17 +638,10 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 		local code = self:getCode()
 		self.lsp.lastCode = code
 		self.lsp.dirty = false
-
-		local parseResult = luau.parse(code)
 		self.lsp.errors = {}
 
-		if parseResult.errors and #parseResult.errors > 0 then
-			for _, err in ipairs(parseResult.errors) do
-				table.insert(self.lsp.errors, {
-					message = err.message,
-					location = err.location,
-				})
-			end
+		if self.language.parseErrors then
+			self.lsp.errors = self.language.parseErrors(code)
 		end
 	end
 
@@ -672,8 +664,6 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 		currentLineColor = ideTheme.currentLineColor:ToRaylib(0)
 		autocompletetheme = ideTheme.autocomplete
 		editor_theme = ideTheme
-
-		syntax.colors = ideTheme.codecolors
 
 		for i, tab in ipairs(editor.buffers) do
 			local tx = x + (i - 1) * tabWidth
@@ -950,7 +940,10 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 			editor._highlightCache = editor._highlightCache or {}
 			local tokens = editor._highlightCache[i]
 			if not tokens then
-				tokens = syntax.highlight(line)
+				if not editor.language then
+					return
+				end
+				tokens = editor.language.highlight(line)
 				editor._highlightCache[i] = tokens
 			end
 
@@ -969,7 +962,8 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 					elseif ch == "\t" then
 						xPos += editor.tabWidth
 					else
-						raylib.DrawTextEx(vend, ch, vector.create(xPos, yLine), fontSize, spacing, seg.color)
+						local color = Color3.new(1, 1, 1):ToRaylib(0)
+						raylib.DrawTextEx(vend, ch, vector.create(xPos, yLine), fontSize, spacing, color)
 						xPos += raylib.MeasureTextEx(vend, ch, fontSize, spacing).x
 					end
 				end
@@ -1592,18 +1586,25 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 					local currentLine = editor.text.lines[editor.text.cursor.line]
 					local indent = currentLine:match("^[\t ]*")
 
-					-- Check for block start
-					local blockStarts = { "then", "do", "function", "repeat", "{" }
 					local isBlockStart = false
 					local trimmed = currentLine:gsub("%s*$", "")
-					for _, starter in ipairs(blockStarts) do
-						if
-							trimmed:match("%s" .. starter .. "$")
-							or trimmed == starter
-							or (starter == "{" and trimmed:match("{$"))
-						then
+
+					local blockStartKeywords = editor.language.blockOpenKeywords or {}
+					local blockOpenChars = editor.language.blockOpenChars or {}
+
+					for _, starter in ipairs(blockStartKeywords) do
+						if trimmed:match("%s" .. starter .. "$") or trimmed == starter then
 							isBlockStart = true
 							break
+						end
+					end
+
+					if not isBlockStart then
+						for _, c in ipairs(blockOpenChars) do
+							if trimmed:sub(-#c) == c then
+								isBlockStart = true
+								break
+							end
 						end
 					end
 
@@ -1834,11 +1835,13 @@ return function(raylib: typeof(raylib.lib), theme, aereon, game)
 					or raylib.IsKeyDown(const.KeyboardKey.KEY_RIGHT_CONTROL) == 1
 				)
 			then
-				editor:beginTextEdit()
-				editor.text:toggleLineComment("--")
-				editor:endTextEdit()
-				editor._highlightCache = {}
-				editor:updateLSP()
+				if editor.language.commentPrefix then
+					editor:beginTextEdit()
+					editor.text:toggleLineComment(editor.language.commentPrefix)
+					editor:endTextEdit()
+					editor._highlightCache = {}
+					editor:updateLSP()
+				end
 			end
 
 			-- Ctrl+Shift+K (Delete Line)

@@ -35,11 +35,18 @@ return function(objects, data, raylib)
 
 	-- push new value
 	function wrapper.push(v)
+		if type(v) ~= "number" then
+			return wrapper
+		end
+
 		config.values[config.head] = v
 		config.head = (config.head % config.capacity) + 1
+
 		if config.count < config.capacity then
 			config.count += 1
 		end
+
+		return wrapper
 	end
 
 	function wrapper.clear()
@@ -52,22 +59,38 @@ return function(objects, data, raylib)
 		return wrapper
 	end
 
+	wrapper.get_rect = function()
+		return config.obj_rect
+	end
+
 	local function getMinMax()
-		if config.min and config.max then
+		if config.min ~= nil and config.max ~= nil then
 			return config.min, config.max
 		end
 
-		local min = config.values[1]
-		local max = min
+		if config.count == 0 then
+			return 0, 1
+		end
 
-		for i = 2, config.count do
+		local min = math.huge
+		local max = -math.huge
+
+		for i = 1, config.count do
 			local v = config.values[i]
-			if v < min then
-				min = v
+
+			if type(v) == "number" then
+				if v < min then
+					min = v
+				end
+
+				if v > max then
+					max = v
+				end
 			end
-			if v > max then
-				max = v
-			end
+		end
+
+		if min == math.huge then
+			return 0, 1
 		end
 
 		if min == max then
@@ -91,8 +114,11 @@ return function(objects, data, raylib)
 		local widthPerValue = r.width / math.max(count - 1, 1)
 		local values = config.values
 
-		raylib.lib.DrawRectangleRec(
-			rect:translate(r),
+		raylib.lib.DrawRectangle(
+			r.x,
+			r.y,
+			r.width,
+			r.height,
 			(config.bgColor or config.backgroundColor):ToRaylib(config.bgTransparency)
 		)
 

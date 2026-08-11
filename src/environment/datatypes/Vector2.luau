@@ -1,5 +1,17 @@
 local Vector2 = { __type = "Vector2" }
-Vector2.__index = Vector2
+Vector2.__index = function(self, key)
+	if key == "Magnitude" or key == "magnitude" then
+		return math.sqrt(self.X * self.X + self.Y * self.Y)
+	elseif key == "Unit" or key == "unit" then
+		local mag = math.sqrt(self.X * self.X + self.Y * self.Y)
+		if mag == 0 then
+			return Vector2.new(0, 0)
+		end
+		return self / mag
+	end
+
+	return Vector2[key]
+end
 
 function Vector2.new(x, y)
 	return setmetatable({
@@ -21,8 +33,10 @@ function Vector2.__mul(a, b)
 		return Vector2.new(a * b.X, a * b.Y)
 	elseif type(b) == "number" then
 		return Vector2.new(a.X * b, a.Y * b)
+	elseif (type(a) == "table" and a.__type == "Vector2") and (type(b) == "table" and b.__type == "Vector2") then
+		return Vector2.new(a.X * b.X, a.Y * b.Y)
 	else
-		error("Vector2 can only multiply by a number")
+		error("Vector2 can only multiply by a number or another Vector2")
 	end
 end
 
@@ -42,24 +56,12 @@ function Vector2:Clone()
 	return Vector2.new(self.X, self.Y)
 end
 
-function Vector2:Magnitude()
-	return math.sqrt(self.X * self.X + self.Y * self.Y)
-end
-
-function Vector2:Unit()
-	local mag = self:Magnitude()
-	if mag == 0 then
-		return Vector2.new(0, 0)
-	end
-	return self / mag
-end
-
 function Vector2:Dot(other)
 	return self.X * other.X + self.Y * other.Y
 end
 
 function Vector2:Distance(other)
-	return (self - other):Magnitude()
+	return (self - other).Magnitude
 end
 
 function Vector2:Lerp(target, alpha)

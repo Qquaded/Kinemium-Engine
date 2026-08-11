@@ -5,4 +5,5 @@ local NewCategoryToolbar = ishared.NewCategoryToolbar
 
 NewCategoryToolbar:Fire("Plugins", {
 	elements = {},
+	groups = {},
 })

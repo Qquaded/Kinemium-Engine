@@ -1,0 +1,26 @@
+material {
+    name : "kine_glass",
+    shadingModel : lit,
+    blending : transparent,
+    refractionMode : cubemap,
+    refractionType : solid,
+    parameters : [
+        { type : float3, name : baseColor },
+        { type : float,  name : roughness },
+        { type : float,  name : ior },
+        { type : float,  name : thickness },
+        { type : float,  name : transmission }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor.rgb = materialParams.baseColor;
+        material.roughness     = materialParams.roughness;
+        material.ior           = materialParams.ior;
+        material.thickness     = materialParams.thickness;
+        material.transmission  = materialParams.transmission;
+        material.baseColor.a   = 1.0;
+    }
+}

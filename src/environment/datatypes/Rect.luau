@@ -3,11 +3,16 @@ local Vector2 = require("@Vector2")
 local Rect = {}
 Rect.__index = Rect
 
-function Rect.new(min, max)
+function Rect.new(a, b, c, d)
 	local self = setmetatable({}, Rect)
 
-	self.Min = min or Vector2.new()
-	self.Max = max or Vector2.new()
+	if c ~= nil or d ~= nil then
+		self.Min = Vector2.new(a or 0, b or 0)
+		self.Max = Vector2.new(c or 0, d or 0)
+	else
+		self.Min = a or Vector2.new()
+		self.Max = b or Vector2.new()
+	end
 
 	self.Width = math.abs(self.Max.X - self.Min.X)
 	self.Height = math.abs(self.Max.Y - self.Min.Y)

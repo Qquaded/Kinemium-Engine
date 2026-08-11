@@ -2,11 +2,11 @@
 local Enum = require("@EnumMap")
 local logic = require("@Kinemium.2dinput")
 local GuiObject = require("@GuiObject")
-local adapter = require("@raylib")
+local rl = require("@raylib")
 local Color3 = require("@Color3")
 local aereon = require("@Aereon")
-local adapter = require("@RaylibAdapter")
-local lib = adapter.lib
+local raylib = require("@raylib")
+local lib = raylib.lib
 
 local propTable = {
 	Name = "TextBox",
@@ -18,7 +18,8 @@ local propTable = {
 	PlaceholderText = "Type here...",
 	FontSize = 18,
 	TextColor3 = Color3.new(1, 1, 1),
-	BackgroundColor3 = Color3.new(0.15, 0.15, 0.15),
+	BackgroundTransparency = 0,
+	BackgroundColor3 = Color3.new(1, 1, 1),
 	PlaceholderColor3 = Color3.new(0.5, 0.5, 0.5),
 	FocusColor3 = Color3.new(0.02, 0.5, 1),
 	TextXAlignment = Enum.TextXAlignment.Left,
@@ -65,8 +66,8 @@ local propTable = {
 
 	CornerRadius = 0,
 	CornerSegments = 8,
-	BorderWidth = 1,
-	FocusBorderWidth = 1,
+	BorderWidth = 0,
+	FocusBorderWidth = 0,
 	DropShadow = false,
 	ShadowOffset = 2,
 	LineHighlight = true,
@@ -125,12 +126,10 @@ propTable.render = function(_, object, dt, structs, renderer, datamodel)
 		local SyntaxHighlighter = object:FindFirstChildOfClass("SyntaxHighlighter")
 
 		local function resolveFont(fontEnum)
-			local name = fontEnum.Value
-			local resolvedFont = renderer.Font.Get(name) or defaultFont
-			return resolvedFont
+			return defaultFont
 		end
 
-		ai.theme.background = object.BackgroundColor3:ToRaylib(0)
+		ai.theme.background = object.BackgroundColor3:ToRaylib(object.BackgroundTransparency)
 		ai.theme.text = object.TextColor3:ToRaylib(0)
 		ai.theme.placeholder = object.PlaceholderColor3:ToRaylib(0)
 		ai.theme.focusBorder = object.FocusColor3:ToRaylib(0)
@@ -235,7 +234,7 @@ return {
 		logic:SetupSignals(propTable)
 		instance:SetProperties(propTable)
 
-		local TextBoxClass = aereon.textbox(adapter.lib, game)
+		local TextBoxClass = aereon.textbox(rl.lib, game)
 
 		instance._aereonInput = TextBoxClass.new({
 			text = instance.Text,
@@ -362,41 +361,39 @@ return {
 			instance._aereonInput.buffer:insertString(instance.Text)
 		end
 
-		instance.Changed:Connect(function(prop)
-			instance._aereonInput.onChange = function(text)
-				instance.Text = text
-				if instance.OnChange then
-					instance.OnChange(text)
-				end
+		instance._aereonInput.onChange = function(text)
+			instance.Text = text
+			if instance.OnChange then
+				instance.OnChange(text)
 			end
-			instance._aereonInput.onSubmit = function(text)
-				if instance.OnSubmit then
-					instance.OnSubmit(text)
-				end
+		end
+		instance._aereonInput.onSubmit = function(text)
+			if instance.OnSubmit then
+				instance.OnSubmit(text)
 			end
-			instance._aereonInput.onFocus = function()
-				instance.Focused = true
-				if instance.OnFocus then
-					instance.OnFocus()
-				end
+		end
+		instance._aereonInput.onFocus = function()
+			instance.Focused = true
+			if instance.OnFocus then
+				instance.OnFocus()
 			end
-			instance._aereonInput.onBlur = function()
-				instance.Focused = false
-				if instance.OnBlur then
-					instance.OnBlur()
-				end
+		end
+		instance._aereonInput.onBlur = function()
+			instance.Focused = false
+			if instance.OnBlur then
+				instance.OnBlur()
 			end
-			instance._aereonInput.onValidationError = function(err)
-				if instance.OnValidationError then
-					instance.OnValidationError(err)
-				end
+		end
+		instance._aereonInput.onValidationError = function(err)
+			if instance.OnValidationError then
+				instance.OnValidationError(err)
 			end
-			instance._aereonInput.onSearch = function(query, count)
-				if instance.OnSearch then
-					instance.OnSearch(query, count)
-				end
+		end
+		instance._aereonInput.onSearch = function(query, count)
+			if instance.OnSearch then
+				instance.OnSearch(query, count)
 			end
-		end)
+		end
 
 		return instance
 	end,

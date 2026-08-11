@@ -1,7 +1,7 @@
 local adapter = require("@RaylibAdapter")
 local rect = require("@arect")
 local color3 = require("@Color3")
-local syntax = require("../../../modules/Aereon/ide/syntax")
+local syntax = require("@kilang_sh")
 
 local MDXFormatter = {}
 

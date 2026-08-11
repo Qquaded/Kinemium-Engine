@@ -14,3 +14,7 @@ src/projects.toml
 zune.exe
 vendor
 external/build
+plugins
+build
+ignored
+.temp

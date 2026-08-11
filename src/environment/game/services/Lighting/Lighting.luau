@@ -6,7 +6,6 @@ local const = adapter.const
 local lib = adapter.lib
 local Lighting = Instance.new("Lighting")
 local Color3 = require("@Color3")
-local rlib = r3d.lib
 local Stars = {}
 local Enum = require("@EnumMap")
 
@@ -63,11 +62,14 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 	end
 
 	Lighting:SetProperties({
-		Ambient = Color3.new(1, 1, 1),
+		Ambient = Color3.fromRGB(105, 120, 145),
 		Brightness = 2.0,
-		ColorShift_Top = Color3.fromRGB(255, 255, 255),
-		ColorShift_Bottom = Color3.fromRGB(0, 0, 0),
-		OutdoorAmbient = Color3.fromRGB(128, 128, 128),
+
+		ColorShift_Top = Color3.fromRGB(235, 245, 255),
+		ColorShift_Bottom = Color3.fromRGB(180, 205, 235),
+
+		OutdoorAmbient = Color3.fromRGB(125, 140, 165),
+
 		GlobalShadows = true,
 		ClockTime = 14.0,
 		GeographicLatitude = 0.0,
@@ -78,131 +80,97 @@ Lighting.InitRenderer = function(renderer, renderer_signal, datamodel)
 			return t
 		end,
 	})
-
 	Lighting._Intents = Enum.PluginIntents.Graphics
 
-	local unload = loadSky("kineasset://sky/test/images/sky.png")
-	setAllEnvironmentEffects()
+	local FilamentContext = renderer.FilamentContext
+	local Filament = renderer.Filament
 
-	local light = rlib.R3D_CreateLight(0) -- R3D_LIGHT_DIR
-	rlib.R3D_SetLightDirection(light, vector.create(-1, -1, -1))
-	rlib.R3D_SetLightColor(light, adapter.const.WHITE)
-	rlib.R3D_SetLightEnergy(light, 1.0)
-	rlib.R3D_SetLightActive(light, true)
-	rlib.R3D_SetShadowSoftness(light, 3)
-	rlib.R3D_SetShadowDepthBias(light, 0.001)
-	rlib.R3D_SetShadowSlopeBias(light, 0.01)
-	rlib.R3D_EnableShadow(light)
+	local function UpdateLighting()
+		local ambientR, ambientG, ambientB = Lighting.Ambient:ToRGB()
 
-	local effectToEnvMap = {
-		SSAOEffect = { offset = "ssao", struct = r3d.structs.R3D_EnvSSAO },
-		BloomEffect = { offset = "bloom", struct = r3d.structs.R3D_EnvBloom },
-		SSGIEffect = { offset = "ssgi", struct = r3d.structs.R3D_EnvSSGI },
-		SSILEffect = { offset = "ssil", struct = r3d.structs.R3D_EnvSSIL },
-		SSREffect = { offset = "ssr", struct = r3d.structs.R3D_EnvSSR },
-		DOFEffect = { offset = "dof", struct = r3d.structs.R3D_EnvDoF },
-		FogEffect = { offset = "fog", struct = r3d.structs.R3D_EnvFog },
-		TonemapEffect = { offset = "tonemap", struct = r3d.structs.R3D_EnvTonemap },
-		ColorEffect = { offset = "color", struct = r3d.structs.R3D_EnvColor },
-	}
-	local highestBlur = 0
-	local blurCacheDirty = true
+		local outdoorR, outdoorG, outdoorB = Lighting.OutdoorAmbient:ToRGB()
 
-	local function invalidateBlurCache()
-		blurCacheDirty = true
-	end
+		local topR, topG, topB = Lighting.ColorShift_Top:ToRGB()
 
-	local function refreshBlurCache()
-		local maxBlur = 0
-		for _, blur in pairs(Lighting:QueryDescendants(">BlurEffect")) do
-			if blur.Enabled and (blur.Size or 0) > 0 then
-				maxBlur = math.max(maxBlur, blur.Size)
-			end
-		end
+		local bottomR, bottomG, bottomB = Lighting.ColorShift_Bottom:ToRGB()
 
-		highestBlur = maxBlur
-		blurCacheDirty = false
-	end
+		local daylight = Lighting:GetDaylight()
 
-	local function applyEffectToEnv(effect)
-		local map = effectToEnvMap[effect.ClassName]
-		if map and effect:GetMetadata("EffectObject") then
-			local envType = r3d.structs.R3D_Environment
-			local environment: FFIPointer = rlib.R3D_GetEnvironment()
-			environment:write(envType:offset(map.offset), effect:GetMetadata("EffectObject"), 0, map.struct:size())
-			rlib.R3D_SetEnvironment(environment)
-		end
-	end
+		local sunAngle = math.rad((Lighting.ClockTime - 12) * 15)
 
-	local function handleLightingChild(child)
-		if child.ClassName == "BlurEffect" then
-			invalidateBlurCache()
-			child.Changed:Connect(function()
-				invalidateBlurCache()
-			end)
-		end
-		if effectToEnvMap[child.ClassName] then
-			applyEffectToEnv(child)
-			child.Changed:Connect(function()
-				applyEffectToEnv(child)
-			end)
-		end
-	end
+		local latitude = math.rad(Lighting.GeographicLatitude)
 
-	renderer.Pool.new("3d", function()
-		if blurCacheDirty then
-			refreshBlurCache()
-		end
+		local sunDirX = math.cos(sunAngle)
+		local sunDirY = math.sin(latitude)
+		local sunDirZ = math.sin(sunAngle)
 
-		if highestBlur > 0 then
-			renderer.Blur.blurRadius = highestBlur
-			renderer.Blur:DrawFullBlur(const.WHITE)
-		end
+		local length = math.sqrt(sunDirX * sunDirX + sunDirY * sunDirY + sunDirZ * sunDirZ)
 
-		local colorShift_Top = Lighting.ColorShift_Top:ToRaylib()
-		rlib.R3D_SetLightDirection(
-			light,
-			-calculateSunDirection((Lighting.ClockTime % 12) + 6, Lighting.GeographicLatitude):ToZuneVector()
+		sunDirX /= length
+		sunDirY /= length
+		sunDirZ /= length
+
+		local sunIntensity = Lighting.Brightness * 50000
+
+		local skyR = math.clamp(topR * daylight + outdoorR * (1 - daylight), 0, 1)
+		local skyG = math.clamp(topG * daylight + outdoorG * (1 - daylight), 0, 1)
+		local skyB = math.clamp(topB * daylight + outdoorB * (1 - daylight), 0, 1)
+
+		local horizonR = math.clamp(bottomR * daylight + ambientR * (1 - daylight), 0, 1)
+		local horizonG = math.clamp(bottomG * daylight + ambientG * (1 - daylight), 0, 1)
+		local horizonB = math.clamp(bottomB * daylight + ambientB * (1 - daylight), 0, 1)
+
+		Filament.lib.Kine_Filament_SetSkyAtmosphere(
+			FilamentContext,
+
+			-- sun direction
+			sunDirX,
+			sunDirY,
+			sunDirZ,
+
+			-- sky
+			skyR,
+			skyG,
+			skyB,
+
+			-- horizon
+			horizonR,
+			horizonG,
+			horizonB,
+
+			-- ground
+			ambientR,
+			ambientG,
+			ambientB,
+
+			-- sun intensity
+			sunIntensity
 		)
-		rlib.R3D_SetLightColor(light, colorShift_Top)
-		rlib.R3D_SetLightEnergy(light, Lighting.Brightness)
-		rlib.R3D_SetLightActive(light, Lighting.GlobalShadows)
-	end, -1048576) -- why is this number so big???
-
-	for _, child in pairs(Lighting:GetChildren()) do
-		handleLightingChild(child)
 	end
-	Lighting.ChildAdded:Connect(handleLightingChild)
-	Lighting.DescendantRemoving:Connect(function(child)
-		if child.ClassName == "BlurEffect" then
-			invalidateBlurCache()
-		end
-	end)
 
-	local currentCustomSky = nil
+	--renderer.Hook.new("Renderstep", UpdateLighting)
 
-	function Lighting.SetSkyShader(shaderobject)
-		if type(shaderobject) ~= "table" then
-			return
-		end
-		if shaderobject._class ~= "shader" then
-			return
-		end
-		local shader = shaderobject._shader
+	-- default
+	Filament.lib.Kine_Filament_SetSkyAtmosphere(
+		FilamentContext,
+		0.35,
+		0.75,
+		0.55, -- sunDirX, Y, Z
 
-		if currentCustomSky then
-			-- Update the existing cubemap instead of reallocating
-			rlib.R3D_UpdateCustomSky(currentCustomSky, shader)
-			return
-		end
+		0.18,
+		0.42,
+		0.90, -- sky zenith color
 
-		local sky = rlib.R3D_GenCustomSky(512, shader)
-		unload()
-		unload = function()
-			rlib.R3D_UnloadCubemap(sky)
-		end
-		currentCustomSky = sky
-	end
+		0.55,
+		0.78,
+		1.00, -- horizon color
+
+		0.25,
+		0.30,
+		0.32, -- ground color
+
+		100000.0 -- sun light intensity (lux)
+	)
 end
 
 return Lighting

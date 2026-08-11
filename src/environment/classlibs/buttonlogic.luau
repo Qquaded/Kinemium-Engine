@@ -23,6 +23,7 @@ function logic:Step(object, lib, callbackHover, callbackLeave)
 
 		object.MouseButton1Click:FireOncePerPress("LeftMouse", left)
 		object.MouseButton2Click:FireOncePerPress("RightMouse", right)
+		object.Activated:FireOncePerPress("LeftMouse", left)
 	else
 		if object.ChangeCursorOnHover then
 			MouseCursor.request(Enum.KinemiumMouseCursor.MOUSE_CURSOR_DEFAULT.Value)
@@ -45,7 +46,9 @@ function logic:SetupSignals(propTable)
 	local MouseButton1Up = signal.new()
 	local MouseButton2Down = signal.new()
 	local MouseButton2Up = signal.new()
+	local Activated = signal.new()
 
+	propTable.Activated = Activated
 	propTable.MouseButton1Click = MouseButton1Click
 	propTable.MouseButton2Click = MouseButton2Click
 	propTable.MouseButton1Down = MouseButton1Down

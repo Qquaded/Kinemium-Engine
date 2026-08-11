@@ -4,6 +4,7 @@ local adapter = require("@RaylibAdapter")
 local Color3 = require("@Color3")
 local signal = require("@Kinemium.signal")
 local Enum = require("@EnumMap")
+local ScreenGui = require("@ScreenGui")
 
 local Plugin = Instance.new("Plugin")
 Plugin._Intents = Enum.PluginIntents.UI
@@ -11,6 +12,8 @@ Plugin._Intents = Enum.PluginIntents.UI
 local lib = adapter.lib
 local structs = adapter.structs
 local arect = require("@arect")
+
+local windowList = {}
 
 local NON_WIDGET_KEYS = {
 	notify = true,
@@ -1049,8 +1052,9 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 			local scrollViews = {}
 
 			local windowData
+			local wrapper
 			local function renderPluginUI(dt)
-				local baseX, baseY = getWindowContentOrigin(windowData)
+				local baseX, baseY = getWindowContentOrigin(wrapper)
 
 				table.sort(topRenderables, function(a, b)
 					return (a.order or 0) < (b.order or 0)
@@ -1075,12 +1079,19 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 				end
 			end
 
-			windowData = window.create(windowConfig)
+			wrapper = window.create(windowConfig)
+			windowData = Instance.new("PluginGui")
+			windowData.BaseClass = "Instance"
+			windowData.ClassName = windowData.ClassName or "PluginGui"
 			windowData.ContentPaddingX = windowConfig.contentPaddingX or 0
 			windowData.ContentPaddingY = windowConfig.contentPaddingY or 0
 			windowData.PluginGuiId = windowConfig.pluginGuiId or windowConfig.id
 			windowData.Title = windowConfig.title or "Plugin Window"
 			windowData.Enabled = windowConfig.enabled ~= false
+			windowData.Parent = game:GetService("PluginGuiService")
+			windowData.Window = wrapper
+
+			table.insert(windowList, { windowData, wrapper })
 
 			function windowData:SetContentPadding(paddingX, paddingY)
 				self.ContentPaddingX = paddingX or 0
@@ -1099,7 +1110,7 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 				return self
 			end
 
-			local rawClose = windowData.Close
+			local rawClose = wrapper.Close
 			function windowData:Close()
 				if self._onClose then
 					pcall(self._onClose, self)
@@ -1108,7 +1119,7 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 				self.Enabled = false
 			end
 
-			local rawOpen = windowData.Open
+			local rawOpen = wrapper.Open
 			function windowData:Open()
 				rawOpen(self)
 				self.enabled = true
@@ -1127,24 +1138,24 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 
 			function windowData:SetEnabled(value)
 				if value then
-					self:Show()
+					wrapper:Show()
 				else
-					self:Hide()
+					wrapper:Hide()
 				end
-				return self
+				return wrapper
 			end
 
 			function windowData:RequestRaise()
-				self.enabled = true
-				self.Enabled = true
-				if self.Closed then
-					self:Open()
+				wrapper.enabled = true
+				wrapper.Enabled = true
+				if wrapper.Closed then
+					wrapper:Open()
 				end
-				return self
+				return wrapper
 			end
 
 			function windowData:GetContentOrigin()
-				return getWindowContentOrigin(self)
+				return getWindowContentOrigin(wrapper)
 			end
 
 			function windowData:CreateWidget(widgetType, widgetConfig, options)
@@ -1156,7 +1167,7 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 					options.mount = false
 				end
 
-				local widget = makeMountedWidget(self, topRenderables, allWidgets, widgetType, widgetConfig, options)
+				local widget = makeMountedWidget(wrapper, topRenderables, allWidgets, widgetType, widgetConfig, options)
 
 				if container and container.AddWidget then
 					container:AddWidget(widget)
@@ -1203,7 +1214,7 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 				end
 
 				created.render = function(dt, excluded)
-					local baseX, baseY = getWindowContentOrigin(self)
+					local baseX, baseY = getWindowContentOrigin(wrapper)
 
 					for _, name in ipairs(renderList) do
 						if excluded and table.find(excluded, name) then
@@ -1529,71 +1540,58 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 				return windowData:CreateWidget(widgetType, widgetConfig, widgetOptions)
 			end)
 
+			local mountedContainer = nil
+
+			local function getContentSize()
+				local paddingX = (windowConfig.contentPaddingX or 0) * 2
+				local extraY = (windowConfig.contentPaddingY or 0) * 2
+					+ (windowConfig.headerRender ~= false and 28 or 0)
+				return wrapper.width - paddingX, wrapper.height - extraY
+			end
+
+			-- gui rendering fix for now
+			local ScreenGuiObj = Instance.new("ScreenGui")
+			ScreenGuiObj.Parent = windowData
+			ScreenGui.callback(ScreenGuiObj, renderer)
+
+			mountedContainer = windowData:CreateWidget("engineUIContainer", {
+				Instance = ScreenGuiObj,
+				width = 0,
+				height = 0,
+				Renderer = renderer,
+				datamodel = game,
+			})
+
+			mountedContainer._resizeSync = windowData:AddRenderCallback(function()
+				if not mountedContainer or mountedContainer.destroyed then
+					return
+				end
+
+				local cw, ch = getContentSize()
+				if mountedContainer.width ~= cw or mountedContainer.height ~= ch then
+					mountedContainer:Set("width", cw)
+					mountedContainer:Set("height", ch)
+				end
+			end, -1000)
+
+			windowData.ChildAdded:Connect(function(child)
+				child:PrintTree()
+
+				if child["BackgroundTransparency"] then
+					child.BackgroundTransparency = 1
+				end
+
+				child.Parent = ScreenGuiObj
+			end)
+
 			return windowData
 		end
 
-		local function layoutToolbar(toolbar)
-			local contentWidth = math.max(toolbar.Window.width - (toolbar.Window.ContentPaddingX or 0) * 2 - 10, 140)
-			local currentX = 0
-			local currentY = 0
-			local rowHeight = 28
-
-			for _, button in ipairs(toolbar.Buttons) do
-				local textLength = #(button.Text or "")
-				local buttonWidth = button.Width or math.max(74, math.min(180, 26 + textLength * 8))
-
-				if currentX > 0 and currentX + buttonWidth > contentWidth then
-					currentX = 0
-					currentY += rowHeight + 6
-				end
-
-				button.Widget:Set("x", currentX)
-				button.Widget:Set("y", currentY)
-				button.Widget:Set("width", buttonWidth)
-				button.Widget:Set("height", rowHeight)
-				currentX += buttonWidth + 6
-			end
-
-			local totalHeight = math.max(currentY + rowHeight, rowHeight)
-			toolbar.Window:Resize(toolbar.Window.width, math.max(68, totalHeight + 38))
-		end
-
-		local function styleToolbarButton(button)
-			local background
-			local hover
-			local pressed
-
-			if button.Enabled == false then
-				background = Color3.new(0.16, 0.16, 0.18)
-				hover = Color3.new(0.16, 0.16, 0.18)
-				pressed = Color3.new(0.16, 0.16, 0.18)
-			elseif button.Active then
-				background = Color3.new(0.09, 0.43, 0.88)
-				hover = Color3.new(0.13, 0.5, 0.97)
-				pressed = Color3.new(0.08, 0.34, 0.74)
-			else
-				background = Color3.new(0.22, 0.22, 0.25)
-				hover = Color3.new(0.28, 0.28, 0.32)
-				pressed = Color3.new(0.17, 0.17, 0.2)
-			end
-
-			if button.WidgetType == "iconButton" then
-				button.Widget:Set("icon", button.Icon)
-			else
-				button.Widget:Set("text", button.Text)
-			end
-			button.Widget:Set("backgroundColor", background)
-			button.Widget:Set("hoverColor", hover)
-			button.Widget:Set("pressColor", pressed)
-			if button.WidgetType ~= "iconButton" then
-				button.Widget:Set(
-					"textColor",
-					button.Enabled == false and Color3.new(0.55, 0.55, 0.58) or Color3.new(1, 1, 1)
-				)
-			end
-		end
-
 		local function createToolbar(name)
+			game.EngineSignal:Fire("NewToolbarGroup", "Plugins", {
+				name = name,
+			})
+
 			local toolbarWindow = createWindowHandle({
 				title = name or "Toolbar",
 				x = 16,
@@ -1605,82 +1603,40 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 				pluginGuiId = tostring(name or "Toolbar"),
 			})
 
-			local toolbar = {
-				Name = name or "Toolbar",
-				Window = toolbarWindow,
-				Buttons = {},
-				ButtonCreated = signal.new(),
-			}
+			local toolbar = Instance.new("PluginToolbar")
+
+			toolbar.Name = name or "Toolbar"
+			toolbar.Window = toolbarWindow
+			toolbar.Buttons = {}
+			toolbar.ButtonCreated = signal.new()
 
 			function toolbar:CreateButton(buttonId, tooltip, icon, text)
-				local label = text or tooltip or buttonId or "Button"
-				local resolvedIcon = resolveToolbarIcon(icon)
-				local widget
+				local button = Instance.new("PluginToolbarButton")
+				button.ClickableWhenViewportHidden = false
+				button.Click = signal.new()
+				button.Enabled = true
+				button.Icon = icon
 
-				if resolvedIcon then
-					widget = self.Window:CreateWidget("iconButton", {
-						icon = resolvedIcon,
-						size = 30,
-					})
-				else
-					widget = self.Window:CreateTextButton({
-						text = label,
-						width = math.max(74, math.min(180, 26 + #label * 8)),
-						height = 28,
-					})
+				function button:SetActive(bool)
+					button.Enabled = bool
 				end
 
-				local button = {
-					Id = buttonId or label,
-					Text = label,
-					Tooltip = tooltip,
-					Icon = resolvedIcon,
-					Widget = widget,
-					WidgetType = resolvedIcon and "iconButton" or "textButton",
-					Enabled = true,
-					Active = false,
-					Width = resolvedIcon and 34 or nil,
-					Click = signal.new(),
-				}
+				local KinemiumIconLoader = game:GetService("KinemiumIconLoader")
 
-				styleToolbarButton(button)
+				game.EngineSignal:Fire("AddToolbarGroupElement", "Plugins", {
+					group = name,
+					name = buttonId,
+					type = "ImageButton",
+					text = text,
+					tooltip = tooltip,
+					width = 60,
+					height = 60,
+					texture = KinemiumIconLoader.ToTexture("./src/assets/images/icons/Move.png"),
+					callback = function(element, rect)
+						button.Click:Fire(element, rect)
+					end,
+				})
 
-				widget:Connect("Activated", function(...)
-					if button.Enabled == false then
-						return
-					end
-					button.Click:Fire(...)
-				end)
-
-				function button:SetActive(value)
-					self.Active = not not value
-					styleToolbarButton(self)
-					return self
-				end
-
-				function button:SetEnabled(value)
-					self.Enabled = not not value
-					styleToolbarButton(self)
-					return self
-				end
-
-				function button:SetText(value)
-					self.Text = tostring(value or "")
-					styleToolbarButton(self)
-					layoutToolbar(toolbar)
-					return self
-				end
-
-				function button:Destroy()
-					self.Widget:Destroy()
-					self.Click:Destroy()
-					removeArrayValue(toolbar.Buttons, self)
-					layoutToolbar(toolbar)
-				end
-
-				table.insert(self.Buttons, button)
-				layoutToolbar(self)
-				self.ButtonCreated:Fire(button)
 				return button
 			end
 
@@ -1717,8 +1673,8 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 				height = height,
 				enabled = config.Enabled ~= false and config.InitialEnabled ~= false,
 				headerRender = config.HeaderRender ~= false,
-				contentPaddingX = config.ContentPaddingX or 12,
-				contentPaddingY = config.ContentPaddingY or 12,
+				contentPaddingX = config.ContentPaddingX or 0,
+				contentPaddingY = config.ContentPaddingY or 0,
 				showStatusBar = config.ShowStatusBar == true,
 				statusText = config.StatusText or "",
 				tabs = config.Tabs,
@@ -1778,6 +1734,113 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 			return resolveWidgetType(widgetType)
 		end
 
+		Plugin.Unloading = signal.new()
+		Plugin.Deactivation = signal.new()
+
+		function Plugin:Activate(exclusiveMouse) end
+
+		function Plugin:CreateDockWidgetPluginGuiAsync(pluginGuiId, dockWidgetpluginGuiInfo)
+			return nil
+		end
+
+		function Plugin:GetSetting(value)
+			return true
+		end
+
+		function Plugin:CreatePluginAction(actionId, text, statusTip, iconName, allowBinding)
+			return { Triggered = signal.new() }
+		end
+
+		function Plugin:CreatePluginMenu(id, title, icon)
+			return nil
+		end
+
+		function Plugin:Deactivate() end
+
+		function Plugin:GetJoinMode()
+			return nil
+		end
+
+		function Plugin:GetMouse()
+			return nil
+		end
+
+		function Plugin:GetSelectedRibbonTool()
+			return nil
+		end
+
+		function Plugin:GetStudioUserId()
+			return 0
+		end
+
+		function Plugin:ImportFbxAnimation(rigModel, isR15)
+			return nil
+		end
+
+		function Plugin:ImportFbxAnimationAsync(rigModel, isR15)
+			return nil
+		end
+
+		function Plugin:ImportFbxRig(isR15)
+			return nil
+		end
+
+		function Plugin:ImportFbxRigAsync(isR15)
+			return nil
+		end
+
+		function Plugin:Intersect(objects)
+			return nil
+		end
+
+		function Plugin:IsActivated()
+			return false
+		end
+
+		function Plugin:IsActivatedWithExclusiveMouse()
+			return false
+		end
+
+		function Plugin:Negate(objects)
+			return {}
+		end
+
+		function Plugin:OpenScript(script, lineNumber) end
+
+		function Plugin:OpenWikiPage(url) end
+
+		function Plugin:PromptForExistingAssetId(assetType)
+			return 0
+		end
+
+		function Plugin:PromptForExistingAssetIdAsync(assetType)
+			return 0
+		end
+
+		function Plugin:PromptSaveSelection(suggestedFileName)
+			return false
+		end
+
+		function Plugin:PromptSaveSelectionAsync(suggestedFileName)
+			return false
+		end
+
+		function Plugin:SaveSelectedToRoblox() end
+
+		function Plugin:SelectRibbonTool(tool, position) end
+
+		function Plugin:Separate(objects)
+			return {}
+		end
+
+		function Plugin:SetSetting(key, value) end
+
+		function Plugin:StartDrag(dragData) end
+
+		function Plugin:Union(objects)
+			return nil
+		end
+
 		Plugin.WidgetTypes = availableWidgetTypes
 		Plugin.WidgetAliases = Plugin:GetWidgetAliases()
 		Plugin.Ready = true
@@ -1786,11 +1849,19 @@ Plugin.InitRenderer = function(renderer, renderer_signal, game)
 			if not game.GetService then
 				return
 			end
+			local dt = lib.GetFrameTime()
+
 			local StudioThemeService = game:GetService("StudioThemeService")
 			if StudioThemeService then
-				local dt = lib.GetFrameTime()
 				window.update(dt, StudioThemeService.SelectedTheme.aereon)
 				window.draw(dt, StudioThemeService.SelectedTheme, renderer.Lib2d)
+			end
+
+			for _, data in pairs(windowList) do
+				local PluginGui, ANPlugin = data[1], data[2]
+
+				ANPlugin.enabled = PluginGui.Enabled
+				ANPlugin.title = PluginGui.Title
 			end
 		end)
 	end)

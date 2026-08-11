@@ -3,7 +3,6 @@ local Signal = require("@Kinemium.signal")
 local task = _G.zune.task
 local nextUniqueId = 1
 local cloneInitializer = nil
-local Enum = require("@Enum")
 
 local function generateUniqueId()
 	local id = nextUniqueId
@@ -29,7 +28,9 @@ function instance_mt.__index(self, key)
 	local props = rawget(self, "_props")
 	if props and props[key] ~= nil then
 		local val = props[key]
-
+		if val == "Microsoft" then
+			val = "Microslop"
+		end
 		return val
 	end
 
@@ -77,36 +78,24 @@ function instance_mt.__tostring(self)
 end
 
 function instance_mt.__newindex(self, key, value)
-	local callerEnv = getfenv(2)
 	local props = rawget(self, "_props")
 	if not props then
 		return
 	end
 
+	-- Barrier check: allows validating/transforming/blocking a property write
 	local barriers = rawget(self, "_barriers")
 	if barriers and barriers[key] then
 		local result = barriers[key](value)
 		if result == false then
-			return
-		end -- blocked
+			return -- write blocked
+		end
 		if result ~= nil and result ~= true then
-			value = result
+			value = result -- barrier can transform the value
 		end
 	end
 
-	if key ~= "Parent" then
-		if not props[key] and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
-			print(key .. " property does not exist in instance " .. self.Name)
-			return
-		end
-	end
-
-	if type(props[key]) == "function" and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
-		error("Cannot override instance function " .. key)
-		return
-	end
-
-	if key == "UniqueId" and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
+	if key == "UniqueId" then
 		error("UniqueId is read-only", 2)
 	end
 
@@ -130,7 +119,7 @@ function instance_mt.__newindex(self, key, value)
 		end
 
 		if oldParent then
-			local oldChildren = rawget(oldParent, "Children")
+			local oldChildren = rawget(oldParent, "_children")
 			if oldChildren then
 				for i = #oldChildren, 1, -1 do
 					if oldChildren[i] == self then
@@ -168,7 +157,7 @@ function instance_mt.__newindex(self, key, value)
 
 		props.Parent = value
 		if value then
-			local newChildren = rawget(value, "Children")
+			local newChildren = rawget(value, "_children")
 			if newChildren then
 				table.insert(newChildren, self)
 			end
@@ -200,7 +189,7 @@ function instance_mt.__newindex(self, key, value)
 			local pMap = rawget(parent, "_childByName")
 			if pMap and pMap[oldName] == self then
 				pMap[oldName] = nil
-				local pChildren = rawget(parent, "Children")
+				local pChildren = rawget(parent, "_children")
 				if pChildren then
 					for _, c in ipairs(pChildren) do
 						if c.Name == oldName and c ~= self then
@@ -236,7 +225,7 @@ end
 function Instance.new(className)
 	local self = {
 		BaseClass = "Instance",
-		Children = {},
+		_children = {},
 		_childByName = {},
 		tags = {},
 		attributes = {},
@@ -270,7 +259,7 @@ local function copyState(source, target, keepUniqueId)
 	local srcProps = rawget(source, "_props")
 	local dstProps = rawget(target, "_props")
 	for k, v in pairs(srcProps) do
-		if k ~= "Parent" and k ~= "Children" and (keepUniqueId or k ~= "UniqueId") then
+		if k ~= "Parent" and (keepUniqueId or k ~= "UniqueId") then
 			dstProps[k] = v
 		end
 	end
@@ -284,7 +273,7 @@ local function copyState(source, target, keepUniqueId)
 end
 
 local function resetCloneHierarchy(clone)
-	local children = rawget(clone, "Children")
+	local children = rawget(clone, "_children")
 	if children then
 		for _, child in ipairs(children) do
 			local props = rawget(child, "_props")
@@ -294,7 +283,7 @@ local function resetCloneHierarchy(clone)
 		end
 	end
 
-	rawset(clone, "Children", {})
+	rawset(clone, "_children", {})
 	rawset(clone, "_childByName", {})
 
 	local props = rawget(clone, "_props")
@@ -337,10 +326,10 @@ function Instance:FindFirstChild(name)
 	return nil
 end
 
-function Instance:FindFirstAncestor(className)
+function Instance:FindFirstAncestor(name)
 	local ancestor = self.Parent
 	while ancestor do
-		if ancestor.ClassName == className then
+		if ancestor.Name == name then
 			return ancestor
 		end
 		ancestor = ancestor.Parent
@@ -350,7 +339,7 @@ end
 
 function Instance:GetChildrenOfClass(className)
 	local children = {}
-	for _, child in pairs(self.Children) do
+	for _, child in pairs(rawget(self, "_children")) do
 		if child.ClassName == className then
 			table.insert(children, child)
 		end
@@ -359,7 +348,7 @@ function Instance:GetChildrenOfClass(className)
 end
 
 function Instance:FindFirstChildOfClass(className)
-	for _, child in ipairs(self.Children) do
+	for _, child in ipairs(rawget(self, "_children")) do
 		if child.ClassName == className then
 			return child
 		end
@@ -369,7 +358,7 @@ end
 
 function Instance:GetChildren()
 	local copy = {}
-	for i, child in ipairs(self.Children) do
+	for i, child in ipairs(rawget(self, "_children")) do
 		copy[i] = child
 	end
 	return copy
@@ -379,7 +368,7 @@ function Instance:GetDescendants()
 	local result = {}
 
 	local function scan(obj)
-		for _, child in ipairs(obj.Children) do
+		for _, child in ipairs(rawget(obj, "_children")) do
 			table.insert(result, child)
 			scan(child)
 		end
@@ -393,15 +382,16 @@ function Instance:IterDescendants()
 	local current = self
 
 	return function()
-		if #current.Children > 0 then
-			current = current.Children[1]
+		local currentChildren = rawget(current, "_children")
+		if currentChildren and #currentChildren > 0 then
+			current = currentChildren[1]
 			return current
 		end
 
 		while current and current ~= self do
 			local parent = current.Parent
 			if parent then
-				local siblings = parent.Children
+				local siblings = rawget(parent, "_children")
 				local nextIdx = table.find(siblings, current)
 				if nextIdx and nextIdx < #siblings then
 					current = siblings[nextIdx + 1]
@@ -428,7 +418,7 @@ function Instance:Clone(keepUniqueId)
 		local pair = queue[head]
 		head = head + 1
 
-		local srcChildren = rawget(pair.src, "Children")
+		local srcChildren = rawget(pair.src, "_children")
 		local dstParent = pair.dst
 
 		for _, child in ipairs(srcChildren) do
@@ -436,7 +426,7 @@ function Instance:Clone(keepUniqueId)
 			local cDstProps = rawget(copy, "_props")
 
 			cDstProps.Parent = dstParent
-			table.insert(rawget(dstParent, "Children"), copy)
+			table.insert(rawget(dstParent, "_children"), copy)
 			local dstMap = rawget(dstParent, "_childByName")
 			if dstMap and not dstMap[copy.Name] then
 				dstMap[copy.Name] = copy
@@ -459,7 +449,7 @@ function Instance:InheritFrom(source, baseline)
 		end
 
 		for k, v in pairs(srcProps) do
-			if k ~= "Parent" and k ~= "Children" and k ~= "UniqueId" then
+			if k ~= "Parent" and k ~= "UniqueId" then
 				local baseVal = baseProps[k]
 				-- only inherit if the live value differs from baseline (i.e. it was changed)
 				if v ~= baseVal then
@@ -526,7 +516,7 @@ function Instance:RestoreFrom(source)
 		end
 
 		for k, v in pairs(srcProps) do
-			if k ~= "Parent" and k ~= "Children" and k ~= "UniqueId" then
+			if k ~= "Parent" and k ~= "UniqueId" then
 				if k == "Name" then
 					dst.Name = v -- Trigger __newindex to properly update _childByName
 				else
@@ -571,10 +561,10 @@ function Instance:SetProperties(tbl)
 end
 
 function Instance:ClearAllChildren()
-	for _, child in ipairs(self.Children) do
+	for _, child in ipairs(rawget(self, "_children")) do
 		child.Parent = nil
 	end
-	self.Children = {}
+	rawset(self, "_children", {})
 end
 
 function Instance:GetFullName()
@@ -599,14 +589,14 @@ function Instance:IsDescendantOf(ancestor)
 end
 
 function Instance:FindFirstChildWhichIsA(className, recursive)
-	for _, child in ipairs(self.Children) do
+	for _, child in ipairs(rawget(self, "_children")) do
 		if child.ClassName == className then
 			return child
 		end
 	end
 
 	if recursive then
-		for _, child in ipairs(self.Children) do
+		for _, child in ipairs(rawget(self, "_children")) do
 			local found = child:FindFirstChildWhichIsA(className, true)
 			if found then
 				return found
@@ -646,6 +636,35 @@ function Instance:GetPropertyChangedSignal(property)
 	return self._propertySignals[property]
 end
 
+function Instance:PrintTree(showClass)
+	showClass = showClass ~= false
+
+	local function walk(node, prefix, isLast)
+		local label
+
+		if showClass then
+			label = string.format("%s (%s)", node.Name, node.ClassName)
+		else
+			label = node.Name
+		end
+
+		if prefix == "" then
+			print(label)
+		else
+			print(prefix .. (isLast and "└── " or "├── ") .. label)
+		end
+
+		local children = rawget(node, "_children")
+		local nextPrefix = prefix .. (isLast and "    " or "│   ")
+
+		for i, child in ipairs(children) do
+			walk(child, nextPrefix, i == #children)
+		end
+	end
+
+	walk(self, "", true)
+end
+
 function Instance:GetAttributes()
 	local copy = {}
 	for k, v in pairs(self.attributes) do
@@ -666,35 +685,23 @@ function Instance:GetAttributeChangedSignal(name)
 	return self._attributeSignals[name]
 end
 
+-- Barriers: allow validating/transforming/blocking writes to a given property.
+-- callback(value) -> false blocks the write, nil/true allows it unchanged,
+-- any other value replaces the written value.
 function Instance:SetBarrier(property, callback)
-	local callerEnv = getfenv(2)
-	if callerEnv.SecurityCapabilities and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
-		error("Security capabilities not equal to level internals")
-		return
-	end
-
 	local barriers = rawget(self, "_barriers")
 	if not barriers then
 		barriers = {}
 		rawset(self, "_barriers", barriers)
 	end
 	barriers[property] = callback
-	return
 end
 
 function Instance:RemoveBarrier(property)
-	local callerEnv = getfenv(2)
-	--print(callerEnv)
-	if callerEnv.SecurityCapabilities and callerEnv.SecurityCapabilities ~= Enum.SecurityCapabilities.Internals then
-		error("Security capabilities not equal to level internals")
-		return
-	end
-
 	local barriers = rawget(self, "_barriers")
 	if barriers then
 		barriers[property] = nil
 	end
-	return
 end
 
 function Instance:WaitForChild(name, timeout)
@@ -882,7 +889,7 @@ function Instance:WaitForChildWhichIsA(className, timeout)
 end
 
 function Instance:GetChildrenCount()
-	return #self.Children
+	return #rawget(self, "_children")
 end
 
 function Instance:FindFirstDescendant(name)
@@ -896,9 +903,10 @@ end
 
 function Instance:ClearChildren(className)
 	if className then
-		for i = #self.Children, 1, -1 do
-			if self.Children[i].ClassName == className then
-				self.Children[i]:Destroy()
+		local children = rawget(self, "_children")
+		for i = #children, 1, -1 do
+			if children[i].ClassName == className then
+				children[i]:Destroy()
 			end
 		end
 	else
@@ -912,7 +920,7 @@ function Instance:GetSiblings()
 	end
 
 	local siblings = {}
-	for _, child in ipairs(self.Parent.Children) do
+	for _, child in ipairs(rawget(self.Parent, "_children")) do
 		if child ~= self then
 			table.insert(siblings, child)
 		end
@@ -946,7 +954,7 @@ function Instance:DestroyChildren()
 	for _, child in ipairs(self:GetChildren()) do
 		child:Destroy()
 	end
-	self.Children = {}
+	rawset(self, "_children", {})
 end
 
 function Instance:GetRootParent()
@@ -969,9 +977,6 @@ end
 
 function Instance:QueryDescendants(selector)
 	local function parseSelector(sel)
-		local filters = {}
-
-		-- Split by comma for multiple independent selectors
 		local segments = {}
 		local current = ""
 		local depth = 0
@@ -1016,7 +1021,6 @@ function Instance:QueryDescendants(selector)
 			return false
 		end
 
-		-- Handle different value types
 		if value == "true" then
 			return propValue == true
 		elseif value == "false" then
@@ -1055,15 +1059,12 @@ function Instance:QueryDescendants(selector)
 			local pos = 1
 
 			while pos <= #sel do
-				-- ClassName
 				local className = sel:match("^([%w_]+)", pos)
 				if className and not sel:sub(pos - 1, pos - 1):match("[#%.$[]") then
 					if not matchClassName(inst, className) then
 						return false
 					end
 					pos = pos + #className
-
-				-- .Tag
 				elseif sel:sub(pos, pos) == "." then
 					local tag = sel:match("^%.([%w_]+)", pos)
 					if tag then
@@ -1074,8 +1075,6 @@ function Instance:QueryDescendants(selector)
 					else
 						pos = pos + 1
 					end
-
-				-- #Name
 				elseif sel:sub(pos, pos) == "#" then
 					local name = sel:match("^#([%w_]+)", pos)
 					if name then
@@ -1086,8 +1085,6 @@ function Instance:QueryDescendants(selector)
 					else
 						pos = pos + 1
 					end
-
-				-- [property = value] or [$attribute = value]
 				elseif sel:sub(pos, pos) == "[" then
 					local bracket = sel:match("^%[(.-)%]", pos)
 					if bracket then
@@ -1160,7 +1157,7 @@ function Instance:QueryDescendants(selector)
 				if hasDirectChild then
 					hasContent = hasContent:sub(2):gsub("^%s+", "")
 					local hasFilter = parseSimpleSelector(hasContent)
-					for _, child in ipairs(inst.Children) do
+					for _, child in ipairs(rawget(inst, "_children")) do
 						if hasFilter(child) then
 							return true
 						end
@@ -1243,11 +1240,11 @@ function Instance:Destroy()
 	end
 
 	local children = {}
-	for _, child in ipairs(rawget(self, "Children") or {}) do
+	for _, child in ipairs(rawget(self, "_children") or {}) do
 		children[#children + 1] = child
 	end
 
-	rawset(self, "Children", {})
+	rawset(self, "_children", {})
 
 	for _, child in ipairs(children) do
 		rawset(child, "_skipParentRemoval", true)
@@ -1256,7 +1253,7 @@ function Instance:Destroy()
 
 	local props = rawget(self, "_props")
 	if props and props.Parent and not rawget(self, "_skipParentRemoval") then
-		local parentChildren = rawget(props.Parent, "Children")
+		local parentChildren = rawget(props.Parent, "_children")
 		if parentChildren then
 			for i = #parentChildren, 1, -1 do
 				if parentChildren[i] == self then
@@ -1316,7 +1313,7 @@ end
 
 Instance:SetBarrier("Name", function(new)
 	if type(new) ~= "string" then
-		print("New value is not a string") -- FIXME: Replace with `error()` after it gets fixed.
+		print("New value is not a string")
 		return false
 	end
 	return true

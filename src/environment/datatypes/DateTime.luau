@@ -12,6 +12,10 @@ function DateTime.fromUnixTimestamp(timestamp)
 	return self
 end
 
+function DateTime:ToLocalTime()
+	return DateTime.fromUnixTimestamp(self.UnixTimestamp)
+end
+
 function DateTime.fromIsoDate(isoDate)
 	-- Basic ISO 8601 parser (YYYY-MM-DDTHH:MM:SSZ)
 	local pattern = "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)Z"

@@ -28,7 +28,7 @@ HttpService.InitRenderer = function(renderer, renderer_signal, game)
 			return net.http.request(url, {
 				method = method,
 				headers = headers,
-				body = JSON.encode(body),
+				body = body ~= nil and JSON.encode(body) or nil,
 				timeout = opts.Timeout,
 				allow_redirects = opts.AllowRedirects,
 			}, opts.ReturnBuffer and true or false)
@@ -58,8 +58,34 @@ HttpService.InitRenderer = function(renderer, renderer_signal, game)
 
 	function HttpService:PostAsync(url, body, headers, opts)
 		local res = request("POST", url, body, headers, opts)
-		print(res)
 		return res.Body, res
+	end
+
+	function HttpService:RequestAsync(requestOptions)
+		assert(type(requestOptions) == "table", "RequestAsync expects a request dictionary")
+		assert(type(requestOptions.Url) == "string", "RequestAsync requires Url")
+
+		local method = (requestOptions.Method or "GET"):upper()
+
+		if (method == "GET" or method == "HEAD") and requestOptions.Body ~= nil then
+			error(("HTTP %s requests cannot contain a Body"):format(method))
+		end
+
+		local res = request(method, requestOptions.Url, requestOptions.Body, requestOptions.Headers, {
+			Timeout = requestOptions.Timeout,
+			AllowRedirects = requestOptions.AllowRedirects,
+			Compress = requestOptions.Compress,
+		})
+
+		local main = {
+			Success = res.Ok or false,
+			StatusCode = res.StatusCode or 0,
+			StatusMessage = res.StatusReason,
+			Headers = res.Headers,
+			Body = res.Body,
+		}
+
+		return main
 	end
 
 	function HttpService:JSONEncode(tbl)

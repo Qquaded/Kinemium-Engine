@@ -238,6 +238,21 @@ local addMenuSearchBox = textbox.new({
 	padding = 4,
 })
 
+local renameBox = textbox.new({
+	multiline = false,
+	placeholder = "",
+	fontSize = 18,
+	focusBorderWidth = 0,
+	font = vend,
+	maxLength = 56,
+	cornerRadius = 0,
+	BorderTransparency = 1,
+	BackgroundTransparency = 1,
+	TextColor = StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency),
+	padding = 0,
+})
+local renamingInstance = nil
+
 local searchQuery = searchBox:getText() or ""
 local isSearching = #searchQuery > 0
 
@@ -392,6 +407,17 @@ local SelectionMenu = gui.menu({
 							new.Parent = v.Parent
 						end)
 					end
+				end
+			end,
+		},
+		{
+			label = "Rename",
+			onClick = function()
+				local object = Selection:Get()[1]
+				if object then
+					renamingInstance = object
+					renameBox:setText(object.Name)
+					renameBox:focus()
 				end
 			end,
 		},
@@ -787,6 +813,22 @@ local function drawAdditionMenu(instance, mousePos, btnY, toggleX)
 	local menuX = toggleX - ADD_MENU_WIDTH - 10
 	local menuY = btnY + 30
 
+	local screenWidth = rl.GetScreenWidth()
+	local screenHeight = rl.GetScreenHeight()
+
+	if menuX < 0 then
+		menuX = 10
+	elseif menuX + ADD_MENU_WIDTH > screenWidth then
+		menuX = screenWidth - ADD_MENU_WIDTH - 10
+	end
+
+	if menuY + menuHeight > screenHeight then
+		menuY = screenHeight - menuHeight - 10
+	end
+	if menuY < 0 then
+		menuY = 10
+	end
+
 	-- Draw menu background
 	rl.DrawRectangleRounded(
 		structs.Rectangle:new({ x = menuX, y = menuY, width = ADD_MENU_WIDTH, height = menuHeight }),
@@ -1046,10 +1088,11 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 	local children = instance:GetChildren()
 	local hasChildren = #children > 0
 
-	local btnX = winX + 25 + winWidth - NODE_WIDTH - PADDING - (indent * -INDENT_SIZE)
+	local nodeWidth = winWidth - 35 - (indent * INDENT_SIZE)
+	local btnX = winX + 25 + (indent * INDENT_SIZE)
 	local btnY = winY + 10 + yOffset - scrollOffset
-	local rectData = { x = btnX, y = btnY, width = NODE_WIDTH, height = NODE_HEIGHT }
-	local toggleX = btnX + NODE_WIDTH
+	local rectData = { x = btnX, y = btnY, width = nodeWidth, height = NODE_HEIGHT }
+	local toggleX = btnX + nodeWidth
 
 	local mousePos = rl.GetMousePosition()
 	local treeTop = winY + 10
@@ -1132,17 +1175,28 @@ local function DrawTree(instance, indent, winX, winY, winWidth, isLastChild)
 		)
 
 		-- Draw text
-		rl.DrawTextEx(
-			vend,
-			instance.Name,
-			vector.create(btnX + 28, btnY + 1),
-			18,
-			1,
-			StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
-		)
+		if renamingInstance == instance then
+			renameBox:drawWithExtras(btnX + 28, btnY + 1, 150, 24)
+			if rl.IsKeyPressed(257) == 1 or (not renameBox.focused and rl.IsMouseButtonPressed(0) == 1) then -- Enter
+				if renameBox:getText() ~= "" then
+					instance.Name = renameBox:getText()
+				end
+				renamingInstance = nil
+			end
+		else
+			rl.DrawTextEx(
+				vend,
+				instance.Name,
+				vector.create(btnX + 28, btnY + 1),
+				18,
+				1,
+				StudioThemeService.SelectedTheme.TextColor:ToRaylib(StudioThemeService.SelectedTheme.TextTransparency)
+			)
+		end
 
 		if isHovered and not isDragging then
-			local addData = { x = toggleX - 50, y = btnY + 2, width = iconSize, height = iconSize }
+			local addData =
+				{ x = math.min(toggleX - 50, winX + winWidth - 35), y = btnY + 2, width = iconSize, height = iconSize }
 
 			rl.DrawTexturePro(
 				addIcon.texture,
@@ -1357,6 +1411,27 @@ explorerWindow.stepped = function(windowData)
 		dragTargetInstance = nil
 	end
 
+	-- Scroll while dragging
+	if isDragging then
+		local scrollSpeed = 300 * dt
+		local topEdge = windowData.y + (windowData._titleBarH or 28) + 40
+		local bottomEdge = windowData.y + windowData.height
+		local margin = 30
+		local didScroll = false
+
+		if mousePos.y < topEdge + margin then
+			scrollOffset = math.max(0, scrollOffset - scrollSpeed)
+			didScroll = true
+		elseif mousePos.y > bottomEdge - margin then
+			scrollOffset = scrollOffset + scrollSpeed
+			didScroll = true
+		end
+
+		if didScroll and windowData._scrollArea then
+			windowData._scrollArea.set("scrollOffset", scrollOffset)
+		end
+	end
+
 	-- Clear drag state if mouse button released without dragging
 	if not isDragging and dragInstance and rl.IsMouseButtonReleased(0) == 1 then
 		dragInstance = nil
@@ -1455,7 +1530,7 @@ explorerWindow.stepped = function(windowData)
 	rl.BeginScissorMode(windowData.x, treeScissorY, windowData.width, treeScissorH)
 
 	for _, child in ipairs(services) do
-		DrawTree(child, 0, windowData.x - 50, windowData.y + 60, windowData.width, false)
+		DrawTree(child, 0, windowData.x + 10, windowData.y + 60, windowData.width, false)
 	end
 
 	rl.EndScissorMode()
@@ -1585,6 +1660,16 @@ explorerWindow.stepped = function(windowData)
 	vend = KinemiumFontService.GetDefaultFont()
 
 	if searchFilterMenuVisible then
+		local menuW = 180
+		local itemH = 24
+		local menuH = (#searchFilterOptions * itemH) + 8
+		local menuX = boxX + searchWidth + filterGap
+		local menuY = windowRect.y + 35 + filterBtnSize + 6
+		local maxX = windowRect.x + windowRect.width - menuW - 4
+		local maxY = windowRect.y + windowRect.height - menuH - 4
+		menuX = math.max(windowRect.x + 4, math.min(menuX, maxX))
+		menuY = math.max(windowRect.y + 4, math.min(menuY, maxY))
+		searchFilterMenu.set("obj_rect", arect.new(menuX, menuY, menuW, 0))
 		searchFilterMenu.render(dt)
 	end
 end

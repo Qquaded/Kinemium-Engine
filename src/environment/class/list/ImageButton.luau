@@ -20,6 +20,7 @@ local function createSignals()
 		MouseButton1Down = signal.new(),
 		MouseButton1Up = signal.new(),
 		MouseButton2Down = signal.new(),
+		Activated = signal.new(),
 		MouseButton2Up = signal.new(),
 	}
 end

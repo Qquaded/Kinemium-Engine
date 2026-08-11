@@ -130,4 +130,4 @@ window.stepped = function(data)
 	history.set("obj_rect", arect.new(data.x, data.y + data.height - 200, data.width, 200))
 	history.set("rounded", { 0, StudioThemeService.SelectedTheme.CornerRadius })
 end
---[[
+--]]

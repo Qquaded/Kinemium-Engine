@@ -127,6 +127,9 @@ local function isSignalLikeTable(value)
 end
 
 for name, datatype in pairs(Datatypes) do
+	if type(datatype) == "function" then
+		continue
+	end
 	if datatype.FromTable then
 		TYPE_DESERIALIZERS[name] = datatype.FromTable
 	end

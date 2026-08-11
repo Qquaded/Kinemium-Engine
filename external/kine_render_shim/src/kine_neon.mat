@@ -1,0 +1,17 @@
+material {
+    name : "kine_neon",
+    shadingModel : unlit,
+    blending : add,
+    parameters : [
+        { type : float3, name : emissiveColor },
+        { type : float,  name : intensity }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor.rgb = materialParams.emissiveColor * materialParams.intensity;
+        material.baseColor.a = 1.0;
+    }
+}

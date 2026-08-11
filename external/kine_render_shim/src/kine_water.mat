@@ -1,0 +1,74 @@
+material {
+    name : "kine_water",
+    shadingModel : lit,
+    blending : transparent,
+    refractionMode : cubemap,
+    refractionType : solid,
+    requires : [ uv0 ],
+    parameters : [
+        { type : float3, name : baseColor },
+        { type : float,  name : roughness },
+        { type : float,  name : ior },
+        { type : float,  name : thickness },
+        { type : float,  name : transmission },
+        { type : float,  name : time },
+        { type : float,  name : waveScale },
+        { type : float,  name : waveSpeed },
+        { type : float,  name : foamAmount }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+
+        vec2 uv = getUV0() * materialParams.waveScale;
+        float t = materialParams.time * materialParams.waveSpeed;
+
+        vec3 p = vec3(uv, 0.0);
+
+        vec3 tangent = vec3(1.0, 0.0, 0.0);
+        vec3 binormal = vec3(0.0, 1.0, 0.0);
+
+        #define GERSTNER(dir, steepness, wavelength, speed) \
+        { \
+            vec2 D = normalize(dir); \
+            float k = 6.2831853 / wavelength; \
+            float c = speed; \
+            float f = k * dot(D, p.xy) + t * c; \
+            float a = steepness / k; \
+            tangent += vec3( \
+                -D.x * D.x * steepness * sin(f), \
+                -D.x * D.y * steepness * sin(f), \
+                 D.x * steepness * cos(f)); \
+            binormal += vec3( \
+                -D.x * D.y * steepness * sin(f), \
+                -D.y * D.y * steepness * sin(f), \
+                 D.y * steepness * cos(f)); \
+        }
+
+        GERSTNER(vec2( 1.0,  0.2), 0.18, 5.5, 1.3);
+        GERSTNER(vec2(-0.4,  1.0), 0.12, 3.2, 1.7);
+        GERSTNER(vec2( 0.8, -0.6), 0.08, 1.5, 2.5);
+
+        vec3 N = normalize(cross(binormal, tangent));
+        material.normal = N;
+
+        material.baseColor.rgb = materialParams.baseColor;
+        material.roughness     = materialParams.roughness;
+        material.ior           = materialParams.ior;
+        material.thickness     = materialParams.thickness;
+        material.transmission  = materialParams.transmission;
+
+        float crest = pow(max(0.0, 1.0 - N.y), 4.0);
+        float foam = smoothstep(0.15, 0.45, crest) * materialParams.foamAmount;
+
+        material.baseColor.rgb = mix(
+            material.baseColor.rgb,
+            vec3(1.0),
+            foam
+        );
+
+        material.baseColor.a = 1.0;
+    }
+}

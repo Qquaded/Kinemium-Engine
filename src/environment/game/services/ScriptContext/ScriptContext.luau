@@ -1,6 +1,7 @@
 local Instance = require("@Instance")
 local Enum = require("@EnumMap")
 local kilang = require("@kilang")
+local datatypes = require("@Kinemium.datatypes.get")
 
 local ScriptContext = Instance.new("ScriptContext")
 ScriptContext.ExplorerHidden = true
@@ -12,6 +13,10 @@ export type LanguageRuntime = {
 	newthread: (Instance, DataModel) -> (),
 	killthread: (thread) -> (),
 }
+
+local console_log = function(log)
+	print(log)
+end
 
 ScriptContext.InitRenderer = function(renderer, signal, datamodel)
 	local requiredCache = {}
@@ -55,6 +60,33 @@ ScriptContext.InitRenderer = function(renderer, signal, datamodel)
 		return nil
 	end
 
+	local function getSourceLine(source, lineNumber, contextAfter, contextBefore)
+		if not source or not lineNumber then
+			return nil
+		end
+
+		contextAfter = contextAfter or 4
+		contextBefore = contextBefore or 0
+
+		local lines = {}
+		local currentLine = 0
+		for line in (source .. "\n"):gmatch("(.-)\n") do
+			currentLine += 1
+			lines[currentLine] = line
+		end
+
+		local startLine = math.max(1, lineNumber - contextBefore)
+		local endLine = math.min(#lines, lineNumber + contextAfter)
+
+		local result = {}
+		for i = startLine, endLine do
+			local marker = (i == lineNumber) and ">> " or "   "
+			table.insert(result, string.format("%s%d: %s", marker, i, lines[i]))
+		end
+
+		return table.concat(result, "\n")
+	end
+
 	local function getModuleStackId(moduleScript)
 		local fullName = moduleScript.Name
 		if moduleScript.GetFullName then
@@ -77,108 +109,133 @@ ScriptContext.InitRenderer = function(renderer, signal, datamodel)
 			Luau = {
 				newthread = function(scriptObject: Instance, datamodel: DataModel)
 					local script_environment
-					script_environment = {
-						script = scriptObject,
-						src = scriptObject,
-						require = function(target)
-							if type(target) == "string" then
-								if target:match("^@kine/") then
-									local name = string.sub(target, 7)
-									local api = require(`@{name}`) or require("../src/environment/builtin/" .. name)
-									if api then
-										return api:init(renderer, datamodel)
-									end
-								end
-								local api = pluginLoader.GetPluginApi(target)
+
+					script_environment = datatypes
+					script_environment.script = scriptObject
+					script_environment.require = function(target)
+						if type(target) == "string" then
+							if target:match("^@kine/") then
+								local name = string.sub(target, 7)
+								local api = require(`@{name}`) or require("../src/environment/builtin/" .. name)
 								if api then
-									return api
+									return api:init(renderer, datamodel)
 								end
-								return require(target)
 							end
-
-							if type(target) ~= "table" then
-								print("require: expected ModuleScript or string, got " .. type(target), 2)
-								return
+							local api = pluginLoader.GetPluginApi(target)
+							if api then
+								return api
 							end
+							return require(target)
+						end
 
-							local moduleScript = tryResolveModuleScript(target)
-							if not moduleScript then
+						if type(target) ~= "table" then
+							print("require: expected ModuleScript or string, got " .. type(target), 2)
+							return
+						end
+
+						if target.ClassName == nil then
+							print("DEBUG require target is plain table:", target)
+							print(debug.traceback())
+						end
+
+						local moduleScript = tryResolveModuleScript(target)
+						if not moduleScript then
+							if type(target) == "table" and rawget(target, "Destroyed") then
+								console_log(
+									`require: target was Destroyed before require completed. `
+										.. `UniqueId={rawget(target, "_props") and rawget(target, "_props").UniqueId or "?"}`,
+									2
+								)
+							else
 								print(
 									`require: cannot require {target.ClassName} '{target.Name}'; expected ModuleScript`,
 									2
 								)
-								return
 							end
-							target = moduleScript
+							return
+						end
+						target = moduleScript
 
-							local cached = requiredCache[target]
-							if cached == REQUIRE_NIL then
-								return nil
-							end
-							if cached == REQUIRE_LOADING then
-								print(`require: circular dependency detected on '{target.Name}'`, 2)
-								return
-							end
-							if cached ~= nil then
-								return cached
-							end
+						local cached = requiredCache[target]
+						if cached == REQUIRE_NIL then
+							return nil
+						end
+						if cached == REQUIRE_LOADING then
+							console_log(`require: circular dependency detected on '{target.Name}'`, 2)
+							return
+						end
+						if cached ~= nil then
+							return cached
+						end
 
-							requiredCache[target] = REQUIRE_LOADING
+						requiredCache[target] = REQUIRE_LOADING
 
-							local source = target.Source
-							local success, result, id, thread, getResult
-							if source and type(source) == "string" then
-								id, success, result, thread, getResult = kilang:execute(
-									source,
-									{ StackId = getModuleStackId(target) },
-									{
-										script = target,
-										src = target,
-										loader = scriptObject,
-										require = script_environment.require,
-									}
+						local source = target.Source
+						local success, result, id, thread, getResult
+						if source and type(source) == "string" then
+							id, success, result, thread, getResult = kilang:execute(
+								source,
+								{ StackId = getModuleStackId(target) },
+								{
+									script = target,
+									src = target,
+									loader = scriptObject,
+									require = script_environment.require,
+								}
+							)
+						end
+
+						if getResult then
+							success, result = getResult()
+							if id then
+								kilang:remove(id)
+							end
+						end
+
+						if thread then
+							-- save thread
+							if not activeThreads["Luau"] then
+								activeThreads["Luau"] = {}
+							end
+							activeThreads["Luau"][target.UniqueId] = thread
+						end
+
+						if success == false then
+							requiredCache[target] = nil
+
+							local errMsg = tostring(result)
+							local lineNumber = tonumber(errMsg:match(":(%d+):"))
+							local sourceContext = getSourceLine(source, lineNumber)
+
+							if sourceContext then
+								console_log(
+									`require: ModuleScript '{target.Name}' failed: {errMsg}\n{sourceContext}`,
+									2
 								)
+							else
+								console_log(`require: ModuleScript '{target.Name}' failed: {errMsg}`, 2)
 							end
 
-							if getResult then
-								success, result = getResult()
-								if id then
-									kilang:remove(id)
-								end
-							end
+							return
+						end
 
-							if thread then
-								-- save thread
-								if not activeThreads["Luau"] then
-									activeThreads["Luau"] = {}
-								end
-								activeThreads["Luau"][target.UniqueId] = thread
+						if result == nil and not hasExplicitNilReturn(source) then
+							requiredCache[target] = REQUIRE_NIL
+							if not hasReturnStatement(source) then
+								console_log(`require: ModuleScript '{target.Name}' did not return a value`, 2)
 							end
+							return nil
+						elseif result == nil then
+							requiredCache[target] = REQUIRE_NIL
+							return nil
+						end
 
-							if success == false then
-								requiredCache[target] = nil
-								print(`require: ModuleScript '{target.Name}' failed: {tostring(result)}`, 2)
-								return
-							end
-
-							if result == nil and not hasExplicitNilReturn(source) then
-								requiredCache[target] = REQUIRE_NIL
-								if not hasReturnStatement(source) then
-									print(`require: ModuleScript '{target.Name}' did not return a value`, 2)
-								end
-								return nil
-							elseif result == nil then
-								requiredCache[target] = REQUIRE_NIL
-								return nil
-							end
-
-							requiredCache[target] = result
-							return result
-						end,
-					}
+						requiredCache[target] = result
+						return result
+					end
 
 					local source = scriptObject.Source
-
+					print("DEBUG Source length for", scriptObject.Name, ":", source and #source or "NIL SOURCE")
 					if not activeThreads["Luau"] then
 						activeThreads["Luau"] = {}
 					end
@@ -188,6 +245,8 @@ ScriptContext.InitRenderer = function(renderer, signal, datamodel)
 						{ StackId = `{scriptObject.Name} ({scriptObject:GetFullName()})` },
 						script_environment
 					)
+
+					print(success, result)
 
 					-- add to thread table
 					activeThreads["Luau"][scriptObject.UniqueId] = thread
@@ -275,6 +334,7 @@ ScriptContext.InitRenderer = function(renderer, signal, datamodel)
 					if runtimes[language] then
 						local api: LanguageRuntime? = runtimes[language]
 						if api then
+							print("Made thread")
 							return api.newthread(scriptInstance, datamodel)
 						end
 					else

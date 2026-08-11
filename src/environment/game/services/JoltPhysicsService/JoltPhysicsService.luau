@@ -540,7 +540,7 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 					ffi.types.pointer, -- collisionResult (JPH_CollideShapeResult*)
 				},
 			}, function(body1, body2, baseOffset, collisionResult)
-				log("OnContactValidate")
+				print("pasta cat 48")
 				return utils:i32(1) -- JPH_ValidateResult_AcceptContact
 			end),
 			OnContactAdded = ffi.null,
@@ -759,13 +759,23 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 					elseif property == "Anchored" then
 						local newMotion = getMotionTypeForPart(part)
 						local newLayer = getLayerForPart(part)
+						-- activationMode: 0 = Activate (for dynamic), 1 = DontActivate (for static)
+						local activationMode = (newMotion == 2) and 0 or 1
 
-						lib.JPH_BodyInterface_SetMotionType(bodyInterface, bodyID, newMotion, 1) -- activationMode=1 (Activate)
+						lib.JPH_BodyInterface_SetMotionType(bodyInterface, bodyID, newMotion, activationMode)
 						lib.JPH_BodyInterface_SetObjectLayer(bodyInterface, bodyID, newLayer)
 						updateBodyShape(part, bodyInterface, bodyID)
-						lib.JPH_BodyInterface_ActivateBody(bodyInterface, bodyID)
+						if newMotion == 2 then
+							-- Becoming dynamic: sync current part transform into Jolt so it
+							-- starts falling from the correct position, then activate it.
+							syncBodyTransformFromPart(part, bodyInterface, bodyID)
+							lib.JPH_BodyInterface_ActivateBody(bodyInterface, bodyID)
+							bodyTransformDirty[part] = nil
+						else
+							-- Becoming static/kinematic: push transform and mark dirty.
+							bodyTransformDirty[part] = true
+						end
 						trackBodyMotion(part, bodyID, newMotion)
-						bodyTransformDirty[part] = true
 					elseif property == "CanCollide" or property == "CollisionGroup" then
 						local newLayer = getLayerForPart(part)
 						lib.JPH_BodyInterface_SetObjectLayer(bodyInterface, bodyID, newLayer)
@@ -1920,6 +1930,10 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 				debugBodiesCreated = 0
 			end
 
+			if not game["Workspace"] then
+				print("Workspace not found, Whoever renamed it, Good luck developing on your shit..")
+				return
+			end
 			if
 				game.Workspace.PhysicsEngine == Enum.PhysicsEngine.Jolt
 				or game.Workspace.PhysicsEngine == Enum.PhysicsEngine.Default
@@ -2033,7 +2047,6 @@ KinemiumPhysicsService.InitRenderer = function(renderer, renderer_signal, game)
 					local mesh = softBody.Mesh
 					local state = softBodyStates[softBody]
 					if mesh and state then
-						-- Vertices are returned in a flat array matching the order added to SharedSettings
 						for index, id in ipairs(state.vIds) do
 							local offset = (index - 1) * structs.JPH_SoftBodyVertex:size()
 							local px = buffer.readf32(resultBuffer, offset)

@@ -3,6 +3,7 @@ local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
 local Vector2 = require("@Vector2")
 local Enum = require("@EnumMap")
+local StudioTheme = require("@StudioTheme")
 
 local const = require("@raylib").const
 
@@ -73,7 +74,7 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 			WindowTitleHeight = 29,
 			ShadowsEnabled = true,
 			ShadowTransparency = 0.98,
-			CornerRadius = 0.5,
+			CornerRadius = 0,
 			ShadowColor = Color3.new(0, 0, 0),
 			ArrowImageColor = Color3.new(1, 1, 1),
 			TitleColor = Color3.new(1, 1, 1),
@@ -147,9 +148,13 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	themes.dark.aereon.window.ShadowColor = themes.dark.ShadowColor
 	themes.dark.aereon.window.CornerRadius = themes.dark.CornerRadius
 
+	local themeObject = Instance.new("StudioTheme")
+	StudioTheme.callback(themeObject)
+
 	StudioThemeService:SetProperties({
 		themes = themes,
 		SelectedTheme = themes.dark,
+		ThemeObject = themeObject,
 	})
 
 	function StudioThemeService.MakeUIPadded()
@@ -193,6 +198,7 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	end
 
 	function StudioThemeService.MakeUIBoxed()
+		local xSize = 350
 		StudioThemeService.SelectedTheme.WindowConfig = {
 			Toolbar = {
 				position = UDim2.new(0, 0, 0, 0),
@@ -200,24 +206,24 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				size = UDim2.new(1, 0, 0, 200),
 			},
 			Explorer = {
-				position = UDim2.new(1, 0, 0, 0),
+				position = UDim2.new(1, 0, 0, 30),
 				anchorPoint = Vector2.new(1, 0),
-				size = UDim2.new(0, 400, 0.5, -20),
+				size = UDim2.new(0, xSize, 0.5, -50),
 			},
 			Inspector = {
-				position = UDim2.new(1, 0, 0.45, 20),
+				position = UDim2.new(1, 0, 0.5, -20),
 				anchorPoint = Vector2.new(1, 0),
-				size = UDim2.new(0, 400, 0.6, 0),
+				size = UDim2.new(0, xSize, 0.5, 20),
 			},
 			CodeEditor = {
-				position = UDim2.new(0, 0, 0, 40),
+				position = UDim2.new(0, xSize, 0, 0),
 				anchorPoint = Vector2.new(0, 0),
-				size = UDim2.new(1, -400, 1, -240),
+				size = UDim2.new(1, -xSize * 2, 1, -200),
 			},
 			Output = {
 				position = UDim2.new(0, 0, 1, 0),
 				anchorPoint = Vector2.new(0, 1),
-				size = UDim2.new(1, -400, 0, 200),
+				size = UDim2.new(1, -xSize, 0, 200),
 			},
 			GameSettings = {
 				position = UDim2.new(0.5, 0, 0.5, 0),
@@ -228,6 +234,11 @@ StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 				position = UDim2.new(0.5, 0, 0.5, 0),
 				anchorPoint = Vector2.new(0.5, 0.5),
 				size = UDim2.new(0.6, 0, 0.7, 0),
+			},
+			FileBrowser = {
+				position = UDim2.new(0, 0, 1, 0),
+				anchorPoint = Vector2.new(0, 1),
+				size = UDim2.new(0, xSize, 1, -20),
 			},
 		}
 	end

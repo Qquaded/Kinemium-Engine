@@ -1,4 +1,4 @@
-local Vector2 = require("./Vector2")
+local Vector2 = require("@Vector2")
 
 local CFrame2D = {}
 CFrame2D.__index = CFrame2D

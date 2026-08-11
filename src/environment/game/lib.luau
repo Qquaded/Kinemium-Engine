@@ -38,6 +38,8 @@ function DataModel.new(RENDERER, ...)
 	self.ShutdownCallbacks = {}
 	self.Loaded = false
 	self.MultiplayerMode = Enum.MultiplayerMode.Multiplayer
+	self.PlaceId = 0
+	self.GameId = 0
 
 	self.Services = {}
 

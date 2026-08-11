@@ -7,9 +7,11 @@ local Terrain = require("@Terrain")
 local capi = require("./capi")
 local shared = {}
 
+local logs = {}
+
 return function(renderer, Kinemium_camera)
 	local mainDatamodel = DataModel.new(renderer)
-	local data = datatypes
+	local data = {}
 
 	data.Instance = {
 		new = function(class, parent)
@@ -24,7 +26,7 @@ return function(renderer, Kinemium_camera)
 	}
 
 	data.Filesystem = zune.fs
-	data.newproxy = {}
+	data.newproxy = newproxy
 
 	data.buffer = {
 		copy = buffer.copy,
@@ -254,15 +256,20 @@ return function(renderer, Kinemium_camera)
 
 	data.typeof = function(v)
 		if type(v) == "table" then
-			if v.type then
-				return v.type
-			elseif v.__type then
-				return v.__type
-			elseif v.ClassName then
+			if rawget(v, "BaseClass") == "Instance" then
 				return "Instance"
-			else
-				return "table"
 			end
+			local t = rawget(v, "type")
+			if t then
+				return t
+			end
+			local t2 = rawget(v, "__type")
+			if t2 then
+				return t2
+			end
+
+			table.insert(logs, { type = "table", value = v })
+			return "table"
 		else
 			return type(v)
 		end
@@ -342,6 +349,8 @@ return function(renderer, Kinemium_camera)
 	data.zune = 0
 
 	local c_api = capi(data)
+
+	datatypes:Init(mainDatamodel, renderer, data)
 
 	return data, c_api
 end

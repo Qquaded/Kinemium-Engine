@@ -769,9 +769,6 @@ local structs = {
 	JPH_VehicleEngineSettings = JPH_VehicleEngineSettings,
 	JPH_VehicleDifferentialSettings = JPH_VehicleDifferentialSettings,
 	JPH_BodyCreationSettings = JPH_BodyCreationSettings,
-	JPH_BodyInterface = JPH_BodyInterface,
-	JPH_BodyManager = JPH_BodyManager,
-	JPH_ShapeCast = JPH_ShapeCast,
 	JPH_SoftBodyCreationSettings = JPH_SoftBodyCreationSettings,
 	JPH_SoftBodyVertex = JPH_SoftBodyVertex,
 }

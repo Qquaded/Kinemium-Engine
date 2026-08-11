@@ -20,6 +20,10 @@ return function(objects, data, raylib)
 		return config[key]
 	end
 
+	wrapper.get_rect = function()
+		return config
+	end
+
 	wrapper.render = function(dt)
 		if config.vertical then
 			raylib.lib.DrawRectangle(config.x, config.y, config.height, config.width, config.color:ToRaylib(0))

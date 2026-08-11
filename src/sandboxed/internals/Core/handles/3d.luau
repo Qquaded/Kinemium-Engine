@@ -11,11 +11,6 @@ local rlservice = game:GetService("KinemiumRaylib")
 local adapter = require("@RaylibAdapter")
 local UserInputService = game:GetService("UserInputService")
 
-if UserInputService:GetOS() == Enum.Platform.Linux then
-	-- linux not supported Yet........................
-	return
-end
-
 if FlagExists("cli") or FlagExists("headless") then
 	return
 end

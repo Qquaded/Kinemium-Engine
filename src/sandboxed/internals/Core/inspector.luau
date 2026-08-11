@@ -105,6 +105,9 @@ local colorPickerTarget = nil -- { selected, propName, kpIndex }
 local colorPickerComp = nil
 local colorPickerIcon = nil
 
+local isPickingInstance = false
+local pickingData = nil -- { selected, propName }
+
 -- Scrollbar drag state
 local scrollbarDrag = {
 	active = false,
@@ -710,6 +713,49 @@ datatypes["Color3"] = {
 		comps.b:drawWithExtras(ex + (w + sp) * 2, ey, w, eh)
 		comps.pick.set("obj_rect", arect.new(ex + (w + sp) * 3, ey, btnW, eh))
 		comps.pick.render(rl.GetFrameTime())
+	end,
+}
+
+-- Instance
+datatypes["Instance"] = {
+	build = function(selected, propName, propValue)
+		return { selected = selected, propName = propName }
+	end,
+	render = function(comp, ex, ey, ew, eh, propName, propValue)
+		local rect = structs.Rectangle:new({ x = ex, y = ey + (eh - 22) / 2, width = ew, height = 22 })
+		local mousePos = rl.GetMousePosition()
+		local isHovered = rl.CheckCollisionPointRec(mousePos, rect)
+		local isPressed = isHovered and rl.IsMouseButtonPressed(0) == 1
+
+		local isThisPicking = (
+			isPickingInstance
+			and pickingData
+			and pickingData.selected == comp.selected
+			and pickingData.propName == propName
+		)
+
+		if isPressed then
+			if isThisPicking then
+				isPickingInstance = false
+				pickingData = nil
+			else
+				isPickingInstance = true
+				pickingData = { selected = comp.selected, propName = propName }
+			end
+		end
+
+		local bgColor = isThisPicking and Color3.new(0.2, 0.5, 1):ToRaylib(0.2)
+			or Theme.SecondaryBackgroundColor:ToRaylib(isHovered and 0.5 or 0)
+		rl.DrawRectangleRounded(rect, 0.3, 8, bgColor)
+
+		local label = "None"
+		if isThisPicking then
+			label = "Select an Instance..."
+		elseif propValue then
+			label = propValue.Name
+		end
+
+		rl.DrawTextEx(vend, label, vector.create(ex + 8, ey + (eh - 14) / 2), 13, 1, Theme.TextColor:ToRaylib(0))
 	end,
 }
 
@@ -1557,7 +1603,21 @@ window.stepped = function(windowData)
 		MouseCursor.request(Enum.KinemiumMouseCursor.MOUSE_CURSOR_RESIZE_EW.Value)
 	end
 
-	local selected = Selection.Get()[1]
+	local selected = Selection:Get()[1]
+
+	if isPickingInstance and pickingData then
+		if rl.IsKeyPressed(256) == 1 then -- Escape
+			isPickingInstance = false
+			pickingData = nil
+		elseif selected and selected ~= pickingData.selected then
+			pickingData.selected[pickingData.propName] = selected
+			Selection:Set({ pickingData.selected })
+			selected = pickingData.selected
+			isPickingInstance = false
+			pickingData = nil
+		end
+	end
+
 	if not selected or selected.Destroyed then
 		return
 	end

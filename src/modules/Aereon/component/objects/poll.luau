@@ -10,7 +10,6 @@ return function(objects, data, raylib)
 		rounded = data.rounded or { 0.08, 8 },
 		modifiers = {},
 
-		-- Colors
 		backgroundColor = color3.new(0.11, 0.11, 0.13),
 		optionBackgroundColor = color3.new(0.16, 0.16, 0.18),
 		optionHoverColor = color3.new(0.18, 0.18, 0.20),
@@ -20,7 +19,6 @@ return function(objects, data, raylib)
 		accentColor = color3.new(0.35, 0.75, 0.55),
 		progressBarColor = color3.new(0.25, 0.55, 0.40),
 
-		-- Poll data
 		question = data.question or "Poll Question?",
 		options = data.options or {
 			{ text = "Option 1", votes = 1, avatar = nil },
@@ -66,6 +64,10 @@ return function(objects, data, raylib)
 		return wrapper
 	end
 
+	wrapper.get_rect = function()
+		return config.obj_rect
+	end
+
 	wrapper.addOption = function(text, votes, avatar)
 		table.insert(config.options, {
 			text = text,
@@ -102,11 +104,12 @@ return function(objects, data, raylib)
 		local mousePressed = adapter.lib.IsMouseButtonPressed(0) == 1
 
 		-- Background
-		adapter.lib.DrawRectangleRounded(
-			rect:translate(r),
-			config.rounded[1],
-			config.rounded[2],
-			config.backgroundColor:ToRaylib(0)
+		raylib.lib.DrawRectangle(
+			r.x,
+			r.y,
+			r.width,
+			r.height,
+			(config.bgColor or config.backgroundColor):ToRaylib(config.bgTransparency)
 		)
 
 		local currentY = r.y + config.padding

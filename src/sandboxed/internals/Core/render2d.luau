@@ -13,6 +13,7 @@ local rl = KinemiumRaylib.GetLib()
 local const = KinemiumRaylib.GetConst()
 local KinemiumFontService = game:GetService("KinemiumFontService")
 local StudioThemeService = game:GetService("StudioThemeService")
+local Filesystem = require("@filesystem")
 
 local vend = KinemiumFontService.GetDefaultFont()
 
@@ -69,11 +70,14 @@ frame.Parent = screenGui
 
 local enableIDE = false
 local currentObject
+local currentFile = nil -- { path, uniqueId } when editing a plain file from filebrowser
 local activeTabs = {}
+local activeFileTabs = {} -- uniqueId -> path
 
 EngineSignal:Connect(function(route, value, Script)
 	if route == "idestate" then
 		if value == true then
+			currentFile = nil
 			if activeTabs[Script.UniqueId] then
 				for i, tab in ipairs(ide.buffers) do
 					if tab.name == Script.Name then
@@ -102,6 +106,43 @@ EngineSignal:Connect(function(route, value, Script)
 			currentObject = nil
 			game.Stop3DInput = false
 		end
+	elseif route == "OpenFile" then
+		local path = value
+		if not path then
+			return
+		end
+
+		local filename = path:match("([^/\\]+)$") or path
+
+		local fileUniqueId = "__file__" .. path
+
+		if activeFileTabs[fileUniqueId] then
+			for i, tab in ipairs(ide.buffers) do
+				if tab.name == filename then
+					ide:activateBuffer(i)
+					break
+				end
+			end
+			currentObject = nil
+			currentFile = { path = path, uniqueId = fileUniqueId }
+			enableIDE = true
+			game.Stop3DInput = true
+			return
+		end
+
+		local ok, content = pcall(Filesystem.read, path)
+		if not ok then
+			content = "-- Could not read file: " .. tostring(content)
+		end
+		content = content or ""
+
+		ide:openTab(filename, content)
+		activeFileTabs[fileUniqueId] = path
+
+		currentObject = nil
+		currentFile = { path = path, uniqueId = fileUniqueId }
+		enableIDE = true
+		game.Stop3DInput = true
 	end
 end)
 local window = aereon.window(game)
@@ -130,13 +171,22 @@ renderer.Pool.new("2d", function(data)
 	local dt = rl.GetFrameTime()
 	vend = KinemiumFontService.GetDefaultFont()
 
+	frame.Position = Theme.WindowConfig.CodeEditor.position
+	frame.AnchorPoint = Theme.WindowConfig.CodeEditor.anchorPoint
+	frame.Size = Theme.WindowConfig.CodeEditor.size
+
 	if enableIDE then
 		ishared.path_enabled = false
 
-		local width = rl.GetRenderWidth()
-		local height = rl.GetRenderHeight() - 30
-		rl.DrawRectangle(0, 0, width, height, StudioThemeService.SelectedTheme.aereon.ide.BackgroundColor:ToRaylib(0))
-		ide.draw(0, 30, vector.create(width, height), 50, StudioThemeService.SelectedTheme.aereon.ide)
+		local width = frame.AbsoluteSize.X
+		local height = frame.AbsoluteSize.Y
+		ide.draw(
+			frame.AbsolutePosition.X,
+			frame.AbsolutePosition.Y,
+			vector.create(width, height),
+			50,
+			StudioThemeService.SelectedTheme.aereon.ide
+		)
 
 		if currentObject then
 			if currentObject.IsOverridden then
@@ -147,6 +197,9 @@ renderer.Pool.new("2d", function(data)
 				return
 			end
 			currentObject.Source = ide:getCode()
+		elseif currentFile then
+			-- Write file changes back to disk
+			local ok = pcall(Filesystem.write, currentFile.path, ide:getCode())
 		end
 	else
 		ishared.path_enabled = true

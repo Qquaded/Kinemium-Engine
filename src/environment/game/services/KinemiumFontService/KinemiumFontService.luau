@@ -13,6 +13,8 @@ local DEFAULT_FONT_PATH = "./src/assets/fonts/Montserrat-Medium.ttf"
 local DEFAULT_CODE_FONT_PATH = "./src/assets/fonts/JetBrainsMono-Light.ttf"
 local DEFAULT_FONT_BOLD_PATH = "./src/assets/fonts/Montserrat-Bold.ttf"
 
+local fontMap = {}
+
 local ENGINE_FONT_FILES = {
 	Legacy = DEFAULT_FONT_PATH,
 	Arial = "./src/assets/fonts/Arimo-Regular.ttf",
@@ -103,6 +105,48 @@ KinemiumFontService.InitRenderer = function(renderer, renderer_signal)
 	local loadedFonts = {}
 	local loadingFonts = {}
 
+	local fonts = zune.fs.entries("./src/assets/fonts/")
+
+	local function normalizeName(name)
+		name = name:gsub("%-", " ")
+		name = name:gsub("(%a)([%w_]*)", function(first, rest)
+			return first:upper() .. rest:lower()
+		end)
+		return name
+	end
+
+	local function buildFontMap(fonts)
+		for i, file in ipairs(fonts) do
+			local filename = file.name
+
+			local stem = filename:gsub("%.%w+$", "")
+
+			local family, style = stem:match("^(.*)%-(.+)$")
+
+			if not family then
+				family = stem
+				style = "Regular"
+			end
+
+			family = normalizeName(family)
+			style = normalizeName(style)
+
+			if not fontMap[family] then
+				fontMap[family] = {}
+			end
+
+			fontMap[family][style] = "./src/assets/fonts/" .. file.name
+			if fontMap[family]["Regular"] then
+				Enum.Font[family] = fontMap[family]["Regular"]
+			end
+			if not Enum.FontWeight[style] then
+				Enum.FontWeight[style] = i * 10
+			end
+		end
+	end
+
+	buildFontMap(fonts)
+
 	local function loadEngineFont(name: string, size: number?)
 		if loadedFonts[name] then
 			return loadedFonts[name]
@@ -121,6 +165,8 @@ KinemiumFontService.InitRenderer = function(renderer, renderer_signal)
 		loadingFonts[name] = nil
 		loadedFonts[name] = loaded
 		FontAdded:Fire(name, path)
+
+		print(loaded)
 
 		return loaded
 	end
@@ -155,8 +201,6 @@ KinemiumFontService.InitRenderer = function(renderer, renderer_signal)
 			loadingFonts["DefaultEngineFont"] = nil
 			ENGINE_FONT_FILES["DefaultEngineFont"] = path
 			font = loadEngineFont("DefaultEngineFont", 32)
-			print("Loaded new font: ", font)
-			print(loadedFonts)
 		end,
 
 		GetDefaultFontSmall = function()

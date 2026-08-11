@@ -6,17 +6,65 @@ type int = number
 type float = number
 type double = number
 type uint = number
+type bool = number
 type FFIPointer = typeof(ffi.types.pointer)
+
+local KineMaterialKind = {
+	Default = 0,
+	Glass = 1,
+	Neon = 2,
+	Water = 3,
+}
 
 export type Fns = {
 	-- Context lifecycle
 	Kine_Filament_Create: (width: int, height: int) -> FFIPointer,
 	Kine_Filament_Destroy: (ctx: FFIPointer) -> (),
-	Kine_Filament_RenderFrame: (ctx: FFIPointer) -> (),
+	Kine_Filament_RenderFrame: (ctx: FFIPointer, deltaTime: float) -> (),
 	Kine_Filament_Resize: (ctx: FFIPointer, width: int, height: int) -> (),
 	Kine_Filament_ReadPixels: (ctx: FFIPointer, outPixels: FFIPointer) -> (),
 	Kine_Filament_GetWidth: (ctx: FFIPointer) -> int,
 	Kine_Filament_GetHeight: (ctx: FFIPointer) -> int,
+	Kine_Filament_GetColorTextureId: (ctx: FFIPointer) -> uint,
+	Kine_Filament_DebugPrintPixel: (ctx: FFIPointer) -> (),
+
+	Kine_Filament_CreateSky: (ctx: FFIPointer, r: float, g: float, b: float, a: float) -> (),
+	Kine_Filament_SetPostProcessing: (ctx: FFIPointer, enabled: bool) -> (),
+
+	Kine_Filament_SetSkyAtmosphere: (
+		ctx: FFIPointer,
+		sunDirX: float,
+		sunDirY: float,
+		sunDirZ: float,
+		skyR: float,
+		skyG: float,
+		skyB: float,
+		horizonR: float,
+		horizonG: float,
+		horizonB: float,
+		groundR: float,
+		groundG: float,
+		groundB: float,
+		sunIntensity: float
+	) -> (),
+
+	Kine_Filament_CreateSkyboxCubemap: (
+		ctx: FFIPointer,
+		texPosX: FFIPointer,
+		texNegX: FFIPointer,
+		texPosY: FFIPointer,
+		texNegY: FFIPointer,
+		texPosZ: FFIPointer,
+		texNegZ: FFIPointer
+	) -> (),
+
+	Kine_Filament_SetSun: (
+		ctx: FFIPointer,
+		sunDirX: float,
+		sunDirY: float,
+		sunDirZ: float,
+		sunIntensity: float
+	) -> (),
 
 	-- Scene accessors
 	Kine_Filament_GetEngine: (ctx: FFIPointer) -> FFIPointer,
@@ -52,25 +100,84 @@ export type Fns = {
 	Kine_Filament_CreateMesh: (ctx: FFIPointer, shape: int) -> FFIPointer,
 	Kine_Filament_DestroyMesh: (ctx: FFIPointer, mesh: FFIPointer) -> (),
 
+	-- Custom mesh: interleaved vertexData is px,py,pz,nx,ny,nz,u,v (8 floats/vertex)
+	Kine_Filament_CreateCustomMesh: (
+		ctx: FFIPointer,
+		vertexData: FFIPointer,
+		vertexCount: int,
+		indices: FFIPointer,
+		indexCount: int
+	) -> FFIPointer,
+
 	-- Texture system
 	-- rlTexturePtr: pointer to a raylib Texture2D struct
 	Kine_Filament_CreateTex: (ctx: FFIPointer, rlTexturePtr: FFIPointer) -> FFIPointer,
 	Kine_Filament_DestroyTex: (ctx: FFIPointer, tex: FFIPointer) -> (),
 
-	-- Draw call (immediate, per-frame)
-	-- mat4: pointer to a float[16] column-major world transform
-	Kine_Filament_DrawMesh: (
+	-- Draw call (queued this frame, batched+instanced internally)
+	-- materialKind: 0=default, 1=glass, 2=neon, 3=water
+	-- param1/param2/param3: roughness/ior/thickness (glass/water), intensity/unused/unused (neon)
+	-- transmission: glass/water only
+	-- mat4: pointer to float[16] column-major world transform (raylib Matrix layout)
+	-- tex: optional KineFilamentTex* (nil for no texture)
+	Kine_Filament_DrawMeshEx: (
 		ctx: FFIPointer,
 		mesh: FFIPointer,
+		materialKind: int,
 		r: float,
 		g: float,
 		b: float,
-		tex: FFIPointer,
-		transparency: float,
-		roughness: float,
-		metallic: float,
-		mat4: FFIPointer
+		param1: float,
+		param2: float,
+		param3: float,
+		transmission: float,
+		mat4: FFIPointer,
+		castshadow: bool,
+		receiveShadow: bool,
+		culling: bool,
+		tex: FFIPointer?
 	) -> (),
+
+	-- Point light management. Returns an opaque int light ID, or -1 on failure.
+	-- position/color are passed as three separate floats (x, y, z).
+	Kine_Filament_CreateLight: (
+		ctx: FFIPointer,
+		px: float,
+		py: float,
+		pz: float,
+		cr: float,
+		cg: float,
+		cb: float,
+		intensity: float,
+		falloff: float
+	) -> int,
+	Kine_Filament_SetColorLight: (ctx: FFIPointer, light: int, r: float, g: float, b: float) -> (),
+	Kine_Filament_SetIntensityLight: (ctx: FFIPointer, light: int, intensity: float) -> (),
+	Kine_Filament_SetFalloffLight: (ctx: FFIPointer, light: int, falloff: float) -> (),
+	Kine_Filament_SetPositionLight: (ctx: FFIPointer, light: int, x: float, y: float, z: float) -> (),
+
+	-- Decal management. Returns an opaque int decal ID, or -1 on failure.
+	Kine_Filament_CreateDecal: (
+		ctx: FFIPointer,
+		width: float,
+		height: float,
+		rlTexturePtr: FFIPointer,
+		repeatX: float,
+		repeatY: float,
+		culling: bool,
+		castShadows: bool,
+		receiveShadows: bool
+	) -> int,
+	Kine_Filament_RemoveDecal: (ctx: FFIPointer, decal: int) -> (),
+	Kine_Filament_EditDecal: (
+		ctx: FFIPointer,
+		decal: int,
+		width: float,
+		height: float,
+		culling: bool,
+		castShadows: bool,
+		receiveShadows: bool
+	) -> bool,
 }
 
 local funcs = {
@@ -79,18 +186,13 @@ local funcs = {
 		returns = ffi.types.pointer,
 		args = { ffi.types.i32, ffi.types.i32 },
 	},
-	Kine_Filament_GetColorTextureId = {
-		returns = ffi.types.u32,
-		args = { ffi.types.pointer },
-	},
-
 	Kine_Filament_Destroy = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer },
 	},
 	Kine_Filament_RenderFrame = {
 		returns = ffi.types.void,
-		args = { ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.float },
 	},
 	Kine_Filament_Resize = {
 		returns = ffi.types.void,
@@ -108,6 +210,44 @@ local funcs = {
 		returns = ffi.types.i32,
 		args = { ffi.types.pointer },
 	},
+	Kine_Filament_GetColorTextureId = {
+		returns = ffi.types.u32,
+		args = { ffi.types.pointer },
+	},
+	Kine_Filament_DebugPrintPixel = {
+		returns = ffi.types.void,
+		args = { ffi.types.pointer },
+	},
+
+	-- Sky / post-processing
+	Kine_Filament_CreateSky = {
+		returns = ffi.types.void,
+		args = { ffi.types.pointer, ffi.types.float, ffi.types.float, ffi.types.float, ffi.types.float },
+	},
+	Kine_Filament_SetPostProcessing = {
+		returns = ffi.types.void,
+		args = { ffi.types.pointer, ffi.types.u8 },
+	},
+
+	Kine_Filament_SetSkyAtmosphere = {
+		returns = ffi.types.void,
+		args = {
+			ffi.types.pointer, -- ctx
+			ffi.types.float, -- sunDirX
+			ffi.types.float, -- sunDirY
+			ffi.types.float, -- sunDirZ
+			ffi.types.float, -- skyR
+			ffi.types.float, -- skyG
+			ffi.types.float, -- skyB
+			ffi.types.float, -- horizonR
+			ffi.types.float, -- horizonG
+			ffi.types.float, -- horizonB
+			ffi.types.float, -- groundR
+			ffi.types.float, -- groundG
+			ffi.types.float, -- groundB
+			ffi.types.float, -- sunIntensity
+		},
+	},
 
 	-- Scene accessors
 	Kine_Filament_GetEngine = {
@@ -115,10 +255,6 @@ local funcs = {
 		args = { ffi.types.pointer },
 	},
 	Kine_Filament_GetScene = {
-		returns = ffi.types.pointer,
-		args = { ffi.types.pointer },
-	},
-	Kine_Filament_DebugPrintPixel = {
 		returns = ffi.types.pointer,
 		args = { ffi.types.pointer },
 	},
@@ -138,13 +274,13 @@ local funcs = {
 			ffi.types.pointer,
 			ffi.types.float,
 			ffi.types.float,
+			ffi.types.float, -- eye
 			ffi.types.float,
 			ffi.types.float,
+			ffi.types.float, -- target
 			ffi.types.float,
 			ffi.types.float,
-			ffi.types.float,
-			ffi.types.float,
-			ffi.types.float,
+			ffi.types.float, -- up
 		},
 	},
 	Kine_Filament_SetCameraPosition = {
@@ -176,6 +312,17 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.pointer },
 	},
 
+	Kine_Filament_CreateCustomMesh = {
+		returns = ffi.types.pointer,
+		args = {
+			ffi.types.pointer, -- ctx
+			ffi.types.pointer, -- vertexData (float*)
+			ffi.types.i32, -- vertexCount
+			ffi.types.pointer, -- indices (uint16_t*)
+			ffi.types.i32, -- indexCount
+		},
+	},
+
 	-- Texture system
 	Kine_Filament_CreateTex = {
 		returns = ffi.types.pointer,
@@ -187,19 +334,117 @@ local funcs = {
 	},
 
 	-- Draw call
-	Kine_Filament_DrawMesh = {
+	Kine_Filament_DrawMeshEx = {
 		returns = ffi.types.void,
 		args = {
 			ffi.types.pointer, -- ctx
 			ffi.types.pointer, -- mesh
-			ffi.types.float,
-			ffi.types.float,
-			ffi.types.float, -- r, g, b
-			ffi.types.pointer, -- tex (nullable)
-			ffi.types.float, -- transparency
-			ffi.types.float, -- roughness
-			ffi.types.float, -- metallic
+			ffi.types.i32, -- materialKind
+			ffi.types.float, -- r
+			ffi.types.float, -- g
+			ffi.types.float, -- b
+			ffi.types.float, -- param1 (roughness / intensity)
+			ffi.types.float, -- param2 (ior)
+			ffi.types.float, -- param3 (thickness)
+			ffi.types.float, -- transmission
 			ffi.types.pointer, -- mat4 float[16]
+			ffi.types.u8, -- castShadows
+			ffi.types.u8, -- receiveShadows
+			ffi.types.u8, -- culling
+			ffi.types.pointer, -- tex (optional KineFilamentTex*)
+		},
+	},
+
+	Kine_Filament_CreateLight = {
+		returns = ffi.types.i32,
+		args = {
+			ffi.types.pointer, -- ctx
+			ffi.types.float,
+			ffi.types.float,
+			ffi.types.float, -- position (x,y,z)
+			ffi.types.float,
+			ffi.types.float,
+			ffi.types.float, -- color (r,g,b)
+			ffi.types.float, -- intensity
+			ffi.types.float, -- falloff
+		},
+	},
+	Kine_Filament_SetColorLight = {
+		returns = ffi.types.void,
+		args = {
+			ffi.types.pointer, -- ctx
+			ffi.types.i32, -- light
+			ffi.types.float,
+			ffi.types.float,
+			ffi.types.float, -- color (r,g,b)
+		},
+	},
+	Kine_Filament_SetIntensityLight = {
+		returns = ffi.types.void,
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.float },
+	},
+	Kine_Filament_SetFalloffLight = {
+		returns = ffi.types.void,
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.float },
+	},
+	Kine_Filament_SetPositionLight = {
+		returns = ffi.types.void,
+		args = {
+			ffi.types.pointer, -- ctx
+			ffi.types.i32, -- light
+			ffi.types.float,
+			ffi.types.float,
+			ffi.types.float, -- position (x,y,z)
+		},
+	},
+
+	-- Decal management
+	Kine_Filament_CreateDecal = {
+		returns = ffi.types.i32,
+		args = {
+			ffi.types.pointer, -- ctx
+			ffi.types.float, -- width
+			ffi.types.float, -- height
+			ffi.types.pointer, -- rlTexturePtr
+			ffi.types.float, -- offsetStudsU
+			ffi.types.float, -- offsetStudsV
+			ffi.types.float, -- studsPerTileU
+			ffi.types.float, -- studsPerTileV
+			ffi.types.u8, -- culling
+			ffi.types.u8, -- castShadows
+			ffi.types.u8, -- receiveShadows
+		},
+	},
+
+	Kine_Filament_SetDecalTiling = {
+		returns = ffi.types.u8,
+		args = {
+			ffi.types.pointer, -- ctx
+			ffi.types.i32, -- decal
+			ffi.types.float, -- offsetStudsU
+			ffi.types.float, -- offsetStudsV
+			ffi.types.float, -- studsPerTileU
+			ffi.types.float, -- studsPerTileV
+		},
+	},
+	Kine_Filament_RemoveDecal = {
+		returns = ffi.types.void,
+		args = { ffi.types.pointer, ffi.types.i32 },
+	},
+	Kine_Filament_SetDecalTransform = {
+		returns = ffi.types.void,
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
+	},
+	Kine_Filament_EditDecal = {
+		returns = ffi.types.u8, -- bool
+		args = {
+			ffi.types.pointer, -- ctx
+			ffi.types.i32, -- decal
+			ffi.types.float, -- width
+			ffi.types.float, -- height
+			ffi.types.u8, -- culling
+			ffi.types.u8, -- castShadows
+			ffi.types.u8, -- receiveShadows
 		},
 	},
 }

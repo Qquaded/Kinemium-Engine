@@ -75,6 +75,81 @@ local scrollableToolbar
 local gui = aereon.gui
 local componentCache = {}
 
+local categoryOrder = {} -- [categoryTitle] = { elementName1, elementName2, ... }
+
+local function ensureCategoryOrder(category, categoryKey)
+	local order = categoryOrder[categoryKey]
+	if not order then
+		order = {}
+		categoryOrder[categoryKey] = order
+	end
+
+	local seen = {}
+	for _, name in ipairs(order) do
+		seen[name] = true
+	end
+	for name in pairs(category.elements) do
+		if not seen[name] then
+			table.insert(order, name)
+			seen[name] = true
+		end
+	end
+
+	for i = #order, 1, -1 do
+		if category.elements[order[i]] == nil then
+			table.remove(order, i)
+		end
+	end
+
+	return order
+end
+
+local function getOrderedElements(category, categoryKey)
+	local order = ensureCategoryOrder(category, categoryKey)
+	local result = {}
+	for _, name in ipairs(order) do
+		table.insert(result, { name = name, element = category.elements[name] })
+	end
+	return result
+end
+
+-- Chops an ordered element list into draggable sections. Each section is
+-- { leadingSeparator = entry|nil, items = {entry, entry, ...}, cachedWidth = number }.
+-- A section's leading separator travels together with it when dragged.
+local function getSections(orderedElements)
+	local sections = {}
+	local current = { items = {}, leadingSeparator = nil }
+
+	for _, entry in ipairs(orderedElements) do
+		if entry.element.type == "Separator" then
+			if #current.items > 0 or current.leadingSeparator then
+				table.insert(sections, current)
+			end
+			current = { items = {}, leadingSeparator = entry }
+		else
+			table.insert(current.items, entry)
+		end
+	end
+	if #current.items > 0 or current.leadingSeparator then
+		table.insert(sections, current)
+	end
+
+	return sections
+end
+
+local function sectionsToOrder(sections)
+	local order = {}
+	for _, section in ipairs(sections) do
+		if section.leadingSeparator then
+			table.insert(order, section.leadingSeparator.name)
+		end
+		for _, entry in ipairs(section.items) do
+			table.insert(order, entry.name)
+		end
+	end
+	return order
+end
+
 window.focused = function(window)
 	_G.IsHoveringOnWindow = true
 end
@@ -94,6 +169,31 @@ local tooltipState = {
 }
 
 local toggleStates = {}
+
+-- ============================================================
+-- Section dragging: drag state
+-- ============================================================
+local sectionDrag = {
+	active = false,
+	category = nil, -- category title being dragged, so drags don't leak across tabs
+	sourceIndex = nil,
+	targetIndex = nil,
+	grabDX = 0,
+	pressStartX = 0,
+	pressStartY = 0,
+	pendingSectionIndex = nil,
+	pendingSections = nil,
+	dragThreshold = 6,
+}
+
+local function cancelSectionDrag()
+	sectionDrag.active = false
+	sectionDrag.category = nil
+	sectionDrag.sourceIndex = nil
+	sectionDrag.targetIndex = nil
+	sectionDrag.pendingSectionIndex = nil
+	sectionDrag.pendingSections = nil
+end
 
 local fileMenu = gui.menu({
 	x = 0,
@@ -594,7 +694,26 @@ end)
 
 game.EngineSignal:Connect(function(route, name, data)
 	if route == "NewToolbarCategory" then
+		data.groups = data.groups or {}
+		data.elements = data.elements or {}
+
 		categoryRegistry[name] = data
+	elseif route == "NewToolbarElement" then
+		categoryRegistry[name].elements[data.name] = data
+	elseif route == "NewToolbarGroup" then
+		-- section in a toolbar
+		if not categoryRegistry[name] then
+			categoryRegistry[name] = { groups = {}, elements = {} }
+		end
+		if not categoryRegistry[name].groups[data.name] then
+			categoryRegistry[name].groups[data.name] = {}
+		end
+		categoryRegistry[name].groups[data.name] = data
+	elseif route == "AddToolbarGroupElement" then
+		if not categoryRegistry[name] then
+			categoryRegistry[name] = { groups = {}, elements = {} }
+		end
+		categoryRegistry[name].groups[data.group][data.name] = data
 	end
 end)
 
@@ -835,6 +954,319 @@ local function renderImageDropdownButton(xPos, name, element, windowData, dt)
 	return effectiveWidth + (element.padding or 5)
 end
 
+local function renderToolbarSections(propback, category, categoryKey, dt)
+	local winY = propback.y + 80
+	local renderX = propback.x + 15
+
+	local mouseX = rl.GetMouseX and rl.GetMouseX() or 0
+	local mouseY = rl.GetMouseY and rl.GetMouseY() or 0
+	-- NOTE: adjust these to match whatever your raylibadapter exposes for
+	-- mouse button state if the names differ from stock raylib.
+	local mouseDown = rl.IsMouseButtonDown and rl.IsMouseButtonDown(0) == 1 or false
+	local mousePressed = rl.IsMouseButtonPressed and rl.IsMouseButtonPressed(0) == 1 or false
+	local mouseReleased = rl.IsMouseButtonReleased and rl.IsMouseButtonReleased(0) == 1 or false
+
+	if not category or not categoryKey then
+		return
+	end
+
+	local orderedElements = getOrderedElements(category, categoryKey)
+	local sections = getSections(orderedElements)
+
+	local dragIsHere = sectionDrag.active and sectionDrag.category == categoryKey
+	local dragSourceIdx = dragIsHere and sectionDrag.sourceIndex or nil
+
+	local sectionRects = {}
+
+	-- Layout constants for each section's group panel.
+	local gripWidth = 12
+	local groupPad = 8 -- padding: before grip, between grip and buttons, after buttons
+	local groupTopPad = 8
+	local groupHeight = 84
+
+	for sIdx, section in ipairs(sections) do
+		local sectionStartX = renderX
+		local contentStartX = renderX -- where the group panel (grip + buttons) begins
+		local isDraggedAway = dragSourceIdx == sIdx
+
+		if section.leadingSeparator and not isDraggedAway then
+			local width = renderSeperator(contentStartX - propback.x, propback, section.leadingSeparator.element, dt)
+			contentStartX = contentStartX + width
+		end
+
+		if not isDraggedAway then
+			-- Draw the group's rounded-rect background first (behind the grip
+			-- and buttons). Sized from last frame's measured width, which is
+
+			local bgWidth = section.cachedGroupWidth or (gripWidth + groupPad * 3 + 40)
+			local rect = aRect.new(contentStartX, winY - groupTopPad, bgWidth, groupHeight)
+
+			rl.DrawRectangleRounded(aRect:translate(rect), 0.25, 8, Theme.SecondaryBackgroundColor:ToRaylib(0.2))
+
+			-- Grip handle: a visible 2x3 dot grid on the left edge of the
+			-- group — this is what you grab and drag to reorder the section.
+			local gripX = contentStartX + groupPad
+			local gripCenterY = winY - groupTopPad + groupHeight / 2
+			local dotR = 1.6
+			for col = 0, 1 do
+				for row = -1, 1 do
+					rl.DrawCircle(math.floor(gripX + col * 5), math.floor(gripCenterY + row * 5), dotR, TextColor)
+				end
+			end
+
+			local buttonsStartX = contentStartX + groupPad * 2 + gripWidth
+			local sectionRenderX = buttonsStartX
+
+			for _, entry in ipairs(section.items) do
+				local element = entry.element
+				local width = 0
+				if element.type == "ImageButton" then
+					width = renderButton(sectionRenderX - propback.x, element.text, element, propback, dt)
+				elseif element.type == "ToggleButton" then
+					width = renderToggleButton(sectionRenderX - propback.x, element.text, element, propback, dt)
+				elseif element.type == "DropdownButton" then
+					width = renderDropdownButton(sectionRenderX - propback.x, element.text, element, propback, dt)
+				elseif element.type == "ImageDropdownButton" then
+					width = renderImageDropdownButton(sectionRenderX - propback.x, element.text, element, propback, dt)
+				elseif element.type == "Custom" then
+					if element.render then
+						local cellWidth = element.width or 50
+						local cellHeight = element.height or 50
+						local padding = element.padding or 20
+						element.render(aRect, {
+							x = sectionRenderX,
+							y = winY,
+							width = cellWidth,
+							height = cellHeight,
+							window = propback,
+						})
+						width = cellWidth + padding
+					end
+				end
+				sectionRenderX = sectionRenderX + width
+			end
+
+			local buttonsWidth = sectionRenderX - buttonsStartX
+			section.cachedGroupWidth = groupPad * 3 + gripWidth + buttonsWidth
+			section.cachedWidth = (contentStartX - sectionStartX) + section.cachedGroupWidth
+		end
+
+		local sectionWidth = math.max(section.cachedWidth or 12, 12)
+		sectionRects[sIdx] = aRect.new(sectionStartX, winY - groupTopPad, sectionWidth, groupHeight)
+
+		-- The grip's own rect is the drag hit-zone: press-and-drag there (past
+		-- dragThreshold) starts a reorder. A plain click does nothing there,
+		-- so it can't be confused with a button click either.
+		local gripHitWidth = groupPad * 2 + gripWidth
+		local gripRect = aRect.new(contentStartX, winY - groupTopPad, gripHitWidth, groupHeight)
+
+		if not sectionDrag.active and mousePressed and aRect.MouseIsInRect(gripRect) then
+			sectionDrag.pendingSectionIndex = sIdx
+			sectionDrag.pendingSections = sections
+			sectionDrag.pressStartX = mouseX
+			sectionDrag.pressStartY = mouseY
+			sectionDrag.category = categoryKey
+			sectionDrag.grabDX = mouseX - sectionStartX
+		end
+
+		renderX = renderX + sectionWidth
+	end
+
+	-- Promote a pending grab into an active drag once past the threshold.
+	if not sectionDrag.active and sectionDrag.pendingSectionIndex and mouseDown then
+		local dx = mouseX - sectionDrag.pressStartX
+		local dy = mouseY - sectionDrag.pressStartY
+		if math.abs(dx) > sectionDrag.dragThreshold or math.abs(dy) > sectionDrag.dragThreshold then
+			sectionDrag.active = true
+			sectionDrag.sourceIndex = sectionDrag.pendingSectionIndex
+			sectionDrag.targetIndex = sectionDrag.sourceIndex
+			_G.__aereon_blockInput = true -- stop buttons underneath from reacting mid-drag
+		end
+	end
+
+	if not mouseDown and not sectionDrag.active then
+		sectionDrag.pendingSectionIndex = nil
+		sectionDrag.pendingSections = nil
+	end
+
+	if dragIsHere then
+		local dragged = sections[sectionDrag.sourceIndex]
+		local ghostWidth = (dragged and dragged.cachedWidth) or 80
+		local ghostX = mouseX - sectionDrag.grabDX
+		local ghostY = winY - groupTopPad
+
+		-- Which boundary has the ghost crossed?
+		local newTarget = sectionDrag.sourceIndex
+		for sIdx, rect in ipairs(sectionRects) do
+			local mid = rect.x + rect.width / 2
+			if ghostX + ghostWidth / 2 > mid then
+				newTarget = sIdx
+			end
+		end
+		sectionDrag.targetIndex = newTarget
+
+		local targetRect = sectionRects[sectionDrag.targetIndex]
+		if targetRect then
+			local indicatorX = (sectionDrag.targetIndex >= sectionDrag.sourceIndex)
+					and (targetRect.x + targetRect.width)
+				or targetRect.x
+			local rect = aRect.new(indicatorX - 1, winY - 10, 2, 90)
+			rl.DrawRectangleRounded(aRect:translate(rect), 0, 2, Theme.Accent:ToRaylib(0))
+		end
+
+		local ghostr = aRect.new(ghostX, ghostY, ghostWidth, groupHeight)
+
+		rl.DrawRectangleRounded(aRect:translate(ghostr), 0.25, 8, Color3.new(0.2, 0.5, 0.9):ToRaylib(0.5))
+		local ghostGripCenterY = ghostY + groupHeight / 2
+		for col = 0, 1 do
+			for row = -1, 1 do
+				rl.DrawCircle(
+					math.floor(ghostX + groupPad + col * 5),
+					math.floor(ghostGripCenterY + row * 5),
+					1.6,
+					TextColor
+				)
+			end
+		end
+		if dragged then
+			local label = (dragged.items[1] and dragged.items[1].element.text) or "Section"
+			rl.DrawTextEx(
+				vend,
+				label,
+				vector.create(ghostX + groupPad * 2 + gripWidth, ghostY + groupTopPad),
+				16,
+				1,
+				TextColor
+			)
+		end
+
+		-- Cancel with Escape without committing a move.
+		if rl.IsKeyPressed and rl.IsKeyPressed(256) == 1 then
+			_G.__aereon_blockInput = false
+			cancelSectionDrag()
+			return renderX
+		end
+
+		if mouseReleased then
+			if sectionDrag.targetIndex ~= sectionDrag.sourceIndex then
+				local moving = table.remove(sections, sectionDrag.sourceIndex)
+				local insertAt = math.max(1, math.min(sectionDrag.targetIndex, #sections + 1))
+				table.insert(sections, insertAt, moving)
+				categoryOrder[categoryKey] = sectionsToOrder(sections)
+			end
+			_G.__aereon_blockInput = false
+			cancelSectionDrag()
+		end
+	end
+
+	return renderX
+end
+
+local function getGroupElements(group)
+	local result = {}
+	for key, value in pairs(group) do
+		if type(value) == "table" and value.type ~= nil then
+			table.insert(result, { name = key, element = value })
+		end
+	end
+	table.sort(result, function(a, b)
+		return a.name < b.name
+	end)
+	return result
+end
+
+local function renderGroup(xAbs, groupName, group, windowData, dt)
+	local winX, winY = windowData.x, windowData.y + 80
+	local groupPad = 8
+	local groupTopPad = 8
+	local groupHeight = 84
+	local titleHeight = 16
+
+	local elements = getGroupElements(group)
+	local title = group.title or groupName
+	local hasTitle = title ~= nil and title ~= ""
+	local contentTopOffset = hasTitle and titleHeight or 0
+
+	local measuredWidth = groupPad
+	for _, entry in ipairs(elements) do
+		local element = entry.element
+		local labelWidth = element.text and measureTextWidth(element.text) or 0
+		if element.type == "ImageButton" or element.type == "ToggleButton" then
+			measuredWidth = measuredWidth + math.max(element.width or 50, labelWidth + 10) + (element.padding or 5)
+		elseif element.type == "DropdownButton" then
+			measuredWidth = measuredWidth + (element.width or 100) + (element.padding or 10)
+		elseif element.type == "ImageDropdownButton" then
+			measuredWidth = measuredWidth + (element.width or 60) + (element.padding or 5)
+		elseif element.type == "Custom" then
+			measuredWidth = measuredWidth + (element.width or 50) + (element.padding or 20)
+		end
+	end
+
+	local titleWidth = hasTitle and measureTextWidth(title) or 0
+	local panelWidth = math.max(measuredWidth + groupPad, titleWidth + groupPad * 2, 40)
+
+	local panelRect = aRect.new(xAbs, winY - groupTopPad, panelWidth, groupHeight)
+	rl.DrawRectangleRounded(aRect:translate(panelRect), 0.25, 8, Theme.SecondaryBackgroundColor:ToRaylib(0.2))
+
+	if hasTitle then
+		rl.DrawTextEx(vend, title, vector.create(xAbs + groupPad, winY - groupTopPad + 4), 14, 1, TextColor)
+	end
+
+	local cursorAbs = xAbs + groupPad
+	for _, entry in ipairs(elements) do
+		local element = entry.element
+		local relX = cursorAbs - winX
+		local width = 0
+
+		if element.type == "ImageButton" then
+			width = renderButton(relX, element.text, element, windowData, dt)
+		elseif element.type == "ToggleButton" then
+			width = renderToggleButton(relX, element.text, element, windowData, dt)
+		elseif element.type == "DropdownButton" then
+			width = renderDropdownButton(relX, element.text, element, windowData, dt)
+		elseif element.type == "ImageDropdownButton" then
+			width = renderImageDropdownButton(relX, element.text, element, windowData, dt)
+		elseif element.type == "Custom" then
+			if element.render then
+				local cellWidth = element.width or 50
+				local cellHeight = element.height or 50
+				local padding = element.padding or 20
+				element.render(aRect, {
+					x = cursorAbs,
+					y = winY + contentTopOffset,
+					width = cellWidth,
+					height = cellHeight,
+					window = windowData,
+				})
+				width = cellWidth + padding
+			end
+		end
+
+		cursorAbs = cursorAbs + width
+	end
+
+	return panelWidth + (group.padding or 15)
+end
+
+local function renderToolbarGroups(windowData, category, dt, startXAbs)
+	if not category or not category.groups then
+		return startXAbs
+	end
+
+	local groupNames = {}
+	for name in pairs(category.groups) do
+		table.insert(groupNames, name)
+	end
+	table.sort(groupNames)
+
+	local xAbs = startXAbs
+	for _, name in ipairs(groupNames) do
+		xAbs = xAbs + renderGroup(xAbs, name, category.groups[name], windowData, dt)
+	end
+
+	return xAbs
+end
+
 propback.stepped = function(propback)
 	if propback.title == "Toolbar" then
 		Theme = game:GetService("StudioThemeService").SelectedTheme
@@ -872,46 +1304,9 @@ propback.stepped = function(propback)
 				end
 			end,
 			render = function(dt)
-				local r = toolbarContent.rect
-				local renderX = r.x
-				local winY = propback.y + 80
-
+				local endX = renderToolbarSections(propback, category, currentlySelected, dt) or (propback.x + 15)
 				if category then
-					local elements = category.elements
-					for _, element in pairs(elements) do
-						if element.type == "ImageButton" then
-							local width = renderButton(renderX - propback.x, element.text, element, propback, dt)
-							renderX = renderX + width
-						elseif element.type == "ToggleButton" then
-							local width = renderToggleButton(renderX - propback.x, element.text, element, propback, dt)
-							renderX = renderX + width
-						elseif element.type == "DropdownButton" then
-							local width =
-								renderDropdownButton(renderX - propback.x, element.text, element, propback, dt)
-							renderX = renderX + width
-						elseif element.type == "ImageDropdownButton" then
-							local width =
-								renderImageDropdownButton(renderX - propback.x, element.text, element, propback, dt)
-							renderX = renderX + width
-						elseif element.type == "Separator" then
-							local width = renderSeperator(renderX - propback.x, propback, element, dt)
-							renderX = renderX + width
-						elseif element.type == "Custom" then
-							if element.render then
-								local cellWidth = element.width or 50
-								local cellHeight = element.height or 50
-								local padding = element.padding or 20
-								element.render(aRect, {
-									x = renderX,
-									y = winY,
-									width = cellWidth,
-									height = cellHeight,
-									window = propback,
-								})
-								renderX = renderX + cellWidth + padding
-							end
-						end
-					end
+					renderToolbarGroups(propback, category, dt, endX)
 				end
 			end,
 		}

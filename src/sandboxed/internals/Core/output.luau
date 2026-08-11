@@ -25,7 +25,7 @@ local pumpTabData = {}
 local pumpTabScrollables = {}
 local lastLogCount = 0
 local lastMaxScroll = 0
-local LOG_FONT_SIZE = 17
+local LOG_FONT_SIZE = 13
 local LOG_FONT_SPACING = 1
 local MIN_CELL_HEIGHT = 25
 
@@ -95,13 +95,6 @@ local function wrapTextToWidth(text, maxWidth)
 	return lines
 end
 
-local function isMouseInRect(rect, mousePos)
-	return mousePos.x >= rect.x
-		and mousePos.x <= rect.x + rect.width
-		and mousePos.y >= rect.y
-		and mousePos.y <= rect.y + rect.height
-end
-
 local function stringifyLogMessage(message)
 	if message == nil then
 		return "nil"
@@ -126,13 +119,11 @@ local function stringifyLogMessage(message)
 	return "<unprintable>"
 end
 
-local syntax_highlighter = require("@syntax_highlighter")
-local syntax_autocomplete = require("@syntax_autocomplete")
+local syntax_highlighter = require("@kilang_sh")
+local syntax_autocomplete = require("@luau_autocomplete")
 local aereon = require("@Aereon")
 
 local textbox = aereon.textbox(Theme, game)
-
-local kilang = require("@Kilang")
 
 if game.Context ~= Enum.GameContext.Editor then
 	return
@@ -332,33 +323,49 @@ local function create_window(title, frame)
 						end
 					end
 
-					local consoleContent
-					consoleContent = {
-						get_rect = function()
-							return arectlib.new(0, 0, listRect.width, totalHeight)
-						end,
-						set = function(prop, value)
+					if not scrollableComp then
+						local _contentObj = {}
+						_contentObj.rect = nil
+						_contentObj._logs = logs
+						_contentObj._logLayoutCache = logLayoutCache
+						_contentObj._listRect = listRect
+						_contentObj._winX = winX
+						_contentObj._winWidth = winWidth
+						_contentObj._totalHeight = totalHeight
+						_contentObj._lineHeight = lineHeight
+						_contentObj._padding = padding
+						_contentObj.get_rect = function()
+							return arectlib.new(0, 0, _contentObj._winWidth, _contentObj._totalHeight)
+						end
+						_contentObj.set = function(prop, value)
 							if prop == "obj_rect" then
-								consoleContent.rect = value
+								_contentObj.rect = value
 							end
-						end,
-						render = function(dt)
-							local r = consoleContent.rect
+						end
+						_contentObj.render = function(dt)
+							local r = _contentObj.rect
+							if not r then
+								return
+							end
+							local _logs = _contentObj._logs
+							local _cache = _contentObj._logLayoutCache
+							local _lr = _contentObj._listRect
+							local _wx = _contentObj._winX
+							local _ww = _contentObj._winWidth
+							local _lh = _contentObj._lineHeight
+							local _pad = _contentObj._padding
 							local currentY = r.y
-							for i, log in ipairs(logs) do
+							local visibleBottom = _lr.y + _lr.height
+							for i, log in ipairs(_logs) do
 								if log then
 									local cacheKey = log.id or i
-									local cacheEntry = logLayoutCache[cacheKey]
+									local cacheEntry = _cache[cacheKey]
 									if cacheEntry then
-										local logRect =
-											arectlib.new(winX + 5, currentY, winWidth - 10, cacheEntry.height)
-
-										if
-											currentY + cacheEntry.height >= listRect.y
-											and currentY <= listRect.y + listRect.height
-										then
+										local cellBottom = currentY + cacheEntry.height
+										if cellBottom >= _lr.y and currentY <= visibleBottom then
+											local logRect = arectlib.new(_wx + 5, currentY, _ww - 10, cacheEntry.height)
 											for lineIndex, lineText in ipairs(cacheEntry.lines) do
-												local textY = logRect.y + 4 + (lineIndex - 1) * lineHeight
+												local textY = logRect.y + 4 + (lineIndex - 1) * _lh
 												rl.DrawTextEx(
 													vend,
 													lineText,
@@ -368,7 +375,6 @@ local function create_window(title, frame)
 													cacheEntry.color
 												)
 											end
-
 											if arectlib.MouseIsInRect(logRect) then
 												rl.DrawLineEx(
 													vector.create(logRect.x, logRect.y + cacheEntry.height),
@@ -380,23 +386,36 @@ local function create_window(title, frame)
 													Theme.Accent:ToRaylib(0)
 												)
 											end
+										elseif currentY > visibleBottom then
+											break -- nothing below is visible, early out
 										end
-
-										currentY = currentY + cacheEntry.height + padding
+										currentY = currentY + cacheEntry.height + _pad
 									end
 								end
 							end
-						end,
-					}
-
-					if not scrollableComp then
+						end
 						scrollableComp = aereon.gui.scrollable({
-							child = consoleContent,
+							child = _contentObj,
 							scrollbarWidth = 6,
 							scrollbarColor = Theme.SecondaryBackgroundColor,
 							scrollbarHoverColor = Theme.Accent,
 							scrollbarBackgroundTransparency = 1,
 						})
+						-- Store reference to content object on the scrollable so we can update it each frame
+						scrollableComp._contentObj = _contentObj
+					end
+
+					-- Update the persistent content object with the latest per-frame data
+					local _co = scrollableComp._contentObj
+					if _co then
+						_co._logs = logs
+						_co._logLayoutCache = logLayoutCache
+						_co._listRect = listRect
+						_co._winX = winX
+						_co._winWidth = winWidth
+						_co._totalHeight = totalHeight
+						_co._lineHeight = lineHeight
+						_co._padding = padding
 					end
 
 					local maxScroll = math.max(0, totalHeight - listRect.height)
@@ -504,6 +523,9 @@ renderer.Pool.new("2d", function(data)
 	frame.Size = Theme.WindowConfig.Output.size
 
 	if rl.IsWindowResized() == 1 then
+		if not frame.AbsolutePosition then
+			return
+		end
 		propback.x = frame.AbsolutePosition.X
 		propback.y = frame.AbsolutePosition.Y
 		propback.width = frame.AbsoluteSize.X

@@ -108,16 +108,31 @@ local Transpiler = require("@Transpiler")
 
 PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 	PluginLoader:SetProperties({
-
 		LoadPluginDir = function(path)
 			local manifest = fs.readFile(path .. "/manifest.json")
 			local json = serde.json.decode(manifest)
 			local main = fs.readFile(path .. "/" .. json.main, true)
 
-			local success, result = PluginLoader.LoadPluginCode({
-				["manifest.json"] = buffer.fromstring(manifest),
-				[json.main] = main,
-			})
+			local files = {}
+
+			local function scan(absDir, relDir)
+				relDir = relDir or ""
+
+				for _, entry in pairs(fs.entries(absDir)) do
+					local relPath = relDir == "" and entry.name or (relDir .. "/" .. entry.name)
+
+					if entry.kind == "directory" then
+						scan(absDir .. "/" .. entry.name, relPath)
+					else
+						print("Adding", relPath)
+						files[relPath] = fs.readFile(absDir .. "/" .. entry.name, true)
+					end
+				end
+			end
+
+			scan(path)
+
+			local success, result = PluginLoader.LoadPluginCode(files)
 
 			print("Got result from plugin " .. json.id .. "\n" .. tostring(success) .. "\n" .. tostring(result))
 
@@ -234,11 +249,13 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 						GetFileContents = function(fileName)
 							return files[fileName]
 						end,
+						game = datamodel,
 						require = plugin_require,
 						ThreadPluginIntents = resolved_intents,
 						PluginId = plugin_id,
 					})
 
+					print(kilang.env)
 					return success, result
 				end
 
@@ -506,21 +523,61 @@ PluginLoader.InitRenderer = function(renderer, signal, datamodel)
 	})
 
 	task.spawn(function()
+		repeat
+			task.wait()
+		until datamodel.Loaded == true
 		local entries = zune.fs.entries("./plugins")
 		for _, entry in pairs(entries) do
 			local path = "./plugins/" .. entry.name
 			if entry.kind == "directory" then
 				PluginLoader.LoadPluginDir(path)
-			elseif entry.kind == "file" and string.find(entry.name, ".kineplug") then
-				local contents = fs.readFile(path, true)
-				local decoded = libzip.read(contents)
-				local normalized = {}
+			elseif entry.kind == "file" then
+				if string.find(entry.name, ".kineplug") then
+					local contents = fs.readFile(path, true)
+					local decoded = libzip.read(contents)
+					local normalized = {}
 
-				for path, data in pairs(decoded) do
-					local stripped = path:gsub("^[^/]+/", "")
-					normalized[stripped] = data
+					for path, data in pairs(decoded) do
+						local stripped = path:gsub("^[^/]+/", "")
+						normalized[stripped] = data
+					end
+					PluginLoader.LoadPluginCode(normalized)
+				elseif string.find(entry.name, ".rbxm") then
+					-- make a special task for this one
+					task.spawn(function()
+						repeat
+							task.wait()
+						until datamodel.Loaded == true
+
+						task.wait(2)
+
+						warn(`Running RBXM plugin {entry.name}`)
+
+						local RBXModelImporter = datamodel:GetService("RBXModelImporter")
+						local ScriptContext = datamodel:GetService("ScriptContext")
+						local contents = fs.readFile(path, true)
+						local imported = RBXModelImporter.ImportModel(contents)
+
+						imported.Parent = datamodel:GetService("Plugin")
+
+						if imported:IsA("Script") then
+							warn(`[PLUGIN LOADER]	Running {imported.Name}`)
+							print(imported.Source)
+
+							local thread, id, success, result = ScriptContext.MakeThreadObject(imported)
+							print(thread, id, success, result)
+						end
+
+						for _, Script in pairs(imported:GetDescendants()) do
+							if Script:IsA("Script") then
+								warn(`[PLUGIN LOADER]	Running {Script.Name}`)
+
+								local thread, id, success, result = ScriptContext.MakeThreadObject(Script)
+								print(thread, id, success, result)
+							end
+						end
+					end)
 				end
-				PluginLoader.LoadPluginCode(normalized)
 			end
 		end
 	end)

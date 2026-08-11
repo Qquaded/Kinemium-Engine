@@ -24,18 +24,6 @@ local function profileBegin(name)
 	end
 end
 
-local function profileSetCounter(name, value)
-	if ENGINE_PROFILER then
-		ENGINE_PROFILER:SetCounter(name, value)
-	end
-end
-
-local function profileNextFrame()
-	if ENGINE_PROFILER then
-		ENGINE_PROFILER:NextFrame()
-	end
-end
-
 local function profileEnd()
 	if ENGINE_PROFILER then
 		ENGINE_PROFILER:End()
@@ -46,7 +34,7 @@ return {
 	class = "ScreenGui",
 
 	callback = function(instance, renderer)
-		proptble.render = function(lib, instance, dt, structs, datamodel)
+		proptble.render = function(lib, instance, dt, structs, renderer, datamodel)
 			if not datamodel then
 				return
 			end
@@ -80,6 +68,13 @@ return {
 					instance.Size = UDim2.new(0, renderWidth, 0, renderHeight)
 					instance.AbsoluteSize = Vector2.new(renderWidth, renderHeight)
 					instance.AbsolutePosition = Vector2.new(0, 0)
+				end
+			else
+				local offset = instance.RenderOffset or Vector2.new(0, 0)
+				instance.AbsolutePosition = Vector2.new(offset.X, offset.Y)
+
+				if instance.Size then
+					instance.AbsoluteSize = Vector2.new(instance.Size.X.Offset, instance.Size.Y.Offset)
 				end
 			end
 

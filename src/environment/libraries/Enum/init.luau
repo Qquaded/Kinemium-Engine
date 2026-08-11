@@ -99,4 +99,14 @@ end
 Enum.new = createEnum
 Enum.newValue = createEnumValue
 
+function Enum:GetEnums()
+	local list = {}
+	for _, value in pairs(self) do
+		if type(value) == "table" and value.__type == "EnumType" then
+			table.insert(list, value)
+		end
+	end
+	return list
+end
+
 return Enum

@@ -401,12 +401,52 @@ module.lib = {
 		return raylib.lib.GetFrameTime()
 	end,
 
+	InitAudioDevice = function()
+		raylib.lib.InitAudioDevice()
+	end,
+
+	UnloadTexture = function(cached)
+		raylib.lib.UnloadTexture(cached)
+	end,
+
 	GetWindowScaleDPI = function()
 		return raylib.lib.GetWindowScaleDPI()
 	end,
 
 	QuaternionIdentity = function()
 		return raylib.lib.QuaternionIdentity()
+	end,
+
+	SetSoundVolume = function(sound, volume)
+		return raylib.lib.SetSoundVolume(sound, volume)
+	end,
+
+	PlaySound = function(sound)
+		raylib.lib.PlaySound(sound)
+	end,
+
+	SetSoundPitch = function(sound, pitch)
+		return raylib.lib.SetSoundPitch(sound, pitch)
+	end,
+
+	UnloadSound = function(sound)
+		raylib.lib.UnloadSound(sound)
+	end,
+
+	LoadSound = function(sound)
+		return raylib.lib.LoadSound(sound)
+	end,
+
+	LoadMusicStream = function(stream)
+		return raylib.lib.LoadMusicStream(stream)
+	end,
+
+	LoadShader = function(vs, fs)
+		return raylib.lib.LoadShader(vs, fs)
+	end,
+
+	SetClipboardText = function(Text)
+		raylib.lib.SetClipboardText(Text)
 	end,
 
 	MatrixIdentity = function()
@@ -634,6 +674,10 @@ module.lib = {
 		return raylib.lib.DrawCircleV(center, radius, color)
 	end,
 
+	UnloadImage = function(image)
+		raylib.lib.UnloadImage(image)
+	end,
+
 	IsKeyPressed = function(val)
 		return raylib.lib.IsKeyPressed(val)
 	end,
@@ -714,12 +758,36 @@ module.lib = {
 		raylib.lib.UnloadRenderTexture(tr)
 	end,
 
+	PauseSound = function(sound)
+		raylib.lib.PauseSound(sound)
+	end,
+
+	GetShaderLocation = function(shader, loc)
+		return raylib.lib.GetShaderLocation(shader, loc)
+	end,
+
+	SetShaderValue = function(imageGuiShader, bgColor, bgPtr, SHADER_VEC4)
+		raylib.lib.SetShaderValue(imageGuiShader, bgColor, bgPtr, SHADER_VEC4)
+	end,
+
+	BeginShaderMode = function(shader)
+		raylib.lib.BeginShaderMode(shader)
+	end,
+
+	EndShaderMode = function()
+		raylib.lib.EndShaderMode()
+	end,
+
 	GetRenderWidth = function()
 		return raylib.lib.GetRenderWidth()
 	end,
 
+	DrawRectanglePro = function(rec, ZERO_V, Rotation, color)
+		raylib.lib.DrawRectanglePro(rec, ZERO_V, Rotation, color)
+	end,
+
 	GetFontDefault = function()
-		return raylib.lib.GetFontDefault
+		return raylib.lib.GetFontDefault()
 	end,
 
 	GetRenderHeight = function()

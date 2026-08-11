@@ -2604,8 +2604,10 @@ return function(raylib, theme, aereon, game)
 					return
 				end
 
-				local bufferLength = buffer.len(text:span())
-				local data = buffer.readstring(text:span(), 0, bufferLength - 1)
+				local span = text:span()
+				local bufferLength = buffer.len(span)
+
+				local data = buffer.readstring(span, 0, bufferLength)
 				data = string.gsub(data, "\r\n", "\n")
 				data = string.gsub(data, "\r", "\n")
 

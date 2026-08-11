@@ -2,11 +2,14 @@
 
 local Enum = require("@EnumMap")
 local signal = require("@Kinemium.signal")
+local Pipeline = require("@Pipeline")
+
 local propTable = {
 	Name = "DataModel",
 	Dimension = Enum.Dimension["3D"],
 	Context = Enum.GameContext.Editor,
 	EngineSignal = signal.new(),
+	EnginePipeline = Pipeline.Get("Engine"),
 	Stop3DInput = false,
 	ShutdownCallbacks = {},
 	Loaded = false,

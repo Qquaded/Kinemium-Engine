@@ -1,5 +1,4 @@
 return function(objects, data, raylib)
-	local structs = raylib.structs
 	local color3 = require("@Color3")
 	local rect = require("@arect")
 
@@ -27,7 +26,6 @@ return function(objects, data, raylib)
 
 	wrapper.get_rect = function()
 		if config.obj_rect.width == 0 then
-			-- Calculate width if it hasn't been set
 			config.obj_rect.width = raylib.lib.MeasureTextEx(config.font, config.text, config.fontSize, 2).x
 		end
 		return config.obj_rect

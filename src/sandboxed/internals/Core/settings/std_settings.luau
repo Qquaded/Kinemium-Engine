@@ -71,6 +71,9 @@ renderer.Hook.new("After2D", function(data)
 		return
 	end
 	local dt = rl.GetFrameTime()
+	if not frame.AbsolutePosition then
+		return
+	end
 	main_window.x = frame.AbsolutePosition.X
 	main_window.y = frame.AbsolutePosition.Y
 	main_window.width = frame.AbsoluteSize.X

@@ -1,7 +1,7 @@
 material {
     name : "KineDefault",
     shadingModel : lit,
-    blending : transparent,
+    blending : opaque,
     requires : [ uv0 ],
     parameters : [
         { type : float4,   name : baseColor },

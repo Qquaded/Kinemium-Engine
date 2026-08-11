@@ -36,7 +36,7 @@ enumTable.KinemiumUpscaleMode = {
 }
 
 enumTable.RigType = {
-	K17 = 1,
+	Rig15 = 1,
 	Custom = 2,
 }
 
@@ -50,6 +50,11 @@ enumTable.KinemiumFogMode = {
 	Linear = 1,
 	Exponential = 2,
 	Exponential2 = 3,
+}
+
+enumTable.WorkspaceMaterialMode = {
+	Compressed = 1,
+	Uncompressed = 2,
 }
 
 enumTable.KinemiumTonemapMode = {
@@ -395,73 +400,7 @@ enumTable.NormalId = {
 }
 
 enumTable.Font = {
-	Legacy = "Legacy",
-	Arial = "Arial",
-	ArialBold = "ArialBold",
-	EvenStevens = "EvenStevens",
-	SourceSans = "SourceSans",
-	SourceSansBold = "SourceSansBold",
-	SourceSansLight = "SourceSansLight",
-	SourceSansItalic = "SourceSansItalic",
-	Bodoni = "Bodoni",
-	Garamond = "Garamond",
-	Cartoon = "Cartoon",
-	Code = "GoogleSansCode",
-	DefaultEngineFont = "DefaultEngineFont",
-	Highway = "Highway",
-	SciFi = "SciFi",
-	Arcade = "Arcade",
-	Fantasy = "Fantasy",
-	Antique = "Antique",
-	SourceSansSemibold = "SourceSansSemibold",
-	Gotham = "Gotham",
-	Vend = "Vend",
-	GothamMedium = "GothamMedium",
-	GothamBold = "GothamBold",
-	GothamBlack = "GothamBlack",
-	VCR = "VCR",
-	Bembo = "Bembo",
-	Beyno = "Beyno",
-	Avenir = "Avenir",
-	Atiba = "Atiba",
-	Aerova = "Aerova",
-	DuskfallGothic = "Duskfall Gothic",
-	Filted = "Filted",
-	GillSans = "GillSans",
-	Curlz = "Curlz",
-	AmaticSC = "AmaticSC",
-	Bangers = "Bangers",
-	Creepster = "Creepster",
-	DenkOne = "DenkOne",
-	Fondamento = "Fondamento",
-	Audiowide = "AudiowideRegular",
-	FredokaOne = "FredokaOne",
-	GrenzeGotisch = "GrenzeGotisch",
-	IndieFlower = "IndieFlower",
-	JosefinSans = "JosefinSans",
-	Jura = "Jura",
-	Kalam = "Kalam",
-	LuckiestGuy = "LuckiestGuy",
-	Merriweather = "Merriweather",
-	Michroma = "Michroma",
-	Nunito = "Nunito",
-	Oswald = "Oswald",
-	Exo = "ExoRegular",
-	ExoBold = "ExoBold",
-	ExoItalic = "ExoItalic",
-	PatrickHand = "PatrickHand",
-	PermanentMarker = "PermanentMarker",
-	Roboto = "Roboto",
-	RobotoCondensed = "RobotoCondensed",
-	RobotoMono = "RobotoMono",
-	Sarpanch = "Sarpanch",
-	SpecialElite = "SpecialElite",
-	TitilliumWeb = "TitilliumWeb",
-	Ubuntu = "Ubuntu",
-
-	Arimo = "Arimo",
-	ArimoBold = "ArimoBold",
-	Unknown = "Unknown",
+	-- filled at startup from KinemiumFontService
 }
 
 enumTable.FontStyle = {
@@ -470,15 +409,7 @@ enumTable.FontStyle = {
 }
 
 enumTable.FontWeight = {
-	Thin = 100,
-	ExtraLight = 200,
-	Light = 300,
-	Regular = 400,
-	Medium = 500,
-	SemiBold = 600,
-	Bold = 700,
-	ExtraBold = 800,
-	Heavy = 900,
+	-- filled at startup
 }
 
 enumTable.MultiplayerMode = {

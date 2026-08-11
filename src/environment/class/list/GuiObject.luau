@@ -6,6 +6,7 @@ local UDim2 = require("@UDim2")
 local signal = require("@Kinemium.signal")
 local Vector2 = require("@Vector2")
 local adapter = require("@RaylibAdapter")
+local structs = adapter.structs
 
 local SEGMENTS = 16
 local CORNER_SEGMENTS = 8
@@ -153,7 +154,7 @@ local function getContentMetrics(object, size)
 		vector.create(math.max(0, size.X - left - right), math.max(0, size.Y - top - bottom), 0)
 end
 
-local function precomputeLayoutChildren(object, lib, dt, structs, renderer)
+local function precomputeLayoutChildren(object, lib, dt, _, renderer)
 	if not lib then
 		return
 	end
@@ -162,12 +163,12 @@ local function precomputeLayoutChildren(object, lib, dt, structs, renderer)
 		local className = child.ClassName
 		local isLayout = type(className) == "string" and string.sub(className, -6) == "Layout"
 		if isLayout and child.render and child.Enabled ~= false then
-			child.render(lib, child, dt or 0, structs, renderer)
+			child.render(lib, child, dt or 0, _, renderer)
 		end
 	end
 end
 
-local function calculateResolvedSize(object, parentSize, lib, dt, structs, renderer, depth)
+local function calculateResolvedSize(object, parentSize, lib, dt, _, renderer, depth)
 	local size = resolveUDim2(object.Size, parentSize)
 	local autoX, autoY = resolveAutomaticSizeAxes(object.AutomaticSize)
 
@@ -175,7 +176,7 @@ local function calculateResolvedSize(object, parentSize, lib, dt, structs, rende
 		return size
 	end
 
-	precomputeLayoutChildren(object, lib, dt, structs, renderer)
+	precomputeLayoutChildren(object, lib, dt, _, renderer)
 
 	local left, right, top, bottom = resolvePaddingBounds(object, size)
 	local contentSize = vector.create(math.max(0, size.X - left - right), math.max(0, size.Y - top - bottom), 0)
@@ -186,7 +187,7 @@ local function calculateResolvedSize(object, parentSize, lib, dt, structs, rende
 		if child.BaseClass == "GuiObject" and child.Visible ~= false and child.Size then
 			hasGuiChild = true
 
-			local childSize = calculateResolvedSize(child, contentSize, lib, dt, structs, renderer, (depth or 0) + 1)
+			local childSize = calculateResolvedSize(child, contentSize, lib, dt, _, renderer, (depth or 0) + 1)
 			local anchor = child.AnchorPoint or ZERO_V
 			local relX, relY
 
@@ -217,25 +218,25 @@ local function calculateResolvedSize(object, parentSize, lib, dt, structs, rende
 	return vector.create(autoX and math.max(0, maxX) or size.X, autoY and math.max(0, maxY) or size.Y, 0)
 end
 
-local function GetAbsoluteSize(object, lib, dt, structs, renderer, depth)
+local function GetAbsoluteSize(object, lib, dt, _, renderer, depth)
 	if object.BaseClass == "UIContainer" then
 		return vector.create(object.Size.X.Offset, object.Size.Y.Offset, 0)
 	end
 
-	local parentSize = GetAbsoluteSize(object.Parent, lib, dt, structs, renderer, (depth or 0) + 1)
+	local parentSize = GetAbsoluteSize(object.Parent, lib, dt, _, renderer, (depth or 0) + 1)
 	local _, parentContentSize = getContentMetrics(object.Parent, parentSize)
-	return calculateResolvedSize(object, parentContentSize, lib, dt, structs, renderer, depth)
+	return calculateResolvedSize(object, parentContentSize, lib, dt, _, renderer, depth)
 end
 
-local function getAbsoluteDrawPos(object, lib, dt, structs, renderer, depth)
+local function getAbsoluteDrawPos(object, lib, dt, _, renderer, depth)
 	if object.BaseClass == "UIContainer" then
 		return object.RenderOffset
 	end
 	local parent = object.Parent
-	local parentAbsPos = getAbsoluteDrawPos(parent, lib, dt, structs, renderer, (depth or 0) + 1)
-	local parentSize = GetAbsoluteSize(parent, lib, dt, structs, renderer, (depth or 0) + 1)
+	local parentAbsPos = getAbsoluteDrawPos(parent, lib, dt, _, renderer, (depth or 0) + 1)
+	local parentSize = GetAbsoluteSize(parent, lib, dt, _, renderer, (depth or 0) + 1)
 	local parentPaddingOffset, parentContentSize = getContentMetrics(parent, parentSize)
-	local size = calculateResolvedSize(object, parentContentSize, lib, dt, structs, renderer, depth)
+	local size = calculateResolvedSize(object, parentContentSize, lib, dt, _, renderer, depth)
 	local anchor = object.AnchorPoint or ZERO_V
 	local drawPos
 
@@ -267,8 +268,8 @@ local function isMouseInRect(mousePos, drawPos, size)
 		and mousePos.Y <= drawPos.Y + size.Y
 end
 
-local function calculateDrawParams(object, lib, dt, structs, renderer, depth)
-	local parentSize = GetAbsoluteSize(object.Parent, lib, dt, structs, renderer, (depth or 0) + 1)
+local function calculateDrawParams(object, lib, dt, _, renderer, depth)
+	local parentSize = GetAbsoluteSize(object.Parent, lib, dt, _, renderer, (depth or 0) + 1)
 	local _, parentContentSize = getContentMetrics(object.Parent, parentSize)
 	local size, drawPos, anchor
 
@@ -276,9 +277,9 @@ local function calculateDrawParams(object, lib, dt, structs, renderer, depth)
 		size = object.AbsoluteSize or ZERO_V
 		drawPos = object.AbsolutePosition or ZERO_V
 	elseif object._LayoutControlled and object._LayoutRelativePosition then
-		size = calculateResolvedSize(object, parentContentSize, lib, dt, structs, renderer, depth)
+		size = calculateResolvedSize(object, parentContentSize, lib, dt, _, renderer, depth)
 		anchor = object.AnchorPoint or ZERO_V
-		local parentDrawPos = getAbsoluteDrawPos(object.Parent, lib, dt, structs, renderer, (depth or 0) + 1)
+		local parentDrawPos = getAbsoluteDrawPos(object.Parent, lib, dt, _, renderer, (depth or 0) + 1)
 		drawPos = vector.create(
 			parentDrawPos.X + object._LayoutRelativePosition.X - size.X * anchor.X,
 			parentDrawPos.Y + object._LayoutRelativePosition.Y - size.Y * anchor.Y,
@@ -288,8 +289,8 @@ local function calculateDrawParams(object, lib, dt, structs, renderer, depth)
 			drawPos = vector.create(drawPos.X, drawPos.Y - (object.Parent.CanvasPosition or 0), 0)
 		end
 	else
-		size = calculateResolvedSize(object, parentContentSize, lib, dt, structs, renderer, depth)
-		drawPos = getAbsoluteDrawPos(object, lib, dt, structs, renderer, depth)
+		size = calculateResolvedSize(object, parentContentSize, lib, dt, _, renderer, depth)
+		drawPos = getAbsoluteDrawPos(object, lib, dt, _, renderer, depth)
 	end
 
 	return drawPos, size
@@ -531,7 +532,7 @@ local function getRoundedHorizontalInset(localY, height, radius, exponent)
 	return 0
 end
 
-local function drawShadow(lib, structs, object, shadow, drawPos, size, corner, squircle)
+local function drawShadow(lib, _, object, shadow, drawPos, size, corner, squircle)
 	if not shadow or shadow.Enabled == false then
 		return
 	end
@@ -582,7 +583,7 @@ local function drawShadow(lib, structs, object, shadow, drawPos, size, corner, s
 		local layerMinDim = math.max(1, math.min(shadowW, shadowH))
 
 		if object.Rotation ~= 0 then
-			lib.DrawRectanglePro(rec, ZERO_V, object.Rotation, layerColor)
+			lib.DrawRectanglePro(rec, vector.create(shadowW / 2, shadowH / 2, 0), object.Rotation, layerColor)
 		elseif isCircleShadow then
 			lib.DrawCircleV(
 				vector.create(shadowX + shadowW * 0.5, shadowY + shadowH * 0.5, 0),
@@ -622,7 +623,7 @@ local function drawShadow(lib, structs, object, shadow, drawPos, size, corner, s
 	end
 end
 
-local function drawShapeFill(lib, structs, object, modifier, x, y, w, h, color)
+local function drawShapeFill(lib, _, object, modifier, x, y, w, h, color)
 	if w <= 0 or h <= 0 then
 		return
 	end
@@ -631,7 +632,8 @@ local function drawShapeFill(lib, structs, object, modifier, x, y, w, h, color)
 	local minDim = math.min(w, h)
 
 	if object.Rotation ~= 0 then
-		lib.DrawRectanglePro(rec, ZERO_V, object.Rotation, color)
+		local centeredRec = structs.Rectangle:new({ x = x + w / 2, y = y + h / 2, width = w, height = h })
+		lib.DrawRectanglePro(centeredRec, vector.create(w / 2, h / 2, 0), object.Rotation, color)
 		return
 	end
 
@@ -650,7 +652,7 @@ local function drawShapeFill(lib, structs, object, modifier, x, y, w, h, color)
 	end
 end
 
-local function drawShapeOutline(lib, structs, object, modifier, x, y, w, h, thickness, color)
+local function drawShapeOutline(lib, _, object, modifier, x, y, w, h, thickness, color)
 	if w <= 0 or h <= 0 then
 		return
 	end
@@ -674,7 +676,7 @@ local function drawShapeOutline(lib, structs, object, modifier, x, y, w, h, thic
 	end
 end
 
-local function drawGlow(lib, structs, object, glow, drawPos, size, shapeModifier)
+local function drawGlow(lib, _, object, glow, drawPos, size, shapeModifier)
 	if not glow or glow.Enabled == false then
 		return
 	end
@@ -710,7 +712,7 @@ local function drawGlow(lib, structs, object, glow, drawPos, size, shapeModifier
 	lib.EndBlendMode()
 end
 
-local function drawVignette(lib, structs, object, vignette, drawPos, size, shapeModifier)
+local function drawVignette(lib, _, object, vignette, drawPos, size, shapeModifier)
 	if not vignette or vignette.Enabled == false then
 		return
 	end
@@ -748,7 +750,7 @@ local function drawVignette(lib, structs, object, vignette, drawPos, size, shape
 	end
 end
 
-local function drawBevel(lib, structs, object, bevel, drawPos, size, shapeModifier)
+local function drawBevel(lib, _, object, bevel, drawPos, size, shapeModifier)
 	if not bevel or bevel.Enabled == false then
 		return
 	end
@@ -774,7 +776,7 @@ local function drawBevel(lib, structs, object, bevel, drawPos, size, shapeModifi
 		local y = drawPos.Y + inset
 
 		lib.BeginScissorMode(x, y, math.max(1, math.floor(width * 0.5)), math.max(1, math.floor(height * 0.5)))
-		drawShapeOutline(lib, structs, object, shapeModifier, x, y, width, height, 1, lightColor)
+		drawShapeOutline(lib, _, object, shapeModifier, x, y, width, height, 1, lightColor)
 		lib.EndScissorMode()
 
 		lib.BeginScissorMode(
@@ -783,7 +785,7 @@ local function drawBevel(lib, structs, object, bevel, drawPos, size, shapeModifi
 			math.max(1, math.ceil(width * 0.5)),
 			math.max(1, math.ceil(height * 0.5))
 		)
-		drawShapeOutline(lib, structs, object, shapeModifier, x, y, width, height, 1, shadowColor)
+		drawShapeOutline(lib, _, object, shapeModifier, x, y, width, height, 1, shadowColor)
 		lib.EndScissorMode()
 	end
 end
@@ -854,13 +856,14 @@ local propTable = {
 	BorderColor = Color3.new(0, 0, 0),
 	BorderTransparency = 0,
 	Rotation = 0,
-	AbsolutePosition = nil,
+	AbsolutePosition = Vector2.new(0, 0),
 	Anchored = true,
-	AbsoluteSize = nil,
+	AbsoluteSize = Vector2.new(0, 0),
 	AutomaticSize = Enum.AutomaticSize.None,
 	ClipsDescendants = false,
 	ZIndex = 1,
 	AnchorPoint = ZERO_V,
+	RotatePoint = vector.create(0, 0, 0),
 	MouseIsInObject = false,
 	-- description: "Returns the absolute top-left position and size of the GUI object."
 	-- args: "self: table"
@@ -964,21 +967,21 @@ local propTable = {
 		)
 	end,
 	-- description: "Renders this GUI object and updates absolute bounds and hover state."
-	-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
+	-- args: "lib: number, object: table, dt: number, _: table, renderer: number"
 	-- returns: "Vector3?, Vector3?"
-	render = function(lib, object, dt, structs, renderer)
+	render = function(lib, object, dt, _, renderer)
 		if not object.Visible then
 			return
 		end
 
 		lib = renderer.Lib2d
 
-		local drawPos, size = calculateDrawParams(object, lib, dt, structs, renderer)
+		local drawPos, size = calculateDrawParams(object, lib, dt, _, renderer)
 		local mousePos = vector.create(lib.GetMouseX(), lib.GetMouseY(), 0)
 		local mouseIsInObject = isMouseInRect(mousePos, drawPos, size)
 
 		local tilt, corner, stroke, gradient, shadow, glow, ripple, vignette, bevel, squircle, blend, blur
-		for _, child in ipairs(object.Children) do
+		for _, child in ipairs(object:GetChildren()) do
 			local cls = child.ClassName
 			if cls == "UITilt" then
 				tilt = child
@@ -1030,8 +1033,8 @@ local propTable = {
 			selfBlendActive = true
 		end
 
-		drawShadow(lib, structs, object, shadow, drawPos, size, corner, squircle)
-		drawGlow(lib, structs, object, glow, drawPos, size, shapeModifier)
+		drawShadow(lib, _, object, shadow, drawPos, size, corner, squircle)
+		drawGlow(lib, _, object, glow, drawPos, size, shapeModifier)
 
 		if blur then
 			renderer.Blur.blurRadius = blur.Size
@@ -1092,11 +1095,11 @@ local propTable = {
 				)
 			end
 		else
-			if object.BackgroundTransparency ~= 1 then
-				drawShapeFill(lib, structs, object, shapeModifier, drawPos.X, drawPos.Y, size.X, size.Y, color)
+			if object.BackgroundTransparency ~= 1 and not object._suppressGuiBg then
+				drawShapeFill(lib, _, object, shapeModifier, drawPos.X, drawPos.Y, size.X, size.Y, color)
 			end
 
-			if stroke and stroke.Transparency ~= 1 then
+			if stroke and stroke.Transparency ~= 1 and not object._suppressGuiStroke then
 				drawShapeOutline(
 					lib,
 					structs,
@@ -1112,8 +1115,8 @@ local propTable = {
 			end
 		end
 
-		drawBevel(lib, structs, object, bevel, drawPos, size, shapeModifier)
-		drawVignette(lib, structs, object, vignette, drawPos, size, shapeModifier)
+		drawBevel(lib, _, object, bevel, drawPos, size, shapeModifier)
+		drawVignette(lib, _, object, vignette, drawPos, size, shapeModifier)
 		drawRipple(lib, raylib, ripple, object, drawPos, size, dt)
 
 		if selfBlendActive then
@@ -1156,8 +1159,8 @@ return {
 	end,
 
 	-- description: "Renders visible GUI children with clipping and blend modifiers applied."
-	-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
-	renderChildren = function(lib, object, dt, structs, renderer)
+	-- args: "lib: number, object: table, dt: number, _: table, renderer: number"
+	renderChildren = function(lib, object, dt, _, renderer)
 		local mask = object:FindFirstChildOfClass("UIMask")
 		local blend = object:FindFirstChildOfClass("UIBlend")
 		local didClip = false
@@ -1190,7 +1193,7 @@ return {
 
 		for _, child in pairs(object:GetChildren()) do
 			if child.render then
-				child.render(lib, child, dt, structs, renderer)
+				child.render(lib, child, dt, _, renderer)
 			end
 		end
 
@@ -1204,10 +1207,10 @@ return {
 	end,
 
 	-- description: "Updates absolute position, absolute size, and hover state without drawing."
-	-- args: "lib: number, object: table, dt: number, structs: table, renderer: number"
+	-- args: "lib: number, object: table, dt: number, _: table, renderer: number"
 	-- returns: "Vector3, Vector3"
-	calculatePositions = function(lib, object, dt, structs, renderer)
-		local drawPos, size = calculateDrawParams(object, lib, dt, structs, renderer)
+	calculatePositions = function(lib, object, dt, _, renderer)
+		local drawPos, size = calculateDrawParams(object, lib, dt, _, renderer)
 		local mousePos = vector.create(lib.GetMouseX(), lib.GetMouseY(), 0)
 		local mouseIsInObject = isMouseInRect(mousePos, drawPos, size)
 

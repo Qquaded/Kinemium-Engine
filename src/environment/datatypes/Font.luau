@@ -19,6 +19,10 @@ function Font.new(family: string?, weight: any?, style: any?)
 	return self
 end
 
+function Font.fromName(name: string)
+	return Font.new(name, Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+end
+
 function Font.fromEnum(font: any)
 	local family = font
 	if type(font) == "table" then

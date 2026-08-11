@@ -1,6 +1,7 @@
 local Instance = require("@Instance")
 local Enum = require("@EnumMap")
 local signal = require("@Kinemium.signal")
+local structs = require("@raylibadapter").structs
 
 local CoreGui = Instance.new("CoreGui")
 CoreGui._Intents = Enum.PluginIntents.UI
@@ -63,8 +64,8 @@ CoreGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 						renderer.Pool.Destroy(renderId)
 						return
 					end
-					local dt = renderer.adapter.lib.GetFrameTime()
-					child.render(renderer.adapter.lib, child, dt, renderer.adapter.structs, renderer, datamodel)
+					local dt = renderer.Lib2d.GetFrameTime()
+					child.render(renderer.Lib2d, child, dt, structs, renderer, datamodel)
 				end, -5)
 			end
 		end

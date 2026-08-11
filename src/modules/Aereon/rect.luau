@@ -66,8 +66,7 @@ end
 function rect.move(object, dx, dy)
 	object.x += dx
 	object.y += dy
-	object.rect.x = object.x
-	object.rect.y = object.y
+
 	return object
 end
 

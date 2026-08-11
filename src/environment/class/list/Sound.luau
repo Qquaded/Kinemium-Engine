@@ -16,6 +16,7 @@ local propTable = {
 	PlayOnRemove = false,
 	IsLoaded = false,
 	Name = "Sound",
+	Ended = Signal.new(),
 	AudioBackend = Enum.AudioBackend.RAUDIO,
 
 	IsStream = false,
@@ -37,9 +38,9 @@ return {
 	class = "Sound",
 	callback = function(instance, renderer)
 		instance:SetProperties(propTable)
+		print("Created sound")
 
-		adapter.lib.InitAudioDevice()
-
+		print(2)
 		local function updateVolume()
 			if not instance.IsLoaded then
 				return
@@ -82,7 +83,6 @@ return {
 			local soundPath = instance.SoundId
 			if instance.IsStream then
 				instance._raylibSound = adapter.lib.LoadMusicStream(soundPath)
-				-- MusicStreams are pointer/objects, but in FFI they return valid if loaded
 				instance.IsLoaded = instance._raylibSound ~= nil
 			else
 				instance._raylibSound = adapter.lib.LoadSound(soundPath)
@@ -96,8 +96,6 @@ return {
 				warn("Failed to load sound/stream: " .. instance.SoundId)
 			end
 		end
-
-		loadAudio()
 
 		local function fadeTo(targetFade, duration)
 			if duration and duration > 0 then
@@ -124,7 +122,8 @@ return {
 
 		-- description: "Plays the audio with an optional fade duration."
 		-- args: "self: table, fadeDuration: number"
-		instance.Play = function(self, fadeDuration)
+
+		function instance:Play(fadeDuration)
 			if self.IsLoaded and not self.Playing then
 				fadeTo(1.0, fadeDuration)
 				if self.IsStream then
@@ -141,7 +140,7 @@ return {
 
 		-- description: "Stops the audio with an optional fade duration."
 		-- args: "self: table, fadeDuration: number"
-		instance.Stop = function(self, fadeDuration)
+		function instance:Stop(fadeDuration)
 			if self.IsLoaded then
 				if fadeDuration and fadeDuration > 0 then
 					fadeTo(0.0, fadeDuration)
@@ -170,7 +169,7 @@ return {
 
 		-- description: "Pauses the audio with an optional fade duration."
 		-- args: "self: table, fadeDuration: number"
-		instance.Pause = function(self, fadeDuration)
+		function instance:Pause(fadeDuration)
 			if self.IsLoaded then
 				if fadeDuration and fadeDuration > 0 then
 					fadeTo(0.0, fadeDuration)
@@ -195,7 +194,7 @@ return {
 
 		-- description: "Resumes the audio."
 		-- args: "self: table, fadeDuration: number"
-		instance.Resume = function(self, fadeDuration)
+		function instance:Resume(fadeDuration)
 			if self.IsLoaded then
 				if self.IsStream then
 					adapter.lib.ResumeMusicStream(self._raylibSound)

@@ -638,12 +638,12 @@ function RichText.GetLayout(object, frameSize, renderer, fallbackFont)
 	local spacing = object.TextSpacing or 0
 	local objectFont = object.Font
 	local baseFontName
-	if type(objectFont) == "table" and objectFont.Value then
-		baseFontName = objectFont.Value
+	if type(objectFont) == "table" and objectFont.Name then
+		baseFontName = objectFont.Name
 	elseif type(objectFont) == "string" then
 		baseFontName = objectFont
 	else
-		baseFontName = Enum.Font.DefaultEngineFont.Value
+		baseFontName = Enum.Font.DefaultEngineFont and Enum.Font.DefaultEngineFont.Name or "DefaultEngineFont"
 	end
 	local resolvedFont = renderer.Font.Get(baseFontName) or fallbackFont
 	local baseStyle = {

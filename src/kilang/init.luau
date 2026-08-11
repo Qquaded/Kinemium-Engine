@@ -83,12 +83,6 @@ function kilang:execute(code, opts, env_other)
 	end
 	environment.SecurityCapabilities = SecurityCapabilities
 
-	-- Transpile
-	local transpileOk, transpiledCode = pcall(preprocessor.runLang, code, superset)
-	if not transpileOk then
-		return nil, false, transpiledCode
-	end
-
 	-- Execute on a task thread; capture success/result via upvalue
 	local success, result
 	local isFinished = false
