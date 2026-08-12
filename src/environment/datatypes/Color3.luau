@@ -1,16 +1,14 @@
 local Color3 = { __type = "Color3" }
 Color3.__index = Color3
 
-local structs = require("@raylib").structs
-
 local function c3tr(c, transparency)
 	local r, g, b = c:ToRGB()
-	return structs.Color:new({
+	return {
 		r = r,
 		g = g,
 		b = b,
 		a = math.floor(255 * (1 - transparency)),
-	})
+	}
 end
 
 local function srgbToLinearChannel(c)

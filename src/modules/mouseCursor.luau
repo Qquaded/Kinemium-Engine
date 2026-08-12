@@ -1,5 +1,4 @@
 local Enum = require("@EnumMap")
-local adapter = require("@RaylibAdapter")
 
 local MouseCursor = {}
 

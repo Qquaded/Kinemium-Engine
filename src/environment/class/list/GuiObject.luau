@@ -5,8 +5,6 @@ local TweenInfo = require("@TweenInfo")
 local UDim2 = require("@UDim2")
 local signal = require("@Kinemium.signal")
 local Vector2 = require("@Vector2")
-local adapter = require("@RaylibAdapter")
-local structs = adapter.structs
 
 local SEGMENTS = 16
 local CORNER_SEGMENTS = 8
@@ -25,31 +23,6 @@ local function resolveUDim2(val, parentDim)
 		end
 	end
 	return ZERO_V
-end
-
-local function resolveBlendMode(raylib, value)
-	if type(value) == "number" then
-		return value
-	end
-
-	if type(value) ~= "string" then
-		return adapter.const.BlendMode.BLEND_ALPHA
-	end
-
-	local normalized = string.lower(value)
-	if normalized == "additive" or normalized == "add" then
-		return adapter.const.BlendMode.BLEND_ADDITIVE
-	elseif normalized == "multiply" or normalized == "multiplied" then
-		return adapter.const.BlendMode.BLEND_MULTIPLIED
-	elseif normalized == "premultiply" or normalized == "premultipliedalpha" or normalized == "premultiplied" then
-		return adapter.const.BlendMode.BLEND_ALPHA_PREMULTIPLY
-	elseif normalized == "addcolors" then
-		return adapter.const.BlendMode.BLEND_ADD_COLORS
-	elseif normalized == "subtract" or normalized == "subtractcolors" then
-		return adapter.const.BlendMode.BLEND_SUBTRACT_COLORS
-	end
-
-	return adapter.const.BlendMode.BLEND_ALPHA
 end
 
 local function drawCornerArc(lib, cx, cy, radius, angleStart, angleEnd, color)
@@ -1148,7 +1121,6 @@ end
 return {
 	class = "GuiObject",
 	non_creatable = true,
-	resolveBlendMode = resolveBlendMode,
 	render = propTable.render,
 
 	-- description: "Returns whether an object is parented directly under a GUI container."

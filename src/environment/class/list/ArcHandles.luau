@@ -1,8 +1,6 @@
 -- description: "A 3d handle that can be rotated and appears under an Adornee."
 local Vector3 = require("@Vector3")
 local Color3 = require("@Color3")
-local adapter = require("@RaylibAdapter")
-local lib, const = adapter.lib, adapter.const
 
 local propTable = {
 	Color = Color3.new(0.5, 0.5, 0.5),

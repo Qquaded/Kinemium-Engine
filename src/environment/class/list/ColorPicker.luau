@@ -1,6 +1,5 @@
 -- description: "Allows users to pick and adjust colors using a visual interface."
 local GuiObject = require("@GuiObject")
-local adapter = require("@RaylibAdapter")
 local aereon = require("@Aereon")
 local gui = aereon.gui
 local signal = require("@Kinemium.signal")
@@ -8,7 +7,6 @@ local Color4 = require("@Color4")
 local arect = aereon.rect()
 local UDim2 = require("@UDim2")
 local Enum = require("@EnumMap")
-local lib = adapter.lib
 
 local propTable = {
 	Name = "ColorPicker",
@@ -21,8 +19,6 @@ local propTable = {
 	OnColorSelect = signal.new(),
 	Visible = true,
 }
-
-local defaultFont = lib.GetFontDefault()
 
 GuiObject.inherit(propTable)
 

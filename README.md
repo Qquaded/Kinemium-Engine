@@ -11,6 +11,10 @@ Kinemium is a sandbox engine written in Luau (Zune Runtime). It includes a custo
 Kinemium is an independent project not affiliated with, endorsed by, 
 or connected to Roblox Corporation. Roblox is a trademark of Roblox Corporation
 
+# Another notice
+This is the renderer-agnostic branch, it contains unstable code that can change anytime, it is
+advised to run the main branch instead.
+
 # Features
 ## Datatypes
 - Axes
@@ -132,21 +136,14 @@ This lets you add mods to your game, and you can set the environment of your sai
 Ki-nem-yum!!
 
 # This project uses
-- Raylib
+- SDL3
+- Google Filament
+- Google Skia
 - Manifold
 - Box2D
 - Jolt Physics
-- Discord RPC
-- Steam SDK
-- Sail
-- Webview
-- Native File Dialog (NFD)
-- raylib-gizmo
-- Python (runtime)
-- QuickJS (runtime)
-- Webview
 - Luau
-- and most importantly.. Zune
+- and most importantly.. Zune Runtime
 kv1.10.7
 
 # Do you like cats?

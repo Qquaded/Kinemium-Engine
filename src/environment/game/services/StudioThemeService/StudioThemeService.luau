@@ -5,13 +5,9 @@ local Vector2 = require("@Vector2")
 local Enum = require("@EnumMap")
 local StudioTheme = require("@StudioTheme")
 
-local const = require("@raylib").const
-
 local StudioThemeService = Instance.new("StudioThemeService")
 StudioThemeService.ExplorerHidden = true
 StudioThemeService._Intents = Enum.PluginIntents.UI
-
-local json5 = zune.serde.json5
 
 StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
 	local themes = {

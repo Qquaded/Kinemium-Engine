@@ -801,7 +801,7 @@ local funcs = {
 	SDL_GetHintBoolean = { returns = ffi.types.pointer, args = { ffi.types.i8, ffi.types.u8 } },
 	SDL_AddHintCallback = { returns = ffi.types.pointer, args = { ffi.types.i8, ffi.types.pointer } },
 	SDL_RemoveHintCallback = { returns = ffi.types.pointer, args = { ffi.types.i8, ffi.types.pointer } },
-	SDL_Init = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
+	SDL_Init = { returns = ffi.types.pointer, args = {} },
 	SDL_InitSubSystem = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	SDL_QuitSubSystem = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	SDL_WasInit = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
@@ -1213,7 +1213,7 @@ local funcs = {
 	},
 	SDL_CreateTexture = {
 		returns = ffi.types.pointer,
-		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.i32, ffi.types.i32 },
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.i32, ffi.types.i32, ffi.types.i32 },
 	},
 	SDL_CreateTextureFromSurface = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
 	SDL_CreateTextureWithProperties = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
@@ -1940,7 +1940,7 @@ local funcs = {
 	SDL_GetWindows = { returns = ffi.types.pointer, args = { ffi.types.i32 } },
 	SDL_CreateWindow = {
 		returns = ffi.types.pointer,
-		args = { ffi.types.i8, ffi.types.i32, ffi.types.i32, ffi.types.pointer },
+		args = { ffi.types.pointer, ffi.types.i32, ffi.types.i32, ffi.types.i32 },
 	},
 	SDL_CreatePopupWindow = {
 		returns = ffi.types.pointer,

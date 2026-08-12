@@ -1,0 +1,26 @@
+plugins = []
+
+[pointers]
+objects = "game.Workspace"
+assets = "game.ReplicatedStorage"
+client = "game.StarterPlayer"
+gui = "game.StarterGui"
+server = "game.ServerScriptService"
+
+[info]
+name = "dev"
+
+[scripting]
+polyglot = true
+ncg = true
+
+[backups]
+interval = 300
+
+[sync.ignore]
+git = ".git"
+vscode = ".vscode"
+
+[sync]
+live = false
+debounce = 0.35

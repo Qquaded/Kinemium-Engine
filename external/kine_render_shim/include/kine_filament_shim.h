@@ -3,6 +3,9 @@
 
 #include "kine_render_shim_export.h"
 
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -12,6 +15,14 @@ extern "C" {
 typedef struct KineFilamentContext KineFilamentContext;
 typedef struct KineFilamentMesh    KineFilamentMesh;
 typedef struct KineFilamentTex     KineFilamentTex;
+
+typedef struct KineGLTextureInfo {
+    unsigned int id;
+    int width;
+    int height;
+    int mipmaps;
+    int format;
+} KineGLTextureInfo;
 
 // ---------------------------------------------------------------------------
 // Material kinds for Kine_Filament_DrawMeshEx's materialKind parameter.
@@ -56,7 +67,7 @@ KINE_API KineFilamentMesh* Kine_Filament_CreateMesh(KineFilamentContext* ctx, in
 KINE_API void Kine_Filament_DestroyMesh(KineFilamentContext* ctx, KineFilamentMesh* mesh);
 KINE_API void Kine_Filament_DebugPrintPixel(KineFilamentContext* ctx);
 
-KINE_API KineFilamentTex* Kine_Filament_CreateTex(KineFilamentContext* ctx, void* rlTexturePtr);
+KINE_API KineFilamentTex* Kine_Filament_CreateTex(KineFilamentContext* ctx, const KineGLTextureInfo* texture);
 KINE_API void             Kine_Filament_DestroyTex(KineFilamentContext* ctx, KineFilamentTex* tex);
 
 // ---------------------------------------------------------------------------
@@ -68,7 +79,7 @@ KINE_API void             Kine_Filament_DestroyTex(KineFilamentContext* ctx, Kin
 //   param2       : metallic (default) or ior (glass/water) -- unused for neon
 //   param3       : unused (default/neon) or thickness (glass/water)
 //   transmission : unused (default/neon) or transmission (glass/water)
-//   mat4         : column-major float[16] world transform (raylib Matrix layout)
+//   mat4         : column-major float[16] world transform
 //   tex          : optional KineFilamentTex* (from Kine_Filament_CreateTex), nil for no texture
 // ---------------------------------------------------------------------------
 
@@ -123,14 +134,14 @@ KINE_API void Kine_Filament_SetSkyAtmosphere(
 
 // ---------------------------------------------------------------------------
 // Custom Texture Cubemap Skybox
-// Takes 6 Raylib Texture2D pointers and builds a cubemap skybox from them.
+// Takes 6 OpenGL texture descriptors and builds a cubemap skybox from them.
 // Faces must all be square and have identical dimensions.
 // ---------------------------------------------------------------------------
 KINE_API void Kine_Filament_CreateSkyboxCubemap(
     KineFilamentContext* ctx,
-    void* texPosX, void* texNegX,
-    void* texPosY, void* texNegY,
-    void* texPosZ, void* texNegZ);
+    const KineGLTextureInfo* texPosX, const KineGLTextureInfo* texNegX,
+    const KineGLTextureInfo* texPosY, const KineGLTextureInfo* texNegY,
+    const KineGLTextureInfo* texPosZ, const KineGLTextureInfo* texNegZ);
 
 // ---------------------------------------------------------------------------
 // Set the built-in sun light direction and intensity independently of the sky.
@@ -166,7 +177,7 @@ KINE_API void Kine_Filament_SetPositionLight(
 KINE_API int  Kine_Filament_CreateDecal(
     KineFilamentContext* ctx,
     float width, float height,
-    void* rlTexturePtr,
+    const KineGLTextureInfo* texture,
     float offsetStudsU, float offsetStudsV,
     float studsPerTileU, float studsPerTileV,
     bool culling, bool castShadows, bool receiveShadows);

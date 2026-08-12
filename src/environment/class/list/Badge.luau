@@ -3,7 +3,6 @@ local GuiObject = require("@GuiObject")
 local Color3 = require("@Color3")
 local UDim2 = require("@UDim2")
 local Enum = require("@EnumMap")
-local adapter = require("@RaylibAdapter")
 
 local Aereon = require("@Aereon")
 local gui = Aereon.gui
@@ -23,8 +22,6 @@ local propTable = {
 	MinWidth = 18,
 	Visible = true,
 }
-
-local defaultFont = adapter.lib.GetFontDefault()
 
 GuiObject.inherit(propTable)
 

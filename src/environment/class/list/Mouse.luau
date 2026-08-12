@@ -108,9 +108,7 @@ local function RayIntersectOBB(ox, oy, oz, dx, dy, dz, part)
 	return true, t, ox + dx * t, oy + dy * t, oz + dz * t, normX, normY, normZ
 end
 
-local adapter = require("@RaylibAdapter")
 local MouseCursor = require("@Kinemium.MouseCursor")
-local raycastMod = require("@raycast")
 
 local Button1Down = signal.new()
 local Button1Up = signal.new()
@@ -186,32 +184,6 @@ local propTable = {
 
 	Name = "Mouse",
 }
-
-local function readRayCollision(buf)
-	--[[
-	local RayCollision = ffi.struct({
-	{ hit = bool },
-	{ distance = float },
-	{ point = Vector3 },
-	{ normal = Vector3 },
-})
-export type RayCollision = typeof(RayCollision:new({}))
-	--]]
-	local hit = buffer.readu8(buf, adapter.structs.RayCollision:offset("hit"))
-	local distance = buffer.readf32(buf, adapter.structs.RayCollision:offset("distance"))
-	local px = buffer.readf32(buf, adapter.structs.RayCollision:offset("point"))
-	local py = buffer.readf32(buf, adapter.structs.RayCollision:offset("point") + 4)
-	local pz = buffer.readf32(buf, adapter.structs.RayCollision:offset("point") + 8)
-	local nx = buffer.readf32(buf, adapter.structs.RayCollision:offset("normal"))
-	local ny = buffer.readf32(buf, adapter.structs.RayCollision:offset("normal") + 4)
-	local nz = buffer.readf32(buf, adapter.structs.RayCollision:offset("normal") + 8)
-	return {
-		hit = hit,
-		distance = distance,
-		point = Vector3.new(px, py, pz),
-		normal = Vector3.new(nx, ny, nz),
-	}
-end
 
 local function isInstance(value)
 	return type(value) == "table" and rawget(value, "_props") ~= nil

@@ -39,6 +39,12 @@ local SDL_AtomicInt = ffi.struct({
 })
 export type SDL_AtomicInt = typeof(SDL_AtomicInt:new({}))
 
+local SDL_Event = ffi.struct({
+	{ padding = ffi.types.u8:array(128) },
+})
+
+export type SDL_Event = typeof(SDL_Event:new({}))
+
 local SDL_AtomicU32 = ffi.struct({
 	{ value = ffi.types.u32 },
 })
@@ -1386,6 +1392,7 @@ local structs = {
 	SDL_DateTime = SDL_DateTime,
 	SDL_Finger = SDL_Finger,
 	SDL_DisplayMode = SDL_DisplayMode,
+	SDL_Event = SDL_Event,
 }
 
 return structs

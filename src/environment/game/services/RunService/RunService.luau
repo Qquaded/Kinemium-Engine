@@ -13,9 +13,6 @@ local PreRender = signal.new()
 local PreGuiRender = signal.new()
 local GuiRender = signal.new()
 
-local adapter = require("@RaylibAdapter")
-local lib = adapter.lib
-
 local renderBindings = {}
 local sortedRenderBindings = {}
 local renderBindingsDirty = false
@@ -159,10 +156,6 @@ RunService.InitRenderer = function(renderer, renderer_signal)
 		end,
 		IsEdit = function()
 			return status.IsEdit
-		end,
-
-		GetFPS = function()
-			return lib.GetFPS()
 		end,
 	})
 

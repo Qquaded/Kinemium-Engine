@@ -20,6 +20,7 @@ set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 set(KINE_WITH_FILAMENT ON CACHE BOOL "" FORCE)
 set(KINE_BUILD_SHARED ON CACHE BOOL "" FORCE)
 add_subdirectory(kine_render_shim)
+add_subdirectory(kine_skia)
 
 # Manifold
 set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)

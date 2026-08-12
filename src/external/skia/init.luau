@@ -6,21 +6,20 @@ local dll = "./vendor/"
 local ffi = zune.ffi
 local platform = zune.platform
 
-local structs = require("./sdl/structs")
-local funcs = require("./sdl/funcs")
+local funcs = require("./skia/funcs")
 
 local libname
 if platform.os == "windows" then
-	libname = "SDL3.dll"
+	libname = "kine_skia.dll"
 elseif platform.os == "linux" then
-	libname = "SDL3.so"
+	libname = "kine_skia.so"
 elseif platform.os == "macos" then
-	libname = "SDL3.dylib"
+	libname = "kine_skia.dylib"
 end
 
-local sdl3: typeof(funcs) = ffi.dlopen(dll .. libname, funcs)
+local skia: typeof(funcs) = ffi.dlopen(dll .. libname, funcs)
 
 return {
-	lib = sdl3,
-	structs = structs,
+	lib = skia,
+	structs = require("./skia/structs"),
 }

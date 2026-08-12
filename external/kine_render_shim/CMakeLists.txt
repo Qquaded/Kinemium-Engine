@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 3.15...3.31)
-project(kine_render_shim VERSION 0.1.0 LANGUAGES C)
+project(kine_render_shim VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 option(KINE_BUILD_SHARED "Build kine_render_shim as a shared library (.dll/.so)" ON)
-option(KINE_VENDOR_RAYLIB "Fetch and build raylib automatically if not already provided" ON)
 
 set(BUILD_SHARED_LIBS ${KINE_BUILD_SHARED})
 
@@ -25,28 +24,20 @@ set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(SDL3)
-install(TARGETS SDL3-shared SDL3_Headers EXPORT raylib-targets)
 
-# raylib 6.0
-set(PLATFORM SDL CACHE STRING "" FORCE)
-set(USING_VERSION_SDL3 ON CACHE BOOL "" FORCE)
-set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
+if(TARGET SDL3::SDL3)
+    set(KINE_SDL3_TARGET SDL3::SDL3)
+elseif(TARGET SDL3::SDL3-shared)
+    set(KINE_SDL3_TARGET SDL3::SDL3-shared)
+elseif(TARGET SDL3-shared)
+    set(KINE_SDL3_TARGET SDL3-shared)
+else()
+    message(FATAL_ERROR "SDL3 target was not created by FetchContent")
+endif()
 
-FetchContent_Declare(
-    raylib
-    GIT_REPOSITORY https://github.com/raysan5/raylib.git
-    GIT_TAG 6.0
-    GIT_SHALLOW TRUE
-)
-
-FetchContent_MakeAvailable(raylib)
-
-set_target_properties(raylib PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-)
+if(TARGET SDL3-shared AND TARGET SDL3_Headers)
+    install(TARGETS SDL3-shared SDL3_Headers EXPORT sdl3-targets)
+endif()
 # --------------------------------------------------------------
 # Library target
 # --------------------------------------------------------------
@@ -61,23 +52,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        raylib
+        ${KINE_SDL3_TARGET}
 )
-
-
-
-# raylib's own CMake target doesn't reliably export its public include
-# directory when consumed via add_subdirectory/FetchContent (as opposed to
-# a properly installed find_package). Add it explicitly so <raylib.h>
-# actually resolves.
-message(STATUS "kine_render_shim: raylib_SOURCE_DIR = '${raylib_SOURCE_DIR}'")
-message(STATUS "kine_render_shim: RAYLIB_INCLUDE_DIRS = '${RAYLIB_INCLUDE_DIRS}'")
-
-if(raylib_SOURCE_DIR)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${raylib_SOURCE_DIR}/src)
-elseif(RAYLIB_INCLUDE_DIRS)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${RAYLIB_INCLUDE_DIRS})
-endif()
 
 # KINE_BUILD_EXPORTS is only defined while compiling the library itself,
 # so consumers including the header get dllimport instead of dllexport.
@@ -233,14 +209,14 @@ if(KINE_WITH_FILAMENT)
     if(WIN32)
         target_link_libraries(kine_filament_shim
             PRIVATE
-                raylib
+                ${KINE_SDL3_TARGET}
                 ${KINE_FILAMENT_CORE_LIBS}
                 gdi32 user32 opengl32
         )
     elseif(APPLE)
         target_link_libraries(kine_filament_shim
             PRIVATE
-                raylib
+                ${KINE_SDL3_TARGET}
                 ${KINE_FILAMENT_CORE_LIBS}
                 "-framework Cocoa"
                 "-framework OpenGL"
@@ -255,7 +231,7 @@ if(KINE_WITH_FILAMENT)
         # link order (which breaks again on the next Filament version bump).
         target_link_libraries(kine_filament_shim
             PRIVATE
-                raylib
+                ${KINE_SDL3_TARGET}
                 -Wl,--start-group
                 ${KINE_FILAMENT_CORE_LIBS}
                 -Wl,--end-group
@@ -292,7 +268,7 @@ if(KINE_WITH_FILAMENT)
 
         target_link_libraries(kine_filament_example
             PRIVATE
-                raylib
+                ${KINE_SDL3_TARGET}
                 kine_filament_shim
         )
 

@@ -110,15 +110,15 @@ export type Fns = {
 	) -> FFIPointer,
 
 	-- Texture system
-	-- rlTexturePtr: pointer to a raylib Texture2D struct
-	Kine_Filament_CreateTex: (ctx: FFIPointer, rlTexturePtr: FFIPointer) -> FFIPointer,
+	-- glTexture: pointer to KineGLTextureInfo { id, width, height, mipmaps, format }
+	Kine_Filament_CreateTex: (ctx: FFIPointer, glTexture: FFIPointer) -> FFIPointer,
 	Kine_Filament_DestroyTex: (ctx: FFIPointer, tex: FFIPointer) -> (),
 
 	-- Draw call (queued this frame, batched+instanced internally)
 	-- materialKind: 0=default, 1=glass, 2=neon, 3=water
 	-- param1/param2/param3: roughness/ior/thickness (glass/water), intensity/unused/unused (neon)
 	-- transmission: glass/water only
-	-- mat4: pointer to float[16] column-major world transform (raylib Matrix layout)
+	-- mat4: pointer to float[16] column-major world transform
 	-- tex: optional KineFilamentTex* (nil for no texture)
 	Kine_Filament_DrawMeshEx: (
 		ctx: FFIPointer,
@@ -161,13 +161,26 @@ export type Fns = {
 		ctx: FFIPointer,
 		width: float,
 		height: float,
-		rlTexturePtr: FFIPointer,
-		repeatX: float,
-		repeatY: float,
+		glTexture: FFIPointer,
+		offsetStudsU: float,
+		offsetStudsV: float,
+		studsPerTileU: float,
+		studsPerTileV: float,
 		culling: bool,
 		castShadows: bool,
 		receiveShadows: bool
 	) -> int,
+	Kine_Filament_SetDecalTiling: (
+		ctx: FFIPointer,
+		decal: int,
+		width: float,
+		height: float,
+		offsetStudsU: float,
+		offsetStudsV: float,
+		studsPerTileU: float,
+		studsPerTileV: float
+	) -> bool,
+	Kine_Filament_SetDecalTransform: (ctx: FFIPointer, decal: int, mat4: FFIPointer) -> bool,
 	Kine_Filament_RemoveDecal: (ctx: FFIPointer, decal: int) -> (),
 	Kine_Filament_EditDecal: (
 		ctx: FFIPointer,
@@ -405,7 +418,7 @@ local funcs = {
 			ffi.types.pointer, -- ctx
 			ffi.types.float, -- width
 			ffi.types.float, -- height
-			ffi.types.pointer, -- rlTexturePtr
+			ffi.types.pointer, -- glTexture
 			ffi.types.float, -- offsetStudsU
 			ffi.types.float, -- offsetStudsV
 			ffi.types.float, -- studsPerTileU
@@ -421,6 +434,8 @@ local funcs = {
 		args = {
 			ffi.types.pointer, -- ctx
 			ffi.types.i32, -- decal
+			ffi.types.float, -- width
+			ffi.types.float, -- height
 			ffi.types.float, -- offsetStudsU
 			ffi.types.float, -- offsetStudsV
 			ffi.types.float, -- studsPerTileU
@@ -432,7 +447,7 @@ local funcs = {
 		args = { ffi.types.pointer, ffi.types.i32 },
 	},
 	Kine_Filament_SetDecalTransform = {
-		returns = ffi.types.void,
+		returns = ffi.types.u8,
 		args = { ffi.types.pointer, ffi.types.i32, ffi.types.pointer },
 	},
 	Kine_Filament_EditDecal = {

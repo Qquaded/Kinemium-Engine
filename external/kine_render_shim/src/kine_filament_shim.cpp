@@ -4,21 +4,6 @@
 #endif
 #include "kine_filament_shim.h"
 
-struct rlTexture {
-    unsigned int id;
-    int width;
-    int height;
-    int mipmaps;
-    int format;
-};
-typedef struct rlTexture Texture2D; 
-
-typedef struct RenderTexture RenderTexture2D;
-struct RenderTexture {
-    unsigned int id;
-    struct rlTexture texture;
-    struct rlTexture depth;
-};
 #include "kine_default_package.h"
 
 #include <filament/Engine.h>
@@ -53,7 +38,6 @@ struct RenderTexture {
 #include "kine_water_package.h"
 #include "kine_decal_package.h"
 
-#include "rlgl.h"
 #include <geometry/SurfaceOrientation.h>
 using namespace filament::geometry;
 
@@ -295,16 +279,16 @@ struct KineFilamentContext {
     Material* decalMaterial = nullptr;
     float     time = 0.0f;   // accumulate once per frame for animation
 
-    // Raylib's GL context, captured at Create() time so we can hand control
+    // Host GL context, captured at Create() time so we can hand control
     // back after we've made Filament's own shared context current.
-    //   Windows : raylibCtx = HGLRC,          raylibDC = HDC
-    //   macOS   : raylibCtx = CGLContextObj   (no separate "DC" concept)
-    //   Linux   : raylibCtx = GLXContext,     raylibDisplay = Display*,
-    //             raylibDrawable = GLXDrawable
-    void*         raylibCtx      = nullptr;
-    void*         raylibDC       = nullptr;
-    void*         raylibDisplay  = nullptr;
-    unsigned long raylibDrawable = 0;
+    //   Windows : hostCtx = HGLRC,          hostDC = HDC
+    //   macOS   : hostCtx = CGLContextObj   (no separate "DC" concept)
+    //   Linux   : hostCtx = GLXContext,     hostDisplay = Display*,
+    //             hostDrawable = GLXDrawable
+    void*         hostCtx      = nullptr;
+    void*         hostDC       = nullptr;
+    void*         hostDisplay  = nullptr;
+    unsigned long hostDrawable = 0;
 
     Skybox*        skybox        = nullptr;
     Texture*       skyTexture    = nullptr;
@@ -324,24 +308,24 @@ struct KineFilamentContext {
 // ---------------------------------------------------------------------------
 // Platform GL-context save/restore helpers.
 //
-// Create() needs to: (1) remember raylib's current context, (2) drop it so
+// Create() needs to: (1) remember the host's current context, (2) drop it so
 // Filament's Engine::create() can set up its own shared context cleanly, and
-// (3) hand control back to raylib once Filament is initialized. Destroy()
+// (3) hand control back to the host once Filament is initialized. Destroy()
 // needs to (1) again on the way out so Filament's teardown calls land on the
 // right context.
 // ---------------------------------------------------------------------------
 
-static void kine_capture_raylib_context(KineFilamentContext* ctx)
+static void kine_capture_host_context(KineFilamentContext* ctx)
 {
 #if defined(_WIN32)
-    ctx->raylibCtx = (void*)wglGetCurrentContext();
-    ctx->raylibDC  = (void*)wglGetCurrentDC();
+    ctx->hostCtx = (void*)wglGetCurrentContext();
+    ctx->hostDC  = (void*)wglGetCurrentDC();
 #elif defined(__APPLE__)
-    ctx->raylibCtx = (void*)CGLGetCurrentContext();
+    ctx->hostCtx = (void*)CGLGetCurrentContext();
 #else
-    ctx->raylibCtx      = (void*)glXGetCurrentContext();
-    ctx->raylibDisplay  = (void*)glXGetCurrentDisplay();
-    ctx->raylibDrawable = (unsigned long)glXGetCurrentDrawable();
+    ctx->hostCtx      = (void*)glXGetCurrentContext();
+    ctx->hostDisplay  = (void*)glXGetCurrentDisplay();
+    ctx->hostDrawable = (unsigned long)glXGetCurrentDrawable();
 #endif
 }
 
@@ -357,18 +341,18 @@ static void kine_release_current_gl_context()
 #endif
 }
 
-static void kine_restore_raylib_context(KineFilamentContext* ctx)
+static void kine_restore_host_context(KineFilamentContext* ctx)
 {
-    if (!ctx || !ctx->raylibCtx) return;
+    if (!ctx || !ctx->hostCtx) return;
 #if defined(_WIN32)
-    wglMakeCurrent((HDC)ctx->raylibDC, (HGLRC)ctx->raylibCtx);
+    wglMakeCurrent((HDC)ctx->hostDC, (HGLRC)ctx->hostCtx);
 #elif defined(__APPLE__)
-    CGLSetCurrentContext((CGLContextObj)ctx->raylibCtx);
+    CGLSetCurrentContext((CGLContextObj)ctx->hostCtx);
 #else
-    if (ctx->raylibDisplay)
-        glXMakeCurrent((Display*)ctx->raylibDisplay,
-                        (GLXDrawable)ctx->raylibDrawable,
-                        (GLXContext)ctx->raylibCtx);
+    if (ctx->hostDisplay)
+        glXMakeCurrent((Display*)ctx->hostDisplay,
+                        (GLXDrawable)ctx->hostDrawable,
+                        (GLXContext)ctx->hostCtx);
 #endif
 }
 
@@ -847,14 +831,14 @@ KINE_API KineFilamentContext* Kine_Filament_Create(int width, int height)
     if (!sharedGLContext) return nullptr;
 
     auto* ctx = new KineFilamentContext();
-    kine_capture_raylib_context(ctx);
+    kine_capture_host_context(ctx);
 
     kine_release_current_gl_context();
 
     ctx->engine = Engine::create(backend::Backend::OPENGL, nullptr, sharedGLContext);
     if (!ctx->engine) { delete ctx; return nullptr; }
 
-    kine_restore_raylib_context(ctx);
+    kine_restore_host_context(ctx);
 
     kine_init_gl_ext();
 
@@ -909,7 +893,7 @@ KINE_API KineFilamentContext* Kine_Filament_Create(int width, int height)
         return nullptr;
     }
 
-    kine_restore_raylib_context(ctx);
+        kine_restore_host_context(ctx);
 
     fprintf(stderr, "[Kine] Create succeeded, colorTextureId=%u\n", ctx->colorTextureId);
     return ctx;
@@ -1093,26 +1077,26 @@ KINE_API void Kine_Filament_SetSkyAtmosphere(
 
 KINE_API void Kine_Filament_CreateSkyboxCubemap(
     KineFilamentContext* ctx,
-    void* texPosX, void* texNegX,
-    void* texPosY, void* texNegY,
-    void* texPosZ, void* texNegZ)
+    const KineGLTextureInfo* texPosX, const KineGLTextureInfo* texNegX,
+    const KineGLTextureInfo* texPosY, const KineGLTextureInfo* texNegY,
+    const KineGLTextureInfo* texPosZ, const KineGLTextureInfo* texNegZ)
 {
     if (!ctx || !ctx->engine) return;
     
-    Texture2D* rtex[6] = {
-        (Texture2D*)texPosX, (Texture2D*)texNegX,
-        (Texture2D*)texPosY, (Texture2D*)texNegY,
-        (Texture2D*)texPosZ, (Texture2D*)texNegZ
+    const KineGLTextureInfo* textures[6] = {
+        texPosX, texNegX,
+        texPosY, texNegY,
+        texPosZ, texNegZ
     };
     
-    int width = rtex[0] ? rtex[0]->width : 0;
-    int height = rtex[0] ? rtex[0]->height : 0;
+    int width = textures[0] ? textures[0]->width : 0;
+    int height = textures[0] ? textures[0]->height : 0;
     if (width <= 0 || height <= 0 || width != height) {
         fprintf(stderr, "[Kine] CreateSkyboxCubemap: Faces must be square and > 0.\n");
         return;
     }
     for (int i=1; i<6; ++i) {
-        if (!rtex[i] || rtex[i]->width != width || rtex[i]->height != height) {
+        if (!textures[i] || textures[i]->width != width || textures[i]->height != height) {
             fprintf(stderr, "[Kine] CreateSkyboxCubemap: All faces must have identical square dimensions.\n");
             return;
         }
@@ -1123,9 +1107,9 @@ KINE_API void Kine_Filament_CreateSkyboxCubemap(
     uint8_t* pixels = (uint8_t*)malloc(totalBytes);
     if (!pixels) return;
     
-    // Read pixels from the 6 Raylib OpenGL textures to RAM
+    // Read pixels from the 6 OpenGL textures to RAM
     for (int i=0; i<6; ++i) {
-        glBindTexture(GL_TEXTURE_2D, rtex[i]->id);
+        glBindTexture(GL_TEXTURE_2D, textures[i]->id);
         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels + i * faceBytes);
     }
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -1188,7 +1172,7 @@ KINE_API void Kine_Filament_Destroy(KineFilamentContext* ctx)
 {
     if (!ctx) return;
 
-    kine_restore_raylib_context(ctx);
+    kine_restore_host_context(ctx);
 
     if (ctx->engine) {
         kine_destroy_built_batches(ctx);
@@ -1262,7 +1246,7 @@ KINE_API void Kine_Filament_RenderFrame(KineFilamentContext* ctx, float deltaTim
     // Turn this frame's queued Kine_Filament_DrawMeshEx calls into batched,
     // GPU-instanced renderables before rendering.
 
-    glEnable(GL_DEPTH_TEST);   // guard against raylib having disabled this last frame
+    glEnable(GL_DEPTH_TEST);   // guard against the host renderer having disabled this last frame
     glDepthMask(GL_TRUE);
 
     kine_build_batches(ctx);
@@ -1287,13 +1271,15 @@ KINE_API void Kine_Filament_RenderFrame(KineFilamentContext* ctx, float deltaTim
     kine_destroy_built_batches(ctx);
     ctx->pendingBatches.clear();
 
-    rlDisableFramebuffer();
-    rlViewport(0, 0, ctx->width, ctx->height);
-    rlDisableDepthTest();
-    rlDisableBackfaceCulling();
-    rlDisableScissorTest();
-    rlEnableColorBlend();
-    rlSetBlendMode(RL_BLEND_ALPHA);
+    if (kine_glBindFramebuffer) {
+        kine_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+    glViewport(0, 0, ctx->width, ctx->height);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_SCISSOR_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 KINE_API void Kine_Filament_Resize(KineFilamentContext* ctx, int width, int height)
@@ -1371,7 +1357,7 @@ KINE_API int Kine_Filament_CreateDecal(
     KineFilamentContext* ctx,
     float width,
     float height,
-    void* rlTexturePtr,
+    const KineGLTextureInfo* glTexture,
     float offsetStudsU,
     float offsetStudsV,
     float studsPerTileU,
@@ -1381,26 +1367,25 @@ KINE_API int Kine_Filament_CreateDecal(
     bool receiveShadows
 )
 {
-    if (!ctx || !ctx->engine || !ctx->scene || !rlTexturePtr ||
+    if (!ctx || !ctx->engine || !ctx->scene || !glTexture ||
         width <= 0.0f || height <= 0.0f)
         return -1;
 
-    Texture2D* rlTexture = static_cast<Texture2D*>(rlTexturePtr);
-    if (rlTexture->id == 0)
+    if (glTexture->id == 0)
         return -1;
 
     Entity entity = EntityManager::get().create();
 
-    Texture* texture = Texture::Builder()
-        .width((uint32_t)rlTexture->width)
-        .height((uint32_t)rlTexture->height)
+    Texture* filamentTexture = Texture::Builder()
+        .width((uint32_t)glTexture->width)
+        .height((uint32_t)glTexture->height)
         .levels(1)
         .usage(Texture::Usage::SAMPLEABLE)
         .format(Texture::InternalFormat::RGBA8)
-        .import(rlTexture->id)
+        .import(glTexture->id)
         .build(*ctx->engine);
 
-    if (!texture) {
+    if (!filamentTexture) {
         EntityManager::get().destroy(entity);
         return -1;
     }
@@ -1408,7 +1393,7 @@ KINE_API int Kine_Filament_CreateDecal(
     MaterialInstance* material = ctx->decalMaterial->createInstance();
 
     if (!material) {
-        ctx->engine->destroy(texture);
+        ctx->engine->destroy(filamentTexture);
         EntityManager::get().destroy(entity);
         return -1;
     }
@@ -1430,7 +1415,7 @@ KINE_API int Kine_Filament_CreateDecal(
 
     material->setParameter("baseColor", RgbaType::LINEAR, math::float4{1.0f, 1.0f, 1.0f, 1.0f});
     material->setParameter("hasTexture", 1.0f);
-    material->setParameter("baseColorMap", texture, sampler);
+    material->setParameter("baseColorMap", filamentTexture, sampler);
     material->setParameter("uvScale", uvScale);
     material->setParameter("uvOffset", uvOffset);
 
@@ -1514,7 +1499,7 @@ KINE_API bool Kine_Filament_SetDecalTransform(KineFilamentContext* ctx, int deca
     RenderableManager& rm = ctx->engine->getRenderableManager();
     if (!rm.hasComponent(entity)) return false;
 
-    // Same column-major raylib Matrix -> filament mat4f conversion used in
+    // Same column-major transform -> filament mat4f conversion used in
     // Kine_Filament_DrawMeshEx.
     math::mat4f transform(
         math::float4{mat4[0], mat4[4], mat4[8],  mat4[12]},
@@ -1686,15 +1671,14 @@ KINE_API void Kine_Filament_DestroyMesh(KineFilamentContext* ctx, KineFilamentMe
 }
 
 // ---------------------------------------------------------------------------
-// Texture system -- wraps an existing raylib Texture2D GL id.
-// rlTexture layout: { uint id, int w, int h, int mipmaps, int format }
+// Texture system -- wraps an existing OpenGL texture handle.
+// Input layout: { uint id, int w, int h, int mipmaps, int format }
 // ---------------------------------------------------------------------------
 
-KINE_API KineFilamentTex* Kine_Filament_CreateTex(KineFilamentContext* ctx, void* rlTexturePtr)
+KINE_API KineFilamentTex* Kine_Filament_CreateTex(KineFilamentContext* ctx, const KineGLTextureInfo* texture)
 {
-    if (!ctx || !rlTexturePtr) return nullptr;
+    if (!ctx || !texture) return nullptr;
 
-    Texture2D* texture = (Texture2D*)rlTexturePtr;
     if (texture->id == 0) return nullptr;
 
     auto* th = new KineTexHandle();
@@ -1732,7 +1716,7 @@ KINE_API void Kine_Filament_DestroyTex(KineFilamentContext* ctx, KineFilamentTex
 //   r,g,b        : base color [0..1]
 //   tex          : optional texture handle (may be NULL)
 //   transparency : [0..1], 0 = fully opaque, 1 = fully transparent
-//   mat4         : column-major float[16] world transform (raylib Matrix layout)
+//   mat4         : column-major float[16] world transform
 //
 // Calls that share the same mesh, materialKind, color/params, and
 // shadow/culling flags are automatically batched together and issued as a
@@ -1775,9 +1759,8 @@ KINE_API void Kine_Filament_DrawMeshEx(
         math::float4{mat4[2], mat4[6], mat4[10], mat4[14]},
         math::float4{mat4[3], mat4[7], mat4[11], mat4[15]}
     );
-    // Raylib's Matrix layout always keeps translation at m12/m13/m14
-    // regardless of how the block above maps into filament's mat4f, so pull
-    // it straight from the source array for the batch's bounding box.
+    // The transform layout used by the existing engine keeps translation at
+    // m12/m13/m14, so pull it straight from the source array for bounds.
     inst.translation = math::float3{mat4[12], mat4[13], mat4[14]};
 
 }

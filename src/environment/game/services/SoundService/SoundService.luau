@@ -1,5 +1,4 @@
 local Instance = require("@Instance")
-local adapter = require("@RaylibAdapter")
 local Enum = require("@EnumMap")
 
 local SoundService = Instance.new("SoundService")
@@ -24,7 +23,7 @@ SoundService.InitRenderer = function(renderer, renderer_signal, datamodel)
 		for _, obj in pairs(datamodel:GetDescendants()) do
 			if obj.class == "Sound" and obj.Playing and obj.IsLoaded then
 				if obj.IsStream then
-					adapter.lib.UpdateMusicStream(obj._raylibSound)
+					--adapter.lib.UpdateMusicStream(obj._raylibSound)
 				end
 
 				if obj.Is3D then
@@ -55,22 +54,22 @@ SoundService.InitRenderer = function(renderer, renderer_signal, datamodel)
 					local finalVol = obj.Volume * groupVol * obj._fadeVolume * attenuation * SoundService.GlobalVolume
 
 					if obj.IsStream then
-						adapter.lib.SetMusicVolume(obj._raylibSound, finalVol)
-						adapter.lib.SetMusicPan(obj._raylibSound, pan)
+						--adapter.lib.SetMusicVolume(obj._raylibSound, finalVol)
+						--adapter.lib.SetMusicPan(obj._raylibSound, pan)
 					else
-						adapter.lib.SetSoundVolume(obj._raylibSound, finalVol)
-						adapter.lib.SetSoundPan(obj._raylibSound, pan)
+						--adapter.lib.SetSoundVolume(obj._raylibSound, finalVol)
+						--adapter.lib.SetSoundPan(obj._raylibSound, pan)
 					end
 				else
 					local groupVol = obj.SoundGroup and obj.SoundGroup.Volume or 1.0
 					local finalVol = obj.Volume * groupVol * obj._fadeVolume * SoundService.GlobalVolume
 
 					if obj.IsStream then
-						adapter.lib.SetMusicVolume(obj._raylibSound, finalVol)
-						adapter.lib.SetMusicPan(obj._raylibSound, 0.5)
+						--adapter.lib.SetMusicVolume(obj._raylibSound, finalVol)
+						--adapter.lib.SetMusicPan(obj._raylibSound, 0.5)
 					else
-						adapter.lib.SetSoundVolume(obj._raylibSound, finalVol)
-						adapter.lib.SetSoundPan(obj._raylibSound, 0.5)
+						--adapter.lib.SetSoundVolume(obj._raylibSound, finalVol)
+						--adapter.lib.SetSoundPan(obj._raylibSound, 0.5)
 					end
 				end
 			end

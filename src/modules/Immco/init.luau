@@ -179,9 +179,7 @@ export type WindowLib = {
 
 local aereon = require("./Aereon/main")
 local window = require("./Aereon/window") :: WindowLib
-local adapter = require("@RaylibAdapter")
 local rect = require("@arect")
-local structs = adapter.structs
 
 local Immco = {}
 

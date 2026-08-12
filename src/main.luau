@@ -389,6 +389,7 @@ local function loadInternals()
 	end
 
 	local loadedCount = 0
+	--[[
 	loop("src/sandboxed/internals", function(path, entry)
 		if kilang.threads[path] then
 			return
@@ -432,6 +433,7 @@ local function loadInternals()
 			CEnv.runC(code)
 		end
 	end)
+	--]]
 
 	log(string.format("[Internals] Queued %d internal scripts", loadedCount))
 end
@@ -528,4 +530,4 @@ if FlagExists("rojo") then
 end
 
 -- RUN RENDERER
-renderer:Run()
+renderer:Run(60)

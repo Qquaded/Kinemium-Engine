@@ -1,6 +1,5 @@
 local Instance = require("@Instance")
 local Color3 = require("@Color3")
-local adapter = require("@RaylibAdapter")
 
 local meshgen = require("@meshgen")
 local Vector3 = require("@Vector3")
@@ -1816,74 +1815,7 @@ Terrain.InitRenderer = function(renderer, renderer_signal, datamodel)
 		Terrain:GenerateMesh()
 	end
 
-	function Terrain:StartRendering()
-		local grassMat = grassgen.getGrassMaterial()
-		local quadMesh = grassgen.getBladeQuadMesh()
-		local grassShader = grassgen.getGrassSurfaceShader()
-
-		local workspace = datamodel:GetService("Workspace")
-		local terrainMatCache = {}
-
-		local function getTerrainMaterial(materialName)
-			if terrainMatCache[materialName] then
-				return terrainMatCache[materialName]
-			end
-			local mat = workspace.loadMaterial(materialName)
-			if mat then
-				terrainMatCache[materialName] = mat
-			end
-			return mat
-		end
-
-		local identity = adapter.lib.MatrixIdentity()
-		local grassWindBuf = buffer.create(4)
-		buffer.writef32(grassWindBuf, 0, 0.22)
-		local grassTimeBuf = buffer.create(4)
-
-		renderer.Pool.new("3d", function()
-			local chunks = Terrain._chunks
-			if type(chunks) ~= "table" then
-				Terrain._chunks = Terrain._chunks or {}
-				return
-			end
-
-			for _, chunk in pairs(chunks) do
-				if chunk.mesh then
-					local matName = chunk.dominantMaterial or "grass"
-					local mat = getTerrainMaterial(matName)
-					if not mat then
-						mat = getTerrainMaterial("grass") -- fallback
-					end
-					if mat and renderer.MeshPool then
-						renderer.MeshPool.DrawMesh(chunk.mesh, mat.material, identity, nil, nil)
-					end
-				end
-
-				if
-					chunk.grassInstanceBuffer
-					and chunk.grassInstanceCount
-					and chunk.grassInstanceCount > 0
-					and renderer.MeshPool
-					and renderer.MeshPool.DrawMeshInstanced
-				then
-					if grassShader then
-						buffer.writef32(grassTimeBuf, 0, adapter.lib.GetTime())
-						rlib.R3D_SetSurfaceShaderUniform(grassShader, "u_windStrength", grassWindBuf)
-						rlib.R3D_SetSurfaceShaderUniform(grassShader, "u_time", grassTimeBuf)
-					end
-
-					renderer.MeshPool.DrawMeshInstanced(
-						quadMesh,
-						grassMat,
-						chunk.grassInstanceBuffer,
-						chunk.grassInstanceCount,
-						nil,
-						nil
-					)
-				end
-			end
-		end)
-	end
+	function Terrain:StartRendering() end
 
 	return Terrain
 end
