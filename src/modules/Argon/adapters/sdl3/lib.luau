@@ -15,7 +15,20 @@ local function window_real(w)
 end
 
 function SDLAdapter:Init()
-	sdl.lib.SDL_Init()
+	sdl.lib.SDL_Init(0x00000020) -- SDL_INIT_VIDEO
+
+	local GL_CONTEXT_MAJOR_VERSION = 17
+	local GL_CONTEXT_MINOR_VERSION = 18
+	local GL_CONTEXT_PROFILE_MASK = 21
+	local GL_DEPTH_SIZE = 6
+	local GL_DOUBLEBUFFER = 5
+	local PROFILE_CORE = 0x0001
+
+	sdl.lib.SDL_GL_SetAttribute(GL_CONTEXT_PROFILE_MASK, PROFILE_CORE)
+	sdl.lib.SDL_GL_SetAttribute(GL_CONTEXT_MAJOR_VERSION, 4)
+	sdl.lib.SDL_GL_SetAttribute(GL_CONTEXT_MINOR_VERSION, 1) -- 4.1 core = safe ceiling incl. macOS
+	sdl.lib.SDL_GL_SetAttribute(GL_DEPTH_SIZE, 24)
+	sdl.lib.SDL_GL_SetAttribute(GL_DOUBLEBUFFER, 1)
 end
 
 function SDLAdapter:InitWindow(params: typedefs.WindowParams): typedefs.Window
@@ -158,8 +171,22 @@ function SDLAdapter:PollEvents()
 end
 
 -- ui lib
+function SDLAdapter:UpdateSkiaTexture(texture: typedefs.Texture, window: typedefs.Window)
+	local pixels, pitch = ui:GetPixelsAndPitch(window._uihandle)
+	sdl.lib.SDL_UpdateTexture(texture._handle, nil, pixels, pitch)
+end
+
 function SDLAdapter:DrawRectangle(window: typedefs.Window, rectangle: typedefs.Rectangle)
 	ui:DrawRect(window._uihandle, rectangle)
+end
+
+function SDLAdapter:Clear2D(window: typedefs.Window, color: typedefs.RGBA)
+	ui:Clear(window._uihandle, color)
+end
+
+-- frame
+function SDLAdapter:RenderPresent(renderer: typedefs.Renderer)
+	sdl.lib.SDL_RenderPresent(renderer._handle)
 end
 
 return SDLAdapter

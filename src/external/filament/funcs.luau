@@ -442,6 +442,18 @@ local funcs = {
 			ffi.types.float, -- studsPerTileV
 		},
 	},
+
+	Kine_Filament_BlitToScreen = {
+		returns = ffi.types.u8,
+		args = {
+			ffi.types.pointer, -- ctx
+			ffi.types.float, -- dstX
+			ffi.types.float, -- dstY
+			ffi.types.float, -- dstWidth
+			ffi.types.float, -- dstHeight
+		},
+	},
+
 	Kine_Filament_RemoveDecal = {
 		returns = ffi.types.void,
 		args = { ffi.types.pointer, ffi.types.i32 },

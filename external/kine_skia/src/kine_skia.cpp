@@ -44,14 +44,20 @@ KINE_SKIA_API KineSkiaSurface* Kine_Skia_Surface_Create(int width, int height)
         return nullptr;
     }
 
-    sk_sp<SkSurface> surface = SkSurfaces::Raster(
-        SkImageInfo::MakeN32Premul(width, height));
+    SkImageInfo info = SkImageInfo::Make(
+        width, height,
+        kRGBA_8888_SkColorType,
+        kPremul_SkAlphaType);
+
+    sk_sp<SkSurface> surface = SkSurfaces::Raster(info);
     if (!surface) {
         return nullptr;
     }
 
     KineSkiaSurface* wrapper = new KineSkiaSurface();
     wrapper->surface = std::move(surface);
+
+    wrapper->surface->getCanvas()->clear(SK_ColorTRANSPARENT);
     return wrapper;
 }
 

@@ -56,6 +56,7 @@ KINE_API void Kine_Filament_SetCameraLookAt(
     float targetX, float targetY, float targetZ,
     float upX, float upY, float upZ);
 
+KINE_API bool Kine_Filament_BlitToScreen(KineFilamentContext* ctx, int dstX, int dstY, int dstWidth, int dstHeight);
 KINE_API void Kine_Filament_SetCameraPerspective(
     KineFilamentContext* ctx,
     double fovYDegrees, double aspect, double nearPlane, double farPlane);

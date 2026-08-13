@@ -631,19 +631,25 @@ function KiRend.new(config: KiRendConf)
 		rendererObject.RuntimeLibrary.time = time
 
 		argon:PollEvents()
+		filament.lib.Kine_Filament_RenderFrame(ctx, frameTime)
+		filament.lib.Kine_Filament_BlitToScreen(ctx, 0, 0, context.Window.Width, context.Window.Height)
+		argon:Clear2D(window, { R = 0, G = 0, B = 0, A = 0 })
 		argon:DrawRectangle(window, {
 			Color = {
-				R = 255,
-				G = 255,
-				B = 255,
-				A = 1,
+				R = 1,
+				G = 1,
+				B = 1,
+				A = 0,
 			},
-			x = 0,
-			y = 0,
-			width = 100,
-			height = 100,
+			x = math.random(1, 100),
+			y = math.random(1, 100),
+			width = math.random(1, 100),
+			height = math.random(1, 100),
 		})
+
+		argon:UpdateSkiaTexture(skia_tex, window)
 		argon:DrawTexture(window_renderer, skia_tex)
+		argon:RenderPresent(window_renderer)
 
 		if ENGINE_PROFILER then
 			ENGINE_PROFILER:NextFrame()

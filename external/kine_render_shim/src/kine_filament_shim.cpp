@@ -109,16 +109,31 @@ static PFNGLGENFRAMEBUFFERSPROC          kine_glGenFramebuffers    = nullptr;
 static PFNGLDELETEFRAMEBUFFERSPROC       kine_glDeleteFramebuffers = nullptr;
 static PFNGLFRAMEBUFFERTEXTURE2DPROC     kine_glFramebufferTexture2D = nullptr;
 
+typedef void (APIENTRY* PFNGLBLITFRAMEBUFFERPROC)(GLint,GLint,GLint,GLint,GLint,GLint,GLint,GLint,GLbitfield,GLenum);
+static PFNGLBLITFRAMEBUFFERPROC kine_glBlitFramebuffer = nullptr;
+
+#ifndef GL_READ_FRAMEBUFFER
+#define GL_READ_FRAMEBUFFER 0x8CA8
+#endif
+#ifndef GL_DRAW_FRAMEBUFFER
+#define GL_DRAW_FRAMEBUFFER 0x8CA9
+#endif
+#ifndef GL_COLOR_BUFFER_BIT
+#define GL_COLOR_BUFFER_BIT 0x4000
+#endif
+
 static void kine_init_gl_ext() {
     static bool done = false;
     if (done) return;
     done = true;
 #if defined(_WIN32)
+    kine_glBlitFramebuffer = (PFNGLBLITFRAMEBUFFERPROC)wglGetProcAddress("glBlitFramebuffer");
     kine_glBindFramebuffer     = (PFNGLBINDFRAMEBUFFERPROC)wglGetProcAddress("glBindFramebuffer");
     kine_glGenFramebuffers     = (PFNGLGENFRAMEBUFFERSPROC)wglGetProcAddress("glGenFramebuffers");
     kine_glDeleteFramebuffers  = (PFNGLDELETEFRAMEBUFFERSPROC)wglGetProcAddress("glDeleteFramebuffers");
     kine_glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)wglGetProcAddress("glFramebufferTexture2D");
 #elif defined(__APPLE__)
+    kine_glBlitFramebuffer = &glBlitFramebuffer;
     // Apple's OpenGL framework has always linked these directly (core since
     // GL 3.0, and macOS's GL implementation tops out at 4.1 core) -- no
     // runtime lookup needed or even possible via a "wgl/glX"-style API.
@@ -127,6 +142,7 @@ static void kine_init_gl_ext() {
     kine_glDeleteFramebuffers   = &glDeleteFramebuffers;
     kine_glFramebufferTexture2D = &glFramebufferTexture2D;
 #else
+    kine_glBlitFramebuffer = (PFNGLBLITFRAMEBUFFERPROC)glXGetProcAddress((const GLubyte*)"glBlitFramebuffer");
     kine_glBindFramebuffer      = (PFNGLBINDFRAMEBUFFERPROC)glXGetProcAddress((const GLubyte*)"glBindFramebuffer");
     kine_glGenFramebuffers      = (PFNGLGENFRAMEBUFFERSPROC)glXGetProcAddress((const GLubyte*)"glGenFramebuffers");
     kine_glDeleteFramebuffers   = (PFNGLDELETEFRAMEBUFFERSPROC)glXGetProcAddress((const GLubyte*)"glDeleteFramebuffers");
@@ -388,6 +404,7 @@ static unsigned int createGLColorTexture(int width, int height)
 
 bool rebuildRenderTarget(KineFilamentContext* ctx, int width, int height)
 {
+    if (ctx->readFboId) { GLuint f=(GLuint)ctx->readFboId; kine_glDeleteFramebuffers(1,&f); ctx->readFboId=0; }
     if (ctx->renderTarget) { ctx->engine->destroy(ctx->renderTarget); ctx->renderTarget = nullptr; }
     if (ctx->colorTarget)  { ctx->engine->destroy(ctx->colorTarget);  ctx->colorTarget  = nullptr; }
     if (ctx->depthTarget)  { ctx->engine->destroy(ctx->depthTarget);  ctx->depthTarget  = nullptr; } 
@@ -1307,6 +1324,31 @@ KINE_API void Kine_Filament_SetCameraLookAt(
     ctx->cameraTarget = {targetX, targetY, targetZ};
     ctx->cameraUp = {upX, upY, upZ};
     ctx->camera->lookAt(ctx->cameraEye, ctx->cameraTarget, ctx->cameraUp);
+}
+
+KINE_API bool Kine_Filament_BlitToScreen(KineFilamentContext* ctx, int dstX, int dstY, int dstWidth, int dstHeight)
+{
+    if (!ctx || !ctx->engine || ctx->colorTextureId == 0) return false;
+    if (!kine_glBindFramebuffer || !kine_glGenFramebuffers ||
+        !kine_glFramebufferTexture2D || !kine_glBlitFramebuffer) return false;
+
+    if (ctx->readFboId == 0) {
+        GLuint fbo = 0;
+        kine_glGenFramebuffers(1, &fbo);
+        kine_glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        kine_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                     GL_TEXTURE_2D, (GLuint)ctx->colorTextureId, 0);
+        ctx->readFboId = (unsigned int)fbo;
+        kine_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    kine_glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)ctx->readFboId);
+    kine_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // SDL's default framebuffer, must already be bound/current
+    kine_glBlitFramebuffer(0, 0, ctx->width, ctx->height,
+                            dstX, dstY, dstX + dstWidth, dstY + dstHeight,
+                            GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    kine_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    return true;
 }
 
 KINE_API void Kine_Filament_SetCameraPosition(KineFilamentContext* ctx, float x, float y, float z)

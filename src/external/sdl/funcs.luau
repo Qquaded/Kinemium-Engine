@@ -1244,7 +1244,10 @@ local funcs = {
 	SDL_GetTextureBlendMode = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
 	SDL_SetTextureScaleMode = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
 	SDL_GetTextureScaleMode = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
-	SDL_UpdateTexture = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer, ffi.types.i32 } },
+	SDL_UpdateTexture = {
+		returns = ffi.types.pointer,
+		args = { ffi.types.pointer, ffi.types.pointer, ffi.types.pointer, ffi.types.i32 },
+	},
 	SDL_UpdateYUVTexture = {
 		returns = ffi.types.pointer,
 		args = {
@@ -2042,7 +2045,7 @@ local funcs = {
 	SDL_GL_UnloadLibrary = { returns = ffi.types.pointer, args = {} },
 	SDL_GL_ExtensionSupported = { returns = ffi.types.pointer, args = { ffi.types.i8 } },
 	SDL_GL_ResetAttributes = { returns = ffi.types.pointer, args = {} },
-	SDL_GL_SetAttribute = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.i32 } },
+	SDL_GL_SetAttribute = { returns = ffi.types.pointer, args = { ffi.types.i32, ffi.types.i32 } },
 	SDL_GL_GetAttribute = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.i32 } },
 	SDL_GL_CreateContext = { returns = ffi.types.pointer, args = { ffi.types.pointer } },
 	SDL_GL_MakeCurrent = { returns = ffi.types.pointer, args = { ffi.types.pointer, ffi.types.pointer } },
