@@ -1,0 +1,73 @@
+name: Build Kinemium Engine
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            flag: windows
+            folder: windows_x86-64
+          - os: macos-latest
+            flag: macos
+            folder: macos_x86-64
+          - os: ubuntu-latest
+            flag: debian
+            folder: debian_x86-64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.1.2
+
+      - name: Install tools
+        run: rokit install --no-trust-check
+
+      - name: Create sandboxed embed dir
+        shell: bash
+        run: mkdir -p build/.embedded/src/sandboxed
+
+      - name: Install CMake and Ninja
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y cmake ninja-build build-essential
+
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            brew install cmake ninja
+
+          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            choco install cmake ninja -y
+          fi
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          cmake -S external -B external/build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build engine
+        run: zune run build --${{ matrix.flag }}
+
+      - name: Remove .embedded folder
+        shell: bash
+        run: rm -rf build/${{ matrix.folder }}/.embedded
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.folder }}
+          path: build/${{ matrix.folder }}
