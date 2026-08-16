@@ -1,6 +1,7 @@
 -- description: "A GUI container that displays interface elements in screen space."
 local UDim2 = require("@UDim2")
 local Vector2 = require("@Vector2")
+local argon = require("@Argon")
 
 local proptble = {
 	Name = "ScreenGui",
@@ -34,20 +35,16 @@ return {
 	class = "ScreenGui",
 
 	callback = function(instance, renderer)
-		proptble.render = function(lib, instance, dt, structs, renderer, datamodel)
-			if not datamodel then
-				return
-			end
-
+		proptble.render = function()
 			local renderWidth, renderHeight
 
 			if IsHeadless then
 				renderWidth = 1024
 				renderHeight = 1024
 			else
-				local dpiScale = lib.GetWindowScaleDPI()
-				renderWidth = lib.GetRenderWidth() / dpiScale.x
-				renderHeight = lib.GetRenderHeight() / dpiScale.y
+				local dpiScale = argon:GetDPIScale(renderer.Window)
+				renderWidth = renderer.Width / dpiScale
+				renderHeight = renderer.Height / dpiScale
 			end
 
 			if not instance.OverrideScreenSize then
@@ -84,7 +81,7 @@ return {
 			end
 			for _, child in pairs(instance:GetChildren()) do
 				if child["render"] then
-					child.render(lib, child, dt, structs, renderer, datamodel)
+					child.render(renderer.Window, child, renderer.RuntimeLibrary.dt, renderer)
 				end
 			end
 			profileEnd()

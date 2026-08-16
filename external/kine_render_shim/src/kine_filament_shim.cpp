@@ -407,7 +407,12 @@ bool rebuildRenderTarget(KineFilamentContext* ctx, int width, int height)
     if (ctx->readFboId) { GLuint f=(GLuint)ctx->readFboId; kine_glDeleteFramebuffers(1,&f); ctx->readFboId=0; }
     if (ctx->renderTarget) { ctx->engine->destroy(ctx->renderTarget); ctx->renderTarget = nullptr; }
     if (ctx->colorTarget)  { ctx->engine->destroy(ctx->colorTarget);  ctx->colorTarget  = nullptr; }
-    if (ctx->depthTarget)  { ctx->engine->destroy(ctx->depthTarget);  ctx->depthTarget  = nullptr; } 
+    if (ctx->depthTarget)  { ctx->engine->destroy(ctx->depthTarget);  ctx->depthTarget  = nullptr; }
+
+    // engine->destroy() posts to a command queue — flush and wait so the backend
+    // has fully released the imported GL texture before we call glDeleteTextures.
+    ctx->engine->flushAndWait();
+
     if (ctx->colorTextureId) {
         GLuint old = (GLuint)ctx->colorTextureId;
         glDeleteTextures(1, &old);
@@ -612,6 +617,9 @@ bool rebuildRenderTarget(KineFilamentContext* ctx, unsigned int textureId, int w
 {
     if (ctx->renderTarget) { ctx->engine->destroy(ctx->renderTarget); ctx->renderTarget = nullptr; }
     if (ctx->colorTarget)  { ctx->engine->destroy(ctx->colorTarget);  ctx->colorTarget  = nullptr; }
+
+    ctx->engine->flushAndWait();
+
 
     ctx->colorTarget = Texture::Builder()
         .width(uint32_t(width))
@@ -1297,12 +1305,25 @@ KINE_API void Kine_Filament_RenderFrame(KineFilamentContext* ctx, float deltaTim
     glDisable(GL_SCISSOR_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    kine_restore_host_context(ctx);
 }
 
 KINE_API void Kine_Filament_Resize(KineFilamentContext* ctx, int width, int height)
 {
     if (!ctx || !ctx->engine) return;
     if (width <= 0 || height <= 0) return;
+
+    // Drain any pending GPU commands that may still reference the old render target
+    // textures before we destroy them. Without this, the driver can segfault
+    // accessing freed GL objects on the backend thread.
+    ctx->engine->flushAndWait();
+
+    if (ctx->swapChain) {
+        ctx->engine->destroy(ctx->swapChain);
+        ctx->swapChain = nullptr;
+    }
+    ctx->swapChain = ctx->engine->createSwapChain(width, height);
 
     rebuildRenderTarget(ctx, width, height);
     ctx->camera->setProjection(60.0, double(width) / double(height), 1.0, 500.0);

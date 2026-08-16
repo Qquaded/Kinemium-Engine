@@ -3,7 +3,6 @@ local logic = {}
 local Enum = require("@EnumMap")
 local MouseCursor = require("@Kinemium.MouseCursor")
 local signal = require("@Kinemium.signal")
-local adapter = require("@RaylibAdapter")
 
 local function renderCaret(showCaret, object, renderer, lib)
 	if showCaret then

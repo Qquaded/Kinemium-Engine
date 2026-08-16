@@ -10,148 +10,130 @@ StudioThemeService.ExplorerHidden = true
 StudioThemeService._Intents = Enum.PluginIntents.UI
 
 StudioThemeService.InitRenderer = function(renderer, renderer_signal, datamodel)
-	local themes = {
-		dark = {
-			WindowConfig = {
-				Explorer = {
-					position = UDim2.new(1, -20, 0, 40),
-					anchorPoint = Vector2.new(1, 0),
-					size = UDim2.new(0, 400, 0.38, 0),
-				},
-				GameSettings = {
-					position = UDim2.new(0.5, 0, 0.5, 0),
-					anchorPoint = Vector2.new(0.5, 0.5),
-					size = UDim2.new(0.5, 0, 0.7, 0),
-				},
-				Toolbox = {
-					position = UDim2.new(0.5, 0, 0.5, 0),
-					anchorPoint = Vector2.new(0.5, 0.5),
-					size = UDim2.new(0.6, 0, 0.7, 0),
-				},
-				Inspector = {
-					position = UDim2.new(1, -20, 0.44, 0),
-					anchorPoint = Vector2.new(1, 0),
-					size = UDim2.new(0, 400, 0.55, 0),
-				},
-				Output = {
-					position = UDim2.new(0, 20, 0.99, 0),
-					anchorPoint = Vector2.new(0, 1),
-					size = UDim2.new(1, -450, 0, 200),
-				},
-				Toolbar = {
-					position = UDim2.new(0, 0, 0, 0),
-					anchorPoint = Vector2.new(0, 0),
-					size = UDim2.new(1, 0, 0, 170),
-				},
-				CodeEditor = {
-					position = UDim2.new(0, 20, 0, 40),
-					anchorPoint = Vector2.new(0, 0),
-					size = UDim2.new(0, 800, 0, 600),
-				},
+	local argon = require("@argon")
+	local P = 4
+	local TopH = 26
+	local BottomPad = 12
+	local showOutput = true
+
+	local function getCoordinates()
+		local viewportTop = 2 * P + TopH
+		local viewportHeight = showOutput and 0.7 or 1
+		local viewportHeightOffset = showOutput and -(viewportTop + P / 2) or -(viewportTop + BottomPad)
+
+		local outputCoordinates = showOutput
+				and {
+					Size = UDim2.new(0.78, -P * 1.5, 0.3, -(P / 2 + P + BottomPad)),
+					Position = UDim2.new(0, P, 0.7, P / 2),
+				}
+			or {
+				Size = UDim2.new(0, 0, 0, 0),
+				Position = UDim2.new(0, 0, 1, 0),
+			}
+
+		return {
+			TopbarCoordinates = {
+				Size = UDim2.new(1, -P * 2, 0, TopH),
+				Position = UDim2.new(0, P, 0, P),
 			},
-			TextColor = Color3.new(1, 1, 1),
-			ImageColor = Color3.new(1, 1, 1),
-			ImageTransparency = 0,
-			GuiHandlesColor = Color3.new(0, 0, 1),
-			GuiHandlesTransparency = 0,
-			TextTransparency = 0,
-			BackgroundColor = Color3.new(0, 0, 0),
-			BackgroundTransparency = 0.3,
-			SecondaryTextTransparency = 0,
-			SecondaryTextColor = Color3.new(0.541176, 0.541176, 0.541176),
-			SecondaryBackgroundColor = Color3.new(0.05, 0.05, 0.05),
-			ThirdBackgroundColor = Color3.new(0.15, 0.15, 0.15),
-			SecondaryBackgroundColorTransparency = 0,
-			Accent = Color3.new(1, 1, 1),
-			AccentTransparency = 0,
-			WindowBackgroundColor = Color3.new(0, 0, 0),
-			WindowBackgroundTransparency = 0.15,
-			TitleTextSize = 16,
-			WindowTitleHeight = 29,
-			ShadowsEnabled = true,
-			ShadowTransparency = 0.98,
-			CornerRadius = 0,
-			ShadowColor = Color3.new(0, 0, 0),
-			ArrowImageColor = Color3.new(1, 1, 1),
-			TitleColor = Color3.new(1, 1, 1),
 
-			aereon = {
-				window = {
-					BackgroundColor = Color3.new(0, 0, 0),
-					BackgroundTransparency = 0.15,
-					TextColor = Color3.new(1, 1, 1),
-					SecondaryBackgroundColor = Color3.new(0.05, 0.05, 0.05),
-					DragColor = Color3.new(0.02, 0.5, 1),
-					DragOutlineTransparency = 1,
-					TitleBackgroundTransparency = 0,
-					TitleTextSize = 16,
-					TitleColor = Color3.new(1, 1, 1),
-					TitleHeight = 29,
-					ShadowsEnabled = false,
-					ShadowTransparency = 0.98,
-					ShadowColor = Color3.new(0, 0, 0),
-				},
-
-				ide = {
-					BackgroundColor = Color3.fromRGB(16, 20, 28),
-					SecondaryBackgroundColor = Color3.new(0.07, 0.07, 0.07),
-					TextColor = Color3.new(1, 1, 1),
-					currentLineColor = Color3.new(0.2, 0.2, 0.2),
-
-					autocomplete = {
-						BackgroundColor = Color3.new(0.07, 0.07, 0.07),
-						OutlineColor = Color3.new(1, 1, 1),
-						ItemSelectColor = Color3.new(0, 0, 0.3),
-						OutlineThickness = 0.6,
-						OutlineTransparency = 0.8,
-						CornerRadius = 0.2,
-
-						Width = 200,
-						Height = 20,
-						ListPadding = 5,
-					},
-
-					codecolors = {
-						keyword = Color3.fromRGB(0, 191, 255), -- SKYBLUE
-						builtin = Color3.fromRGB(255, 0, 255), -- MAGENTA
-						stdlib = Color3.fromRGB(148, 0, 211), -- VIOLET
-						string = Color3.fromRGB(0, 255, 0), -- GREEN
-						number = Color3.fromRGB(255, 165, 0), -- ORANGE
-						operator = Color3.fromRGB(0, 0, 255), -- BLUE
-						comment = Color3.fromRGB(128, 128, 128), -- GRAY
-						field = Color3.fromRGB(255, 255, 0), -- YELLOW
-						method = Color3.fromRGB(255, 255, 0), -- YELLOW
-						functionName = Color3.fromRGB(255, 215, 0), -- GOLD
-						default = Color3.fromRGB(255, 255, 255), -- WHITE
-					},
-				},
+			ViewportCoordinates = {
+				Size = UDim2.new(0.78, -P * 1.5, viewportHeight, viewportHeightOffset),
+				Position = UDim2.new(0, P, 0, viewportTop),
 			},
-		},
+
+			OutputCoordinates = outputCoordinates,
+
+			ExplorerCoordinates = {
+				Size = UDim2.new(0.22, -P * 1.5, 0.5, -(2 * P + TopH + P / 2)),
+				Position = UDim2.new(0.78, P / 2, 0, 2 * P + TopH),
+			},
+
+			InspectorCoordinates = {
+				Size = UDim2.new(0.22, -P * 1.5, 0.5, -(P / 2 + P + BottomPad)),
+				Position = UDim2.new(0.78, P / 2, 0.5, P / 2),
+			},
+		}
+	end
+
+	local Coordinates = getCoordinates()
+
+	local default = {
+		BaseColor = argon:RGBA(15, 15, 15),
+		BgColor = argon:RGBA(35, 35, 35),
+		AccentColor = argon:RGBA(214, 133, 37),
+		SecondaryColor = argon:RGBA(43, 43, 43),
+		ThirdColor = argon:RGBA(25, 25, 25),
+		TextColor = argon:RGBA(220, 220, 220),
+		CornerRadius = 4,
+		ButtonCornerRadius = 8,
+		Font = "./src/assets/fonts/Montserrat-Regular.ttf",
+		FontBold = "./src/assets/fonts/Montserrat-Regular.ttf",
+
+		TopbarCoordinates = Coordinates.TopbarCoordinates,
+		ViewportCoordinates = Coordinates.ViewportCoordinates,
+		OutputCoordinates = Coordinates.OutputCoordinates,
+		ExplorerCoordinates = Coordinates.ExplorerCoordinates,
+		InspectorCoordinates = Coordinates.InspectorCoordinates,
 	}
 
-	themes.dark.aereon.window.BackgroundColor = themes.dark.WindowBackgroundColor
-	themes.dark.aereon.window.BackgroundTransparency = themes.dark.WindowBackgroundTransparency
-	themes.dark.aereon.window.TextColor = themes.dark.TextColor
-	themes.dark.aereon.window.SecondaryBackgroundColor = themes.dark.SecondaryBackgroundColor
-	themes.dark.aereon.window.DragColor = themes.dark.Accent
-	themes.dark.aereon.window.DragOutlineTransparency = themes.dark.AccentTransparency
-	themes.dark.aereon.window.TitleBackgroundTransparency = themes.dark.SecondaryBackgroundColorTransparency
-	themes.dark.aereon.window.TitleTextSize = themes.dark.TitleTextSize
-	themes.dark.aereon.window.TitleColor = themes.dark.TitleColor
-	themes.dark.aereon.window.TitleHeight = themes.dark.WindowTitleHeight
-	themes.dark.aereon.window.ShadowsEnabled = themes.dark.ShadowsEnabled
-	themes.dark.aereon.window.ShadowTransparency = themes.dark.ShadowTransparency
-	themes.dark.aereon.window.ShadowColor = themes.dark.ShadowColor
-	themes.dark.aereon.window.CornerRadius = themes.dark.CornerRadius
+	--[[
+	local system_theme = argon:GetSystemTheme()
+	if system_theme == "dark" then
+		default.BaseColor = argon:RGBA(15, 15, 15)
+		default.BgColor = argon:RGBA(35, 35, 35)
+		default.AccentColor = argon:RGBA(214, 133, 37)
+		default.SecondaryColor = argon:RGBA(43, 43, 43)
+		default.ThirdColor = argon:RGBA(25, 25, 25)
+		default.TextColor = argon:RGBA(220, 220, 220)
+	elseif system_theme == "light" then
+		default.BaseColor = argon:RGBA(233, 233, 233)
+		default.BgColor = argon:RGBA(245, 245, 245)
+		default.AccentColor = argon:RGBA(214, 133, 37)
+		default.SecondaryColor = argon:RGBA(235, 235, 235)
+		default.ThirdColor = argon:RGBA(255, 255, 255)
+		default.TextColor = argon:RGBA(35, 35, 35)
+	end
+	--]]
+
+	function StudioThemeService:ChangeLayoutSettings(padding, headerHeight, bottomPadding)
+		P = padding
+		TopH = headerHeight
+		bottomPadding = BottomPad
+
+		default.TopbarCoordinates = {
+			Size = UDim2.new(1, -P * 2, 0, TopH),
+			Position = UDim2.new(0, P, 0, P),
+		}
+		default.ViewportCoordinates = {
+			Size = UDim2.new(0.78, -P * 1.5, 0.7, -(2 * P + TopH + P / 2)),
+			Position = UDim2.new(0, P, 0, 2 * P + TopH),
+		}
+		default.OutputCoordinates = {
+			Size = UDim2.new(0.78, -P * 1.5, 0.3, -(P / 2 + P + BottomPad)),
+			Position = UDim2.new(0, P, 0.7, P / 2),
+		}
+		default.ExplorerCoordinates = {
+			Size = UDim2.new(0.22, -P * 1.5, 0.5, -(2 * P + TopH + P / 2)),
+			Position = UDim2.new(0.78, P / 2, 0, 2 * P + TopH),
+		}
+		default.InspectorCoordinates = {
+			Size = UDim2.new(0.22, -P * 1.5, 0.5, -(P / 2 + P + BottomPad)),
+			Position = UDim2.new(0.78, P / 2, 0.5, P / 2),
+		}
+	end
 
 	local themeObject = Instance.new("StudioTheme")
 	StudioTheme.callback(themeObject)
 
 	StudioThemeService:SetProperties({
-		themes = themes,
-		SelectedTheme = themes.dark,
+		SelectedTheme = default,
 		ThemeObject = themeObject,
 	})
+
+	function StudioThemeService:GetTheme()
+		return default
+	end
 
 	function StudioThemeService.MakeUIPadded()
 		StudioThemeService.SelectedTheme.WindowConfig = {

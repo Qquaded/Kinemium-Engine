@@ -97,29 +97,11 @@ if(NOT KINE_SKIA_DIR AND NOT KINE_SKIA_PREBUILT_LIBRARY_PROVIDED)
     set(KINE_SKIA_GN_ARGS
         "is_debug=false"
         "is_official_build=false"
-        "skia_enable_ganesh=false"
-        "skia_enable_graphite=false"
-        "skia_enable_precompile=false"
-        "skia_enable_pdf=false"
-        "skia_enable_skottie=false"
-        "skia_enable_skparagraph=false"
-        "skia_enable_skshaper=false"
-        "skia_enable_svg=false"
-        "skia_use_dawn=false"
-        "skia_use_expat=false"
-        "skia_use_fontconfig=false"
-        "skia_use_freetype=false"
-        "skia_use_gl=false"
-        "skia_use_harfbuzz=false"
-        "skia_use_icu=false"
-        "skia_use_libavif=false"
-        "skia_use_libjpeg_turbo=false"
-        "skia_use_libpng=false"
-        "skia_use_libwebp=false"
-        "skia_use_metal=false"
-        "skia_use_vulkan=false"
-        "skia_use_wuffs=false"
-        "skia_use_zlib=false"
+        "skia_enable_svg=true"
+        "skia_use_libpng=true"
+        "skia_use_freetype=true"
+        "skia_use_system_freetype2=false"
+        "skia_use_harfbuzz=true"
     )
 
     if(WIN32)
@@ -150,7 +132,7 @@ if(NOT KINE_SKIA_DIR AND NOT KINE_SKIA_PREBUILT_LIBRARY_PROVIDED)
     ExternalProject_Add(kine_skia_external
         GIT_REPOSITORY "https://skia.googlesource.com/skia.git"
         GIT_TAG "${KINE_SKIA_GIT_TAG}"
-        GIT_SHALLOW TRUE
+        GIT_SHALLOW FALSE
         SOURCE_DIR "${KINE_SKIA_SOURCE_DIR}"
         BUILD_IN_SOURCE TRUE
         CONFIGURE_COMMAND

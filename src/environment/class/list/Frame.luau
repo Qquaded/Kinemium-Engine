@@ -9,13 +9,13 @@ local propTable = {
 
 GuiObject.inherit(propTable)
 
-propTable.render = function(lib, object, dt, structs, renderer)
+propTable.render = function(Window, object, dt, renderer)
 	if not object.Visible then
 		return
 	end
-	local pos, size = GuiObject.render(lib, object, dt, structs, renderer)
+	local pos, size = GuiObject.render(Window, object, dt, renderer)
 
-	GuiObject.renderChildren(lib, object, dt, structs, renderer)
+	GuiObject.renderChildren(Window, object, dt, renderer)
 
 	return pos, size
 end

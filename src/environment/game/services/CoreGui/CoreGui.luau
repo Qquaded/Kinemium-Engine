@@ -1,7 +1,6 @@
 local Instance = require("@Instance")
 local Enum = require("@EnumMap")
 local signal = require("@Kinemium.signal")
-local structs = require("@raylibadapter").structs
 
 local CoreGui = Instance.new("CoreGui")
 CoreGui._Intents = Enum.PluginIntents.UI
@@ -55,18 +54,10 @@ CoreGui.InitRenderer = function(renderer, renderer_signal, datamodel)
 		return false
 	end
 
-	CoreGui.ChildAdded:Connect(function(child)
-		if type(child) == "table" and child.BaseClass == "UIContainer" then
+	renderer.Pool.new("2d", function()
+		for _, child in pairs(CoreGui:GetChildren()) do
 			if child["render"] then
-				local renderId
-				renderId = renderer.Pool.new("2d", function()
-					if not child.render then
-						renderer.Pool.Destroy(renderId)
-						return
-					end
-					local dt = renderer.Lib2d.GetFrameTime()
-					child.render(renderer.Lib2d, child, dt, structs, renderer, datamodel)
-				end, -5)
+				child.render()
 			end
 		end
 	end)

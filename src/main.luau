@@ -48,22 +48,23 @@ local headerfiles = {}
 
 local seen = {}
 
-Walk.Walk("./external", function(path, entry)
-	if entry.kind == "file" and entry.extension == `.{zune.ffi.suffix}` then
-		if filesystem.exists("vendor/" .. entry.name) then
-			return
+if not zembed.IsEmbedded() then
+	Walk.Walk("./external", function(path, entry)
+		if entry.kind == "file" and entry.extension == `.{zune.ffi.suffix}` then
+			if filesystem.exists("vendor/" .. entry.name) then
+				return
+			end
+			fs.copy(path, "vendor/" .. entry.name)
+			print("Copied " .. path)
+		elseif entry.extension == `.h` then
+			local dir = path:match("(.+)[/\\][^/\\]+$")
+			if dir and not seen[dir] then
+				seen[dir] = true
+				table.insert(headerfiles, dir)
+			end
 		end
-		fs.copy(path, "vendor/" .. entry.name)
-		print("Copied " .. path)
-	elseif entry.extension == `.h` then
-		local dir = path:match("(.+)[/\\][^/\\]+$")
-		if dir and not seen[dir] then
-			seen[dir] = true
-			table.insert(headerfiles, dir)
-		end
-	end
-end)
-table.insert(headerfiles, "./external/r3d/include")
+	end)
+end
 
 if zune.platform.os == "windows" then
 	require("@vcredistInstaller")
@@ -389,7 +390,6 @@ local function loadInternals()
 	end
 
 	local loadedCount = 0
-	--[[
 	loop("src/sandboxed/internals", function(path, entry)
 		if kilang.threads[path] then
 			return
@@ -433,7 +433,6 @@ local function loadInternals()
 			CEnv.runC(code)
 		end
 	end)
-	--]]
 
 	log(string.format("[Internals] Queued %d internal scripts", loadedCount))
 end

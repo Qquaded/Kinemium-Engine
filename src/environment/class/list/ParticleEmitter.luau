@@ -9,11 +9,7 @@ local NumberSequenceKeypoint = require("@NumberSequenceKeypoint")
 local ColorSequence = require("@ColorSequence")
 local NumberRange = require("@NumberRange")
 local ColorSequenceKeypoint = require("@ColorSequenceKeypoint")
-local adapter = require("@RaylibAdapter")
 local zembed = require("@zembed")
-
-local lib = adapter.lib
-local structs = adapter.structs
 
 local BLEND_MIX = 0
 

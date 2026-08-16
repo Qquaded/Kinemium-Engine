@@ -31,6 +31,7 @@ export type Text = {
 
 export type Font = {
 	_handle: any,
+	_path: string,
 }
 
 export type RGBA = {
@@ -40,11 +41,20 @@ export type RGBA = {
 	A: number,
 }
 
+export type TextArgs = {
+	X: number,
+	Y: number,
+	TextSize: number,
+	Font: Font,
+	Color: RGBA,
+}
+
 export type Rectangle = {
 	x: number,
 	y: number,
 	width: number,
 	height: number,
+	isOutline: boolean,
 	Color: RGBA,
 }
 
@@ -57,6 +67,10 @@ export type Vector3 = {
 	X: number,
 	Y: number,
 	Z: number,
+}
+
+export type Graphics3DContext = {
+	_handle: any,
 }
 
 export type WindowGraphicsInterface = "vulkan" | "opengl"
@@ -72,6 +86,11 @@ export type Window = {
 	Width: number,
 	Height: number,
 	_handle: any,
+	_uihandle: any,
+	_3dhandle: any,
+	_rendererhandle: any?,
+	_context: any?,
+	_imguihandle: any?,
 	WGI: WindowGraphicsInterface,
 }
 

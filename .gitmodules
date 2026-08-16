@@ -10,9 +10,6 @@
 [submodule "external/nativefiledialog"]
 	path = external/nativefiledialog
 	url = https://github.com/btzy/nativefiledialog-extended
-[submodule "external/r3d"]
-	path = external/r3d
-	url = https://github.com/Bigfoot71/r3d.git
-[submodule "external/kine_egui/egui"]
-	path = external/kine_egui/egui
-	url = https://github.com/emilk/egui
+[submodule "external/miniaudio"]
+	path = external/miniaudio
+	url = https://github.com/mackron/miniaudio

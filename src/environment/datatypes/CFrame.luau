@@ -3,6 +3,29 @@ local Vector3 = require("@Vector3")
 local CFrame = { __type = "CFrame" }
 CFrame.__index = CFrame
 
+local ffi = zune.ffi
+local float = ffi.types.float
+
+local Matrix = ffi.struct({
+	{ m0 = float },
+	{ m4 = float },
+	{ m8 = float },
+	{ m12 = float },
+	{ m1 = float },
+	{ m5 = float },
+	{ m9 = float },
+	{ m13 = float },
+	{ m2 = float },
+	{ m6 = float },
+	{ m10 = float },
+	{ m14 = float },
+	{ m3 = float },
+	{ m7 = float },
+	{ m11 = float },
+	{ m15 = float },
+})
+export type Matrix = typeof(Matrix:new({}))
+
 local CF_EPSILON = 1e-6
 
 local function isFinite(n)
@@ -739,9 +762,6 @@ end
 function CFrame:ToTable()
 	return {
 		type = "CFrame",
-		-- __type opts the table into the KiNet serializer's custom-type
-		-- codec (see libs/KiNet/SerializerAdapters.luau).  The lowercase
-		-- `type` field is kept for callers that read it directly.
 		__type = "CFrame",
 		Position = self.Position:ToTable(),
 		Rotation = self.Rotation,
@@ -755,19 +775,21 @@ function CFrame.FromTable(tbl)
 	return cf
 end
 
-function CFrame:ToRaylibMatrixScale(scale, structs)
+function CFrame:ToEngineMatrix(scale)
 	local cf = CFrame.new(self.Position)
+
 	cf.Rotation = {
 		{ self.Rotation[1][1], self.Rotation[1][2], self.Rotation[1][3] },
 		{ self.Rotation[2][1], self.Rotation[2][2], self.Rotation[2][3] },
 		{ self.Rotation[3][1], self.Rotation[3][2], self.Rotation[3][3] },
 	}
 	cf:Orthonormalize()
+
 	local r = cf.Rotation
 	local p = self.Position
 	scale = scale or { X = 1, Y = 1, Z = 1 }
 
-	return structs.Matrix:new({
+	return Matrix:new({
 		m0 = r[1][1] * scale.X,
 		m1 = r[2][1] * scale.X,
 		m2 = r[3][1] * scale.X,
@@ -881,10 +903,6 @@ function CFrame:GetMatrixData(scale)
 			m15 = 1,
 		}
 	end
-end
-
-function CFrame:ToRaylibMatrix(structs)
-	return structs.Matrix:new(CFrame:GetMatrixData())
 end
 
 CFrame.identity = CFrame.new(0, 0, 0)

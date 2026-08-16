@@ -1,11 +1,9 @@
---!optimize 2
---!native
-
 local task = zune.task
 local KiRend = {}
 
 local signal = require("@Kinemium.signal")
 local argon = require("@Argon")
+local immco = require("@Immco")
 
 local mockMeshlib = {
 	LoadMesh = function()
@@ -134,25 +132,26 @@ local mockRaylib = {
 export type KiRendConf = {
 	width: number,
 	height: number,
-	maxFps: number,
 	title: string,
 	vsync: boolean?,
 }
 
-local filament = require("@Filament")
-
 function KiRend.new(config: KiRendConf)
 	local time = 0.0
 	local frameCount = 0
-	local simulatedFPS = config.maxFps or 120
-	local frameTime = 1 / simulatedFPS
+	local frameTime = 0
 	local lastFrameTime = os.clock()
 	local isRunning = false
-	local Dimension = "3D"
-
-	local activeCamera = nil
+	local pending_clicks = {}
 
 	argon:Init()
+
+	local function isMouseInRect(mousePos, drawPos, size)
+		return mousePos.X >= drawPos.X
+			and mousePos.X <= drawPos.X + size.X
+			and mousePos.Y >= drawPos.Y
+			and mousePos.Y <= drawPos.Y + size.Y
+	end
 
 	local window = argon:InitWindow({
 		Width = config.width,
@@ -168,13 +167,23 @@ function KiRend.new(config: KiRendConf)
 		width = config.width,
 		height = config.height,
 		renderer = window_renderer,
-		pixelFormat = "RGBA8888",
+		pixelFormat = "ABGR8888",
 		access = "STREAMING",
 	})
 
-	argon:BeginFrame(context)
+	local filamentPixelsPtr = zune.ffi.alloc(config.width * config.height * 4)
 
-	local ctx = filament.lib.Kine_Filament_Create(config.width, config.height)
+	local filament_tex = argon:CreateTexture({
+		width = config.width,
+		height = config.height,
+		renderer = window_renderer,
+		pixelFormat = "ABGR8888",
+		access = "STREAMING",
+	})
+
+	argon:ShowWindow(window)
+	argon:BeginFrame(context)
+	argon:Init3D(window)
 
 	local renderer_eventbus = signal.new()
 	local renderer_hooks = {
@@ -191,6 +200,7 @@ function KiRend.new(config: KiRendConf)
 		object = {},
 		gizmos = {},
 	}
+	local renderer_pool_order = 0
 	local renderer_storage = {
 		fonts = {},
 		sounds = {},
@@ -230,6 +240,9 @@ function KiRend.new(config: KiRendConf)
 			table.insert(sorted, { id = id, entry = entry })
 		end
 		table.sort(sorted, function(a, b)
+			if a.entry.priority == b.entry.priority then
+				return (a.entry.order or 0) < (b.entry.order or 0)
+			end
 			return a.entry.priority < b.entry.priority
 		end)
 		return sorted
@@ -246,6 +259,11 @@ function KiRend.new(config: KiRendConf)
 		Texture = mockTexture(),
 		Enable3D = true,
 		Blur = mockBlur.Init(config.width, config.height),
+
+		Width = config.width,
+		Height = config.height,
+		Window = window,
+		Frametime = frameTime,
 
 		DrawFps = true,
 		ShowPerfOverlay = false,
@@ -408,10 +426,12 @@ function KiRend.new(config: KiRendConf)
 					id = math.random(1, 99999)
 				until pool[id] == nil
 
+				renderer_pool_order += 1
 				pool[id] = {
 					render = renderFn,
 					object = nil,
 					priority = priority or 0,
+					order = renderer_pool_order,
 				}
 
 				return id
@@ -469,6 +489,16 @@ function KiRend.new(config: KiRendConf)
 		},
 	}
 
+	rendererObject.tex3d_rect = nil
+
+	function rendererObject:Set3DTexProps(x, y, w, h)
+		if x == nil then
+			self.tex3d_rect = nil
+		else
+			self.tex3d_rect = { X = x, Y = y, Width = w, Height = h }
+		end
+	end
+
 	function rendererObject.GetViewMatrix()
 		-- no real camera matrix in headless, return nil
 		return nil
@@ -484,6 +514,29 @@ function KiRend.new(config: KiRendConf)
 
 	function rendererObject:WatchKey(RaylibKeyObject)
 		renderer_watching_keys[RaylibKeyObject] = true
+	end
+
+	function rendererObject:HasClicked(rect: { x: number, y: number, width: number, height: number })
+		local clicks = pending_clicks
+		if not clicks or #clicks == 0 then
+			return false
+		end
+
+		for _, click in ipairs(clicks) do
+			if click.Button == 1 and not click.Down then
+				if
+					isMouseInRect(
+						vector.create(click.X, click.Y, 0),
+						vector.create(rect.x, rect.y, 0),
+						vector.create(rect.width, rect.height, 0)
+					)
+				then
+					return true
+				end
+			end
+		end
+
+		return false
 	end
 
 	function rendererObject:StopWatchingKey(RaylibKeyObject)
@@ -616,11 +669,68 @@ function KiRend.new(config: KiRendConf)
 		local sortedGuiPool = getSortedPool(renderer_pool.gui)
 		perf_stats.gui_roots = #sortedGuiPool
 
+		for _, item in ipairs(sortedGuiPool) do
+			local entry = item.entry
+
+			if entry.render then
+				entry.render(rendererObject.RuntimeLibrary)
+			end
+		end
+
 		for _, v in pairs(renderer_hooks.After2D) do
 			pcall(v, rendererObject.RuntimeLibrary)
 		end
 
 		perf_stats.ui_ms = (os.clock() - uiStart) * 1000
+	end
+
+	function rendererObject:Resize(newWidth, newHeight)
+		if not newWidth or not newHeight or newWidth <= 0 or newHeight <= 0 then
+			return
+		end
+
+		config.width = newWidth
+		config.height = newHeight
+		rendererObject.Width = newWidth
+		rendererObject.Height = newHeight
+
+		window.Width = newWidth
+		window.Height = newHeight
+
+		argon:ResizePixelBuffer(window, newWidth, newHeight)
+
+		if window._uihandle then
+			argon:DestroySkiaSurface(window._uihandle)
+		end
+		window._uihandle = argon:InitSkiaSurface(newWidth, newHeight)
+
+		argon:DestroyTexture(skia_tex)
+		skia_tex = argon:CreateTexture({
+			width = newWidth,
+			height = newHeight,
+			renderer = window_renderer,
+			pixelFormat = "ABGR8888",
+			access = "STREAMING",
+		})
+
+		argon:DestroyTexture(filament_tex)
+		filament_tex = argon:CreateTexture({
+			width = newWidth,
+			height = newHeight,
+			renderer = window_renderer,
+			pixelFormat = "ABGR8888",
+			access = "STREAMING",
+		})
+	end
+
+	function rendererObject:SyncWindowSize()
+		local pixelWidth, pixelHeight = argon:GetWindowPixelSize(window)
+		if pixelWidth and pixelHeight and pixelWidth > 0 and pixelHeight > 0 then
+			rendererObject:Resize(pixelWidth, pixelHeight)
+			return
+		end
+
+		rendererObject:Resize(config.width, config.height)
 	end
 
 	function rendererObject:step(time)
@@ -630,25 +740,34 @@ function KiRend.new(config: KiRendConf)
 		rendererObject.RuntimeLibrary.dt = frameTime
 		rendererObject.RuntimeLibrary.time = time
 
-		argon:PollEvents()
-		filament.lib.Kine_Filament_RenderFrame(ctx, frameTime)
-		filament.lib.Kine_Filament_BlitToScreen(ctx, 0, 0, context.Window.Width, context.Window.Height)
-		argon:Clear2D(window, { R = 0, G = 0, B = 0, A = 0 })
-		argon:DrawRectangle(window, {
-			Color = {
-				R = 1,
-				G = 1,
-				B = 1,
-				A = 0,
-			},
-			x = math.random(1, 100),
-			y = math.random(1, 100),
-			width = math.random(1, 100),
-			height = math.random(1, 100),
-		})
+		local resized, newWidth, newHeight, shouldClose, clicks = argon:PollEvents(window)
+		if shouldClose then
+			print("should close now!")
+			rendererObject:Stop()
+			return
+		end
+		pending_clicks = clicks or {}
+		argon:BeginFrame(context)
 
+		if resized and newWidth and newHeight then
+			rendererObject:Resize(newWidth, newHeight)
+		end
+		argon:Clear2D(window, { R = 1, G = 0, B = 0, A = 0 })
+
+		argon:SetCameraPosition(window, { X = 5, Y = 5, Z = 5 })
+		rendererObject:Render3D()
+		rendererObject:Render2D()
+		argon:Render3D(window, frameTime)
+		argon:BlitToScreen3D(window, 0, 0, context.Window.Width, context.Window.Height)
+		local pixels = argon:GetPixels(window)
+		argon:UpdateTexture(filament_tex, pixels, context.Window.Width * 4)
+
+		argon:RenderClear(window_renderer)
 		argon:UpdateSkiaTexture(skia_tex, window)
 		argon:DrawTexture(window_renderer, skia_tex)
+
+		argon:DrawTexture(window_renderer, filament_tex, rendererObject.tex3d_rect)
+
 		argon:RenderPresent(window_renderer)
 
 		if ENGINE_PROFILER then
@@ -682,9 +801,6 @@ function KiRend.new(config: KiRendConf)
 			ENGINE_PROFILER:Begin("Render")
 		end
 
-		rendererObject:Render3D()
-		rendererObject:Render2D()
-
 		local dispatchStart = os.clock()
 		perf_stats.dispatch_ms = (os.clock() - dispatchStart) * 1000
 
@@ -704,9 +820,13 @@ function KiRend.new(config: KiRendConf)
 	end
 
 	function rendererObject:Step()
-		local currentTime = os.clock()
-		time = time + frameTime
-		frameCount = frameCount + 1
+		local now = os.clock()
+		frameTime = now - lastFrameTime
+		lastFrameTime = now
+
+		time += frameTime
+		frameCount += 1
+
 		rendererObject:step(time)
 	end
 
@@ -714,10 +834,15 @@ function KiRend.new(config: KiRendConf)
 		isRunning = true
 		lastFrameTime = os.clock()
 
+		local frames = 0
+
 		while isRunning do
-			rendererObject:step(time)
+			rendererObject:Step()
+
+			frames += 1
 		end
 
+		isRunning = false
 		rendererObject:Shutdown()
 	end
 
@@ -738,6 +863,15 @@ function KiRend.new(config: KiRendConf)
 		table.clear(renderer_pool.gui)
 		table.clear(renderer_pool.object)
 		table.clear(renderer_pool.gizmos)
+
+		if window and window._uihandle then
+			argon:DestroySkiaSurface(window._uihandle)
+		end
+		if skia_tex then
+			argon:DestroyTexture(skia_tex)
+		end
+		argon:Shutdown(window, window_renderer, context)
+		zune.process.exit(0)
 	end
 
 	function rendererObject:GetStats()
@@ -788,6 +922,8 @@ function KiRend.new(config: KiRendConf)
 			isHeadless = false,
 		}
 	end
+
+	rendererObject:SyncWindowSize()
 
 	return rendererObject
 end
