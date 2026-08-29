@@ -27,6 +27,8 @@ Kinemium is a sandbox engine written in Luau (Zune Runtime). It includes a custo
 Kinemium is an independent project not affiliated with, endorsed by, 
 or connected to Roblox Corporation. Roblox is a trademark of Roblox Corporation
 
+API features such as Instances and data types are implemented solely for developer familiarity, platform portability, and software interoperability under applicable fair use law including but not limited to the Copyright Act of 1976, 17 U.S.C. § 107.
+
 # Features
 ## Datatypes
 <details>
