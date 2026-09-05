@@ -95,7 +95,7 @@ API features such as Instances and data types are implemented solely for develop
 
 # That's cool.. But how do I use this?
 You can check out the guide here:
-https://kinemiumengine.discourse.group/t/guide-to-running-kinemium-engine/25
+https://forums.quadigen.com/t/guide-to-running-kinemium-engine/25
 # Commands
 Kinemium provides with several flags you can run with ```zune run game```<br>
 - headless (lets you run the engine without graphics)<br>
